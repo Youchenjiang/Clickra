@@ -17,6 +17,11 @@ from gh_guard import resolve_thread
 from process_guard import invoke
 from pr_audit import inventory
 from sonar_audit import inventory as sonar_inventory
+from pr_publication import push as guarded_push, remote_head
+from pr_creation import create as guarded_create
+from pr_verification import summarize
+
+SONAR_HOST_DEFAULT = "https://sonarcloud.io"
 
 
 def safe_terminal(value):
@@ -53,11 +58,25 @@ def pr_number(value, repo, branch, run=command):
 
 def inspect(repo, number, run=command):
     raw = run(["gh", "pr", "view", str(number), "--repo", repo,
-               "--json", "number,title,state,isDraft,baseRefName,headRefName,headRefOid,mergeable,reviewDecision,statusCheckRollup,url"])
+               "--json", "number,title,state,isDraft,baseRefName,headRefName,headRefOid,mergeable,reviewDecision,statusCheckRollup,files,url"])
     data = json.loads(raw)
     if not isinstance(data, dict) or data.get("number") != number:
         raise ValueError("GitHub returned an unexpected PR")
     return data
+
+
+def export_body(repo, number, output, run=command):
+    """Recover an existing PR body for the mandatory push policy gate."""
+    payload = json.loads(run(["gh", "pr", "view", str(number), "--repo", repo,
+                              "--json", "number,body,headRefOid"]))
+    if (not isinstance(payload, dict) or payload.get("number") != number
+            or not isinstance(payload.get("body"), str) or not payload["body"].strip()):
+        raise ValueError("cannot verify nonempty PR body for requested PR")
+    path = Path(output).resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("x", encoding="utf-8", newline="\n") as handle:
+        handle.write(payload["body"])
+    print(f"Saved PR #{number} body to {path}")
 
 
 def review_threads(repo, number, run=command):
@@ -222,7 +241,7 @@ def audit(repo, number, run=command, as_json=False, include_sonar=False):
     if include_sonar:
         result["sonar"] = sonar_inventory(
             os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
-            number, base_url=os.environ.get("SONAR_HOST_URL", "https://sonarcloud.io"),
+            number, base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
             token=os.environ.get("SONAR_TOKEN"))
     if as_json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -275,21 +294,61 @@ def _ready(body_file):
     return subprocess.run([shell, str(hook)], env=env, check=False, shell=False).returncode
 
 
+def _prepare(body_file, initial=False):
+    """Run the versioned lightweight policy gate, never the full NativeAOT hook."""
+    body = Path(body_file).resolve()
+    if not body.is_file():
+        raise ValueError(f"PR body file does not exist: {body}")
+    from pr_preflight import _github_metadata, check
+    if initial:
+        from pr_preflight import validate_pr_body
+        # This is only a preview: the actual first push verifies remote main
+        # and the exact object through the mandatory versioned hook.
+        problems = validate_pr_body(body.read_text(encoding="utf-8"))
+    else:
+        problems = check("origin/main", str(body), metadata=_github_metadata())
+    for problem in problems:
+        print(f"PR preflight FAIL: {safe_terminal(problem)}")
+    if problems:
+        return 1
+    print("PR preflight OK; the mandatory full gate will run during push")
+    return 0
+
+
 def _execute_action(args, run):
+    if args.action == "push":
+        result = guarded_push(args.body_file, args.authorize, execute=args.execute)
+        print(json.dumps(result))
+        return 0
     if args.action == "publish":
         print("Publication disabled in this entry point: obtain explicit approval for push and PR creation separately.")
         return 2
     if args.action == "ready":
         return _ready(args.body_file)
+    if args.action == "prepare":
+        return _prepare(args.body_file, args.initial)
     repo, branch = context(run)
+    if args.action == "create":
+        result = guarded_create(repo, branch, title=args.title, body_file=args.body_file,
+                                label=args.label, milestone=args.milestone,
+                                assignee=args.assignee, execute=args.execute,
+                                authorization=args.authorize)
+        print(json.dumps(result))
+        return 0
     number = pr_number(args.pr, repo, branch, run)
-    if args.action == "status":
+    return _execute_pr_action(args, run, repo, number)
+
+
+def _execute_pr_action(args, run, repo, number):
+    if args.action == "body":
+        export_body(repo, number, args.output, run)
+    elif args.action == "status":
         print_status(repo, number, run)
     elif args.action == "audit":
         audit(repo, number, run, args.json, args.sonar)
     elif args.action == "sonar":
         data = sonar_inventory(os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
-                               number, base_url=os.environ.get("SONAR_HOST_URL", "https://sonarcloud.io"),
+                               number, base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
                                token=os.environ.get("SONAR_TOKEN"))
         if args.json:
             print(json.dumps(data, indent=2, ensure_ascii=False))
@@ -297,6 +356,16 @@ def _execute_action(args, run):
             print_sonar(data)
     elif args.action == "diagnose":
         diagnose(repo, number, run)
+    elif args.action == "verify":
+        pr = inspect(repo, number, run)
+        report = inventory(repo, number, pr.get("headRefOid"), review_threads(repo, number, run), run)
+        report["sonar"] = sonar_inventory(os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
+                                          number, base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
+                                          token=os.environ.get("SONAR_TOKEN"))
+        remote = remote_head(pr.get("headRefName", ""))
+        result = summarize(pr, report, remote_sha=remote)
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0 if result["ready"] else 2
     elif args.action == "review":
         print_review(repo, number, run)
     else:
@@ -316,8 +385,11 @@ def _execute_resolution(repo, number, args, run):
 def main(argv=None, run=command):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
-    for name in ("status", "review", "diagnose"):
+    for name in ("status", "review", "diagnose", "verify"):
         sub.add_parser(name).add_argument("pr", nargs="?")
+    body = sub.add_parser("body", help="Export an existing PR body without overwriting files")
+    body.add_argument("pr", nargs="?")
+    body.add_argument("--output", required=True)
     auditor = sub.add_parser("audit", help="Read all PR comment categories, no writes")
     auditor.add_argument("pr", nargs="?")
     auditor.add_argument("--json", action="store_true", help="Output full machine-readable inventory")
@@ -327,7 +399,23 @@ def main(argv=None, run=command):
     sonar.add_argument("--json", action="store_true")
     ready = sub.add_parser("ready", help="Execute local pre-push gate without pushing")
     ready.add_argument("--body-file", required=True)
+    prepare = sub.add_parser("prepare", help="Run quick PR policy checks without full build/NativeAOT")
+    prepare.add_argument("--body-file", required=True)
+    prepare.add_argument("--initial", action="store_true",
+                         help="Before a PR exists, validate the full draft metadata only")
     sub.add_parser("publish", help="Explain separately authorized publication steps")
+    push = sub.add_parser("push", help="Preview or perform one explicitly authorized, hook-verified branch push")
+    push.add_argument("--body-file", required=True)
+    push.add_argument("--authorize", help="Exact branch:40-character-SHA from preview")
+    push.add_argument("--execute", action="store_true", help="Requires explicit approval for this exact push")
+    creator = sub.add_parser("create", help="Preview or explicitly authorize creation of one PR")
+    creator.add_argument("--title", required=True)
+    creator.add_argument("--body-file", required=True)
+    creator.add_argument("--label", required=True)
+    creator.add_argument("--milestone")
+    creator.add_argument("--assignee")
+    creator.add_argument("--authorize")
+    creator.add_argument("--execute", action="store_true")
     resolver = sub.add_parser("resolve", help="Resolve exactly one explicitly authorized thread")
     resolver.add_argument("pr")
     resolver.add_argument("--thread", required=True)

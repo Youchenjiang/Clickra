@@ -137,7 +137,21 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            const pr = context.payload.pull_request;
+            // The opened event can race with gh CLI setting labels/milestone.
+            // Always re-read live metadata instead of trusting the event snapshot.
+            let pr = context.payload.pull_request;
+            for (let attempt = 1; attempt <= 4; attempt++) {
+              const response = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+              });
+              pr = response.data;
+              if ((pr.labels || []).length > 0 && pr.milestone) break;
+              if (attempt < 4) {
+                await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+              }
+            }
             const failures = [];
 
             // External provider selection is an explicit architecture decision.

@@ -11,7 +11,13 @@ python scripts/pr_tool.py audit 177 --json
 python scripts/pr_tool.py sonar 177
 python scripts/pr_tool.py sonar 177 --json
 python scripts/pr_tool.py audit 177 --sonar --json
+python scripts/pr_tool.py verify 177
+python scripts/pr_tool.py body 177 --output 'C:\path\to\recovered-pr-body.md'
 python scripts/pr_tool.py ready --body-file 'C:\path\to\pr-body.md'
+python scripts/pr_tool.py prepare --body-file 'C:\path\to\pr-body.md'
+python scripts/pr_tool.py prepare --initial --body-file 'C:\path\to\pr-body.md'
+python scripts/pr_tool.py push --body-file 'C:\path\to\pr-body.md'
+python scripts/pr_tool.py create --title 'feat(agent): improve PR workflow' --body-file 'C:\path\to\pr-body.md' --label agent --milestone 'Plan'
 ```
 
 `status` reports PR base/head, state, review decision, check rollup and all
@@ -24,6 +30,27 @@ by an audit. Read-only queries require GitHub CLI login.
 Thread pagination supports PRs with more than 100 review threads. Provider
 checks are shown when they appear in the GitHub check rollup; missing checks
 must not be interpreted as passing.
+
+`verify` is the **single read-only final PR acceptance check**. It confirms
+the current PR HEAD matches the exact remote branch SHA, inventories all
+GitHub review threads and SonarQube open/confirmed issues, checks the CI rollup,
+and reports skipped checks distinctly. It exits nonzero for unresolved issues,
+failed or pending checks, missing required provider jobs, a non-main target,
+or a non-open PR. SonarQube access errors fail closed. A `Skipping` provider
+is never claimed as having independently reviewed the code.
+
+The `verify` JSON `checks` array includes each check's current status,
+whether it is required, and its GitHub/provider details URL. This replaces
+routine `gh pr checks` calls; use `diagnose` for failing check details. Native
+read-only `gh` is an exception only for a specific missing diagnostic capability;
+document that gap and the reason before invoking it. These are cooperative
+agent instructions, not OS-enforced command interception or credential isolation.
+
+If a temporary PR body file was lost after creation, use the read-only `body`
+command to export the existing PR description into a **new** UTF-8 file and
+pass that path to `push`. The export refuses to overwrite any existing file
+and verifies the returned PR number and nonempty body; this avoids falling
+back to direct `gh pr view` merely to recover publication metadata.
 
 `sonar` reads the SonarQube Cloud `api/issues/search` endpoint for the
 selected PR, requesting `OPEN,CONFIRMED` issues and paging through all results.
@@ -46,10 +73,69 @@ for changes unrelated to PDF translation; PDF-translation changes require the
 relevant fixture gate. `ready` can fail when required fixtures or tooling are
 missing; do not bypass a failure or report a skipped test as passed.
 
-`publish` intentionally refuses to run. Pushing to a remote and creating a PR
-are separate GitHub writes, requiring explicit user approval for each. A local
-successful `ready` does not authorize either operation. Always check remote
-main freshness immediately before either write.
+For actual publication, use `push` instead of manually constructing a Git
+command. By default `push` previews the exact branch and commit SHA without
+writing. Only after explicit user approval for that specific branch and SHA:
+
+```powershell
+python scripts/pr_tool.py push --body-file 'C:\path\to\pr-body.md' --execute --authorize 'feature/my-branch:0123456789012345678901234567890123456789'
+```
+
+The push tool refuses protected branches, dirty worktrees, unexpected remotes,
+or mismatched authorization. It pushes only the checked branch, without force,
+and runs the **existing full versioned Git pre-push hook**; it checks the remote
+SHA after success. Never use `--no-verify`. A preview string is not itself
+approval: the agent needs current explicit user permission for a push.
+
+For the **first push of a new remote branch**, the hook recognizes the absent
+remote ref and validates completed draft PR metadata instead of querying a PR
+that cannot exist yet. Normal ancestry, fresh remote main, commit policy,
+clean-tree and full build gates remain mandatory. Subsequent pushes require
+live GitHub PR metadata. `prepare --initial` is only a lightweight draft-body
+preview; it does not replace the full initial-push verification.
+
+The same rule also applies to a branch **already pushed remotely but still
+without a PR**. Every pre-push checks GitHub's all-state PR list for the
+exact repository and branch. Zero PRs permits full draft metadata validation;
+one open PR requires live metadata; closed, duplicate, unparseable or
+unavailable PR lookup fails closed. Existing mandatory build and NativeAOT
+gates are unaffected. The draft path is not an exception for an existing PR.
+
+PR creation is a **second, independent external write** and is never implied
+by approval to push. Use `create` without `--execute` to preview the exact
+repository, remote branch commit, body/title/options fingerprint, and ensure
+there is no existing PR for the branch (including closed PRs). After a separate
+explicit user authorization, run the same command with `--execute --authorize`
+set to the exact preview value. It creates only one PR targeting `main`,
+with explicit label and optional milestone/assignee, and verifies the PR HEAD
+from GitHub afterward. Lost or ambiguous responses are **not** retried
+automatically; inspect remote state first. It cannot comment, merge, or
+resolve review threads. A fresh `verify` is required after CI providers run.
+
+The `create` preview validates the selected label, milestone, and optional
+assignee against live GitHub metadata, including pagination. An unknown
+milestone fails **before authorization or creation**, rather than failing
+inside `gh pr create`. If the operation fails after being sent, the tool
+distinguishes rejected label/milestone from an unknown outcome, with no
+automatic retry and no token, stderr, or remote payload disclosure. Inspect
+the remote PR list before issuing a fresh, independently authorized attempt.
+An upstream execution-environment safety denial is separate from a repository
+tool failure; do not bypass it using an alternate command.
+
+**Avoid duplicate full gates:** when an approved push is the next action, use
+the lightweight `prepare` command followed by `push`, and let the mandatory
+hook perform the full build, tests
+and NativeAOT once. Use `ready` only for independently requested local
+verification without a push. This avoids the former `ready`-then-`push`
+double run without weakening mandatory checks or caching potentially stale
+results. After push, use `verify` repeatedly until providers finish; resolve
+threads only after independently verified fixes. Never interpret `verify` as
+authorization to merge or create a PR.
+
+`publish` (legacy) intentionally refuses to run. Creating a PR, pushing to a
+remote, and merging remain separate GitHub writes requiring specific approval.
+The new `push` command only handles an authorized branch push; it does not
+create or merge a PR. Always check remote main freshness before publication.
 
 For a specific review thread **already fixed and explicitly authorized for
 resolution in the current request**, use:

@@ -32,6 +32,7 @@ else
   push_updates=""
 fi
 push_args=""
+initial_push_flag=""
 if [ -n "$push_updates" ]; then
   branch_count=0
   tag_count=0
@@ -64,6 +65,9 @@ if [ -n "$push_updates" ]; then
         fi
         branch_count=$((branch_count + 1))
         push_args="$local_ref $local_oid"
+        if [ "$remote_oid" = "0000000000000000000000000000000000000000" ]; then
+          initial_push_flag="--initial-push"
+        fi
         ;;
       *) echo "[pre-push] ERROR: unsupported pushed ref: $local_ref" >&2; exit 1 ;;
     esac
@@ -92,7 +96,7 @@ if [ -z "${CLICKRA_PR_BODY_FILE:-}" ]; then
 fi
 if [ -n "$push_args" ]; then
   set -- $push_args
-  python scripts/pr_preflight.py --check --body-file "$CLICKRA_PR_BODY_FILE" --push-ref "$1" --push-oid "$2"
+  python scripts/pr_preflight.py --check --body-file "$CLICKRA_PR_BODY_FILE" --push-ref "$1" --push-oid "$2" $initial_push_flag
 else
   python scripts/pr_preflight.py --check --body-file "$CLICKRA_PR_BODY_FILE"
 fi
@@ -101,6 +105,9 @@ echo "[pre-push] Running PR governance script tests..."
 python -m unittest discover -s tests -p 'test_pr_preflight.py' -v
 python -m unittest discover -s tests -p 'test_gh_guard.py' -v
 python -m unittest discover -s tests -p 'test_pr_tool.py' -v
+python -m unittest discover -s tests -p 'test_pr_publication.py' -v
+python -m unittest discover -s tests -p 'test_pr_creation.py' -v
+python -m unittest discover -s tests -p 'test_pr_verification.py' -v
 
 echo "Running pre-push checks (mirrors .github/workflows/ci.yml)..."
 
@@ -166,7 +173,7 @@ echo "All pre-push PR checks passed."
 # Remote main can advance during long builds and NativeAOT publishing.
 if [ -n "$push_args" ]; then
   set -- $push_args
-  python scripts/pr_preflight.py --check --body-file "$CLICKRA_PR_BODY_FILE" --push-ref "$1" --push-oid "$2"
+  python scripts/pr_preflight.py --check --body-file "$CLICKRA_PR_BODY_FILE" --push-ref "$1" --push-oid "$2" $initial_push_flag
 else
   python scripts/pr_preflight.py --check --body-file "$CLICKRA_PR_BODY_FILE"
 fi

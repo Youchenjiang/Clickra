@@ -12,6 +12,26 @@ import pr_tool
 
 
 class PrToolTests(unittest.TestCase):
+    def test_export_body_checks_identity_and_never_overwrites(self):
+        calls = []
+        def fake(argv):
+            calls.append(argv)
+            return json.dumps({"number": 179, "body": "## Summary\nHello\n",
+                               "headRefOid": "a" * 40})
+        with TemporaryDirectory() as folder:
+            target = Path(folder) / "body.md"
+            with redirect_stdout(StringIO()):
+                pr_tool.export_body("Youchenjiang/Clickra", 179, target, fake)
+            self.assertEqual("## Summary\nHello\n", target.read_text(encoding="utf-8"))
+            with self.assertRaises(FileExistsError):
+                pr_tool.export_body("Youchenjiang/Clickra", 179, target, fake)
+            target.unlink()
+            with self.assertRaisesRegex(ValueError, "cannot verify"):
+                pr_tool.export_body("Youchenjiang/Clickra", 180, target, fake)
+            self.assertFalse(target.exists())
+        self.assertEqual(["gh", "pr", "view", "179", "--repo", "Youchenjiang/Clickra",
+                          "--json", "number,body,headRefOid"], calls[0])
+
     def test_diagnose_reads_failed_action_log_and_external_review(self):
         calls = []
         def fake(argv):
@@ -162,6 +182,33 @@ class PrToolTests(unittest.TestCase):
         with patch.object(pr_tool.subprocess, "run") as call:
             self.assertEqual(1, pr_tool.main(["ready", "--body-file", "does-not-exist.md"]))
             call.assert_not_called()
+
+    def test_prepare_runs_policy_only_without_full_hook(self):
+        import pr_preflight
+        with TemporaryDirectory() as folder:
+            body = Path(folder) / "pr.md"
+            body.write_text("## Summary\n", encoding="utf-8")
+            with patch.object(pr_preflight, "_github_metadata", return_value={"labels": []}), \
+                 patch.object(pr_preflight, "check", return_value=[]) as policy, \
+                 patch.object(pr_tool.subprocess, "run") as heavy, \
+                 redirect_stdout(StringIO()) as output:
+                self.assertEqual(0, pr_tool.main(["prepare", "--body-file", str(body)]))
+            policy.assert_called_once()
+            heavy.assert_not_called()
+            self.assertIn("mandatory full gate", output.getvalue())
+
+    def test_initial_prepare_validates_draft_without_github_lookup(self):
+        import pr_preflight
+        with TemporaryDirectory() as folder:
+            body = Path(folder) / "pr.md"
+            body.write_text(
+                "## Summary\nA\n## Changes\nB\n## Validation\nC\n## PR Metadata\n"
+                "- [x] **Assignee**: @owner\n- [x] **Label**: agent\n"
+                "- [x] **Milestone**: Plan\n- [x] **External provider**: none\n",
+                encoding="utf-8")
+            with patch.object(pr_preflight, "_github_metadata") as github:
+                self.assertEqual(0, pr_tool.main(["prepare", "--initial", "--body-file", str(body)]))
+                github.assert_not_called()
 
     def test_status_prints_check_and_review_state(self):
         def fake(argv):
