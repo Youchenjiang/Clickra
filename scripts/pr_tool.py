@@ -18,6 +18,7 @@ from process_guard import invoke
 from pr_audit import inventory
 from sonar_audit import inventory as sonar_inventory
 from pr_publication import push as guarded_push, remote_head
+from pr_creation import create as guarded_create
 from pr_verification import summarize
 
 
@@ -311,6 +312,13 @@ def _execute_action(args, run):
     if args.action == "prepare":
         return _prepare(args.body_file, args.initial)
     repo, branch = context(run)
+    if args.action == "create":
+        result = guarded_create(repo, branch, title=args.title, body_file=args.body_file,
+                                label=args.label, milestone=args.milestone,
+                                assignee=args.assignee, execute=args.execute,
+                                authorization=args.authorize)
+        print(json.dumps(result))
+        return 0
     number = pr_number(args.pr, repo, branch, run)
     if args.action == "status":
         print_status(repo, number, run)
@@ -375,6 +383,14 @@ def main(argv=None, run=command):
     push.add_argument("--body-file", required=True)
     push.add_argument("--authorize", help="Exact branch:40-character-SHA from preview")
     push.add_argument("--execute", action="store_true", help="Requires explicit approval for this exact push")
+    creator = sub.add_parser("create", help="Preview or explicitly authorize creation of one PR")
+    creator.add_argument("--title", required=True)
+    creator.add_argument("--body-file", required=True)
+    creator.add_argument("--label", required=True)
+    creator.add_argument("--milestone")
+    creator.add_argument("--assignee")
+    creator.add_argument("--authorize")
+    creator.add_argument("--execute", action="store_true")
     resolver = sub.add_parser("resolve", help="Resolve exactly one explicitly authorized thread")
     resolver.add_argument("pr")
     resolver.add_argument("--thread", required=True)

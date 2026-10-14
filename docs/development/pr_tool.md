@@ -16,6 +16,7 @@ python scripts/pr_tool.py ready --body-file 'C:\path\to\pr-body.md'
 python scripts/pr_tool.py prepare --body-file 'C:\path\to\pr-body.md'
 python scripts/pr_tool.py prepare --initial --body-file 'C:\path\to\pr-body.md'
 python scripts/pr_tool.py push --body-file 'C:\path\to\pr-body.md'
+python scripts/pr_tool.py create --title 'feat(agent): improve PR workflow' --body-file 'C:\path\to\pr-body.md' --label agent --milestone 'Plan'
 ```
 
 `status` reports PR base/head, state, review decision, check rollup and all
@@ -78,6 +79,17 @@ that cannot exist yet. Normal ancestry, fresh remote main, commit policy,
 clean-tree and full build gates remain mandatory. Subsequent pushes require
 live GitHub PR metadata. `prepare --initial` is only a lightweight draft-body
 preview; it does not replace the full initial-push verification.
+
+PR creation is a **second, independent external write** and is never implied
+by approval to push. Use `create` without `--execute` to preview the exact
+repository, remote branch commit, body/title/options fingerprint, and ensure
+there is no existing PR for the branch (including closed PRs). After a separate
+explicit user authorization, run the same command with `--execute --authorize`
+set to the exact preview value. It creates only one PR targeting `main`,
+with explicit label and optional milestone/assignee, and verifies the PR HEAD
+from GitHub afterward. Lost or ambiguous responses are **not** retried
+automatically; inspect remote state first. It cannot comment, merge, or
+resolve review threads. A fresh `verify` is required after CI providers run.
 
 **Avoid duplicate full gates:** when an approved push is the next action, use
 the lightweight `prepare` command followed by `push`, and let the mandatory
