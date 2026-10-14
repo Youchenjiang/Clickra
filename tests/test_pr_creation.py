@@ -27,6 +27,7 @@ class CreateTests(unittest.TestCase):
             kwargs = dict(title="feat(agent): integrate PR governance", body_file=str(body),
                           label="agent", milestone="Plan")
             with patch.object(pr_creation, "_current_branch", return_value="a" * 40), \
+                 patch.object(pr_creation, "_metadata"), \
                  patch.object(pr_creation.subprocess, "run") as runner:
                 preview = pr_creation.create("user/repo", "feature/workflow", **kwargs)
                 self.assertIn("user/repo:feature/workflow:", preview["preview"])
@@ -42,6 +43,7 @@ class CreateTests(unittest.TestCase):
                           label="agent", milestone="Plan")
             sha = "a" * 40
             with patch.object(pr_creation, "_current_branch", return_value=sha), \
+                 patch.object(pr_creation, "_metadata"), \
                  patch.object(pr_creation, "_read", return_value=(
                      '{"number":123,"headRefOid":"' + sha + '","baseRefName":"main",'
                      '"url":"https://github.com/user/repo/pull/123"}')), \
@@ -72,6 +74,36 @@ class CreateTests(unittest.TestCase):
              patch.object(pr_creation, "remote_head", return_value=sha):
             with self.assertRaisesRegex(RuntimeError, "existing"):
                 pr_creation._current_branch("user/repo", "feature/workflow")
+
+    def test_invalid_milestone_fails_during_preview(self):
+        with TemporaryDirectory() as folder:
+            body = self.body_file(folder)
+            with patch.object(pr_creation, "_current_branch", return_value="a" * 40), \
+                 patch.object(pr_creation, "executable", return_value="/bin/gh"), \
+                 patch.object(pr_creation.subprocess, "run") as runner:
+                runner.side_effect = [
+                    SimpleNamespace(returncode=0, stdout='[[{"name":"agent"}]]'),
+                    SimpleNamespace(returncode=0, stdout='[[{"title":"Real Milestone"}]]')]
+                with self.assertRaisesRegex(ValueError, "milestone does not exist"):
+                    pr_creation.create("user/repo", "feature/workflow",
+                                       title="feat(agent): test", body_file=str(body),
+                                       label="agent", milestone="Plan")
+                self.assertEqual(2, runner.call_count)
+                self.assertTrue(all("create" not in call.args[0] for call in runner.call_args_list))
+
+    def test_unknown_create_outcome_is_not_retried(self):
+        with TemporaryDirectory() as folder:
+            body = self.body_file(folder)
+            options = dict(title="feat(agent): test", body_file=str(body), label="agent")
+            with patch.object(pr_creation, "_current_branch", return_value="a" * 40), \
+                 patch.object(pr_creation, "_metadata"), \
+                 patch.object(pr_creation, "executable", return_value="/bin/gh"):
+                approval = pr_creation.create("user/repo", "feature/workflow", **options)["preview"]
+                runner = unittest.mock.Mock(side_effect=TimeoutError("response lost"))
+                with self.assertRaisesRegex(RuntimeError, "outcome unknown"):
+                    pr_creation.create("user/repo", "feature/workflow", **options,
+                                       execute=True, authorization=approval, runner=runner)
+                runner.assert_called_once()
 
 
 if __name__ == "__main__":

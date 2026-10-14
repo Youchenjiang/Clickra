@@ -20,6 +20,31 @@ def _read(argv):
     return result.stdout.strip()
 
 
+def _metadata(repo, label, milestone, assignee):
+    """Validate selected GitHub metadata before exposing an executable preview."""
+    def entries(kind):
+        result = subprocess.run(
+            [executable("gh"), "api", f"repos/{repo}/{kind}?per_page=100",
+             "--paginate", "--slurp"],
+            shell=False, check=False, capture_output=True, text=True, timeout=30)
+        if result.returncode:
+            raise RuntimeError(f"cannot verify repository {kind}; no PR created")
+        pages = json.loads(result.stdout)
+        if not isinstance(pages, list) or not all(isinstance(page, list) for page in pages):
+            raise RuntimeError(f"repository {kind} returned invalid data; no PR created")
+        return [record for page in pages for record in page]
+
+    if label not in {item.get("name") for item in entries("labels")}:
+        raise ValueError(f"GitHub label does not exist: {label}")
+    if milestone and milestone not in {item.get("title") for item in entries("milestones")}:
+        raise ValueError(f"GitHub milestone does not exist: {milestone}")
+    if assignee:
+        result = subprocess.run([executable("gh"), "api", f"repos/{repo}/assignees/{assignee}"],
+                                shell=False, check=False, capture_output=True, text=True, timeout=30)
+        if result.returncode:
+            raise ValueError("GitHub assignee is not eligible")
+
+
 def _current_branch(repo, branch):
     if not REPOSITORY.fullmatch(repo) or not BRANCH.fullmatch(branch):
         raise ValueError("invalid repository or development branch")
@@ -65,6 +90,7 @@ def create(repo, branch, *, title, body_file, label, milestone=None, assignee=No
     """Preview first; one authorized create attempt, then independently re-read."""
     body, data = _requested_details(title, body_file, label, milestone, assignee)
     head = _current_branch(repo, branch)
+    _metadata(repo, label, milestone, assignee)
     fingerprint = hashlib.sha256(
         json.dumps([title, data, label, milestone, assignee], ensure_ascii=False).encode("utf-8")
     ).hexdigest()[:16]
@@ -79,9 +105,17 @@ def create(repo, branch, *, title, body_file, label, milestone=None, assignee=No
         args.extend(["--milestone", milestone])
     if assignee:
         args.extend(["--assignee", assignee])
-    result = runner(args, shell=False, check=False, capture_output=True, text=True)
+    try:
+        result = runner(args, shell=False, check=False, capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise RuntimeError("PR create outcome unknown; inspect PR list before any retry") from exc
     if result.returncode:
-        raise RuntimeError("PR create failed; inspect GitHub state before retrying")
+        message = (result.stderr or "").lower()
+        if "milestone" in message:
+            raise RuntimeError("GitHub rejected PR milestone; inspect PR list before retry")
+        if "label" in message:
+            raise RuntimeError("GitHub rejected PR label; inspect PR list before retry")
+        raise RuntimeError("PR create failed or outcome unknown; inspect PR list before retry")
     details = json.loads(_read(["gh", "pr", "view", "--repo", repo,
                                 "--json", "number,headRefOid,baseRefName,url"]))
     if details.get("headRefOid") != head or details.get("baseRefName") != "main":
