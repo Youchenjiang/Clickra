@@ -74,5 +74,3 @@ class PublicationTests(unittest.TestCase):
                     SimpleNamespace(stdout="a" * 40, returncode=0)]):
                 with self.assertRaisesRegex(ValueError, "protected"):
                     pr_publication.push(str(body), None)
-
-
