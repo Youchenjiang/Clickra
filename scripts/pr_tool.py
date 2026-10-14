@@ -17,6 +17,7 @@ from gh_guard import resolve_thread
 from process_guard import invoke
 from pr_audit import inventory
 from sonar_audit import inventory as sonar_inventory
+from deepsource_audit import pr_issues as deepsource_pr_issues
 from pr_publication import push as guarded_push, remote_head
 from pr_creation import create as guarded_create
 from pr_verification import summarize
@@ -210,6 +211,24 @@ def diagnose(repo, number, run=command):
     print(f"Current reported checks: {len(failed)} failed")
     for item in failed:
         _print_failed_check(item, repo, details.get(item.get("name") or item.get("context")) or {}, run)
+    if any((item.get("name") or item.get("context") or "").lower().startswith("deepsource:") for item in failed):
+        token = os.environ.get("DEEPSOURCE_TOKEN")
+        if token:
+            try:
+                issues = deepsource_pr_issues(repo, number, token)
+                print(f"DeepSource PR issues: {len(issues)}")
+                for issue in issues:
+                    if not issue.get("isSuppressed"):
+                        print(f"- {safe_terminal(issue.get('path') or '?')}:{safe_terminal(issue.get('beginLine') or '?')} "
+                              f"[{safe_terminal(issue.get('shortcode') or issue.get('severity') or '?')}] "
+                              f"{safe_terminal(issue.get('title') or '')[:500]}")
+                if not issues:
+                    print("No PR issues returned; inspect DeepSource metrics and quality gate settings.")
+            except (OSError, RuntimeError, ValueError) as exc:
+                print(f"DeepSource issue details unavailable: {safe_terminal(exc)}")
+        else:
+            print("DeepSource issue details require DEEPSOURCE_TOKEN (read-only personal access token).")
+            print("Alternatively: deepsource issues --pr " + str(number) + " --analyzer csharp --output json")
     return failed, _review_feedback(repo, number, passed, run)
 
 

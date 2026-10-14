@@ -9,6 +9,7 @@ python scripts/pr_tool.py review 177
 python scripts/pr_tool.py audit 177
 python scripts/pr_tool.py audit 177 --json
 python scripts/pr_tool.py sonar 177
+python scripts/pr_tool.py diagnose 177
 python scripts/pr_tool.py sonar 177 --json
 python scripts/pr_tool.py audit 177 --sonar --json
 python scripts/pr_tool.py verify 177
@@ -45,6 +46,11 @@ routine `gh pr checks` calls; use `diagnose` for failing check details. Native
 read-only `gh` is an exception only for a specific missing diagnostic capability;
 document that gap and the reason before invoking it. These are cooperative
 agent instructions, not OS-enforced command interception or credential isolation.
+
+For failing DeepSource checks, `diagnose` also retrieves paginated PR issue
+details through the official read-only GraphQL API when `DEEPSOURCE_TOKEN` is
+set to a personal access token. Without the token it prints the documented
+DeepSource CLI alternative; a failed provider status is never treated as a pass.
 
 If a temporary PR body file was lost after creation, use the read-only `body`
 command to export the existing PR description into a **new** UTF-8 file and
