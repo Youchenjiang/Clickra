@@ -106,6 +106,7 @@ python -m unittest discover -s tests -p 'test_pr_preflight.py' -v
 python -m unittest discover -s tests -p 'test_gh_guard.py' -v
 python -m unittest discover -s tests -p 'test_pr_tool.py' -v
 python -m unittest discover -s tests -p 'test_pr_publication.py' -v
+python -m unittest discover -s tests -p 'test_pr_creation.py' -v
 python -m unittest discover -s tests -p 'test_pr_verification.py' -v
 
 echo "Running pre-push checks (mirrors .github/workflows/ci.yml)..."

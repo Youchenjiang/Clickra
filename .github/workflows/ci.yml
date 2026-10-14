@@ -182,6 +182,7 @@ jobs:
       - name: Check guarded PR publication and acceptance
         run: |
           python -m unittest discover -s tests -p 'test_pr_publication.py' -v
+          python -m unittest discover -s tests -p 'test_pr_creation.py' -v
           python -m unittest discover -s tests -p 'test_pr_verification.py' -v
 
   store-publishing-tests:
