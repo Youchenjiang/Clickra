@@ -8,6 +8,9 @@ python scripts/pr_tool.py status 177
 python scripts/pr_tool.py review 177
 python scripts/pr_tool.py audit 177
 python scripts/pr_tool.py audit 177 --json
+python scripts/pr_tool.py sonar 177
+python scripts/pr_tool.py sonar 177 --json
+python scripts/pr_tool.py audit 177 --sonar --json
 python scripts/pr_tool.py ready --body-file 'C:\path\to\pr-body.md'
 ```
 
@@ -21,6 +24,19 @@ by an audit. Read-only queries require GitHub CLI login.
 Thread pagination supports PRs with more than 100 review threads. Provider
 checks are shown when they appear in the GitHub check rollup; missing checks
 must not be interpreted as passing.
+
+`sonar` reads the SonarQube Cloud `api/issues/search` endpoint for the
+selected PR, requesting `OPEN,CONFIRMED` issues and paging through all results.
+It shows issue ID, file/line, rule, impact/severity, and message; `--json`
+returns structured data. `audit --sonar` adds the inventory to the GitHub
+audit (`sonar` property in JSON). A SonarQube Quality Gate passing does not
+mean there are no open issues. The default project key is the GitHub repository
+name with `/` replaced by `_`; use `SONAR_PROJECT_KEY` to override it.
+Set `SONAR_TOKEN` for private projects and `SONAR_HOST_URL` for the US
+instance (`https://sonarqube.us`); token is sent only as an Authorization
+header and never displayed. Failed API requests stop the operation rather
+than returning a misleading partial list. None of these commands modifies
+SonarQube findings.
 
 `ready` runs the exact versioned `scripts/hooks/pre-push` gate locally, without
 pushing anything. Supply the finalized PR body file; the gate requires a fresh

@@ -16,6 +16,7 @@ import sys
 from gh_guard import resolve_thread
 from process_guard import invoke
 from pr_audit import inventory
+from sonar_audit import inventory as sonar_inventory
 
 
 def safe_terminal(value):
@@ -33,7 +34,7 @@ def command(argv):
 def context(run=command):
     branch = run(["git", "branch", "--show-current"]).strip()
     url = run(["git", "remote", "get-url", "origin"]).strip()
-    match = re.search(r"(?:github\.com[:/])([^/]+)/([^/]+?)(?:\.git)?$", url)
+    match = re.search(r"github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$", url)
     if not match:
         raise ValueError("origin is not a recognizable GitHub repository")
     return f"{match.group(1)}/{match.group(2)}", branch
@@ -148,16 +149,20 @@ def _print_failed_check(item, repo, details, run):
           else "External provider: no detailed findings exposed in GitHub Check Run.")
 
 
+def _is_historical_feedback(item, passed):
+    comments = item.get("comments", {}).get("nodes", [])
+    body = str(comments[0].get("body") or "") if comments else ""
+    return bool(item.get("isOutdated") or ("<!-- DeepSource:" in body and
+                any(name.startswith("deepsource:") for name in passed)))
+
+
 def _review_feedback(repo, number, passed, run):
     """Keep old/outdated threads visible as counts; never resolve them."""
     threads = [item for item in review_threads(repo, number, run) if not item.get("isResolved")]
     active = []
     historical = []
     for item in threads:
-        comments = item.get("comments", {}).get("nodes", [])
-        body = str(comments[0].get("body") or "") if comments else ""
-        if item.get("isOutdated") or ("<!-- DeepSource:" in body and
-                                      any(name.startswith("deepsource:") for name in passed)):
+        if _is_historical_feedback(item, passed):
             historical.append(item)
         else:
             active.append(item)
@@ -189,10 +194,33 @@ def diagnose(repo, number, run=command):
     return failed, _review_feedback(repo, number, passed, run)
 
 
-def audit(repo, number, run=command, as_json=False):
+def _print_open_threads(result):
+    linked = {}
+    for comment in result["inline_comments"]:
+        if comment["thread_id"] and comment["thread_id"] not in linked:
+            linked[comment["thread_id"]] = comment
+    for thread in result["threads"]:
+        if thread["resolved"]:
+            continue
+        status = "UNRESOLVED, OUTDATED" if thread["outdated"] else "UNRESOLVED"
+        print(f"- [{status}] {safe_terminal(thread['id'])} {safe_terminal(thread['path'] or '?')}:"
+              f"{safe_terminal(thread['line'] or '?')}")
+        first = linked.get(thread["id"])
+        if first:
+            print(f"  {safe_terminal(first['body'])[:180]}")
+            if first["url"]:
+                print(f"  {safe_terminal(first['url'])}")
+
+
+def audit(repo, number, run=command, as_json=False, include_sonar=False):
     """Inventory every comment surface, without altering review state."""
     pr = inspect(repo, number, run)
     result = inventory(repo, number, pr.get("headRefOid"), review_threads(repo, number, run), run)
+    if include_sonar:
+        result["sonar"] = sonar_inventory(
+            os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
+            number, base_url=os.environ.get("SONAR_HOST_URL", "https://sonarcloud.io"),
+            token=os.environ.get("SONAR_TOKEN"))
     if as_json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return result
@@ -202,29 +230,26 @@ def audit(repo, number, run=command, as_json=False):
           f" ({counts['outdated_unresolved']} outdated but unresolved)")
     print(f"All inline comments: {counts['inline']} | General comments: {counts['general']}"
           f" | Review summaries: {counts['reviews']}")
-    linked = {}
-    for comment in result["inline_comments"]:
-        if comment["thread_id"] and comment["thread_id"] not in linked:
-            linked[comment["thread_id"]] = comment
-    for thread in result["threads"]:
-        if thread["resolved"]:
-            continue
-        status = "UNRESOLVED"
-        if thread["outdated"]:
-            status += ", OUTDATED"
-        print(f"- [{status}] {safe_terminal(thread['id'])} {safe_terminal(thread['path'] or '?')}:"
-              f"{safe_terminal(thread['line'] or '?')}")
-        first = linked.get(thread["id"])
-        if first:
-            print(f"  {safe_terminal(first['body'])[:180]}")
-            if first["url"]:
-                print(f"  {safe_terminal(first['url'])}")
+    if include_sonar:
+        print_sonar(result["sonar"])
+    _print_open_threads(result)
     current = sum(c["head_relation"] == "current" for c in result["inline_comments"])
     historical = sum(c["head_relation"] == "historical" for c in result["inline_comments"])
     print(f"Inline commit relation: {current} current, {historical} historical;"
           " unscoped comments require manual review")
     print("Resolved threads omitted from this view; use 'audit --json' for all records, full bodies and metadata.")
     return result
+
+
+def print_sonar(data):
+    print(f"SonarQube Cloud: {data['total']} open/confirmed issue(s)")
+    for issue in data["issues"]:
+        impacts = issue.get("impacts") or []
+        severity = ", ".join(f"{x.get('softwareQuality')}:{x.get('severity')}" for x in impacts) if impacts else issue.get("severity")
+        print(f"- {safe_terminal(issue.get('key'))} {safe_terminal(issue.get('component'))}:{safe_terminal(issue.get('line') or '?')}"
+              f" [{safe_terminal(severity or '?')}] {safe_terminal(issue.get('rule'))}")
+        print(f"  {safe_terminal(issue.get('message') or '')}")
+    print(f"SonarQube details: {safe_terminal(data['url'])}")
 
 
 def _ready(body_file):
@@ -258,7 +283,15 @@ def _execute_action(args, run):
     if args.action == "status":
         print_status(repo, number, run)
     elif args.action == "audit":
-        audit(repo, number, run, args.json)
+        audit(repo, number, run, args.json, args.sonar)
+    elif args.action == "sonar":
+        data = sonar_inventory(os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
+                               number, base_url=os.environ.get("SONAR_HOST_URL", "https://sonarcloud.io"),
+                               token=os.environ.get("SONAR_TOKEN"))
+        if args.json:
+            print(json.dumps(data, indent=2, ensure_ascii=False))
+        else:
+            print_sonar(data)
     elif args.action == "diagnose":
         diagnose(repo, number, run)
     elif args.action == "review":
@@ -285,6 +318,10 @@ def main(argv=None, run=command):
     auditor = sub.add_parser("audit", help="Read all PR comment categories, no writes")
     auditor.add_argument("pr", nargs="?")
     auditor.add_argument("--json", action="store_true", help="Output full machine-readable inventory")
+    auditor.add_argument("--sonar", action="store_true", help="Also fetch SonarQube Cloud issues (requires API access)")
+    sonar = sub.add_parser("sonar", help="Read open/confirmed SonarQube Cloud PR issues")
+    sonar.add_argument("pr", nargs="?")
+    sonar.add_argument("--json", action="store_true")
     ready = sub.add_parser("ready", help="Execute local pre-push gate without pushing")
     ready.add_argument("--body-file", required=True)
     sub.add_parser("publish", help="Explain separately authorized publication steps")

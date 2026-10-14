@@ -64,8 +64,14 @@ def inventory(repo, number, head, threads, run):
 
 def _comment(item, head, sha_key="commit_id"):
     sha = item.get(sha_key) if sha_key else None
+    if not sha:
+        relation = "unscoped"
+    elif sha == head:
+        relation = "current"
+    else:
+        relation = "historical"
     return {"id": item.get("id"), "author": (item.get("user") or {}).get("login"),
             "body": item.get("body") or "", "url": item.get("html_url"),
             "created_at": item.get("created_at") or item.get("submitted_at"),
             "path": item.get("path"), "commit": sha,
-            "head_relation": "current" if sha and sha == head else ("historical" if sha else "unscoped")}
+            "head_relation": relation}

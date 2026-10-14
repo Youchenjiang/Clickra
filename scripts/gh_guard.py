@@ -124,12 +124,9 @@ def resolve_thread(repo, pr_number, thread_id, authorization, *, execute, dry_ru
     return _confirm_resolved(repo, pr_number, thread_id, execute, _resolve_mutation(thread_id, execute))
 
 
-def validate_gh_args(args):
-    if len(args) < 2 or tuple(args[:2]) not in SAFE_COMMANDS:
-        return "only allowlisted read-only gh commands are permitted"
+def _validate_gh_tail(args, allowed_flags):
     seen_positionals = 0
-    allowed_flags = SAFE_FLAGS[tuple(args[:2])]
-    i = 2
+    i = 0
     while i < len(args):
         item = args[i]
         if item in BOOL_FLAGS:
@@ -152,6 +149,12 @@ def validate_gh_args(args):
         seen_positionals += 1
         i += 1
     return None
+
+
+def validate_gh_args(args):
+    if len(args) < 2 or tuple(args[:2]) not in SAFE_COMMANDS:
+        return "only allowlisted read-only gh commands are permitted"
+    return _validate_gh_tail(args[2:], SAFE_FLAGS[tuple(args[:2])])
 
 
 def main():

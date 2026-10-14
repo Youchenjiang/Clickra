@@ -8,15 +8,16 @@ import shutil
 import subprocess
 import re
 
+MAIN_REF = "origin/main"
 GIT_READ_OPERATIONS = {
     ("branch", "--show-current"),
     ("remote", "get-url", "origin"),
     ("rev-parse", "HEAD"),
-    ("rev-parse", "origin/main"),
+    ("rev-parse", MAIN_REF),
     ("ls-remote", "--heads", "origin", "main"),
-    ("merge-base", "--is-ancestor", "origin/main", "HEAD"),
-    ("log", "--format=%B%x00", "origin/main..HEAD"),
-    ("diff", "--quiet", "origin/main", "HEAD"),
+    ("merge-base", "--is-ancestor", MAIN_REF, "HEAD"),
+    ("log", "--format=%B%x00", f"{MAIN_REF}..HEAD"),
+    ("diff", "--quiet", MAIN_REF, "HEAD"),
     ("status", "--porcelain"),
 }
 GH_READ_VERBS = {("pr", "view"), ("pr", "checks"), ("pr", "list"),
