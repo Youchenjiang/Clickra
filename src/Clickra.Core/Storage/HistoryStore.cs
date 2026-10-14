@@ -21,33 +21,40 @@ internal static class HistoryStore
                     int start = Math.Max(0, lines.Length - limit);
                     for (int index = lines.Length - 1; index >= start; index--)
                     {
-                        string line = lines[index];
-                        if (string.IsNullOrWhiteSpace(line)) continue;
-                        string[] parts = line.Split('|');
-                        if (parts.Length < 4) continue;
-
-                        _ = int.TryParse(parts[2], out int count);
-                        bool success = parts[3].Equals("Success", StringComparison.OrdinalIgnoreCase);
-                        entries.Add(new ClickraStorage.HistoryEntry
-                        {
-                            Time = parts[0],
-                            Command = parts[1],
-                            FileCount = count,
-                            Status = success ? ConversionStatus.Success : ConversionStatus.Failed,
-                            ErrorMessage = parts.Length > 4 ? parts[4] : "",
-                            EndTime = parts.Length > 5 ? parts[5] : parts[0],
-                            ElapsedMs = parts.Length > 6 && long.TryParse(parts[6], out long elapsed) ? elapsed : -1,
-                            InputPaths = parts.Length > 7 ? parts[7] : "",
-                            OutputPath = parts.Length > 8 ? parts[8] : ""
-                        });
+                        if (TryParseEntry(lines[index], out ClickraStorage.HistoryEntry entry))
+                            entries.Add(entry);
                     }
                 }
                 catch
                 {
+                    // History is optional; preserve any entries parsed before an I/O failure.
                 }
             }
             return entries;
         });
+    }
+
+    private static bool TryParseEntry(string line, out ClickraStorage.HistoryEntry entry)
+    {
+        entry = default;
+        if (string.IsNullOrWhiteSpace(line)) return false;
+        string[] parts = line.Split('|');
+        if (parts.Length < 4) return false;
+        _ = int.TryParse(parts[2], out int count);
+        bool success = parts[3].Equals("Success", StringComparison.OrdinalIgnoreCase);
+        entry = new ClickraStorage.HistoryEntry
+        {
+            Time = parts[0],
+            Command = parts[1],
+            FileCount = count,
+            Status = success ? ConversionStatus.Success : ConversionStatus.Failed,
+            ErrorMessage = parts.Length > 4 ? parts[4] : "",
+            EndTime = parts.Length > 5 ? parts[5] : parts[0],
+            ElapsedMs = parts.Length > 6 && long.TryParse(parts[6], out long elapsed) ? elapsed : -1,
+            InputPaths = parts.Length > 7 ? parts[7] : "",
+            OutputPath = parts.Length > 8 ? parts[8] : ""
+        };
+        return true;
     }
 
     internal static void Clear()
@@ -62,25 +69,17 @@ internal static class HistoryStore
                 }
                 catch
                 {
+                    // Clearing optional history is best effort when the file is locked.
                 }
             }
         });
     }
 
-    internal static void AppendCompleted(
-        string startTime,
-        string command,
-        int fileCount,
-        ConversionStatus status,
-        string errorMessage,
-        string endTime,
-        long elapsedMs,
-        string inputPaths,
-        string outputPath)
+    internal static void AppendCompleted(ClickraStorage.HistoryEntry entry)
     {
         lock (StorageRuntime.FileLock)
         {
-            string line = $"{startTime}|{command}|{fileCount}|{status}|{errorMessage}|{endTime}|{elapsedMs}|{inputPaths}|{outputPath}";
+            string line = $"{entry.Time}|{entry.Command}|{entry.FileCount}|{entry.Status}|{entry.ErrorMessage}|{entry.EndTime}|{entry.ElapsedMs}|{entry.InputPaths}|{entry.OutputPath}";
             File.AppendAllText(StorageRuntime.HistoryFilePath, line + Environment.NewLine, System.Text.Encoding.UTF8);
         }
     }

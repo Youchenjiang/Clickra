@@ -83,6 +83,7 @@ internal static class LegacyActiveRecordStore
                     }
                     catch
                     {
+                        // Missing or unreadable legacy state leaves the completion index at zero.
                     }
 
                     if (File.Exists(ActiveFilePath)) File.Delete(ActiveFilePath);
@@ -96,16 +97,18 @@ internal static class LegacyActiveRecordStore
                         inputs,
                         currentIndex);
 
-                    HistoryStore.AppendCompleted(
-                        completion.StartTime,
-                        completion.Command,
-                        inputList.Length,
-                        completion.IsSuccess ? ConversionStatus.Success : ConversionStatus.Failed,
-                        error,
-                        completedAt,
-                        completion.ElapsedMs,
-                        inputs,
-                        output);
+                    HistoryStore.AppendCompleted(new ClickraStorage.HistoryEntry
+                    {
+                        Time = completion.StartTime,
+                        Command = completion.Command,
+                        FileCount = inputList.Length,
+                        Status = completion.IsSuccess ? ConversionStatus.Success : ConversionStatus.Failed,
+                        ErrorMessage = error,
+                        EndTime = completedAt,
+                        ElapsedMs = completion.ElapsedMs,
+                        InputPaths = inputs,
+                        OutputPath = output
+                    });
                 }
                 catch
                 {
@@ -127,6 +130,7 @@ internal static class LegacyActiveRecordStore
                 }
                 catch
                 {
+                    // Cleanup is best effort if another process holds the compatibility file.
                 }
             }
         });
@@ -158,6 +162,7 @@ internal static class LegacyActiveRecordStore
             }
             catch
             {
+                // The legacy mirror is optional; a write failure must not interrupt conversions.
             }
         }
     }

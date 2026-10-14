@@ -88,7 +88,18 @@ internal static class TaskQueueStore
                         Pid = Environment.ProcessId
                     });
 
-                    HistoryStore.AppendCompleted(request.StartTime, command, fileCount, status, error, endTime, request.ElapsedMs, inputs, output);
+                    HistoryStore.AppendCompleted(new ClickraStorage.HistoryEntry
+                    {
+                        Time = request.StartTime,
+                        Command = command,
+                        FileCount = fileCount,
+                        Status = status,
+                        ErrorMessage = error,
+                        EndTime = endTime,
+                        ElapsedMs = request.ElapsedMs,
+                        InputPaths = inputs,
+                        OutputPath = output
+                    });
                 }
                 catch
                 {
@@ -107,6 +118,7 @@ internal static class TaskQueueStore
                     }
                     catch
                     {
+                        // Even the failure marker may be unwritable; completion remains best effort.
                     }
                 }
             }
@@ -127,6 +139,7 @@ internal static class TaskQueueStore
                 }
                 catch
                 {
+                    // A locked or missing task file must not prevent clearing the thread-local task.
                 }
             }
         });
