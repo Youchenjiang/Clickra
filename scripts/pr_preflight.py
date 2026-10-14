@@ -172,6 +172,34 @@ def _github_metadata():
     return result
 
 
+def _publication_metadata():
+    """Only use draft metadata when an exact, verified branch has no PR."""
+    branch = git("branch", "--show-current")
+    if branch.returncode or not branch.stdout.strip():
+        raise OSError("cannot determine PR source branch")
+    current = branch.stdout.strip()
+    remote = git("remote", "get-url", "origin")
+    if remote.returncode:
+        raise OSError("cannot determine origin repository")
+    match = re.fullmatch(
+        r"(?:https://github\.com/|git@github\.com:)([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?",
+        remote.stdout.strip())
+    if not match:
+        raise ValueError("unrecognized origin repository")
+    response = invoke(["gh", "pr", "list", "--repo", match.group(1), "--state", "all",
+                       "--head", current, "--json", "number,state,headRefName,headRefOid"])
+    if response.returncode:
+        raise OSError("cannot verify existing GitHub PRs for this branch")
+    prs = json.loads(response.stdout)
+    if not isinstance(prs, list) or any(not isinstance(pr, dict) for pr in prs):
+        raise ValueError("invalid GitHub PR lookup")
+    if not prs:
+        return None
+    if len(prs) != 1 or prs[0].get("state") != "OPEN" or prs[0].get("headRefName") != current:
+        raise ValueError("ambiguous, closed, or mismatched PR; publication refused")
+    return _github_metadata()
+
+
 def check(base, body_file=None, pushed_ref=None, pushed_oid=None, metadata=None):
     try:
         return _check(base, body_file, pushed_ref, pushed_oid, metadata)
@@ -213,17 +241,14 @@ def main():
     args = parser.parse_args()
     if not args.check:
         parser.error("specify --check")
-    if args.initial_push:
-        if not args.push_ref or not args.push_oid:
-            print("PR PREFLIGHT FAIL: initial push requires an exact branch ref and object", file=sys.stderr)
-            return 1
-        metadata = None
-    else:
-        try:
-            metadata = _github_metadata()
-        except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
-            print(f"PR PREFLIGHT FAIL: unable to verify GitHub PR metadata: {exc}", file=sys.stderr)
-            return 1
+    if args.initial_push and (not args.push_ref or not args.push_oid):
+        print("PR PREFLIGHT FAIL: initial push requires an exact branch ref and object", file=sys.stderr)
+        return 1
+    try:
+        metadata = _publication_metadata()
+    except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+        print(f"PR PREFLIGHT FAIL: unable to verify GitHub PR state: {exc}", file=sys.stderr)
+        return 1
     errors = check(args.base, args.body_file, args.push_ref, args.push_oid, metadata)
     for error in errors:
         print(f"PR PREFLIGHT FAIL: {error}", file=sys.stderr)

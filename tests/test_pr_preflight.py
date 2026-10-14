@@ -11,6 +11,48 @@ from pr_preflight import validate_message, validate_pr_body, check, _check_histo
 
 
 class PrPreflightTests(unittest.TestCase):
+    def test_existing_remote_branch_without_pr_uses_draft_metadata(self):
+        from pr_preflight import _publication_metadata
+        def read(*args):
+            if args[0] == "branch":
+                return CompletedProcess(args, 0, "feature/new\n", "")
+            return CompletedProcess(args, 0, "https://github.com/user/repo.git\n", "")
+        with patch("pr_preflight.git", side_effect=read), \
+             patch("pr_preflight.invoke", return_value=CompletedProcess([], 0, "[]", "")) as github, \
+             patch("pr_preflight._github_metadata") as actual:
+            self.assertIsNone(_publication_metadata())
+            actual.assert_not_called()
+        self.assertIn("--state", github.call_args.args[0])
+        self.assertIn("all", github.call_args.args[0])
+
+    def test_existing_open_pr_requires_live_metadata(self):
+        from pr_preflight import _publication_metadata
+        def read(*args):
+            value = "feature/new" if args[0] == "branch" else "git@github.com:user/repo.git"
+            return CompletedProcess(args, 0, value, "")
+        prs = '[{"number":42,"state":"OPEN","headRefName":"feature/new"}]'
+        live = {"labels": [{"name": "agent"}], "milestone": {"title": "Roadmap"}}
+        with patch("pr_preflight.git", side_effect=read), \
+             patch("pr_preflight.invoke", return_value=CompletedProcess([], 0, prs, "")), \
+             patch("pr_preflight._github_metadata", return_value=live) as actual:
+            self.assertEqual(live, _publication_metadata())
+            actual.assert_called_once()
+
+    def test_failed_or_ambiguous_pr_lookup_fails_closed(self):
+        from pr_preflight import _publication_metadata
+        def read(*args):
+            value = "feature/new" if args[0] == "branch" else "https://github.com/user/repo.git"
+            return CompletedProcess(args, 0, value, "")
+        for code, output in [(1, ""), (0, "broken"), (0, '[{"state":"CLOSED"}]'),
+                             (0, '[{"state":"OPEN"},{"state":"OPEN"}]')]:
+            with self.subTest(code=code, output=output), \
+                 patch("pr_preflight.git", side_effect=read), \
+                 patch("pr_preflight.invoke", return_value=CompletedProcess([], code, output, "")), \
+                 patch("pr_preflight._github_metadata") as live:
+                with self.assertRaises((OSError, ValueError)):
+                    _publication_metadata()
+                live.assert_not_called()
+
     def test_initial_branch_preflight_uses_draft_without_nonexistent_pr_metadata(self):
         from pr_preflight import main
         sha = "a" * 40
