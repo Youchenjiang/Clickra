@@ -264,14 +264,18 @@ def _execute_action(args, run):
     elif args.action == "review":
         print_review(repo, number, run)
     else:
-        if args.execute and not args.authorize:
-            raise ValueError("--execute requires --authorize and explicit user consent")
-        thread = resolve_thread(repo, str(number), args.thread,
-                                args.authorize if args.execute else f"{number}:{args.thread}",
-                                execute=run, dry_run=not args.execute)
-        print(f"{'Resolved' if args.execute else 'Eligible for resolution (preview only)'}: {thread['id']}; no comment posted")
+        _execute_resolution(repo, number, args, run)
     return 0
 
+
+def _execute_resolution(repo, number, args, run):
+    if args.execute and not args.authorize:
+        raise ValueError("--execute requires --authorize and explicit user consent")
+    thread = resolve_thread(repo, str(number), args.thread,
+                            args.authorize if args.execute else f"{number}:{args.thread}",
+                            execute=run, dry_run=not args.execute,
+                            repair_evidence=args.repair_evidence)
+    print(f"{'Resolved' if args.execute else 'Eligible for resolution (preview only)'}: {thread['id']}; no comment posted")
 
 def main(argv=None, run=command):
     parser = argparse.ArgumentParser(description=__doc__)
@@ -288,6 +292,7 @@ def main(argv=None, run=command):
     resolver.add_argument("pr")
     resolver.add_argument("--thread", required=True)
     resolver.add_argument("--authorize")
+    resolver.add_argument("--repair-evidence", help="Verified fix reference for an outdated thread")
     resolver.add_argument("--execute", action="store_true", help="Execute explicitly authorized resolution; default is read-only preview")
     args = parser.parse_args(argv)
     try:

@@ -46,7 +46,7 @@ class PrToolTests(unittest.TestCase):
         with patch.object(pr_tool, "inspect", return_value=data), \
              patch.object(pr_tool, "review_threads", return_value=threads), \
              redirect_stdout(StringIO()) as output:
-            failed, active = pr_tool.diagnose("org/repo", 123, lambda argv: json.dumps({"check_runs": []}))
+            failed, active = pr_tool.diagnose("org/repo", 123, lambda _argv: json.dumps({"check_runs": []}))
         self.assertFalse(failed)
         self.assertEqual(1, len(active))
         self.assertIn("potentially historical unresolved thread(s): 2", output.getvalue())
@@ -123,7 +123,7 @@ class PrToolTests(unittest.TestCase):
 
     def test_publish_refuses_without_side_effect(self):
         with redirect_stdout(StringIO()) as output:
-            result = pr_tool.main(["publish"], lambda argv: self.fail("no command expected"))
+            result = pr_tool.main(["publish"], lambda _argv: self.fail("no command expected"))
         self.assertEqual(2, result)
         self.assertIn("disabled", output.getvalue())
 

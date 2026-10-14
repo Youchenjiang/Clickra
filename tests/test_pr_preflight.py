@@ -21,6 +21,8 @@ class PrPreflightTests(unittest.TestCase):
     def test_vague_commit_and_commented_body_rejected(self):
         self.assertTrue(validate_message("fix: update\n\n1. Explain."))
         self.assertTrue(validate_message("fix(core): repair\n\n# 1. Comment only."))
+        self.assertIn("numbered commit body must be predominantly English/ASCII letters",
+                      validate_message("fix(core): repair\n\n1. 修正流程與權限問題，並驗證測試"))
 
     def test_pr_body_requires_provider_acknowledgement(self):
         body = "## Summary\nText\n## Changes\n- A\n## Validation\n- B\n## PR Metadata\n"
@@ -67,6 +69,16 @@ class PrPreflightTests(unittest.TestCase):
                 "- [x] **Milestone**: N/A\n- [x] **External provider**: none\n")
         self.assertEqual([], validate_pr_body(body))
         self.assertIn("completed Milestone metadata required", validate_pr_body(body.replace("**Label**: docs", "**Label**: agent")))
+
+    def test_real_metadata_overrides_draft_checkboxes_and_exemption(self):
+        body = ("## Summary\nA\n## Changes\nB\n## Validation\nC\n## PR Metadata\n"
+                "- [ ] **Assignee**: pending\n- [ ] **Label**: pending\n"
+                "- [ ] **Milestone**: pending\n- [x] **External provider**: none\n")
+        self.assertEqual([], validate_pr_body(body, {"labels": [{"name": "docs"}], "milestone": None}))
+        self.assertIn("GitHub PR requires milestone unless exempt",
+                      validate_pr_body(body, {"labels": [{"name": "agent"}], "milestone": None}))
+        self.assertIn("GitHub PR requires at least one label",
+                      validate_pr_body(body, {"labels": [], "milestone": {"title": "Plan"}}))
 
     @patch("pr_preflight.git")
     def test_pushed_ref_and_diff_failure_fail_closed(self, mock_git):

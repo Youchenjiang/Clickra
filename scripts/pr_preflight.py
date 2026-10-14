@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Fail-closed Git publication preflight; no branch or remote mutations."""
 import argparse
+import json
 import re
 import subprocess
 import sys
@@ -29,12 +30,18 @@ def validate_message(message):
     if (not SUBJECT.fullmatch(header) or header.endswith(".") or len(header) > 72
             or header.split(": ", 1)[-1].lower() in VAGUE):
         errors.append("invalid conventional commit header")
-    if not BODY.search("\n".join(line for line in lines[1:] if not line.startswith("#"))):
+    numbered = BODY.search("\n".join(line for line in lines[1:] if not line.startswith("#")))
+    if not numbered:
         errors.append("missing numbered English commit body")
+    else:
+        content = re.sub(r"^\s*1[.)]\s+", "", numbered.group(0))
+        letters = [char for char in content if char.isalpha()]
+        if letters and sum(char.isascii() for char in letters) / len(letters) < 0.7:
+            errors.append("numbered commit body must be predominantly English/ASCII letters")
     return errors
 
 
-def validate_pr_body(body):
+def validate_pr_body(body, metadata=None):
     errors = []
     sections = {}
     current = None
@@ -52,13 +59,19 @@ def validate_pr_body(body):
         content = "\n".join(sections[heading]).strip()
         if not content or (heading != "## PR Metadata" and PLACEHOLDER.search(content)):
             errors.append(f"empty or placeholder {heading}")
-    for label in REQUIRED_METADATA:
+    for label in REQUIRED_METADATA if metadata is None else ("External provider",):
         pattern = rf"(?mi)^- \[[xX]\] \*\*{re.escape(label)}\*\*:\s*(\S.*)$"
         match = re.search(pattern, "\n".join(sections.get("## PR Metadata", [])))
         if (not match or PLACEHOLDER.search(match.group(1))
                 or (label == "Milestone" and match.group(1).strip().lower() in {"none", "n/a", "not applicable"}
                     and not re.search(r"(?mi)^- \[[xX]\] \*\*Label\*\*:\s*.*\b(?:release|hotfix|deps|dependencies|docs)\b", "\n".join(sections.get("## PR Metadata", []))))):
             errors.append(f"completed {label} metadata required")
+    if metadata is not None:
+        labels = {item.get("name", "").lower() for item in metadata.get("labels", [])}
+        if not labels:
+            errors.append("GitHub PR requires at least one label")
+        if not metadata.get("milestone") and not labels.intersection({"release", "hotfix", "deps", "dependencies", "docs"}):
+            errors.append("GitHub PR requires milestone unless exempt")
     return errors
 
 
@@ -110,14 +123,24 @@ def _check_history(base, pushed_ref=None, pushed_oid=None):
     return errors
 
 
-def check(base, body_file=None, pushed_ref=None, pushed_oid=None):
+def _github_metadata():
+    response = invoke(["gh", "pr", "view", "--json", "assignees,labels,milestone"])
+    if response.returncode:
+        raise OSError("GitHub PR metadata cannot be verified")
+    result = json.loads(response.stdout)
+    if not isinstance(result, dict) or not isinstance(result.get("labels"), list):
+        raise ValueError("GitHub returned invalid PR metadata")
+    return result
+
+
+def check(base, body_file=None, pushed_ref=None, pushed_oid=None, metadata=None):
     try:
-        return _check(base, body_file, pushed_ref, pushed_oid)
-    except (OSError, subprocess.TimeoutExpired) as exc:
+        return _check(base, body_file, pushed_ref, pushed_oid, metadata)
+    except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
         return [f"Git operation failed: {exc}"]
 
 
-def _check(base, body_file, pushed_ref, pushed_oid):
+def _check(base, body_file, pushed_ref, pushed_oid, metadata=None):
     errors = _check_history(base, pushed_ref, pushed_oid)
     status = git("status", "--porcelain")
     if status.returncode:
@@ -131,7 +154,7 @@ def _check(base, body_file, pushed_ref, pushed_oid):
         if not path.is_file():
             errors.append("PR body file missing")
         else:
-            errors.extend(validate_pr_body(path.read_text(encoding="utf-8")))
+            errors.extend(validate_pr_body(path.read_text(encoding="utf-8"), metadata))
     remote = git("ls-remote", "--heads", "origin", "main")
     local = git("rev-parse", base)
     if remote.returncode or local.returncode or not remote.stdout.strip() or local.stdout.strip() != remote.stdout.split()[0]:
@@ -149,7 +172,12 @@ def main():
     args = parser.parse_args()
     if not args.check:
         parser.error("specify --check")
-    errors = check(args.base, args.body_file, args.push_ref, args.push_oid)
+    try:
+        metadata = _github_metadata()
+    except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+        print(f"PR PREFLIGHT FAIL: unable to verify GitHub PR metadata: {exc}", file=sys.stderr)
+        return 1
+    errors = check(args.base, args.body_file, args.push_ref, args.push_oid, metadata)
     for error in errors:
         print(f"PR PREFLIGHT FAIL: {error}", file=sys.stderr)
     if errors:

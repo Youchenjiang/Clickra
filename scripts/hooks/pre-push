@@ -120,7 +120,14 @@ echo "[pre-push] Building Clickra.Fluent (warnaserror)..."
 dotnet build src/Clickra.Fluent/Clickra.Fluent.csproj -c Release -warnaserror
 
 echo "[pre-push] Verifying product icon assets..."
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/verify_icon_assets.ps1
+if command -v powershell.exe >/dev/null 2>&1; then
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/verify_icon_assets.ps1
+elif command -v pwsh >/dev/null 2>&1; then
+  pwsh -NoProfile -File scripts/verify_icon_assets.ps1
+else
+  echo "[pre-push] ERROR: PowerShell (powershell.exe or pwsh) is required for icon verification." >&2
+  exit 1
+fi
 
 
 echo "[pre-push] Running architecture and localization guards (warnaserror)..."
