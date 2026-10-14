@@ -19,7 +19,7 @@ public sealed partial class MainPage
     private void RefreshHistory()
     {
         // 讀一次清單：進行中、待繼續、已完成都在裡面，統計卡也是同一份數字。
-        _historyFeed = HistoryFeed.Load(CompletedHistoryLimit);
+        _historyFeed = HistoryFeed.Load(SettingsController.Language, CompletedHistoryLimit);
         _activeTasks = _historyFeed.OfKind(HistoryItemKind.Active).ToList();
         _parkedTasks = _historyFeed.OfKind(HistoryItemKind.Parked).ToList();
         _historyEntries = _historyFeed.OfKind(HistoryItemKind.Completed).ToList();

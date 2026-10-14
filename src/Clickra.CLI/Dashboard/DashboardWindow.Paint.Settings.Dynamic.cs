@@ -64,7 +64,7 @@ namespace Clickra.UI;
         {
             DrawDynamicSettingHeader(g, descriptor, contentX, y);
             LayoutRect toggle = SettingsLayout.ToggleRect((int)logW, (int)y);
-            bool state = SettingsController.GetBool(descriptor.Key);
+            bool state = SettingsController.ReadBool(descriptor);
             DrawToggleSwitch(g, state, _hoveredElement == baseElemId, toggle.X, toggle.Y, toggle.Width, toggle.Height);
             _settingsHitRects[baseElemId] = new RectangleF(toggle.X, toggle.Y, toggle.Width, toggle.Height);
             y += SettingsLayout.ToggleSectionHeight;
@@ -81,7 +81,7 @@ namespace Clickra.UI;
             _dynamicSliderTrackX = contentX;
             _dynamicSliderTrackW = sliderW;
             var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 1, 0);
-            int currentLevel = Math.Clamp(SettingsController.GetInt(descriptor.Key), range.Min, range.Max);
+            int currentLevel = SettingsController.ReadInt(descriptor);
             DrawDynamicSlider(g, contentX, y, sliderW, descriptor, currentLevel, range);
             LayoutRect sliderHit = SettingsLayout.SliderHitRect((int)contentX, (int)y, (int)sliderW);
             _settingsHitRects[baseElemId] = new RectangleF(sliderHit.X, sliderHit.Y, sliderHit.Width, sliderHit.Height);
@@ -95,8 +95,7 @@ namespace Clickra.UI;
             DrawDynamicSettingHeader(g, descriptor, contentX, y);
             y += SettingsLayout.DynamicNumberHeaderGap;
 
-            var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
-            int value = Math.Clamp(SettingsController.GetInt(descriptor.Key), range.Min, range.Max);
+            int value = SettingsController.ReadInt(descriptor);
             if (_subFont != null)
             {
                 using var valBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
@@ -123,7 +122,7 @@ namespace Clickra.UI;
             DrawDynamicSettingHeader(g, descriptor, contentX, y);
             y += SettingsLayout.ControlTopOffset;
 
-            string currentValue = SettingsController.Get(descriptor.Key);
+            string currentValue = SettingsController.ReadChoice(descriptor);
             float buttonX = contentX;
             var options = descriptor.Options ?? Array.Empty<SettingOption>();
             for (int optionIndex = 0; optionIndex < options.Count; optionIndex++)

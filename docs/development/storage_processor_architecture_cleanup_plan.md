@@ -327,6 +327,19 @@ Exit criteria:
 
 Status: **complete**. Presentation surfaces no longer use `ClickraStorage` as their product API; storage remains the persistence implementation behind narrow application owners.
 
+#### Post-completion hardening - typed settings and storage decomposition
+
+The completed boundary work exposed two follow-up opportunities that were intentionally handled as one coherent hardening slice rather than reopening the original migration sequence:
+
+- `SettingsController` is now a typed application contract. CLI and Fluent use named properties or `SettingDescriptor`-typed operations instead of raw `Get` / `Set` calls, setting keys, or persisted `ValueTrue` / `ValueFalse` representations;
+- the historical `ClickraStorage` implementation has been decomposed into focused owners: `StorageRuntime`, `SettingsStore`, `StoragePathResolver`, `HistoryStore`, `TaskRecordStore`, `TaskQueueStore`, `LegacyActiveRecordStore`, `ParkedTaskCoordinator`, and `TaskPruningCoordinator`;
+- the public `ClickraStorage` surface remains only where compatibility is required and delegates to those owners instead of reclaiming their I/O/state responsibilities;
+- `ParkedTaskCoordinator` returns retention facts only. `HistoryFeed` owns localized retention wording and receives the language explicitly;
+- `LibreOfficeEngineInstaller` now declares its actual infrastructure namespace, `Clickra.Core.Infrastructure`;
+- architecture guards prohibit presentation raw settings access, persisted boolean representations in CLI/Fluent, localized presentation text in Storage, and persistence implementation moving back into `ClickraStorage`.
+
+The decomposition deliberately preserves persisted settings keys, `history.log`, `task-*.tmp`, legacy `active.tmp`, cross-process mutex behavior, parked-task atomic transitions, resume identity/index semantics, and retention semantics.
+
 ### Slice 5 - Introduce meaningful namespace boundaries
 
 Namespace work comes after ownership is stable enough to enforce useful rules.
@@ -531,7 +544,7 @@ This cleanup track is complete when all of the following are true:
 8. architecture baselines have only shrunk throughout the work;
 9. NativeAOT, Fluent, task persistence, resume, and Store/package behavior remain intact.
 
-Status as of 2026-10-11: **complete and locally validated**. The completed track passes all five warnings-as-errors product builds, 71 architecture/localization guards, 351 functional tests, and NativeAOT publishing for CLI, Shell Extension, and ClickraLauncher. Source audits also confirm zero direct `ClickraStorage` references in CLI/Fluent presentation and zero processor `ClickraStorage` dependencies. Repository pre-push validation remains the final exact-head gate before the branch is proposed for merge.
+Status as of 2026-10-12: **complete through the storage-decomposition hardening slice and locally validated**. The current architecture passes all five warnings-as-errors product builds plus the test project, 74 architecture/localization guards, 352 functional tests with required fixtures, product-icon verification, 34 Store publishing unit tests, and NativeAOT publishing for CLI, Shell Extension, and ClickraLauncher. Source audits confirm zero direct `ClickraStorage` references in CLI/Fluent presentation, zero processor `ClickraStorage` dependencies, zero raw `SettingsController.Get/GetBool/GetInt/Set` calls in CLI/Fluent, zero persisted boolean-representation tokens in those UI projects, and zero `Localization.T` calls in Storage. Remote SonarCloud/DeepSource findings and review threads are intentionally deferred until the branch is later pushed and proposed as a PR.
 
 The intended end state is not "fewer files" or "fewer forwarding methods". It is:
 

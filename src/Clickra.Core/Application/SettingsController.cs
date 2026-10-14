@@ -1,30 +1,217 @@
 namespace Clickra.Core.Application;
 
+public enum OfficeEnginePreference
+{
+    Auto,
+    Microsoft,
+    LibreOffice
+}
+
+public enum OutputDirectoryKind
+{
+    Source,
+    Desktop,
+    Downloads,
+    Custom
+}
+
+public readonly record struct OutputDirectoryPreference(OutputDirectoryKind Kind, string CustomPath = "");
+
 /// <summary>
-/// Application-facing access to persisted user settings. UI surfaces depend on this
-/// boundary instead of reaching into the storage facade directly.
+/// Typed application-facing user settings. Persisted string keys and boolean encodings stay behind
+/// this boundary so presentation code consumes product values rather than storage representation.
 /// </summary>
 public static class SettingsController
 {
-    /// <summary>Raised when persisted settings are reloaded or changed.</summary>
     public static event Action? Reloaded
     {
         add => ClickraStorage.SettingsReloaded += value;
         remove => ClickraStorage.SettingsReloaded -= value;
     }
 
-    /// <summary>Reads a registered setting as text, including its registered default.</summary>
-    public static string Get(string key) => ClickraStorage.GetSetting(key);
+    public static string Language
+    {
+        get => ReadText(ClickraSettings.Language);
+        set => WriteText(ClickraSettings.Language, value);
+    }
 
-    /// <summary>Reads a registered setting as a boolean.</summary>
-    public static bool GetBool(string key) => ClickraStorage.GetSettingBool(key);
+    public static string TranslationTargetLanguage
+    {
+        get => ReadText(ClickraSettings.TranslateTargetLang);
+        set => WriteText(ClickraSettings.TranslateTargetLang, value);
+    }
 
-    /// <summary>Reads a registered setting as an integer.</summary>
-    public static int GetInt(string key) => ClickraStorage.GetSettingInt(key);
+    public static bool QuietMode
+    {
+        get => ReadBool(ClickraSettings.QuietMode);
+        set => WriteBool(ClickraSettings.QuietMode, value);
+    }
 
-    /// <summary>Persists a registered setting value.</summary>
-    public static void Set(string key, string value) => ClickraStorage.SaveSetting(key, value);
+    public static bool NotificationsEnabled
+    {
+        get => ReadBool(ClickraSettings.Notification);
+        set => WriteBool(ClickraSettings.Notification, value);
+    }
 
-    /// <summary>Synchronizes the settings cache with any newer on-disk state.</summary>
+    public static string LibreOfficePath
+    {
+        get => ReadText(ClickraSettings.LibreOfficePath);
+        set => WriteText(ClickraSettings.LibreOfficePath, value ?? string.Empty);
+    }
+
+    public static bool LibreOfficeRemovalPendingRestart
+    {
+        get => ReadBool(ClickraSettings.LibreOfficeRemovalPendingRestart);
+        set => WriteBool(ClickraSettings.LibreOfficeRemovalPendingRestart, value);
+    }
+
+    public static int PdfCompressionImageLevel
+    {
+        get => ClickraSettings.NormalizePdfCompressLevel(ReadInt(ClickraSettings.PdfCompressImageLevel));
+        set => WriteInt(ClickraSettings.PdfCompressImageLevel, ClickraSettings.NormalizePdfCompressLevel(value));
+    }
+
+    public static bool PdfCompressionStripFonts
+    {
+        get => ReadBool(ClickraSettings.PdfCompressStripFonts);
+        set => WriteBool(ClickraSettings.PdfCompressStripFonts, value);
+    }
+
+    public static bool PdfCompressionMinifyContent
+    {
+        get => ReadBool(ClickraSettings.PdfCompressMinifyContent);
+        set => WriteBool(ClickraSettings.PdfCompressMinifyContent, value);
+    }
+
+    public static int ImageCompressionLevel
+    {
+        get => ReadClampedInt(ClickraSettings.ImageCompressLevel);
+        set => WriteInt(ClickraSettings.ImageCompressLevel, ClickraSettings.ClampNumericSetting(ClickraSettings.ImageCompressLevel, value));
+    }
+
+    public static int ImageCompressionMaxDimension
+    {
+        get => ReadClampedInt(ClickraSettings.ImageCompressMaxDimension);
+        set => WriteInt(ClickraSettings.ImageCompressMaxDimension, ClickraSettings.ClampNumericSetting(ClickraSettings.ImageCompressMaxDimension, value));
+    }
+
+    public static int ParkedTaskRetentionDays
+    {
+        get => ReadClampedInt(ClickraSettings.ParkedTaskRetention);
+        set => WriteInt(ClickraSettings.ParkedTaskRetention, ClickraSettings.ClampNumericSetting(ClickraSettings.ParkedTaskRetention, value));
+    }
+
+    public static OfficeEnginePreference OfficeEngine
+    {
+        get => ReadText(ClickraSettings.OfficeEngine).ToLowerInvariant() switch
+        {
+            ClickraSettings.OfficeEngineMicrosoft => OfficeEnginePreference.Microsoft,
+            ClickraSettings.OfficeEngineLibreOffice => OfficeEnginePreference.LibreOffice,
+            _ => OfficeEnginePreference.Auto
+        };
+        set => WriteText(ClickraSettings.OfficeEngine, value switch
+        {
+            OfficeEnginePreference.Microsoft => ClickraSettings.OfficeEngineMicrosoft,
+            OfficeEnginePreference.LibreOffice => ClickraSettings.OfficeEngineLibreOffice,
+            _ => ClickraSettings.DefaultOfficeEngineAuto
+        });
+    }
+
+    public static string OfficeEngineValue => OfficeEngine switch
+    {
+        OfficeEnginePreference.Microsoft => ClickraSettings.OfficeEngineMicrosoft,
+        OfficeEnginePreference.LibreOffice => ClickraSettings.OfficeEngineLibreOffice,
+        _ => ClickraSettings.DefaultOfficeEngineAuto
+    };
+
+    public static OutputDirectoryPreference OutputDirectory
+    {
+        get
+        {
+            string value = ReadText(ClickraSettings.OutputDir);
+            if (value.Equals(ClickraSettings.OutputDirDesktop, StringComparison.OrdinalIgnoreCase))
+                return new(OutputDirectoryKind.Desktop);
+            if (value.Equals(ClickraSettings.OutputDirDownloads, StringComparison.OrdinalIgnoreCase))
+                return new(OutputDirectoryKind.Downloads);
+            if (value.Equals(ClickraSettings.DefaultOutputDirSource, StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(value))
+                return new(OutputDirectoryKind.Source);
+            return new(OutputDirectoryKind.Custom, value);
+        }
+        set => WriteText(ClickraSettings.OutputDir, value.Kind switch
+        {
+            OutputDirectoryKind.Desktop => ClickraSettings.OutputDirDesktop,
+            OutputDirectoryKind.Downloads => ClickraSettings.OutputDirDownloads,
+            OutputDirectoryKind.Custom when !string.IsNullOrWhiteSpace(value.CustomPath) => value.CustomPath,
+            _ => ClickraSettings.DefaultOutputDirSource
+        });
+    }
+
+    public static bool ReadBool(SettingDescriptor descriptor)
+    {
+        RequireEditor(descriptor, SettingEditorKind.Toggle);
+        return ReadBool(descriptor.Key);
+    }
+
+    public static int ReadInt(SettingDescriptor descriptor)
+    {
+        RequireNumericEditor(descriptor);
+        NumericSettingRange? range = descriptor.GetEffectiveNumericRange();
+        int value = ReadInt(descriptor.Key);
+        return range.HasValue ? range.Value.Clamp(value) : value;
+    }
+
+    public static string ReadChoice(SettingDescriptor descriptor)
+    {
+        RequireEditor(descriptor, SettingEditorKind.Choice);
+        return ReadText(descriptor.Key);
+    }
+
+    public static void WriteBool(SettingDescriptor descriptor, bool value)
+    {
+        RequireEditor(descriptor, SettingEditorKind.Toggle);
+        WriteBool(descriptor.Key, value);
+    }
+
+    public static void WriteInt(SettingDescriptor descriptor, int value)
+    {
+        RequireNumericEditor(descriptor);
+        NumericSettingRange? range = descriptor.GetEffectiveNumericRange();
+        WriteInt(descriptor.Key, range.HasValue ? range.Value.Clamp(value) : value);
+    }
+
+    public static void WriteChoice(SettingDescriptor descriptor, string value)
+    {
+        RequireEditor(descriptor, SettingEditorKind.Choice);
+        if (descriptor.Options is { Count: > 0 } &&
+            descriptor.Options.All(option => !string.Equals(option.Value, value, StringComparison.OrdinalIgnoreCase)) &&
+            !string.Equals(descriptor.Key, ClickraSettings.OutputDir, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentOutOfRangeException(nameof(value), value, $"Value is not registered for setting '{descriptor.Key}'.");
+        }
+        WriteText(descriptor.Key, value);
+    }
+
     public static void EnsureFresh() => ClickraStorage.EnsureFreshSettings();
+
+    internal static string ReadText(string key) => ClickraStorage.GetSetting(key);
+    internal static bool ReadBool(string key) => ClickraStorage.GetSettingBool(key);
+    internal static int ReadInt(string key) => ClickraStorage.GetSettingInt(key);
+    internal static int ReadClampedInt(string key) => ClickraSettings.ClampNumericSetting(key, ReadInt(key));
+    internal static void WriteText(string key, string value) => ClickraStorage.SaveSetting(key, value);
+    internal static void WriteBool(string key, bool value) => WriteText(key, value ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
+    internal static void WriteInt(string key, int value) => WriteText(key, value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+    private static void RequireEditor(SettingDescriptor descriptor, SettingEditorKind expected)
+    {
+        ArgumentNullException.ThrowIfNull(descriptor);
+        if (descriptor.EditorKind != expected)
+            throw new ArgumentException($"Setting '{descriptor.Key}' is {descriptor.EditorKind}, not {expected}.", nameof(descriptor));
+    }
+
+    private static void RequireNumericEditor(SettingDescriptor descriptor)
+    {
+        ArgumentNullException.ThrowIfNull(descriptor);
+        if (descriptor.EditorKind is not (SettingEditorKind.Slider or SettingEditorKind.Number))
+            throw new ArgumentException($"Setting '{descriptor.Key}' is not numeric.", nameof(descriptor));
+    }
 }

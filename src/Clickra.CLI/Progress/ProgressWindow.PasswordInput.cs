@@ -23,7 +23,7 @@ namespace Clickra.UI
             }
 
             float scale = _dpiScale;
-            string lang = SettingsController.Get(ClickraSettings.Language);
+            string lang = SettingsController.Language;
             string fontName = LocalizedUiFontSelector.GetTextFontName(lang);
 
             if (_hFont == IntPtr.Zero)

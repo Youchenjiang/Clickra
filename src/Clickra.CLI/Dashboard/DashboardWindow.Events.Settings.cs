@@ -17,16 +17,17 @@ namespace Clickra.UI;
 
             switch (element)
             {
-                case 5: ToggleBoolSetting(hwnd, ClickraSettings.QuietMode); break;
-                case 6: ToggleBoolSetting(hwnd, ClickraSettings.Notification); break;
-                case 7: ApplySetting(hwnd, ClickraSettings.OutputDir, ClickraSettings.DefaultOutputDirSource); break;
-                case 8: ApplySetting(hwnd, ClickraSettings.OutputDir, ClickraSettings.OutputDirDesktop); break;
-                case 9: ApplySetting(hwnd, ClickraSettings.OutputDir, ClickraSettings.OutputDirDownloads); break;
+                case 5: SettingsController.QuietMode = !SettingsController.QuietMode; InvalidateRect(hwnd, IntPtr.Zero, false); break;
+                case 6: SettingsController.NotificationsEnabled = !SettingsController.NotificationsEnabled; InvalidateRect(hwnd, IntPtr.Zero, false); break;
+                case 7: SettingsController.OutputDirectory = new(OutputDirectoryKind.Source); InvalidateRect(hwnd, IntPtr.Zero, false); break;
+                case 8: SettingsController.OutputDirectory = new(OutputDirectoryKind.Desktop); InvalidateRect(hwnd, IntPtr.Zero, false); break;
+                case 9: SettingsController.OutputDirectory = new(OutputDirectoryKind.Downloads); InvalidateRect(hwnd, IntPtr.Zero, false); break;
                 case 20: BrowseOutputDir(hwnd); break;
-                case 32: ApplySetting(hwnd, ClickraSettings.OfficeEngine, ClickraSettings.DefaultOfficeEngineAuto); break;
-                case 33: ApplySetting(hwnd, ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineMicrosoft); break;
-                case 34: SettingsController.Set(ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineLibreOffice);
-                         ApplySetting(hwnd, ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty); break;
+                case 32: SettingsController.OfficeEngine = OfficeEnginePreference.Auto; InvalidateRect(hwnd, IntPtr.Zero, false); break;
+                case 33: SettingsController.OfficeEngine = OfficeEnginePreference.Microsoft; InvalidateRect(hwnd, IntPtr.Zero, false); break;
+                case 34: SettingsController.OfficeEngine = OfficeEnginePreference.LibreOffice;
+                         SettingsController.LibreOfficePath = string.Empty;
+                         InvalidateRect(hwnd, IntPtr.Zero, false); break;
                 case 90: AdjustParkedRetention(hwnd, -1); break;
                 case 91: AdjustParkedRetention(hwnd, 1); break;
                 case 92: SetParkedRetention(hwnd, 0); break;
@@ -49,7 +50,8 @@ namespace Clickra.UI;
             switch (descriptor.EditorKind)
             {
                 case SettingEditorKind.Toggle:
-                    ToggleBoolSetting(hwnd, descriptor.Key);
+                    SettingsController.WriteBool(descriptor, !SettingsController.ReadBool(descriptor));
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
                     break;
 
                 case SettingEditorKind.Slider:
@@ -71,7 +73,7 @@ namespace Clickra.UI;
                             (int)Math.Round(fraction * span, MidpointRounding.AwayFromZero) + range.Value.Min,
                             range.Value.Min,
                             range.Value.Max);
-                        SettingsController.Set(descriptor.Key, newLevel.ToString());
+                        SettingsController.WriteInt(descriptor, newLevel);
                         InvalidateRect(hwnd, IntPtr.Zero, false);
                     }
                     break;
@@ -80,7 +82,7 @@ namespace Clickra.UI;
                 case SettingEditorKind.Number:
                 {
                     var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
-                    int current = SettingsController.GetInt(descriptor.Key);
+                    int current = SettingsController.ReadInt(descriptor);
                     int delta = subId switch
                     {
                         1 => -1,
@@ -88,7 +90,7 @@ namespace Clickra.UI;
                         _ => 0,
                     };
                     int updated = (int)Math.Clamp((long)current + delta, range.Min, range.Max);
-                    SettingsController.Set(descriptor.Key, updated.ToString());
+                    SettingsController.WriteInt(descriptor, updated);
                     InvalidateRect(hwnd, IntPtr.Zero, false);
                     break;
                 }
@@ -97,7 +99,8 @@ namespace Clickra.UI;
                 {
                     if (descriptor.Options != null && subId >= 0 && subId < descriptor.Options.Count)
                     {
-                        ApplySetting(hwnd, descriptor.Key, descriptor.Options[subId].Value);
+                        SettingsController.WriteChoice(descriptor, descriptor.Options[subId].Value);
+                        InvalidateRect(hwnd, IntPtr.Zero, false);
                     }
                     break;
                 }
@@ -122,20 +125,7 @@ namespace Clickra.UI;
             // Same range as the Fluent settings page, from one place: a second copy of the bound
             // would let the two settings pages drift apart.
             int clamped = Math.Clamp(days, ClickraSettings.MinParkedRetentionDays, ClickraSettings.MaxParkedRetentionDays);
-            SettingsController.Set(ClickraSettings.ParkedTaskRetention, clamped.ToString());
-            InvalidateRect(hwnd, IntPtr.Zero, false);
-        }
-
-        private static void ToggleBoolSetting(IntPtr hwnd, string key)
-        {
-            bool current = SettingsController.Get(key).Equals(ClickraSettings.ValueTrue, StringComparison.OrdinalIgnoreCase);
-            SettingsController.Set(key, current ? ClickraSettings.ValueFalse : ClickraSettings.ValueTrue);
-            InvalidateRect(hwnd, IntPtr.Zero, false);
-        }
-
-        private static void ApplySetting(IntPtr hwnd, string key, string value)
-        {
-            SettingsController.Set(key, value);
+            SettingsController.ParkedTaskRetentionDays = clamped;
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
@@ -144,7 +134,10 @@ namespace Clickra.UI;
             string title = GetText("setting_output_browse_title");
             string folder = BrowseForFolder(hwnd, title);
             if (!string.IsNullOrEmpty(folder))
-                ApplySetting(hwnd, ClickraSettings.OutputDir, folder);
+            {
+                SettingsController.OutputDirectory = new(OutputDirectoryKind.Custom, folder);
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
         }
 
         /// <summary>Handles PDF compression settings: slider drag start and option toggles.</summary>
@@ -170,14 +163,14 @@ namespace Clickra.UI;
             }
             else if (element == 81)
             {
-                bool current = SettingsController.GetBool(stripFontsDescriptor.Key);
-                SettingsController.Set(stripFontsDescriptor.Key, current ? ClickraSettings.ValueFalse : ClickraSettings.ValueTrue);
+                bool current = SettingsController.ReadBool(stripFontsDescriptor);
+                SettingsController.WriteBool(stripFontsDescriptor, !current);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
             else if (element == 82)
             {
-                bool current = SettingsController.GetBool(minifyContentDescriptor.Key);
-                SettingsController.Set(minifyContentDescriptor.Key, current ? ClickraSettings.ValueFalse : ClickraSettings.ValueTrue);
+                bool current = SettingsController.ReadBool(minifyContentDescriptor);
+                SettingsController.WriteBool(minifyContentDescriptor, !current);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
         }
@@ -188,7 +181,7 @@ namespace Clickra.UI;
             SettingDescriptor descriptor = GetRequiredSettingDescriptor(ClickraSettings.PdfCompressImageLevel);
             NumericSettingRange range = GetRequiredNumericRange(descriptor);
             int clamped = Math.Clamp(level, range.Min, range.Max);
-            SettingsController.Set(descriptor.Key, clamped.ToString());
+            SettingsController.WriteInt(descriptor, clamped);
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
     }

@@ -39,11 +39,11 @@ public abstract class OfficeToPdfUseCaseBase : ConversionUseCaseBase
     private static IReadOnlyDictionary<string, object> SnapshotSavedOptions() =>
         new Dictionary<string, object>(StringComparer.Ordinal)
         {
-            [OfficeConversionOptions.EngineKey] = SettingsController.Get(ClickraSettings.OfficeEngine),
-            [OfficeConversionOptions.LanguageKey] = SettingsController.Get(ClickraSettings.Language),
-            [OfficeConversionOptions.LibreOfficePathKey] = SettingsController.Get(ClickraSettings.LibreOfficePath),
+            [OfficeConversionOptions.EngineKey] = SettingsController.OfficeEngineValue,
+            [OfficeConversionOptions.LanguageKey] = SettingsController.Language,
+            [OfficeConversionOptions.LibreOfficePathKey] = SettingsController.LibreOfficePath,
             [OfficeConversionOptions.LibreOfficeRemovalPendingRestartKey] =
-                SettingsController.GetBool(ClickraSettings.LibreOfficeRemovalPendingRestart)
+                SettingsController.LibreOfficeRemovalPendingRestart
         };
 
     public override async Task<ConversionResult> ExecuteAsync(

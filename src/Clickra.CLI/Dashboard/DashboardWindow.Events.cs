@@ -225,8 +225,8 @@ namespace Clickra.UI
                 (int)Math.Round(fraction * span, MidpointRounding.AwayFromZero) + range.Min,
                 range.Min,
                 range.Max);
-            string current = SettingsController.Get(descriptor.Key);
-            if (current != newLevel.ToString())
+            int current = SettingsController.ReadInt(descriptor);
+            if (current != newLevel)
             {
                 ApplyPdfCompressLevel(hwnd, newLevel);
             }
@@ -248,10 +248,10 @@ namespace Clickra.UI
                 (int)Math.Round(fraction * span, MidpointRounding.AwayFromZero) + range.Value.Min,
                 range.Value.Min,
                 range.Value.Max);
-            string current = SettingsController.Get(descriptor.Key);
-            if (current != newLevel.ToString())
+            int current = SettingsController.ReadInt(descriptor);
+            if (current != newLevel)
             {
-                SettingsController.Set(descriptor.Key, newLevel.ToString());
+                SettingsController.WriteInt(descriptor, newLevel);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
         }

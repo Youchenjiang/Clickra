@@ -71,7 +71,7 @@ static partial class TestSuite
             Assert.False(info.HasExpired, "A task with its own 30 day deadline must survive a 7 day policy.");
             Assert.Equal(10, info.RemainingDays);
             Assert.True(info.IsTaskOverride, "The info must say the deadline is this task's own.");
-            Assert.True(ClickraStorage.DescribeParkedRetention(info).EndsWith(Localization.T(ParkedRetentionOverrideKey), StringComparison.Ordinal),
+            Assert.True(HistoryItem.DescribeRetention(info, "zh-TW").EndsWith(Localization.T(ParkedRetentionOverrideKey, "zh-TW"), StringComparison.Ordinal),
                 "An overridden deadline must say so, so the number is not mistaken for the global policy.");
 
             // 回到全域政策：年資不變，所以它又是過期的。
@@ -293,21 +293,16 @@ static partial class TestSuite
         string coordinator = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ParkedTaskCoordinator.cs"));
         string pruner = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "TaskPruningCoordinator.cs"));
 
-        foreach ((string source, string method) in new[]
-        {
-            (coordinator, "internal static ParkedRetentionInfo GetRetentionInfo(string taskId)"),
-            (pruner, "private static void PruneSingleTaskFile(string file, DateTime now)")
-        })
-        {
-            int start = source.IndexOf(method, StringComparison.Ordinal);
-            Assert.True(start >= 0, $"{method} must exist.");
-            int end = source.IndexOf("\n        }", start, StringComparison.Ordinal);
-            string body = end > start ? source[start..end] : source[start..];
-            Assert.True(body.Contains("GetWindow(", StringComparison.Ordinal),
-                $"{method} must take the task's effective window from the shared calculation.");
-            Assert.False(body.Contains("GetParkedRetentionDays()", StringComparison.Ordinal),
-                $"{method} must not fall back to the global policy on its own; the override lives in the coordinator window.");
-        }
+        Assert.True(
+            coordinator.Contains("internal static ClickraStorage.ParkedRetentionInfo GetRetentionInfo(string taskId)", StringComparison.Ordinal) &&
+            coordinator.Contains("GetWindow(entry.Value, path, DateTime.UtcNow)", StringComparison.Ordinal),
+            "ParkedTaskCoordinator.GetRetentionInfo must take the task's effective window from the shared calculation.");
+        Assert.True(
+            pruner.Contains("private static void PruneSingleTaskFile(string file, DateTime now)", StringComparison.Ordinal) &&
+            pruner.Contains("ParkedTaskCoordinator.GetWindow(task, file, now)", StringComparison.Ordinal),
+            "TaskPruningCoordinator must enforce the same effective parked-task window that the UI reads.");
+        Assert.False(coordinator.Contains("GetParkedRetentionDays()", StringComparison.Ordinal),
+            "The parked-task coordinator must not duplicate a facade-level retention lookup; GetWindow owns effective-policy selection.");
     }
 
     /// <summary>「（此任務自訂）」這句話屬於 Core 的期限描述，兩個介面都不該自己拼。</summary>
@@ -318,10 +313,13 @@ static partial class TestSuite
 
         string facade = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ClickraStorage.ActiveRecord.cs"));
         string coordinator = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ParkedTaskCoordinator.cs"));
-        Assert.True(coordinator.Contains(ParkedRetentionOverrideKey, StringComparison.Ordinal),
-            "The parked-task coordinator must append the override marker for every interface.");
+        string feed = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, "Application", "HistoryFeed.cs"));
+        Assert.True(feed.Contains(ParkedRetentionOverrideKey, StringComparison.Ordinal),
+            "The application history model must append the override marker for every interface.");
         Assert.False(facade.Contains(ParkedRetentionOverrideKey, StringComparison.Ordinal),
             "The ClickraStorage facade must not own parked retention wording.");
+        Assert.False(coordinator.Contains(ParkedRetentionOverrideKey, StringComparison.Ordinal),
+            "Storage must return retention facts instead of localized override wording.");
 
         foreach (string relative in ParkedRetentionUiFiles)
         {

@@ -20,6 +20,7 @@ namespace Clickra.Core.Tests;
 static partial class TestSuite
 {
     private const string FeedCommand = "split-pdf";
+    private const string FeedLanguage = "zh-TW";
     private const string FeedParkReason = "Waiting for input";
     private const string FeedInDir = @"C:\feed\in";
     private const string FeedOutDir = @"C:\feed\out";
@@ -62,7 +63,7 @@ static partial class TestSuite
                 OutputPath = FeedOutDir + @"\done.pdf"
             });
 
-            var feed = HistoryFeed.Load(50);
+            var feed = HistoryFeed.Load(FeedLanguage, 50);
 
             Assert.True(feed.OfKind(HistoryItemKind.Active).Any(i => i.Entry.Id == activeId),
                 "The running conversions must be in the same list the History page renders, not a separate query.");
@@ -121,7 +122,7 @@ static partial class TestSuite
                 InputPaths = FeedInDir + @"\failed.pdf"
             });
 
-            var feed = HistoryFeed.Load(50);
+            var feed = HistoryFeed.Load(FeedLanguage, 50);
 
             var canceled = feed.OfKind(HistoryItemKind.Completed)
                 .First(i => i.Entry.InputPaths.Contains(FeedCanceledInput, StringComparison.Ordinal));
@@ -155,7 +156,7 @@ static partial class TestSuite
             ClickraStorage.SetTaskInProgress(parkedId);
             ClickraStorage.ParkTask(parkedId, FeedParkReason, 1);
 
-            var feed = HistoryFeed.Load(50);
+            var feed = HistoryFeed.Load(FeedLanguage, 50);
 
             var parked = feed.OfKind(HistoryItemKind.Parked).First(i => i.Entry.Id == parkedId);
             string stoppedOn = string.Format(Localization.T("task_file_index"), 2, 3);
@@ -187,7 +188,7 @@ static partial class TestSuite
 
     private static void TestHistoryFeedCounts()
     {
-        var feed = HistoryFeed.Load(50);
+        var feed = HistoryFeed.Load(FeedLanguage, 50);
         var history = ClickraStorage.GetHistory(50);
 
         Assert.True(feed.ActiveCount == ClickraStorage.GetActiveTasks().Count,
@@ -238,7 +239,7 @@ static partial class TestSuite
 
         // 清單本身住在 Core，兩個介面才可能共用；放進任一個介面就不可能被另一個使用。
         string feed = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Application", "HistoryFeed.cs"));
-        foreach (string member in new[] { "HistoryItemKind.Active", "HistoryItemKind.Parked", "HistoryItemKind.Completed", "DescribeParkedRetention" })
+        foreach (string member in new[] { "HistoryItemKind.Active", "HistoryItemKind.Parked", "HistoryItemKind.Completed", "DescribeRetention" })
         {
             Assert.True(feed.Contains(member, StringComparison.Ordinal),
                 $"HistoryFeed must carry all three kinds and reuse the shared wording ({member}).");

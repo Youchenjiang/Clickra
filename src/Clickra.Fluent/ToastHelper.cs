@@ -10,7 +10,7 @@ internal static class ToastHelper
     /// <summary>Sends a Windows Toast notification unless notifications are disabled.</summary>
     internal static void Show(string title, string body)
     {
-        if (!SettingsController.GetBool(ClickraSettings.Notification)) return;
+        if (!SettingsController.NotificationsEnabled) return;
         try
         {
             static string Escape(string value) => value.Replace("'", "''").Replace("`", "``").Replace("\"", "`\"");

@@ -44,10 +44,10 @@ public sealed class TranslatePdfUseCase : PerFileConversionUseCaseBase
         if (!options.ContainsKey(TargetLanguageOptionKey))
         {
             options[TargetLanguageOptionKey] =
-                SettingsController.Get(ClickraSettings.TranslateTargetLang);
+                SettingsController.TranslationTargetLanguage;
         }
         options[ExecutionLocalizationOptions.LanguageKey] =
-            SettingsController.Get(ClickraSettings.Language);
+            SettingsController.Language;
         options[ProcessorExecutionOptions.DataDirectoryKey] = StoragePathController.GetDataDirectory();
         return options;
     }

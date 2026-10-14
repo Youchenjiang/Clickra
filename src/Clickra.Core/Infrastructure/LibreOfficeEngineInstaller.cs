@@ -10,9 +10,10 @@ using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Clickra.Core.Processors;
 using Microsoft.Win32;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Infrastructure;
 
     public sealed record LibreOfficeEngineManifest(
         int Schema,

@@ -36,13 +36,13 @@ public sealed class CompressPdfUseCase : PerFileConversionUseCaseBase
     private static IReadOnlyDictionary<string, object> SnapshotSavedOptions()
     {
         int sliderLevel = ClickraSettings.NormalizePdfCompressLevel(
-            SettingsController.GetInt(ClickraSettings.PdfCompressImageLevel));
+            SettingsController.PdfCompressionImageLevel);
         PdfCompressionLevel level = PdfCompressionOptions.FromSliderLevel(sliderLevel);
         return new Dictionary<string, object>(StringComparer.Ordinal)
         {
             [LevelOptionKey] = PdfCompressionOptions.ToOptionName(level),
-            ["strip_fonts"] = SettingsController.GetBool(ClickraSettings.PdfCompressStripFonts),
-            ["minify_content"] = SettingsController.GetBool(ClickraSettings.PdfCompressMinifyContent)
+            ["strip_fonts"] = SettingsController.PdfCompressionStripFonts,
+            ["minify_content"] = SettingsController.PdfCompressionMinifyContent
         };
     }
 

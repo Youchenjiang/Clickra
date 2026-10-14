@@ -5,6 +5,7 @@ GitHub writes are deliberately not automatic. A separate, explicitly authorized
 resolve command delegates to gh_guard; publishing requires per-action approval.
 """
 import argparse
+import html
 import json
 import os
 import re
@@ -20,6 +21,7 @@ from sonar_audit import inventory as sonar_inventory
 from pr_publication import push as guarded_push, remote_head
 from pr_creation import create as guarded_create
 from pr_verification import summarize
+from pr_reports import fetch_report
 
 SONAR_HOST_DEFAULT = "https://sonarcloud.io"
 
@@ -168,11 +170,22 @@ def _print_failed_check(item, repo, details, run):
           else "External provider: no detailed findings exposed in GitHub Check Run.")
 
 
-def _is_historical_feedback(item, passed):
+def _is_historical_feedback(item, _passed):
+    # A passing Secrets check does not clear a failing C# or Python comment.
+    return bool(item.get("isOutdated"))
+
+
+def _print_review_issue(item):
     comments = item.get("comments", {}).get("nodes", [])
-    body = str(comments[0].get("body") or "") if comments else ""
-    return bool(item.get("isOutdated") or ("<!-- DeepSource:" in body and
-                any(name.startswith("deepsource:") for name in passed)))
+    comment = comments[0] if comments else {}
+    body = str(comment.get("body") or "")
+    if "<!-- DeepSource:" in body:
+        heading = re.search(r"<h3\b[^>]*>(.*?)</h3>", body, re.I | re.S)
+        if heading:
+            body = html.unescape(re.sub(r"<[^>]+>", "", heading.group(1))).strip()
+    print(f"- {safe_terminal(item.get('path') or '?')}: {safe_terminal(body)[:700]}")
+    if comment.get("url"):
+        print(f"  {safe_terminal(comment['url'])}")
 
 
 def _review_feedback(repo, number, passed, run):
@@ -188,15 +201,28 @@ def _review_feedback(repo, number, passed, run):
     print(f"\nActionable unresolved review thread(s): {len(active)}")
     print(f"Outdated/potentially historical unresolved thread(s): {len(historical)} (not automatically resolved; check status is not proof of resolution)")
     for item in active:
-        comments = item.get("comments", {}).get("nodes", [])
-        comment = comments[0] if comments else {}
-        print(f"- {safe_terminal(item.get('path') or '?')}: {safe_terminal(comment.get('body') or '')[:700]}")
-        if comment.get("url"):
-            print(f"  {safe_terminal(comment['url'])}")
+        _print_review_issue(item)
     return active
 
 
-def diagnose(repo, number, run=command):
+def _print_provider_reports(selected, mode, fetch):
+    """Fetch supported provider HTML without treating missing details as success."""
+    print(f"\nProvider reports ({mode}):")
+    for item in selected:
+        name = item.get("name") or item.get("context") or "unnamed check"
+        url = item.get("detailsUrl") or item.get("targetUrl") or ""
+        if not url or not any(provider in name.lower() for provider in ("deepsource", "sonar", "sourcery")):
+            continue
+        print(f"- {safe_terminal(name)}: {safe_terminal(url)}")
+        try:
+            report = fetch(url)
+            print(f"  HTML: {report['bytes']} bytes; embedded issues: {report['has_ssr_issues']}")
+            print(f"  Page text: {safe_terminal(report['text'])[:1400]}")
+        except (OSError, ValueError, RuntimeError) as exc:
+            print(f"  Report unavailable: {safe_terminal(exc)}")
+
+
+def diagnose(repo, number, run=command, reports="failed", fetch=fetch_report):
     """Read failing check logs and review feedback; never mutate GitHub state."""
     pr = inspect(repo, number, run)
     head_sha = pr.get("headRefOid")
@@ -210,6 +236,7 @@ def diagnose(repo, number, run=command):
     print(f"Current reported checks: {len(failed)} failed")
     for item in failed:
         _print_failed_check(item, repo, details.get(item.get("name") or item.get("context")) or {}, run)
+    _print_provider_reports(failed if reports == "failed" else checks, reports, fetch)
     return failed, _review_feedback(repo, number, passed, run)
 
 
@@ -355,7 +382,7 @@ def _execute_pr_action(args, run, repo, number):
         else:
             print_sonar(data)
     elif args.action == "diagnose":
-        diagnose(repo, number, run)
+        diagnose(repo, number, run, reports=args.reports)
     elif args.action == "verify":
         pr = inspect(repo, number, run)
         report = inventory(repo, number, pr.get("headRefOid"), review_threads(repo, number, run), run)
@@ -386,7 +413,11 @@ def main(argv=None, run=command):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
     for name in ("status", "review", "diagnose", "verify"):
-        sub.add_parser(name).add_argument("pr", nargs="?")
+        p = sub.add_parser(name)
+        p.add_argument("pr", nargs="?")
+        if name == "diagnose":
+            p.add_argument("--reports", choices=("failed", "all"), default="failed",
+                           help="Fetch failed provider reports only (default), or all provider reports")
     body = sub.add_parser("body", help="Export an existing PR body without overwriting files")
     body.add_argument("pr", nargs="?")
     body.add_argument("--output", required=True)
