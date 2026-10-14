@@ -452,8 +452,7 @@ namespace Clickra.UI
                         ParkedActionShorten => "-" + _historyPresentation.RetentionStepDays,
                         ParkedActionExtend  => "+" + _historyPresentation.RetentionStepDays,
                         ParkedActionResume  => GetText("fluent_task_resume"),
-                        ParkedActionCancel  => GetText("dialog_cancel"),
-                        _                   => ""
+                        _                   => GetText("dialog_cancel")
                     };
                     var size = g.MeasureString(text, _tagFont);
                     using var labelBrush = new SolidBrush(label);
