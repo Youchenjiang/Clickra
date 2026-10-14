@@ -59,10 +59,10 @@ class PrPreflightTests(unittest.TestCase):
         with patch("sys.argv", ["pr_preflight.py", "--check", "--initial-push",
                                 "--push-ref", "refs/heads/feature/new",
                                 "--push-oid", sha]), \
-             patch("pr_preflight._github_metadata") as github, \
+             patch("pr_preflight._publication_metadata", return_value=None) as github, \
              patch("pr_preflight.check", return_value=[]) as checked:
             self.assertEqual(0, main())
-        github.assert_not_called()
+        github.assert_called_once()
         self.assertIsNone(checked.call_args.args[-1])
 
     def test_initial_branch_preflight_needs_exact_ref(self):
