@@ -769,7 +769,7 @@ static partial class TestSuite
         var violations = new List<string>();
         foreach ((string folder, string expectedNamespace) in new[]
                  {
-                     ("Storage", "Clickra.Core.Storage"),
+                     (ArchitectureStorageDirectory, "Clickra.Core.Storage"),
                      ("Translation", "Clickra.Core.Translation"),
                      ("Diagnostics", "Clickra.Core.Diagnostics"),
                      ("Fonts", "Clickra.Core.Fonts"),
@@ -807,7 +807,7 @@ static partial class TestSuite
     private static void TestStorageFacadeDelegatesToFocusedOwners()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
-        string storage = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Storage");
+        string storage = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureStorageDirectory);
 
         foreach (string owner in new[]
                  {
@@ -857,7 +857,7 @@ static partial class TestSuite
     private static void TestStorageDoesNotOwnLocalizedPresentationText()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
-        string storage = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Storage");
+        string storage = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureStorageDirectory);
         var violations = new List<string>();
 
         foreach (string file in Directory.EnumerateFiles(storage, "*.cs", SearchOption.AllDirectories))
