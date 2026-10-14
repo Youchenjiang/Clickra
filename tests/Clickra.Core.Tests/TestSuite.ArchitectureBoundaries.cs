@@ -12,6 +12,7 @@ static partial class TestSuite
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
     private const string ArchitectureApplicationDirectory = "Application";
+    private const string ArchitectureStorageDirectory = "Storage";
     private const string ArchitectureFluentProjectDirectory = "Clickra.Fluent";
     private const string ArchitectureProgressDirectory = "Progress";
     private const string ArchitectureProcessorsDirectory = "Processors";
@@ -182,7 +183,7 @@ static partial class TestSuite
     private static void TestParkedTaskOrchestrationHasSingleOwner()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
-        string storageDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Storage");
+        string storageDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureStorageDirectory);
         string facade = File.ReadAllText(Path.Combine(storageDir, "ClickraStorage.ActiveRecord.cs"));
         string coordinator = File.ReadAllText(Path.Combine(storageDir, "ParkedTaskCoordinator.cs"));
 
@@ -220,7 +221,7 @@ static partial class TestSuite
     private static void TestTaskPruningHasSingleOwner()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
-        string storageDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Storage");
+        string storageDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureStorageDirectory);
         string facade = File.ReadAllText(Path.Combine(storageDir, "ClickraStorage.ActiveRecord.cs"));
         string queue = File.ReadAllText(Path.Combine(storageDir, "TaskQueueStore.cs"));
         string parked = File.ReadAllText(Path.Combine(storageDir, "ParkedTaskCoordinator.cs"));
@@ -541,9 +542,10 @@ static partial class TestSuite
             "Localization.T(key, language); global-language overloads are forbidden:" +
             Environment.NewLine + string.Join(Environment.NewLine, violations));
 
-        Assert.Equal(2, ReadTopLevelArguments("Localization.T(\"k\", language)", "Localization.T(".Length).Count);
-        Assert.Equal(1, ReadTopLevelArguments("Localization.T(\"a,(b)\")", "Localization.T(".Length).Count);
-        Assert.Equal(3, ReadTopLevelArguments("Localization.T(\"k\", Path.Combine(a, b), 'x')", "Localization.T(".Length).Count);
+        const string localizationCall = "Localization.T(";
+        Assert.Equal(2, ReadTopLevelArguments("Localization.T(\"k\", language)", localizationCall.Length).Count);
+        Assert.Equal(1, ReadTopLevelArguments("Localization.T(\"a,(b)\")", localizationCall.Length).Count);
+        Assert.Equal(3, ReadTopLevelArguments("Localization.T(\"k\", Path.Combine(a, b), 'x')", localizationCall.Length).Count);
     }
 
     private static readonly Regex DirectSettingsStorageAccess =
@@ -655,10 +657,9 @@ static partial class TestSuite
                      "public static int ReadInt(SettingDescriptor descriptor)",
                      "public static void WriteBool(SettingDescriptor descriptor, bool value)",
                      "public static void WriteInt(SettingDescriptor descriptor, int value)"
-                 })
+                  }.Where(contract => !gateway.Contains(contract, StringComparison.Ordinal)))
         {
-            if (!gateway.Contains(typedContract, StringComparison.Ordinal))
-                violations.Add($"SettingsController missing typed contract: {typedContract}");
+            violations.Add($"SettingsController missing typed contract: {typedContract}");
         }
 
         Assert.True(
