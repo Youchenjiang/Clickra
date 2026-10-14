@@ -1,0 +1,45 @@
+"""Strict executable and argv validation for governance subprocesses.
+
+All commands use argv arrays with shell disabled. This protects against shell
+metacharacter interpretation; it is not a substitute for per-command authorization.
+"""
+from pathlib import Path
+import shutil
+import subprocess
+
+GIT_VERBS = {"branch", "remote", "rev-parse", "ls-remote", "merge-base", "log", "diff", "status"}
+GH_READ_VERBS = {("pr", "view"), ("pr", "checks"), ("pr", "list"),
+                 ("run", "view"), ("run", "list"), ("workflow", "list")}
+
+
+def executable(name):
+    if name not in {"git", "gh", "sh", "bash"}:
+        raise ValueError("unsupported governance executable")
+    path = shutil.which(name)
+    if not path:
+        raise OSError(f"{name} executable not found")
+    resolved = Path(path).resolve()
+    if not resolved.is_file():
+        raise OSError(f"invalid {name} executable")
+    return str(resolved)
+
+
+def invoke(argv, *, capture=True, env=None, timeout=30):
+    """Run a previously authorized git/gh command using an absolute executable."""
+    if not argv or argv[0] not in {"git", "gh"}:
+        raise ValueError("only git and gh are allowed")
+    if any(not isinstance(a, str) or "\x00" in a or "\n" in a or "\r" in a for a in argv):
+        raise ValueError("invalid subprocess argument")
+    if argv[0] == "git" and (len(argv) < 2 or argv[1] not in GIT_VERBS):
+        raise ValueError("unauthorized git operation")
+    if argv[0] == "gh" and (len(argv) < 3 or
+                             (tuple(argv[1:3]) not in GH_READ_VERBS and
+                              tuple(argv[1:3]) != ("api", "graphql") and
+                              not (argv[1] == "api" and argv[2].startswith("repos/") and
+                                   "/check-runs?per_page=" in argv[2]))):
+        raise ValueError("unauthorized GitHub operation")
+    if env is not None and not isinstance(env, dict):
+        raise ValueError("invalid environment")
+    return subprocess.run([executable(argv[0]), *argv[1:]], text=True,
+                          capture_output=capture, env=env, timeout=timeout,
+                          check=False, shell=False)

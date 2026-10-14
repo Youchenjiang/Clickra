@@ -10,6 +10,7 @@ import subprocess
 import sys
 import json
 import shutil
+from process_guard import invoke
 
 # Exact read-only command verbs. Unknown options/subcommands fail closed.
 SAFE_COMMANDS = {
@@ -29,6 +30,16 @@ BOOL_FLAGS = {"--log", "--log-failed"}
 POSITIONAL = re.compile(r"^[a-zA-Z0-9_.#/:-]+$")
 THREAD_ID = re.compile(r"^PRRT_[A-Za-z0-9_-]+$")
 REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+
+
+def _github_command(argv):
+    """Internal, narrowly scoped GraphQL transport; never a shell command."""
+    if argv[:3] != ["gh", "api", "graphql"]:
+        raise ValueError("review transport only supports GitHub GraphQL")
+    result = invoke(argv)
+    if result.returncode:
+        raise RuntimeError(f"GitHub GraphQL transport failed: {result.stderr.strip()}")
+    return result.stdout
 
 
 def _review_page(repo, pr_number, cursor, execute):
@@ -133,7 +144,7 @@ def main():
                 raise ValueError("--execute requires --authorize and explicit user consent")
             result = resolve_thread(args.repo, args.pr, args.thread,
                                     args.authorize if args.execute else f"{args.pr}:{args.thread}",
-                                    execute=lambda argv: subprocess.check_output(argv, text=True),
+                                    execute=_github_command,
                                     dry_run=not args.execute)
             print(f"Review thread {'resolved' if args.execute else 'eligible (preview only; not resolved)'}: {result['id']}")
             return 0
@@ -148,10 +159,7 @@ def main():
         print(f"GH GUARD DENIED: {error}", file=sys.stderr)
         return 2
     try:
-        executable = shutil.which("gh")
-        if not executable:
-            raise OSError("GitHub CLI executable not found")
-        return subprocess.call([executable, *options.gh_args])
+        return invoke(["gh", *options.gh_args], capture=False).returncode
     except OSError as exc:
         print(f"GH GUARD ERROR: {exc}", file=sys.stderr)
         return 2

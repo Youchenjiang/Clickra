@@ -150,7 +150,7 @@ class PrToolTests(unittest.TestCase):
             body = Path(folder) / "pr.md"
             body.write_text("## Summary\n", encoding="utf-8")
             with patch.object(pr_tool.shutil, "which", side_effect=lambda name: "/git/sh" if name == "sh" else None), \
-                 patch.object(pr_tool.subprocess, "call", return_value=7) as call:
+                 patch.object(pr_tool.subprocess, "run", return_value=type("Result", (), {"returncode": 7})()) as call:
                 self.assertEqual(7, pr_tool.main(["ready", "--body-file", str(body)]))
             argv = call.call_args.args[0]
             self.assertEqual("/git/sh", argv[0])
@@ -159,7 +159,7 @@ class PrToolTests(unittest.TestCase):
             self.assertNotIn("push", argv[0])
 
     def test_ready_missing_body_refuses_without_hook(self):
-        with patch.object(pr_tool.subprocess, "call") as call:
+        with patch.object(pr_tool.subprocess, "run") as call:
             self.assertEqual(1, pr_tool.main(["ready", "--body-file", "does-not-exist.md"]))
             call.assert_not_called()
 

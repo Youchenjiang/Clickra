@@ -14,6 +14,7 @@ import subprocess
 import sys
 
 from gh_guard import resolve_thread
+from process_guard import invoke
 
 
 def safe_terminal(value):
@@ -22,7 +23,7 @@ def safe_terminal(value):
 
 
 def command(argv):
-    proc = subprocess.run(argv, capture_output=True, text=True, check=False)
+    proc = invoke(argv)
     if proc.returncode:
         raise RuntimeError(f"{' '.join(argv[:3])} failed ({proc.returncode}): {proc.stderr.strip() or proc.stdout.strip()}")
     return proc.stdout
@@ -204,7 +205,7 @@ def _ready(body_file):
         shell = shutil.which("bash") if os.name != "nt" else None
     if not shell:
         raise RuntimeError("Git Bash/sh unavailable; install Git for Windows shell and retry")
-    return subprocess.call([shell, str(hook)], env=env)
+    return subprocess.run([shell, str(hook)], env=env, check=False, shell=False).returncode
 
 
 def _execute_action(args, run):

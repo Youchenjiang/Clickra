@@ -6,6 +6,7 @@ import subprocess
 import sys
 import shutil
 from pathlib import Path
+from process_guard import invoke
 
 ALLOWED_TYPES = "feat|fix|refactor|docs|test|chore|style|perf|security"
 ALLOWED_SCOPES = "cli|core|shell|msix|docs|ci|deps|store|agent"
@@ -19,11 +20,7 @@ GIT_TIMEOUT = 30
 
 
 def git(*args):
-    executable = shutil.which("git")
-    if not executable:
-        raise OSError("Git executable not found")
-    return subprocess.run([executable, *args], text=True, capture_output=True,
-                          check=False, timeout=GIT_TIMEOUT)
+    return invoke(["git", *args], timeout=GIT_TIMEOUT)
 
 
 def validate_message(message):
