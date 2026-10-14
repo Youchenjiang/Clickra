@@ -163,6 +163,20 @@ class PrToolTests(unittest.TestCase):
             self.assertEqual(1, pr_tool.main(["ready", "--body-file", "does-not-exist.md"]))
             call.assert_not_called()
 
+    def test_prepare_runs_policy_only_without_full_hook(self):
+        import pr_preflight
+        with TemporaryDirectory() as folder:
+            body = Path(folder) / "pr.md"
+            body.write_text("## Summary\n", encoding="utf-8")
+            with patch.object(pr_preflight, "_github_metadata", return_value={"labels": []}), \
+                 patch.object(pr_preflight, "check", return_value=[]) as policy, \
+                 patch.object(pr_tool.subprocess, "run") as heavy, \
+                 redirect_stdout(StringIO()) as output:
+                self.assertEqual(0, pr_tool.main(["prepare", "--body-file", str(body)]))
+            policy.assert_called_once()
+            heavy.assert_not_called()
+            self.assertIn("mandatory full gate", output.getvalue())
+
     def test_status_prints_check_and_review_state(self):
         def fake(argv):
             if argv[:3] == ["git", "branch", "--show-current"]:

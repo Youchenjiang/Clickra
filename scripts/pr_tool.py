@@ -277,6 +277,21 @@ def _ready(body_file):
     return subprocess.run([shell, str(hook)], env=env, check=False, shell=False).returncode
 
 
+def _prepare(body_file):
+    """Run the versioned lightweight policy gate, never the full NativeAOT hook."""
+    body = Path(body_file).resolve()
+    if not body.is_file():
+        raise ValueError(f"PR body file does not exist: {body}")
+    from pr_preflight import _github_metadata, check
+    problems = check("origin/main", str(body), metadata=_github_metadata())
+    for problem in problems:
+        print(f"PR preflight FAIL: {safe_terminal(problem)}")
+    if problems:
+        return 1
+    print("PR preflight OK; the mandatory full gate will run during push")
+    return 0
+
+
 def _execute_action(args, run):
     if args.action == "push":
         result = guarded_push(args.body_file, args.authorize, execute=args.execute)
@@ -287,6 +302,8 @@ def _execute_action(args, run):
         return 2
     if args.action == "ready":
         return _ready(args.body_file)
+    if args.action == "prepare":
+        return _prepare(args.body_file)
     repo, branch = context(run)
     number = pr_number(args.pr, repo, branch, run)
     if args.action == "status":
@@ -343,6 +360,8 @@ def main(argv=None, run=command):
     sonar.add_argument("--json", action="store_true")
     ready = sub.add_parser("ready", help="Execute local pre-push gate without pushing")
     ready.add_argument("--body-file", required=True)
+    prepare = sub.add_parser("prepare", help="Run quick PR policy checks without full build/NativeAOT")
+    prepare.add_argument("--body-file", required=True)
     sub.add_parser("publish", help="Explain separately authorized publication steps")
     push = sub.add_parser("push", help="Preview or perform one explicitly authorized, hook-verified branch push")
     push.add_argument("--body-file", required=True)

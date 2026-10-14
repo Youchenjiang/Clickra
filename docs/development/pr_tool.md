@@ -13,6 +13,7 @@ python scripts/pr_tool.py sonar 177 --json
 python scripts/pr_tool.py audit 177 --sonar --json
 python scripts/pr_tool.py verify 177
 python scripts/pr_tool.py ready --body-file 'C:\path\to\pr-body.md'
+python scripts/pr_tool.py prepare --body-file 'C:\path\to\pr-body.md'
 python scripts/pr_tool.py push --body-file 'C:\path\to\pr-body.md'
 ```
 
@@ -71,7 +72,8 @@ SHA after success. Never use `--no-verify`. A preview string is not itself
 approval: the agent needs current explicit user permission for a push.
 
 **Avoid duplicate full gates:** when an approved push is the next action, use
-the `push` command and let its mandatory hook perform the full build, tests
+the lightweight `prepare` command followed by `push`, and let the mandatory
+hook perform the full build, tests
 and NativeAOT once. Use `ready` only for independently requested local
 verification without a push. This avoids the former `ready`-then-`push`
 double run without weakening mandatory checks or caching potentially stale
