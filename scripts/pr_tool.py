@@ -122,7 +122,8 @@ def main(argv=None, run=command):
     resolver = sub.add_parser("resolve", help="Resolve exactly one explicitly authorized thread")
     resolver.add_argument("pr")
     resolver.add_argument("--thread", required=True)
-    resolver.add_argument("--authorize", required=True)
+    resolver.add_argument("--authorize")
+    resolver.add_argument("--execute", action="store_true", help="Execute explicitly authorized resolution; default is read-only preview")
     args = parser.parse_args(argv)
     try:
         if args.action == "publish":
@@ -154,8 +155,12 @@ def main(argv=None, run=command):
         elif args.action == "review":
             print_review(repo, number, run)
         else:
-            thread = resolve_thread(repo, str(number), args.thread, args.authorize, execute=lambda a: run(a))
-            print(f"Resolved {thread['id']}; no comment posted")
+            if args.execute and not args.authorize:
+                raise ValueError("--execute requires --authorize and explicit user consent")
+            thread = resolve_thread(repo, str(number), args.thread,
+                                    args.authorize if args.execute else f"{number}:{args.thread}",
+                                    execute=lambda a: run(a), dry_run=not args.execute)
+            print(f"{'Resolved' if args.execute else 'Eligible for resolution (preview only)'}: {thread['id']}; no comment posted")
         return 0
     except (OSError, ValueError, KeyError, TypeError, RuntimeError, json.JSONDecodeError) as exc:
         print(f"PR TOOL ERROR: {exc}", file=sys.stderr)

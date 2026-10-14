@@ -74,6 +74,20 @@ class GhGuardTests(unittest.TestCase):
         self.assertEqual(3, len(calls))
         self.assertIn("after=page2", calls[1])
 
+    def test_resolve_preview_only_queries_without_mutation(self):
+        calls = []
+        def fake(argv):
+            calls.append(argv)
+            return json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {
+                "nodes": [{"id": "PRRT_test123", "isResolved": False, "isOutdated": False}],
+                "pageInfo": {"hasNextPage": False}
+            }}}}})
+        result = resolve_thread("Youchenjiang/Clickra", "177", "PRRT_test123",
+                                "177:PRRT_test123", execute=fake, dry_run=True)
+        self.assertTrue(result["previewOnly"])
+        self.assertEqual(1, len(calls))
+        self.assertNotIn("mutation", " ".join(calls[0]))
+
     def test_resolve_refuses_graphql_errors_and_stuck_pagination(self):
         for payload in (
             {"errors": [{"message": "forbidden"}]},

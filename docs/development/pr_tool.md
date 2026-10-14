@@ -32,10 +32,13 @@ For a specific review thread **already fixed and explicitly authorized for
 resolution in the current request**, use:
 
 ```powershell
-python scripts/pr_tool.py resolve 177 --thread PRRT_xxx --authorize '177:PRRT_xxx'
+python scripts/pr_tool.py resolve 177 --thread PRRT_xxx
+# Only after explicit authorization for this exact thread and a verified fix:
+python scripts/pr_tool.py resolve 177 --thread PRRT_xxx --execute --authorize '177:PRRT_xxx'
 ```
 
-The authorization string is only an exact-match operator confirmation, **not
+Without `--execute`, `resolve` checks eligibility read-only and never mutates
+GitHub. The authorization string is only an exact-match operator confirmation, **not
 proof of user approval**. Never issue it based on an earlier PR's authorization.
 The command only runs `resolveReviewThread` through the lower-level guard;
 never create, reply to, edit, repost or delete PR comments. Review findings

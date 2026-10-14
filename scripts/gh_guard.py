@@ -30,7 +30,7 @@ THREAD_ID = re.compile(r"^PRRT_[A-Za-z0-9_-]+$")
 REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
 
-def resolve_thread(repo, pr_number, thread_id, authorization, *, execute):
+def resolve_thread(repo, pr_number, thread_id, authorization, *, execute, dry_run=False):
     """Resolve only an existing, verified thread; caller confirms fix evidence.
 
     The per-invocation authorization is an operator confirmation, not proof of
@@ -63,6 +63,8 @@ def resolve_thread(repo, pr_number, thread_id, authorization, *, execute):
         cursor = next_cursor
     if len(matches) != 1 or matches[0]["isResolved"] or matches[0]["isOutdated"]:
         raise ValueError("thread absent, outdated or already resolved; stop for review")
+    if dry_run:
+        return {"id": thread_id, "isResolved": False, "previewOnly": True}
     mutation = "mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{id isResolved}}}"
     response = json.loads(execute(["gh", "api", "graphql", "-f", f"query={mutation}", "-f", f"id={thread_id}"]))
     if response.get("errors"):
@@ -110,12 +112,17 @@ def main():
         resolver.add_argument("--repo", required=True)
         resolver.add_argument("--pr", required=True)
         resolver.add_argument("--thread", required=True)
-        resolver.add_argument("--authorize", required=True)
+        resolver.add_argument("--authorize")
+        resolver.add_argument("--execute", action="store_true", help="Perform authorized GitHub mutation; otherwise preview only")
         args = resolver.parse_args()
         try:
-            result = resolve_thread(args.repo, args.pr, args.thread, args.authorize,
-                                    execute=lambda argv: subprocess.check_output(argv, text=True))
-            print(f"Review thread resolved: {result['id']}")
+            if args.execute and not args.authorize:
+                raise ValueError("--execute requires --authorize and explicit user consent")
+            result = resolve_thread(args.repo, args.pr, args.thread,
+                                    args.authorize if args.execute else f"{args.pr}:{args.thread}",
+                                    execute=lambda argv: subprocess.check_output(argv, text=True),
+                                    dry_run=not args.execute)
+            print(f"Review thread {'resolved' if args.execute else 'eligible (preview only; not resolved)'}: {result['id']}")
             return 0
         except (ValueError, KeyError, TypeError, json.JSONDecodeError, subprocess.CalledProcessError, OSError, RuntimeError) as exc:
             print(f"GH GUARD DENIED: {exc}", file=sys.stderr)

@@ -57,6 +57,24 @@ class PrToolTests(unittest.TestCase):
         self.assertEqual(2, result)
         self.assertIn("disabled", output.getvalue())
 
+    def test_resolve_defaults_to_preview_and_requires_explicit_execute(self):
+        def fake(argv):
+            if argv[:3] == ["git", "branch", "--show-current"]:
+                return "feature/pr-governance-preflight"
+            if argv[:3] == ["git", "remote", "get-url"]:
+                return "https://github.com/Youchenjiang/Clickra.git"
+            self.assertEqual(["gh", "api", "graphql"], argv[:3])
+            self.assertNotIn("mutation", " ".join(argv))
+            return json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {
+                "nodes": [{"id": "PRRT_test123", "isResolved": False, "isOutdated": False}],
+                "pageInfo": {"hasNextPage": False}
+            }}}}})
+        with redirect_stdout(StringIO()) as output:
+            result = pr_tool.main(["resolve", "177", "--thread", "PRRT_test123"], fake)
+        self.assertEqual(0, result)
+        self.assertIn("preview only", output.getvalue())
+        self.assertEqual(1, pr_tool.main(["resolve", "177", "--thread", "PRRT_test123", "--execute"], fake))
+
     def test_ready_executes_only_versioned_hook_with_body(self):
         with TemporaryDirectory() as folder:
             body = Path(folder) / "pr.md"
