@@ -20,11 +20,15 @@ internal static class TaskPruningCoordinator
             foreach (string file in Directory.GetFiles(StorageRuntime.TasksDirectory, $"{StorageRuntime.TaskFilePrefix}*.tmp"))
             {
                 try { PruneSingleTaskFile(file, now); }
-                catch { }
+                catch
+                {
+                    // A locked or malformed task must not prevent pruning the remaining files.
+                }
             }
         }
         catch
         {
+            // Cleanup is opportunistic; directory access failures must not block task reads.
         }
     }
 

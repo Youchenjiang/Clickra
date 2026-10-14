@@ -35,7 +35,10 @@ internal static class TaskRecordStore
     internal static void EnsureDirectory()
     {
         try { Directory.CreateDirectory(StorageRuntime.TasksDirectory); }
-        catch { }
+        catch
+        {
+            // Callers handle unavailable storage through the existing read/write fallbacks.
+        }
     }
 
     internal static List<string> ListTaskIds()

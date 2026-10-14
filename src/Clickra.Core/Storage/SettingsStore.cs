@@ -29,6 +29,8 @@ internal static class SettingsStore
     {
         lock (StorageRuntime.FileLock)
             EnsureFreshLocked();
+        // Keep the watcher rooted for the lifetime of settings operations.
+        GC.KeepAlive(_watcher);
     }
 
     internal static void Reload() => _ = ReloadCore();
@@ -121,6 +123,7 @@ internal static class SettingsStore
             }
             catch (TimeoutException) when (attempt < maxAttempts)
             {
+                // Retry a transient cross-process lock timeout on the next attempt.
             }
             catch
             {
@@ -215,7 +218,7 @@ internal static class SettingsStore
         using var writer = new StreamWriter(SettingsFilePath, false, System.Text.Encoding.UTF8);
         foreach ((string key, string value) in Cache) writer.WriteLine($"{key}={value}");
         try { _lastLoadedTimestampUtc = File.GetLastWriteTimeUtc(SettingsFilePath); }
-        catch { }
+        catch { /* Persisted values are written; timestamp checks can recover on the next read. */ }
     }
 
     private static void EnsureFreshLocked()
@@ -234,6 +237,7 @@ internal static class SettingsStore
         }
         catch
         {
+            // Preserve the last known settings when filesystem freshness cannot be checked.
         }
     }
 
@@ -248,6 +252,7 @@ internal static class SettingsStore
             }
             catch
             {
+                // A failing consumer callback must not terminate the notification worker.
             }
         });
     }
