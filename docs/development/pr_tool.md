@@ -11,7 +11,9 @@ python scripts/pr_tool.py audit 177 --json
 python scripts/pr_tool.py sonar 177
 python scripts/pr_tool.py sonar 177 --json
 python scripts/pr_tool.py audit 177 --sonar --json
+python scripts/pr_tool.py verify 177
 python scripts/pr_tool.py ready --body-file 'C:\path\to\pr-body.md'
+python scripts/pr_tool.py push --body-file 'C:\path\to\pr-body.md'
 ```
 
 `status` reports PR base/head, state, review decision, check rollup and all
@@ -24,6 +26,14 @@ by an audit. Read-only queries require GitHub CLI login.
 Thread pagination supports PRs with more than 100 review threads. Provider
 checks are shown when they appear in the GitHub check rollup; missing checks
 must not be interpreted as passing.
+
+`verify` is the **single read-only final PR acceptance check**. It confirms
+the current PR HEAD matches the exact remote branch SHA, inventories all
+GitHub review threads and SonarQube open/confirmed issues, checks the CI rollup,
+and reports skipped checks distinctly. It exits nonzero for unresolved issues,
+failed or pending checks, missing required provider jobs, a non-main target,
+or a non-open PR. SonarQube access errors fail closed. A `Skipping` provider
+is never claimed as having independently reviewed the code.
 
 `sonar` reads the SonarQube Cloud `api/issues/search` endpoint for the
 selected PR, requesting `OPEN,CONFIRMED` issues and paging through all results.
@@ -46,10 +56,33 @@ for changes unrelated to PDF translation; PDF-translation changes require the
 relevant fixture gate. `ready` can fail when required fixtures or tooling are
 missing; do not bypass a failure or report a skipped test as passed.
 
-`publish` intentionally refuses to run. Pushing to a remote and creating a PR
-are separate GitHub writes, requiring explicit user approval for each. A local
-successful `ready` does not authorize either operation. Always check remote
-main freshness immediately before either write.
+For actual publication, use `push` instead of manually constructing a Git
+command. By default `push` previews the exact branch and commit SHA without
+writing. Only after explicit user approval for that specific branch and SHA:
+
+```powershell
+python scripts/pr_tool.py push --body-file 'C:\path\to\pr-body.md' --execute --authorize 'feature/my-branch:0123456789012345678901234567890123456789'
+```
+
+The push tool refuses protected branches, dirty worktrees, unexpected remotes,
+or mismatched authorization. It pushes only the checked branch, without force,
+and runs the **existing full versioned Git pre-push hook**; it checks the remote
+SHA after success. Never use `--no-verify`. A preview string is not itself
+approval: the agent needs current explicit user permission for a push.
+
+**Avoid duplicate full gates:** when an approved push is the next action, use
+the `push` command and let its mandatory hook perform the full build, tests
+and NativeAOT once. Use `ready` only for independently requested local
+verification without a push. This avoids the former `ready`-then-`push`
+double run without weakening mandatory checks or caching potentially stale
+results. After push, use `verify` repeatedly until providers finish; resolve
+threads only after independently verified fixes. Never interpret `verify` as
+authorization to merge or create a PR.
+
+`publish` (legacy) intentionally refuses to run. Creating a PR, pushing to a
+remote, and merging remain separate GitHub writes requiring specific approval.
+The new `push` command only handles an authorized branch push; it does not
+create or merge a PR. Always check remote main freshness before publication.
 
 For a specific review thread **already fixed and explicitly authorized for
 resolution in the current request**, use:

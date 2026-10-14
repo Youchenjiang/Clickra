@@ -17,6 +17,8 @@ from gh_guard import resolve_thread
 from process_guard import invoke
 from pr_audit import inventory
 from sonar_audit import inventory as sonar_inventory
+from pr_publication import push as guarded_push, remote_head
+from pr_verification import summarize
 
 
 def safe_terminal(value):
@@ -276,6 +278,10 @@ def _ready(body_file):
 
 
 def _execute_action(args, run):
+    if args.action == "push":
+        result = guarded_push(args.body_file, args.authorize, execute=args.execute)
+        print(json.dumps(result))
+        return 0
     if args.action == "publish":
         print("Publication disabled in this entry point: obtain explicit approval for push and PR creation separately.")
         return 2
@@ -297,6 +303,16 @@ def _execute_action(args, run):
             print_sonar(data)
     elif args.action == "diagnose":
         diagnose(repo, number, run)
+    elif args.action == "verify":
+        pr = inspect(repo, number, run)
+        report = inventory(repo, number, pr.get("headRefOid"), review_threads(repo, number, run), run)
+        report["sonar"] = sonar_inventory(os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
+                                          number, base_url=os.environ.get("SONAR_HOST_URL", "https://sonarcloud.io"),
+                                          token=os.environ.get("SONAR_TOKEN"))
+        remote = remote_head(pr.get("headRefName", ""))
+        result = summarize(pr, report, remote_sha=remote)
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0 if result["ready"] else 2
     elif args.action == "review":
         print_review(repo, number, run)
     else:
@@ -316,7 +332,7 @@ def _execute_resolution(repo, number, args, run):
 def main(argv=None, run=command):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
-    for name in ("status", "review", "diagnose"):
+    for name in ("status", "review", "diagnose", "verify"):
         sub.add_parser(name).add_argument("pr", nargs="?")
     auditor = sub.add_parser("audit", help="Read all PR comment categories, no writes")
     auditor.add_argument("pr", nargs="?")
@@ -328,6 +344,10 @@ def main(argv=None, run=command):
     ready = sub.add_parser("ready", help="Execute local pre-push gate without pushing")
     ready.add_argument("--body-file", required=True)
     sub.add_parser("publish", help="Explain separately authorized publication steps")
+    push = sub.add_parser("push", help="Preview or perform one explicitly authorized, hook-verified branch push")
+    push.add_argument("--body-file", required=True)
+    push.add_argument("--authorize", help="Exact branch:40-character-SHA from preview")
+    push.add_argument("--execute", action="store_true", help="Requires explicit approval for this exact push")
     resolver = sub.add_parser("resolve", help="Resolve exactly one explicitly authorized thread")
     resolver.add_argument("pr")
     resolver.add_argument("--thread", required=True)
