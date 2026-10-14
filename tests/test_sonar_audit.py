@@ -41,19 +41,19 @@ class SonarAuditTests(unittest.TestCase):
 
     def test_http_request_does_not_embed_token_in_url(self):
         class Response:
-            def __enter__(self):
-                return self
-            @staticmethod
-            def __exit__(*args):
-                return None
+            status = 200
             def read(self, *args):
                 return b'{"total":0,"issues":[]}'
 
-        with patch.object(sonar_audit, "urlopen", return_value=Response()) as opener:
+        with patch.object(sonar_audit, "HTTPSConnection") as connection:
+            connection.return_value.getresponse.return_value = Response()
             sonar_audit.fetch_page("A_B", 178, 1, token="secret")
-        request = opener.call_args.args[0]
-        self.assertNotIn("secret", request.full_url)
-        self.assertEqual("Bearer secret", request.get_header("Authorization"))
+        self.assertEqual("sonarcloud.io", connection.call_args.args[0])
+        method, path = connection.return_value.request.call_args.args
+        self.assertEqual("GET", method)
+        self.assertNotIn("secret", path)
+        self.assertEqual("Bearer secret", connection.return_value.request.call_args.kwargs["headers"]["Authorization"])
+        connection.return_value.close.assert_called_once()
 
 
 if __name__ == "__main__":

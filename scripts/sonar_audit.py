@@ -1,9 +1,8 @@
 """Read-only SonarQube Cloud issue inventory for one pull request."""
 import json
 import re
-from urllib.error import HTTPError, URLError
+from http.client import HTTPSConnection, HTTPException
 from urllib.parse import urlencode
-from urllib.request import Request, urlopen
 
 PROJECT = re.compile(r"[A-Za-z0-9_.:-]+\Z")
 DEFAULT_HOST = "https://sonarcloud.io"
@@ -20,15 +19,18 @@ def fetch_page(project, pr, page, *, base_url=DEFAULT_HOST, token=None):
     headers = {"Accept": "application/json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    request = Request(f"{base_url}/api/issues/search?{query}", headers=headers)
+    connection = HTTPSConnection(base_url.removeprefix("https://"), timeout=20)
     try:
-        # The URL is built from a strict HTTPS host allowlist and escaped parameters.
-        with urlopen(request, timeout=20) as response:
-            return json.load(response)
-    except HTTPError as exc:
-        raise RuntimeError(f"SonarQube API HTTP {exc.code} (check project access and token)") from exc
-    except (URLError, TimeoutError) as exc:
+        # HTTPSConnection does not accept arbitrary URL schemes or follow redirects.
+        connection.request("GET", f"/api/issues/search?{query}", headers=headers)
+        response = connection.getresponse()
+        if response.status != 200:
+            raise RuntimeError(f"SonarQube API HTTP {response.status} (check project access and token)")
+        return json.load(response)
+    except (OSError, HTTPException, TimeoutError) as exc:
         raise RuntimeError("SonarQube API unavailable") from exc
+    finally:
+        connection.close()
 
 
 def inventory(project, pr, *, fetch=fetch_page, base_url=DEFAULT_HOST, token=None):
