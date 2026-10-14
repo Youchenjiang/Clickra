@@ -116,7 +116,11 @@ def create(repo, branch, *, title, body_file, label, milestone=None, assignee=No
         if "label" in message:
             raise RuntimeError("GitHub rejected PR label; inspect PR list before retry")
         raise RuntimeError("PR create failed or outcome unknown; inspect PR list before retry")
-    details = json.loads(_read(["gh", "pr", "view", "--repo", repo,
+    created_url = (result.stdout or "").strip()
+    match = re.fullmatch(rf"https://github\.com/{re.escape(repo)}/pull/([1-9][0-9]*)", created_url)
+    if not match:
+        raise RuntimeError("PR create returned no trusted PR number; inspect remote list before retry")
+    details = json.loads(_read(["gh", "pr", "view", match.group(1), "--repo", repo,
                                 "--json", "number,headRefOid,baseRefName,url"]))
     if details.get("headRefOid") != head or details.get("baseRefName") != "main":
         raise RuntimeError("created PR state differs from authorized commit; stop for review")

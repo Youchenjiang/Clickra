@@ -49,7 +49,8 @@ class CreateTests(unittest.TestCase):
                      '"url":"https://github.com/user/repo/pull/123"}')), \
                  patch.object(pr_creation, "executable", return_value="/bin/gh"), \
                  patch.object(pr_creation.subprocess, "run") as runner:
-                runner.return_value = SimpleNamespace(returncode=0)
+                runner.return_value = SimpleNamespace(
+                    returncode=0, stdout="https://github.com/user/repo/pull/123\n")
                 approval = pr_creation.create("user/repo", "feature/workflow", **kwargs)["preview"]
                 result = pr_creation.create("user/repo", "feature/workflow", **kwargs,
                                             execute=True, authorization=approval, runner=runner)
