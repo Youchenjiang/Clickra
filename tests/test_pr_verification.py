@@ -40,6 +40,21 @@ class VerificationTests(unittest.TestCase):
         self.assertTrue(result["ready"])
         self.assertEqual(["Sourcery"], result["skipped"])
 
+    def test_verify_includes_live_check_status_urls_and_required_flags(self):
+        pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
+              "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS",
+                                     "detailsUrl": "https://github.com/example/check"}
+                                    for name in pr_verification.REQUIRED] + [
+                                        {"context": "Sourcery review", "state": "PENDING",
+                                         "targetUrl": "https://sourcery.ai"}]}
+        report = {"counts": {"unresolved": 0}, "sonar": {"total": 0}}
+        result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
+        self.assertFalse(result["ready"])
+        self.assertEqual(len(pr_verification.REQUIRED) + 1, len(result["checks"]))
+        self.assertEqual("https://github.com/example/check", result["checks"][0]["url"])
+        self.assertTrue(result["checks"][0]["required"])
+        self.assertFalse(result["checks"][-1]["required"])
+
     def test_missing_checks_fail_closed(self):
         with self.assertRaisesRegex(RuntimeError, "missing"):
             pr_verification.summarize({"headRefOid": "a" * 40},

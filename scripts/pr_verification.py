@@ -76,6 +76,21 @@ def _finding_problems(report, groups, required):
     return problems
 
 
+def _check_details(checks, required):
+    """Expose live check statuses and URLs without a separate native gh query."""
+    details = []
+    for item in checks:
+        name = item.get("name") or item.get("context") or "unnamed"
+        status = str(item.get("conclusion") or item.get("state") or item.get("status") or "PENDING").upper()
+        details.append({"name": name, "status": status,
+                        "required": name in required,
+                        "url": item.get("detailsUrl") or item.get("targetUrl") or None})
+    present = {item["name"] for item in details}
+    details.extend({"name": name, "status": "MISSING", "required": True, "url": None}
+                   for name in sorted(required - present))
+    return details
+
+
 def summarize(pr, report, *, remote_sha):
     """An absent or incomplete check is not a pass. Skip is reported separately."""
     head = pr.get("headRefOid")
@@ -89,4 +104,4 @@ def summarize(pr, report, *, remote_sha):
     problems = _pr_problems(pr, remote_sha) + _finding_problems(report, groups, required)
     return {"ready": not problems, "problems": problems, "passed": groups["passed"],
             "skipped": groups["skipped"], "head": head, "sonar_issues": sonar_count,
-            "unresolved_threads": count}
+            "unresolved_threads": count, "checks": _check_details(checks, required)}
