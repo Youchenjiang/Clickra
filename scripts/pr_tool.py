@@ -111,28 +111,32 @@ def print_status(repo, number, run=command):
         print("Attention: base must be main and all findings must be addressed before merging.")
 
 
+def _ready(body_file):
+    body = Path(body_file).resolve()
+    if not body.is_file():
+        raise ValueError(f"PR body file does not exist: {body}")
+    env = dict(os.environ, CLICKRA_PR_BODY_FILE=str(body))
+    hook = Path(__file__).resolve().parent / "hooks" / "pre-push"
+    shell = shutil.which("sh")
+    if not shell and os.name == "nt":
+        git = shutil.which("git")
+        if git:
+            candidate = Path(git).resolve().parent.parent / "bin" / "sh.exe"
+            if candidate.is_file():
+                shell = str(candidate)
+    if not shell:
+        shell = shutil.which("bash") if os.name != "nt" else None
+    if not shell:
+        raise RuntimeError("Git Bash/sh unavailable; install Git for Windows shell and retry")
+    return subprocess.call([shell, str(hook)], env=env)
+
+
 def _execute_action(args, run):
     if args.action == "publish":
         print("Publication disabled in this entry point: obtain explicit approval for push and PR creation separately.")
         return 2
     if args.action == "ready":
-        body = Path(args.body_file).resolve()
-        if not body.is_file():
-            raise ValueError(f"PR body file does not exist: {body}")
-        env = dict(os.environ, CLICKRA_PR_BODY_FILE=str(body))
-        hook = Path(__file__).resolve().parent / "hooks" / "pre-push"
-        shell = shutil.which("sh")
-        if not shell and os.name == "nt":
-            git = shutil.which("git")
-            if git:
-                candidate = Path(git).resolve().parent.parent / "bin" / "sh.exe"
-                if candidate.is_file():
-                    shell = str(candidate)
-        if not shell:
-            shell = shutil.which("bash") if os.name != "nt" else None
-        if not shell:
-            raise RuntimeError("Git Bash/sh unavailable; install Git for Windows shell and retry")
-        return subprocess.call([shell, str(hook)], env=env)
+        return _ready(args.body_file)
     repo, branch = context(run)
     number = pr_number(args.pr, repo, branch, run)
     if args.action == "status":
