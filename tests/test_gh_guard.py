@@ -35,7 +35,7 @@ class GhGuardTests(unittest.TestCase):
             if len(calls) == 1:
                 return json.dumps({"data": {"repository": {"pullRequest": {
                     "reviewThreads": {"nodes": [{"id": "PRRT_test123", "isResolved": False,
-                                                 "isOutdated": False}]}}}}})
+                                                 "isOutdated": False}], "pageInfo": {"hasNextPage": False}}}}}})
             return json.dumps({"data": {"resolveReviewThread": {
                 "thread": {"id": "PRRT_test123", "isResolved": True}}}})
         result = resolve_thread("Youchenjiang/Clickra", "177", "PRRT_test123",
@@ -54,10 +54,45 @@ class GhGuardTests(unittest.TestCase):
             def fake_execute(argv):
                 return json.dumps({"data": {"repository": {"pullRequest": {
                     "reviewThreads": {"nodes": [{"id": "PRRT_test123", "isResolved": resolved,
-                                                 "isOutdated": outdated}]}}}}})
+                                                 "isOutdated": outdated}], "pageInfo": {"hasNextPage": False}}}}}})
             with self.assertRaises(ValueError):
                 resolve_thread("Youchenjiang/Clickra", "177", "PRRT_test123",
                                "177:PRRT_test123", execute=fake_execute)
+
+    def test_resolve_looks_beyond_first_page(self):
+        calls = []
+        def fake(argv):
+            calls.append(argv)
+            if "mutation(" in " ".join(argv):
+                return json.dumps({"data": {"resolveReviewThread": {"thread": {"id": "PRRT_target", "isResolved": True}}}})
+            later = "after=page2" in argv
+            return json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {
+                "nodes": [{"id": "PRRT_target" if later else "PRRT_other", "isResolved": False, "isOutdated": False}],
+                "pageInfo": {"hasNextPage": not later, "endCursor": "page2" if not later else None}
+            }}}}})
+        self.assertTrue(resolve_thread("Youchenjiang/Clickra", "177", "PRRT_target", "177:PRRT_target", execute=fake)["isResolved"])
+        self.assertEqual(3, len(calls))
+        self.assertIn("after=page2", calls[1])
+
+    def test_resolve_refuses_graphql_errors_and_stuck_pagination(self):
+        for payload in (
+            {"errors": [{"message": "forbidden"}]},
+            {"data": {"repository": {"pullRequest": {"reviewThreads": {
+                "nodes": [], "pageInfo": {"hasNextPage": True, "endCursor": None}
+            }}}}},
+        ):
+            with self.subTest(payload=payload):
+                with self.assertRaises(RuntimeError):
+                    resolve_thread("Youchenjiang/Clickra", "177", "PRRT_target",
+                                   "177:PRRT_target", execute=lambda argv: json.dumps(payload))
+
+    def test_command_specific_flags_and_empty_values(self):
+        for argv in (["pr", "view", "1", "--workflow", "build"],
+                     ["pr", "view", "1", "--repo="],
+                     ["run", "view", "1", "--head", "main"],
+                     ["pr", "list", "--limit", ""]):
+            with self.subTest(argv=argv):
+                self.assertIsNotNone(validate_gh_args(argv))
 
 
 if __name__ == "__main__":

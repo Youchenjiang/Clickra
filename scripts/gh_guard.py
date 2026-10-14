@@ -17,9 +17,12 @@ SAFE_COMMANDS = {
     ("workflow", "list"),
 }
 SAFE_FLAGS = {
-    "--json", "--jq", "--template", "--repo", "-R", "--limit", "-L",
-    "--state", "--head", "--base", "--workflow", "--branch", "--event",
-    "--status", "--commit", "--log", "--log-failed", "--attempt",
+    ("pr", "view"): {"--json", "--jq", "--template", "--repo", "-R"},
+    ("pr", "checks"): {"--repo", "-R", "--json", "--jq", "--limit"},
+    ("pr", "list"): {"--repo", "-R", "--json", "--jq", "--template", "--limit", "-L", "--state", "--head", "--base"},
+    ("run", "view"): {"--repo", "-R", "--json", "--jq", "--template", "--log", "--log-failed", "--attempt"},
+    ("run", "list"): {"--repo", "-R", "--json", "--jq", "--limit", "-L", "--workflow", "--branch", "--event", "--status", "--commit"},
+    ("workflow", "list"): {"--repo", "-R", "--json", "--jq", "--limit", "-L"},
 }
 BOOL_FLAGS = {"--log", "--log-failed"}
 POSITIONAL = re.compile(r"^[a-zA-Z0-9_.#/:-]+$")
@@ -38,15 +41,32 @@ def resolve_thread(repo, pr_number, thread_id, authorization, *, execute):
     if authorization != f"{pr_number}:{thread_id}":
         raise ValueError("exact per-thread authorization required")
     owner, name = repo.split("/")
-    query = "query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{id isResolved isOutdated}}}}}"
-    result = execute(["gh", "api", "graphql", "-f", f"query={query}", "-f", f"owner={owner}", "-f", f"name={name}", "-F", f"number={pr_number}"])
-    data = json.loads(result)
-    threads = data["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"]
-    matches = [t for t in threads if t["id"] == thread_id]
+    query = "query($owner:String!,$name:String!,$number:Int!,$after:String){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor} nodes{id isResolved isOutdated}}}}}"
+    matches = []
+    cursor = None
+    seen = set()
+    while True:
+        argv = ["gh", "api", "graphql", "-f", f"query={query}", "-f", f"owner={owner}", "-f", f"name={name}", "-F", f"number={pr_number}"]
+        if cursor:
+            argv.extend(["-f", f"after={cursor}"])
+        data = json.loads(execute(argv))
+        if data.get("errors"):
+            raise RuntimeError(f"GitHub GraphQL query failed: {data['errors']}")
+        page = data["data"]["repository"]["pullRequest"]["reviewThreads"]
+        matches.extend(t for t in page["nodes"] if t["id"] == thread_id)
+        if not page["pageInfo"]["hasNextPage"]:
+            break
+        next_cursor = page["pageInfo"].get("endCursor")
+        if not next_cursor or next_cursor in seen:
+            raise RuntimeError("invalid or repeated review-thread pagination cursor")
+        seen.add(next_cursor)
+        cursor = next_cursor
     if len(matches) != 1 or matches[0]["isResolved"] or matches[0]["isOutdated"]:
         raise ValueError("thread absent, outdated or already resolved; stop for review")
     mutation = "mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{id isResolved}}}"
     response = json.loads(execute(["gh", "api", "graphql", "-f", f"query={mutation}", "-f", f"id={thread_id}"]))
+    if response.get("errors"):
+        raise RuntimeError(f"GitHub GraphQL resolution failed: {response['errors']}")
     thread = response["data"]["resolveReviewThread"]["thread"]
     if thread["id"] != thread_id or not thread["isResolved"]:
         raise RuntimeError("resolution not confirmed")
@@ -57,6 +77,7 @@ def validate_gh_args(args):
     if len(args) < 2 or tuple(args[:2]) not in SAFE_COMMANDS:
         return "only allowlisted read-only gh commands are permitted"
     seen_positionals = 0
+    allowed_flags = SAFE_FLAGS[tuple(args[:2])]
     i = 2
     while i < len(args):
         item = args[i]
@@ -64,11 +85,13 @@ def validate_gh_args(args):
             i += 1
             continue
         flag = item.split("=", 1)[0]
-        if flag in SAFE_FLAGS:
+        if flag in allowed_flags:
             if "=" not in item:
-                if i + 1 >= len(args) or args[i + 1].startswith("-"):
+                if i + 1 >= len(args) or args[i + 1].startswith("-") or not args[i + 1]:
                     return f"missing value for {item}"
                 i += 1
+            elif not item.split("=", 1)[1]:
+                return f"missing value for {flag}"
             i += 1
             continue
         if item.startswith("-"):
@@ -94,7 +117,7 @@ def main():
                                     execute=lambda argv: subprocess.check_output(argv, text=True))
             print(f"Review thread resolved: {result['id']}")
             return 0
-        except (ValueError, KeyError, TypeError, json.JSONDecodeError, subprocess.CalledProcessError, RuntimeError) as exc:
+        except (ValueError, KeyError, TypeError, json.JSONDecodeError, subprocess.CalledProcessError, OSError, RuntimeError) as exc:
             print(f"GH GUARD DENIED: {exc}", file=sys.stderr)
             return 2
     parser = argparse.ArgumentParser(description=__doc__)
@@ -104,7 +127,11 @@ def main():
     if error:
         print(f"GH GUARD DENIED: {error}", file=sys.stderr)
         return 2
-    return subprocess.call(["gh", *options.gh_args])
+    try:
+        return subprocess.call(["gh", *options.gh_args])
+    except OSError as exc:
+        print(f"GH GUARD ERROR: {exc}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

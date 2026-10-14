@@ -68,6 +68,8 @@ def review_threads(repo, number, run=command):
         if after:
             argv.extend(["-f", f"after={after}"])
         data = json.loads(run(argv))
+        if data.get("errors"):
+            raise RuntimeError(f"GitHub review-thread query failed: {data['errors']}")
         page = data["data"]["repository"]["pullRequest"]["reviewThreads"]
         threads.extend(page["nodes"])
         info = page["pageInfo"]
@@ -146,7 +148,7 @@ def main(argv=None, run=command):
                 raise RuntimeError("Git Bash/sh unavailable; install Git for Windows shell and retry")
             return subprocess.call([shell, str(hook)], env=env)
         repo, branch = context(run)
-        number = pr_number(args.pr, repo, branch, run) if args.action != "resolve" else pr_number(args.pr, repo, branch, run)
+        number = pr_number(args.pr, repo, branch, run)
         if args.action == "status":
             print_status(repo, number, run)
         elif args.action == "review":

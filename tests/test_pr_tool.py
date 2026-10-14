@@ -45,6 +45,12 @@ class PrToolTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             pr_tool.review_threads("Youchenjiang/Clickra", 2, fake)
 
+    def test_review_fails_closed_on_graphql_errors(self):
+        def fake(argv):
+            return json.dumps({"errors": [{"message": "rate limit exceeded"}]})
+        with self.assertRaisesRegex(RuntimeError, "rate limit exceeded"):
+            pr_tool.review_threads("Youchenjiang/Clickra", 2, fake)
+
     def test_publish_refuses_without_side_effect(self):
         with redirect_stdout(StringIO()) as output:
             result = pr_tool.main(["publish"], lambda argv: self.fail("no command expected"))
