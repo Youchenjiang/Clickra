@@ -14,6 +14,7 @@ python scripts/pr_tool.py audit 177 --sonar --json
 python scripts/pr_tool.py verify 177
 python scripts/pr_tool.py ready --body-file 'C:\path\to\pr-body.md'
 python scripts/pr_tool.py prepare --body-file 'C:\path\to\pr-body.md'
+python scripts/pr_tool.py prepare --initial --body-file 'C:\path\to\pr-body.md'
 python scripts/pr_tool.py push --body-file 'C:\path\to\pr-body.md'
 ```
 
@@ -70,6 +71,13 @@ or mismatched authorization. It pushes only the checked branch, without force,
 and runs the **existing full versioned Git pre-push hook**; it checks the remote
 SHA after success. Never use `--no-verify`. A preview string is not itself
 approval: the agent needs current explicit user permission for a push.
+
+For the **first push of a new remote branch**, the hook recognizes the absent
+remote ref and validates completed draft PR metadata instead of querying a PR
+that cannot exist yet. Normal ancestry, fresh remote main, commit policy,
+clean-tree and full build gates remain mandatory. Subsequent pushes require
+live GitHub PR metadata. `prepare --initial` is only a lightweight draft-body
+preview; it does not replace the full initial-push verification.
 
 **Avoid duplicate full gates:** when an approved push is the next action, use
 the lightweight `prepare` command followed by `push`, and let the mandatory

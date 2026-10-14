@@ -177,6 +177,19 @@ class PrToolTests(unittest.TestCase):
             heavy.assert_not_called()
             self.assertIn("mandatory full gate", output.getvalue())
 
+    def test_initial_prepare_validates_draft_without_github_lookup(self):
+        import pr_preflight
+        with TemporaryDirectory() as folder:
+            body = Path(folder) / "pr.md"
+            body.write_text(
+                "## Summary\nA\n## Changes\nB\n## Validation\nC\n## PR Metadata\n"
+                "- [x] **Assignee**: @owner\n- [x] **Label**: agent\n"
+                "- [x] **Milestone**: Plan\n- [x] **External provider**: none\n",
+                encoding="utf-8")
+            with patch.object(pr_preflight, "_github_metadata") as github:
+                self.assertEqual(0, pr_tool.main(["prepare", "--initial", "--body-file", str(body)]))
+                github.assert_not_called()
+
     def test_status_prints_check_and_review_state(self):
         def fake(argv):
             if argv[:3] == ["git", "branch", "--show-current"]:

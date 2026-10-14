@@ -277,13 +277,19 @@ def _ready(body_file):
     return subprocess.run([shell, str(hook)], env=env, check=False, shell=False).returncode
 
 
-def _prepare(body_file):
+def _prepare(body_file, initial=False):
     """Run the versioned lightweight policy gate, never the full NativeAOT hook."""
     body = Path(body_file).resolve()
     if not body.is_file():
         raise ValueError(f"PR body file does not exist: {body}")
     from pr_preflight import _github_metadata, check
-    problems = check("origin/main", str(body), metadata=_github_metadata())
+    if initial:
+        from pr_preflight import validate_pr_body
+        # This is only a preview: the actual first push verifies remote main
+        # and the exact object through the mandatory versioned hook.
+        problems = validate_pr_body(body.read_text(encoding="utf-8"))
+    else:
+        problems = check("origin/main", str(body), metadata=_github_metadata())
     for problem in problems:
         print(f"PR preflight FAIL: {safe_terminal(problem)}")
     if problems:
@@ -303,7 +309,7 @@ def _execute_action(args, run):
     if args.action == "ready":
         return _ready(args.body_file)
     if args.action == "prepare":
-        return _prepare(args.body_file)
+        return _prepare(args.body_file, args.initial)
     repo, branch = context(run)
     number = pr_number(args.pr, repo, branch, run)
     if args.action == "status":
@@ -362,6 +368,8 @@ def main(argv=None, run=command):
     ready.add_argument("--body-file", required=True)
     prepare = sub.add_parser("prepare", help="Run quick PR policy checks without full build/NativeAOT")
     prepare.add_argument("--body-file", required=True)
+    prepare.add_argument("--initial", action="store_true",
+                         help="Before a PR exists, validate the full draft metadata only")
     sub.add_parser("publish", help="Explain separately authorized publication steps")
     push = sub.add_parser("push", help="Preview or perform one explicitly authorized, hook-verified branch push")
     push.add_argument("--body-file", required=True)
