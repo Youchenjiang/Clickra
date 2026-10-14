@@ -6,10 +6,15 @@ metacharacter interpretation; it is not a substitute for per-command authorizati
 from pathlib import Path
 import shutil
 import subprocess
+import re
 
 GIT_VERBS = {"branch", "remote", "rev-parse", "ls-remote", "merge-base", "log", "diff", "status"}
 GH_READ_VERBS = {("pr", "view"), ("pr", "checks"), ("pr", "list"),
                  ("run", "view"), ("run", "list"), ("workflow", "list")}
+REST_READ_PATH = re.compile(r"^repos/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/(?:"
+                            r"commits/[0-9a-fA-F]{40}/check-runs\?per_page=100|"
+                            r"(?:issues|pulls)/[1-9][0-9]*/(?:comments|reviews)\?per_page=100&page=[1-9][0-9]*"
+                            r")$")
 
 
 def executable(name):
@@ -30,7 +35,7 @@ def _validate_github_args(argv):
     command = tuple(argv[1:3])
     if command in GH_READ_VERBS or command == ("api", "graphql"):
         return
-    if argv[1] == "api" and argv[2].startswith("repos/") and "/check-runs?per_page=" in argv[2]:
+    if argv[1] == "api" and len(argv) == 3 and REST_READ_PATH.fullmatch(argv[2]):
         return
     raise ValueError("unauthorized GitHub operation")
 

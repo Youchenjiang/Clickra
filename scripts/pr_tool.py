@@ -15,6 +15,7 @@ import sys
 
 from gh_guard import resolve_thread
 from process_guard import invoke
+from pr_audit import inventory
 
 
 def safe_terminal(value):
@@ -188,6 +189,44 @@ def diagnose(repo, number, run=command):
     return failed, _review_feedback(repo, number, passed, run)
 
 
+def audit(repo, number, run=command, as_json=False):
+    """Inventory every comment surface, without altering review state."""
+    pr = inspect(repo, number, run)
+    result = inventory(repo, number, pr.get("headRefOid"), review_threads(repo, number, run), run)
+    if as_json:
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return result
+    counts = result["counts"]
+    print(f"PR #{number} HEAD: {safe_terminal(result['head'] or 'unknown')}")
+    print(f"Review threads: {counts['threads']} total, {counts['unresolved']} unresolved"
+          f" ({counts['outdated_unresolved']} outdated but unresolved)")
+    print(f"All inline comments: {counts['inline']} | General comments: {counts['general']}"
+          f" | Review summaries: {counts['reviews']}")
+    linked = {}
+    for comment in result["inline_comments"]:
+        if comment["thread_id"] and comment["thread_id"] not in linked:
+            linked[comment["thread_id"]] = comment
+    for thread in result["threads"]:
+        if thread["resolved"]:
+            continue
+        status = "UNRESOLVED"
+        if thread["outdated"]:
+            status += ", OUTDATED"
+        print(f"- [{status}] {safe_terminal(thread['id'])} {safe_terminal(thread['path'] or '?')}:"
+              f"{safe_terminal(thread['line'] or '?')}")
+        first = linked.get(thread["id"])
+        if first:
+            print(f"  {safe_terminal(first['body'])[:180]}")
+            if first["url"]:
+                print(f"  {safe_terminal(first['url'])}")
+    current = sum(c["head_relation"] == "current" for c in result["inline_comments"])
+    historical = sum(c["head_relation"] == "historical" for c in result["inline_comments"])
+    print(f"Inline commit relation: {current} current, {historical} historical;"
+          " unscoped comments require manual review")
+    print("Resolved threads omitted from this view; use 'audit --json' for all records, full bodies and metadata.")
+    return result
+
+
 def _ready(body_file):
     body = Path(body_file).resolve()
     if not body.is_file():
@@ -218,6 +257,8 @@ def _execute_action(args, run):
     number = pr_number(args.pr, repo, branch, run)
     if args.action == "status":
         print_status(repo, number, run)
+    elif args.action == "audit":
+        audit(repo, number, run, args.json)
     elif args.action == "diagnose":
         diagnose(repo, number, run)
     elif args.action == "review":
@@ -237,6 +278,9 @@ def main(argv=None, run=command):
     sub = parser.add_subparsers(dest="action", required=True)
     for name in ("status", "review", "diagnose"):
         sub.add_parser(name).add_argument("pr", nargs="?")
+    auditor = sub.add_parser("audit", help="Read all PR comment categories, no writes")
+    auditor.add_argument("pr", nargs="?")
+    auditor.add_argument("--json", action="store_true", help="Output full machine-readable inventory")
     ready = sub.add_parser("ready", help="Execute local pre-push gate without pushing")
     ready.add_argument("--body-file", required=True)
     sub.add_parser("publish", help="Explain separately authorized publication steps")
