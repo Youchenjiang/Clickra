@@ -49,13 +49,7 @@ def _pr_problems(pr, remote_sha):
     return problems
 
 
-def summarize(pr, report, *, remote_sha):
-    """An absent or incomplete check is not a pass. Skip is reported separately."""
-    head = pr.get("headRefOid")
-    checks = pr.get("statusCheckRollup")
-    files = pr.get("files")
-    if not isinstance(head, str) or len(head) != 40 or not isinstance(checks, list):
-        raise RuntimeError("missing verified PR HEAD or CI rollup")
+def _required_checks(files):
     if files is not None and not isinstance(files, list):
         raise RuntimeError("invalid changed-file inventory")
     required = set(REQUIRED)
@@ -63,22 +57,36 @@ def summarize(pr, report, *, remote_sha):
                      file.get("path") == ".github/workflows/dependency-security-scan.yml"
                      for file in files):
         required.add("NuGet Dependency Vulnerability Scan")
-    groups = _classify_checks(checks, required)
-    failed, pending, skipped, passed = (groups[key] for key in ("failed", "pending", "skipped", "passed"))
+    return required
+
+
+def _finding_problems(report, groups, required):
     count = report["counts"]["unresolved"]
     sonar_count = report["sonar"]["total"]
-    problems = _pr_problems(pr, remote_sha)
-    if count:
-        problems.append(f"{count} unresolved review threads")
-    if sonar_count:
-        problems.append(f"{sonar_count} SonarQube issues")
-    if failed:
-        problems.append(f"failed checks: {', '.join(failed)}")
-    required_skipped = REQUIRED.intersection(skipped)
-    if required_skipped:
-        problems.append(f"required checks skipped: {', '.join(sorted(required_skipped))}")
-    if pending:
-        problems.append(f"pending checks: {', '.join(pending)}")
-    return {"ready": not problems, "problems": problems, "passed": passed,
-            "skipped": skipped, "head": head, "sonar_issues": sonar_count,
+    problems = []
+    for value, label in ((count, "unresolved review threads"),
+                         (sonar_count, "SonarQube issues")):
+        if value:
+            problems.append(f"{value} {label}")
+    for names, label in ((groups["failed"], "failed checks"),
+                         (sorted(required.intersection(groups["skipped"])), "required checks skipped"),
+                         (groups["pending"], "pending checks")):
+        if names:
+            problems.append(f"{label}: {', '.join(names)}")
+    return problems
+
+
+def summarize(pr, report, *, remote_sha):
+    """An absent or incomplete check is not a pass. Skip is reported separately."""
+    head = pr.get("headRefOid")
+    checks = pr.get("statusCheckRollup")
+    if not isinstance(head, str) or len(head) != 40 or not isinstance(checks, list):
+        raise RuntimeError("missing verified PR HEAD or CI rollup")
+    required = _required_checks(pr.get("files"))
+    groups = _classify_checks(checks, required)
+    count = report["counts"]["unresolved"]
+    sonar_count = report["sonar"]["total"]
+    problems = _pr_problems(pr, remote_sha) + _finding_problems(report, groups, required)
+    return {"ready": not problems, "problems": problems, "passed": groups["passed"],
+            "skipped": groups["skipped"], "head": head, "sonar_issues": sonar_count,
             "unresolved_threads": count}
