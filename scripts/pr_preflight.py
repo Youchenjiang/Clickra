@@ -41,8 +41,7 @@ def validate_message(message):
     return errors
 
 
-def validate_pr_body(body, metadata=None):
-    errors = []
+def _split_pr_sections(body):
     sections = {}
     current = None
     body = re.sub(r"<!--.*?-->", "", body, flags=re.DOTALL)
@@ -52,6 +51,35 @@ def validate_pr_body(body, metadata=None):
             sections.setdefault(current, [])
         elif current is not None:
             sections[current].append(line)
+    return sections
+
+
+def _draft_metadata_errors(lines, metadata):
+    errors = []
+    for label in REQUIRED_METADATA if metadata is None else ("External provider",):
+        pattern = rf"(?mi)^- \[[xX]\] \*\*{re.escape(label)}\*\*:\s*(\S.*)$"
+        match = re.search(pattern, lines)
+        if not match or PLACEHOLDER.search(match.group(1)):
+            errors.append(f"completed {label} metadata required")
+        elif (label == "Milestone" and match.group(1).strip().lower() in {"none", "n/a", "not applicable"}
+              and not re.search(r"(?mi)^- \[[xX]\] \*\*Label\*\*:\s*.*\b(?:release|hotfix|deps|dependencies|docs)\b", lines)):
+            errors.append(f"completed {label} metadata required")
+    return errors
+
+
+def _live_metadata_errors(metadata):
+    labels = {item.get("name", "").lower() for item in metadata.get("labels", [])}
+    errors = []
+    if not labels:
+        errors.append("GitHub PR requires at least one label")
+    if not metadata.get("milestone") and not labels.intersection({"release", "hotfix", "deps", "dependencies", "docs"}):
+        errors.append("GitHub PR requires milestone unless exempt")
+    return errors
+
+
+def validate_pr_body(body, metadata=None):
+    errors = []
+    sections = _split_pr_sections(body)
     for heading in REQUIRED_SECTIONS:
         if heading not in sections:
             errors.append(heading)
@@ -59,19 +87,9 @@ def validate_pr_body(body, metadata=None):
         content = "\n".join(sections[heading]).strip()
         if not content or (heading != "## PR Metadata" and PLACEHOLDER.search(content)):
             errors.append(f"empty or placeholder {heading}")
-    for label in REQUIRED_METADATA if metadata is None else ("External provider",):
-        pattern = rf"(?mi)^- \[[xX]\] \*\*{re.escape(label)}\*\*:\s*(\S.*)$"
-        match = re.search(pattern, "\n".join(sections.get("## PR Metadata", [])))
-        if (not match or PLACEHOLDER.search(match.group(1))
-                or (label == "Milestone" and match.group(1).strip().lower() in {"none", "n/a", "not applicable"}
-                    and not re.search(r"(?mi)^- \[[xX]\] \*\*Label\*\*:\s*.*\b(?:release|hotfix|deps|dependencies|docs)\b", "\n".join(sections.get("## PR Metadata", []))))):
-            errors.append(f"completed {label} metadata required")
+    errors.extend(_draft_metadata_errors("\n".join(sections.get("## PR Metadata", [])), metadata))
     if metadata is not None:
-        labels = {item.get("name", "").lower() for item in metadata.get("labels", [])}
-        if not labels:
-            errors.append("GitHub PR requires at least one label")
-        if not metadata.get("milestone") and not labels.intersection({"release", "hotfix", "deps", "dependencies", "docs"}):
-            errors.append("GitHub PR requires milestone unless exempt")
+        errors.extend(_live_metadata_errors(metadata))
     return errors
 
 

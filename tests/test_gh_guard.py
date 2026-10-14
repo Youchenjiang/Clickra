@@ -128,11 +128,11 @@ class GhGuardTests(unittest.TestCase):
     def test_lost_mutation_response_with_unresolved_or_unreadable_state_fails(self):
         for unreadable in (False, True):
             calls = []
-            def fake(argv, *, read_unavailable=unreadable):
-                calls.append(argv)
+            def fake(argv, *, read_unavailable=unreadable, test_calls=calls):
+                test_calls.append(argv)
                 if "mutation(" in " ".join(argv):
                     raise OSError("response lost")
-                if read_unavailable and len(calls) == 4:
+                if read_unavailable and len(test_calls) == 4:
                     raise OSError("read unavailable")
                 return json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {
                     "nodes": [{"id": "PRRT_target", "isResolved": False, "isOutdated": False,
