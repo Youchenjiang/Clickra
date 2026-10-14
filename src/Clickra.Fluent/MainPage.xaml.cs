@@ -22,6 +22,7 @@ public sealed partial class MainPage : Page
     private const string SimplifiedChineseLanguage = "zh-CN";
     private const string SuccessLocalizationKey = "fluent_success";
     private const string FailedLocalizationKey = "fluent_failed";
+    private const string ChooseCommandLocalizationKey = "fluent_choose_command";
     // 歷史清單顯示幾筆已完成紀錄（與 Core 的 HistoryFeed.Load 預設一致）。
     private const string SecondaryCardBrushResource = "CardBackgroundFillColorSecondaryBrush";
     private const string SecondaryTextBrushResource = "TextFillColorSecondaryBrush";
@@ -376,7 +377,7 @@ public sealed partial class MainPage : Page
     {
         _convertWorkspace.AddFiles(paths.Where(File.Exists));
         CommandStatusText.Text = _convertWorkspace.SelectedCommand is null
-            ? L("fluent_choose_command")
+            ? L(ChooseCommandLocalizationKey)
             : string.Format(L("fluent_selected_command"), L(ConvertWorkspaceController.GetCommandLabelKey(_convertWorkspace.SelectedCommand)));
         RefreshFiles();
     }
@@ -451,7 +452,7 @@ public sealed partial class MainPage : Page
         }
 
         if (_convertWorkspace.SelectedCommand is null)
-            CommandStatusText.Text = L("fluent_choose_command");
+            CommandStatusText.Text = L(ChooseCommandLocalizationKey);
     }
 
     private void UpdateInteractiveState()
@@ -571,7 +572,7 @@ public sealed partial class MainPage : Page
         ActiveJobText.Text = ConversionProgressText.Text;
     }
 
-    private string DescribeConvertValidation(ConvertWorkspaceValidation validation)
+    private static string DescribeConvertValidation(ConvertWorkspaceValidation validation)
     {
         string label = string.IsNullOrEmpty(validation.Command)
             ? ""
@@ -582,7 +583,7 @@ public sealed partial class MainPage : Page
                 string.Format(L("fluent_validate_min_files"), label, validation.MinimumFiles),
             ConvertWorkspaceValidationKind.InvalidExtension =>
                 string.Format(L("fluent_validate_bad_ext"), Path.GetFileName(validation.InvalidFile), label),
-            _ => L("fluent_choose_command")
+            _ => L(ChooseCommandLocalizationKey)
         };
     }
 
@@ -712,7 +713,7 @@ public sealed partial class MainPage : Page
         EmptyFileMessage.Text = L("fluent_no_files");
         CommandTitle.Text = L("fluent_command");
         CommandStatusText.Text = _convertWorkspace.SelectedCommand is null
-            ? L("fluent_choose_command")
+            ? L(ChooseCommandLocalizationKey)
             : string.Format(L("fluent_selected_command"), L(ConvertWorkspaceController.GetCommandLabelKey(_convertWorkspace.SelectedCommand)));
         OfficeCommandLabel.Text = L("convert_group_office");
         PdfCommandLabel.Text = "PDF";

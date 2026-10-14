@@ -8,7 +8,7 @@ public sealed record ParkedTaskResumePresentation(string TaskId, string Command,
 /// Authoritative presentation owner for History/Overview task state. Renderers keep only visual
 /// concerns such as row geometry, scroll position and expansion animation.
 /// </summary>
-public sealed class HistoryPresentationController
+public sealed class HistoryPresentationController : IHistoryPresentationController
 {
     private HistoryFeed _feed = HistoryFeed.Empty;
 

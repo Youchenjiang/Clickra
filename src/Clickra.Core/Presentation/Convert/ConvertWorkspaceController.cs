@@ -32,26 +32,29 @@ public sealed record ConvertCommandPresentation(
 /// </summary>
 public sealed class ConvertWorkspaceController
 {
+    private const string OfficeGroup = "convert_group_office";
+    private const string PdfGroup = "convert_group_pdf";
+    private const string ImageGroup = "convert_group_image";
     private static readonly ConvertCommandPresentation[] CommandCatalogValue =
     [
-        new("word2pdf", "cmd_word_to_pdf", "convert_group_office", 0, true),
-        new("excel2pdf", "cmd_excel_to_pdf", "convert_group_office", 0, true),
-        new("ppt2pdf", "cmd_ppt_to_pdf", "convert_group_office", 0, true),
-        new("md2pdf", "cmd_md_to_pdf", "convert_group_office", 0, false),
-        new("md2word", "cmd_md_to_word", "convert_group_office", 0, false),
-        new("merge-pdf", "cmd_merge_pdf", "convert_group_pdf", 1, false),
-        new("compress-pdf", "cmd_compress_pdf", "convert_group_pdf", 1, false),
-        new("translate-pdf", "cmd_translate_pdf", "convert_group_pdf", 1, false),
-        new("decrypt-pdf", "cmd_decrypt_pdf", "convert_group_pdf", 1, false),
-        new("split-pdf", "cmd_split_pdf", "convert_group_pdf", 1, false),
-        new("img2pdf", "cmd_img_to_pdf", "convert_group_image", 2, false),
-        new("img-merge", "cmd_merge_img", "convert_group_image", 2, false),
-        new("img-stitch", "cmd_stitch_img", "convert_group_image", 2, false),
-        new("img-to-png", "cmd_img_to_png", "convert_group_image", 2, false),
-        new("img-to-jpg", "cmd_img_to_jpg", "convert_group_image", 2, false),
-        new("img-to-webp", "cmd_img_to_webp", "convert_group_image", 2, false),
-        new("img-to-gif", "cmd_img_to_gif", "convert_group_image", 2, false),
-        new("img-to-heic", "cmd_img_to_heic", "convert_group_image", 2, false)
+        new("word2pdf", "cmd_word_to_pdf", OfficeGroup, 0, true),
+        new("excel2pdf", "cmd_excel_to_pdf", OfficeGroup, 0, true),
+        new("ppt2pdf", "cmd_ppt_to_pdf", OfficeGroup, 0, true),
+        new("md2pdf", "cmd_md_to_pdf", OfficeGroup, 0, false),
+        new("md2word", "cmd_md_to_word", OfficeGroup, 0, false),
+        new("merge-pdf", "cmd_merge_pdf", PdfGroup, 1, false),
+        new("compress-pdf", "cmd_compress_pdf", PdfGroup, 1, false),
+        new("translate-pdf", "cmd_translate_pdf", PdfGroup, 1, false),
+        new("decrypt-pdf", "cmd_decrypt_pdf", PdfGroup, 1, false),
+        new("split-pdf", "cmd_split_pdf", PdfGroup, 1, false),
+        new("img2pdf", "cmd_img_to_pdf", ImageGroup, 2, false),
+        new("img-merge", "cmd_merge_img", ImageGroup, 2, false),
+        new("img-stitch", "cmd_stitch_img", ImageGroup, 2, false),
+        new("img-to-png", "cmd_img_to_png", ImageGroup, 2, false),
+        new("img-to-jpg", "cmd_img_to_jpg", ImageGroup, 2, false),
+        new("img-to-webp", "cmd_img_to_webp", ImageGroup, 2, false),
+        new("img-to-gif", "cmd_img_to_gif", ImageGroup, 2, false),
+        new("img-to-heic", "cmd_img_to_heic", ImageGroup, 2, false)
     ];
 
     private static readonly IReadOnlyDictionary<string, ConvertCommandPresentation> CommandByKey =
@@ -166,7 +169,7 @@ public sealed class ConvertWorkspaceController
             ? presentation
             : null;
 
-    public ConvertCommandPresentation GetRequiredPresentation(string command) =>
+    public static ConvertCommandPresentation GetRequiredPresentation(string command) =>
         CommandByKey.TryGetValue(command, out ConvertCommandPresentation? presentation)
             ? presentation
             : throw new ArgumentOutOfRangeException(nameof(command), command, "Unknown conversion command.");

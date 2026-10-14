@@ -22,6 +22,14 @@ def remote_head(branch):
     return fields[0]
 
 
+def _validate_push_branch(branch):
+    if (not BRANCH.fullmatch(branch) or branch.endswith(".lock")
+            or ".." in branch or "//" in branch or "/." in branch):
+        raise ValueError("invalid or protected branch")
+    if problems := validate_branch_name(branch):
+        raise ValueError("; ".join(problems))
+
+
 def push(body_file, authorization, *, execute=False, runner=subprocess.run):
     """Run one exact non-forced push after approval; preview makes no writes."""
     body = Path(body_file).resolve()
@@ -29,11 +37,7 @@ def push(body_file, authorization, *, execute=False, runner=subprocess.run):
         raise ValueError("PR body file missing")
     branch = invoke(["git", "branch", "--show-current"]).stdout.strip()
     sha = invoke(["git", "rev-parse", "HEAD"]).stdout.strip()
-    if (not BRANCH.fullmatch(branch) or branch.endswith(".lock")
-            or ".." in branch or "//" in branch or "/." in branch):
-        raise ValueError("invalid or protected branch")
-    if problems := validate_branch_name(branch):
-        raise ValueError("; ".join(problems))
+    _validate_push_branch(branch)
     if not SHA.fullmatch(sha):
         raise ValueError("invalid current commit")
     status = invoke(["git", "status", "--porcelain"])

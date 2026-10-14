@@ -2,7 +2,7 @@
 
 import re
 
-PR_SEQUENCE_SUFFIX = re.compile(r"(?:^|[-_/])pr[0-9]+$", re.IGNORECASE)
+PR_SEQUENCE_SUFFIX = re.compile(r"(?:^|[-_/])pr\d+$", re.IGNORECASE | re.ASCII)
 
 
 def validate_branch_name(branch):

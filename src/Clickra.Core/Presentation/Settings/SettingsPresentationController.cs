@@ -35,8 +35,11 @@ public sealed record OfficeReadinessPresentationState(
 /// forward intent here; persisted representation and LibreOffice management orchestration remain
 /// behind Application/Infrastructure boundaries.
 /// </summary>
-public sealed class SettingsPresentationController
+public sealed class SettingsPresentationController : ISettingsPresentationController
 {
+    private static readonly IReadOnlyList<SettingDescriptor> CachedDynamicDescriptors =
+        SettingPageRegistry.AllDescriptors.Where(descriptor => !SettingPageRegistry.IsPrimaryRendererSetting(descriptor.Key)).ToArray();
+
     public static SettingsPresentationController Shared { get; } = new();
 
     private SettingsPresentationController()
@@ -137,8 +140,7 @@ public sealed class SettingsPresentationController
 
     public IReadOnlyList<SettingDescriptor> Descriptors => SettingPageRegistry.AllDescriptors;
 
-    public IReadOnlyList<SettingDescriptor> DynamicDescriptors =>
-        SettingPageRegistry.AllDescriptors.Where(descriptor => !SettingPageRegistry.IsPrimaryRendererSetting(descriptor.Key)).ToArray();
+    public IReadOnlyList<SettingDescriptor> DynamicDescriptors => CachedDynamicDescriptors;
 
     public bool IsPrimaryRendererSetting(SettingDescriptor descriptor) =>
         SettingPageRegistry.IsPrimaryRendererSetting(descriptor.Key);
@@ -192,7 +194,7 @@ public sealed class SettingsPresentationController
     {
         RequireEditor(descriptor, SettingEditorKind.Choice);
         if (descriptor.Options is { Count: > 0 } &&
-            !descriptor.Options.Any(option => string.Equals(option.Value, value, StringComparison.OrdinalIgnoreCase)) &&
+            descriptor.Options.All(option => !string.Equals(option.Value, value, StringComparison.OrdinalIgnoreCase)) &&
             !string.Equals(descriptor.Key, SettingsContract.OutputDirectory, StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentOutOfRangeException(nameof(value), value, $"Value is not registered for setting '{descriptor.Key}'.");
