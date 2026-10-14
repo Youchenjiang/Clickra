@@ -205,6 +205,23 @@ def _review_feedback(repo, number, passed, run):
     return active
 
 
+def _print_provider_reports(selected, mode, fetch):
+    """Fetch supported provider HTML without treating missing details as success."""
+    print(f"\nProvider reports ({mode}):")
+    for item in selected:
+        name = item.get("name") or item.get("context") or "unnamed check"
+        url = item.get("detailsUrl") or item.get("targetUrl") or ""
+        if not url or not any(provider in name.lower() for provider in ("deepsource", "sonar", "sourcery")):
+            continue
+        print(f"- {safe_terminal(name)}: {safe_terminal(url)}")
+        try:
+            report = fetch(url)
+            print(f"  HTML: {report['bytes']} bytes; embedded issues: {report['has_ssr_issues']}")
+            print(f"  Page text: {safe_terminal(report['text'])[:1400]}")
+        except (OSError, ValueError, RuntimeError) as exc:
+            print(f"  Report unavailable: {safe_terminal(exc)}")
+
+
 def diagnose(repo, number, run=command, reports="failed", fetch=fetch_report):
     """Read failing check logs and review feedback; never mutate GitHub state."""
     pr = inspect(repo, number, run)
@@ -219,20 +236,7 @@ def diagnose(repo, number, run=command, reports="failed", fetch=fetch_report):
     print(f"Current reported checks: {len(failed)} failed")
     for item in failed:
         _print_failed_check(item, repo, details.get(item.get("name") or item.get("context")) or {}, run)
-    selected = failed if reports == "failed" else checks
-    print(f"\nProvider reports ({reports}):")
-    for item in selected:
-        name = item.get("name") or item.get("context") or "unnamed check"
-        url = item.get("detailsUrl") or item.get("targetUrl") or ""
-        if not url or not any(provider in name.lower() for provider in ("deepsource", "sonar", "sourcery")):
-            continue
-        print(f"- {safe_terminal(name)}: {safe_terminal(url)}")
-        try:
-            report = fetch(url)
-            print(f"  HTML: {report['bytes']} bytes; embedded issues: {report['has_ssr_issues']}")
-            print(f"  Page text: {safe_terminal(report['text'])[:1400]}")
-        except (OSError, ValueError, RuntimeError) as exc:
-            print(f"  Report unavailable: {safe_terminal(exc)}")
+    _print_provider_reports(failed if reports == "failed" else checks, reports, fetch)
     return failed, _review_feedback(repo, number, passed, run)
 
 
