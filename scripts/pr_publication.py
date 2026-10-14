@@ -4,6 +4,7 @@ import re
 import subprocess
 from pathlib import Path
 from process_guard import executable, invoke
+from branch_policy import validate_branch_name
 
 BRANCH = re.compile(r"(?!main\Z|master\Z)[A-Za-z0-9][A-Za-z0-9._/-]*\Z")
 SHA = re.compile(r"[0-9a-f]{40}\Z")
@@ -31,6 +32,8 @@ def push(body_file, authorization, *, execute=False, runner=subprocess.run):
     if (not BRANCH.fullmatch(branch) or branch.endswith(".lock")
             or ".." in branch or "//" in branch or "/." in branch):
         raise ValueError("invalid or protected branch")
+    if problems := validate_branch_name(branch):
+        raise ValueError("; ".join(problems))
     if not SHA.fullmatch(sha):
         raise ValueError("invalid current commit")
     status = invoke(["git", "status", "--porcelain"])

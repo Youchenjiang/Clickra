@@ -11,6 +11,12 @@ import pr_creation
 
 
 class CreateTests(unittest.TestCase):
+    def test_creation_rejects_pr_sequence_branch_before_external_reads(self):
+        with patch.object(pr_creation, "_read") as reader:
+            with self.assertRaisesRegex(ValueError, "PR sequence"):
+                pr_creation.current_branch("user/repo", "refactor/storage-settings-pr2")
+            reader.assert_not_called()
+
     @staticmethod
     def body_file(folder):
         body = Path(folder) / "pr.md"

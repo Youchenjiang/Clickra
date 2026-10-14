@@ -11,6 +11,15 @@ import pr_publication
 
 
 class PublicationTests(unittest.TestCase):
+    def test_preview_rejects_pr_sequence_branch(self):
+        with TemporaryDirectory() as folder:
+            body = Path(folder) / "pr.md"
+            body.write_text("draft", encoding="utf-8")
+            with patch.object(pr_publication, "invoke", return_value=SimpleNamespace(
+                    stdout="feature/dashboard-pr3", returncode=0)):
+                with self.assertRaisesRegex(ValueError, "PR sequence"):
+                    pr_publication.push(str(body), None)
+
     def test_preview_does_not_write_and_exact_authorization_required(self):
         with TemporaryDirectory() as folder:
             body = Path(folder) / "body.md"

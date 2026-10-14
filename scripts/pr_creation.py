@@ -7,6 +7,7 @@ from pathlib import Path
 
 from process_guard import executable, invoke
 from pr_preflight import validate_pr_body
+from branch_policy import validate_branch_name
 from pr_publication import BRANCH, SHA, remote_head
 
 REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
@@ -48,6 +49,8 @@ def _metadata(repo, label, milestone, assignee):
 def current_branch(repo, branch):
     if not REPOSITORY.fullmatch(repo) or not BRANCH.fullmatch(branch):
         raise ValueError("invalid repository or development branch")
+    if problems := validate_branch_name(branch):
+        raise ValueError("; ".join(problems))
     head = _read(["git", "rev-parse", "HEAD"])
     if not SHA.fullmatch(head) or _read(["git", "branch", "--show-current"]) != branch:
         raise RuntimeError("cannot verify current development HEAD")

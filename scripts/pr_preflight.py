@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 from process_guard import invoke
+from branch_policy import validate_branch_name
 
 ALLOWED_TYPES = "feat|fix|refactor|docs|test|chore|style|perf|security"
 ALLOWED_SCOPES = "cli|core|shell|msix|docs|ci|deps|store|agent"
@@ -119,6 +120,7 @@ def _check_pushed_ref(pushed_ref, pushed_oid):
     branch = git("branch", "--show-current").stdout.strip()
     if not branch or branch in ("main", "master"):
         errors.append("push must come from a named non-main development branch")
+    errors.extend(validate_branch_name(branch))
     if pushed_ref:
         if pushed_ref != f"refs/heads/{branch}":
             errors.append("pushed branch does not match checked development branch")
