@@ -37,6 +37,19 @@ PDF regression checks live under `tests/PdfRegression`. They require local
 `test_pdfs/` fixtures, which are intentionally ignored by git because the PDFs
 are large.
 
+For authorized public-source *candidates*, run
+`python scripts/fetch_public_pdf_fixtures.py 2407 pentest togll`. This downloads
+small numbers of PDFs directly from arXiv or the PentestAgent author page into
+`test_pdfs/downloaded_candidates/`, prints their SHA-256 hashes, and does not
+commit them to Git. The resulting PDFs are **not automatically equivalent** to
+the historic regression fixtures: the arXiv version and the PentestAgent
+camera-ready version may differ in layout, and `2407.11279v1_clean.pdf` may
+be modified. Do not rename candidates or count tests as passing without
+checking the document identity, page counts, assertions and expected baseline.
+`114423046_final_project.pdf` has no verified public download source.
+Keep downloaded candidate files outside mandatory CI gates until those checks
+and each publisher's download terms have been reviewed.
+
 The offline suite compares every translated fixture with its source rendering.
 It checks each page column for newly introduced blank bands, excessive growth
 in total large-gap space, lost visual occupancy, and columns that end much
