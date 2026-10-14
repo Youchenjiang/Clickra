@@ -33,17 +33,19 @@ class SonarAuditTests(unittest.TestCase):
 
     def test_reject_unsafe_project_host_and_page(self):
         for kwargs in ({"project": "../bad"}, {"base_url": "https://evil.invalid"}, {"page": 0}):
+            project = kwargs.get("project", "A_B")
+            page = kwargs.get("page", 1)
+            host = kwargs.get("base_url", sonar_audit.DEFAULT_HOST)
             with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
-                sonar_audit.fetch_page(kwargs.get("project", "A_B"), 1,
-                                            kwargs.get("page", 1),
-                                            base_url=kwargs.get("base_url", "https://sonarcloud.io"))
+                sonar_audit.fetch_page(project, 1, page, base_url=host)
 
     def test_http_request_does_not_embed_token_in_url(self):
         class Response:
             def __enter__(self):
                 return self
-            def __exit__(self, *args):
-                pass
+            @staticmethod
+            def __exit__(*args):
+                return None
             def read(self, *args):
                 return b'{"total":0,"issues":[]}'
 

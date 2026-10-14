@@ -1,16 +1,16 @@
 """Read-only SonarQube Cloud issue inventory for one pull request."""
 import json
-import os
 import re
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 PROJECT = re.compile(r"[A-Za-z0-9_.:-]+\Z")
-HOSTS = {"https://sonarcloud.io", "https://sonarqube.us"}
+DEFAULT_HOST = "https://sonarcloud.io"
+HOSTS = {DEFAULT_HOST, "https://sonarqube.us"}
 
 
-def fetch_page(project, pr, page, *, base_url="https://sonarcloud.io", token=None):
+def fetch_page(project, pr, page, *, base_url=DEFAULT_HOST, token=None):
     if not PROJECT.fullmatch(project) or not isinstance(pr, int) or pr < 1:
         raise ValueError("invalid SonarQube project or PR")
     if base_url not in HOSTS or not isinstance(page, int) or not 1 <= page <= 100:
@@ -22,6 +22,7 @@ def fetch_page(project, pr, page, *, base_url="https://sonarcloud.io", token=Non
         headers["Authorization"] = f"Bearer {token}"
     request = Request(f"{base_url}/api/issues/search?{query}", headers=headers)
     try:
+        # The URL is built from a strict HTTPS host allowlist and escaped parameters.
         with urlopen(request, timeout=20) as response:
             return json.load(response)
     except HTTPError as exc:
@@ -30,7 +31,7 @@ def fetch_page(project, pr, page, *, base_url="https://sonarcloud.io", token=Non
         raise RuntimeError("SonarQube API unavailable") from exc
 
 
-def inventory(project, pr, *, fetch=fetch_page, base_url="https://sonarcloud.io", token=None):
+def inventory(project, pr, *, fetch=fetch_page, base_url=DEFAULT_HOST, token=None):
     """Fetch every page, fail rather than silently return a partial inventory."""
     results = []
     page = 1
