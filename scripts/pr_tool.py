@@ -31,7 +31,6 @@ def command(argv):
 def context(run=command):
     branch = run(["git", "branch", "--show-current"]).strip()
     url = run(["git", "remote", "get-url", "origin"]).strip()
-    import re
     match = re.search(r"(?:github\.com[:/])([^/]+)/([^/]+?)(?:\.git)?$", url)
     if not match:
         raise ValueError("origin is not a recognizable GitHub repository")
@@ -117,30 +116,38 @@ def print_status(repo, number, run=command):
         print("Attention: base must be main and all findings must be addressed before merging.")
 
 
-def diagnose(repo, number, run=command):
-    """Read failing check logs and review feedback; never mutate GitHub state."""
-    pr = inspect(repo, number, run)
-    head_sha = pr.get("headRefOid")
-    print(f"PR #{number} HEAD: {safe_terminal(head_sha or 'unknown')}")
-    checks = pr.get("statusCheckRollup") or []
-    failed = [item for item in checks if str(item.get("conclusion") or item.get("state") or "").upper() in
-              ("FAILURE", "FAILED", "ERROR", "TIMED_OUT", "ACTION_REQUIRED")]
-    passed = {str(item.get("name") or item.get("context") or "").lower()
-              for item in checks if str(item.get("conclusion") or item.get("state") or "").upper() in ("SUCCESS", "PASS", "PASSED")}
-    print(f"Current reported checks: {len(failed)} failed")
-    for item in failed:
-        name = safe_terminal(item.get("name") or item.get("context") or "unknown check")
-        url = item.get("detailsUrl") or item.get("targetUrl") or ""
-        print(f"\nFAIL: {name}\nURL: {safe_terminal(url)}")
-        match = re.search(r"github\.com/[^/]+/[^/]+/actions/runs/(\d+)", url)
-        if match:
-            try:
-                log = run(["gh", "run", "view", match.group(1), "--repo", repo, "--log-failed"])
-                print(safe_terminal(log[-12000:]) or "No failed-job log available")
-            except (OSError, RuntimeError) as exc:
-                print(f"Log unavailable: {safe_terminal(exc)}")
-        else:
-            print("External provider: GitHub does not expose its detailed findings in this check.")
+def _check_run_details(repo, head_sha, run):
+    """Fetch structured details only for an exact validated GitHub commit."""
+    if head_sha and re.fullmatch(r"[0-9a-fA-F]{40}", head_sha) and re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
+        try:
+            raw = run(["gh", "api", f"repos/{repo}/commits/{head_sha}/check-runs?per_page=100"])
+            data = json.loads(raw)
+            return {item["name"]: item.get("output") or {}
+                    for item in data.get("check_runs", []) if isinstance(item, dict) and item.get("name")}
+        except (OSError, RuntimeError, ValueError, TypeError, KeyError) as exc:
+            print(f"Check Run details unavailable: {safe_terminal(exc)}")
+    return {}
+
+
+def _print_failed_check(item, repo, details, run):
+    name = safe_terminal(item.get("name") or item.get("context") or "unknown check")
+    url = item.get("detailsUrl") or item.get("targetUrl") or ""
+    print(f"\nFAIL: {name}\nURL: {safe_terminal(url)}")
+    match = re.search(r"github\.com/[^/]+/[^/]+/actions/runs/(\d+)", url)
+    if match:
+        try:
+            log = run(["gh", "run", "view", match.group(1), "--repo", repo, "--log-failed"])
+            print(safe_terminal(log[-12000:]) or "No failed-job log available")
+        except (OSError, RuntimeError) as exc:
+            print(f"Log unavailable: {safe_terminal(exc)}")
+        return
+    message = "\n".join(str(details.get(key) or "") for key in ("summary", "text")).strip()
+    print(f"GitHub Check Run findings:\n{safe_terminal(message)[:12000]}" if message
+          else "External provider: no detailed findings exposed in GitHub Check Run.")
+
+
+def _review_feedback(repo, number, passed, run):
+    """Keep old/outdated threads visible as counts; never resolve them."""
     threads = [item for item in review_threads(repo, number, run) if not item.get("isResolved")]
     active = []
     historical = []
@@ -160,7 +167,24 @@ def diagnose(repo, number, run=command):
         print(f"- {safe_terminal(item.get('path') or '?')}: {safe_terminal(comment.get('body') or '')[:700]}")
         if comment.get("url"):
             print(f"  {safe_terminal(comment['url'])}")
-    return failed, active
+    return active
+
+
+def diagnose(repo, number, run=command):
+    """Read failing check logs and review feedback; never mutate GitHub state."""
+    pr = inspect(repo, number, run)
+    head_sha = pr.get("headRefOid")
+    print(f"PR #{number} HEAD: {safe_terminal(head_sha or 'unknown')}")
+    checks = pr.get("statusCheckRollup") or []
+    failed = [item for item in checks if str(item.get("conclusion") or item.get("state") or "").upper() in
+              ("FAILURE", "FAILED", "ERROR", "TIMED_OUT", "ACTION_REQUIRED")]
+    passed = {str(item.get("name") or item.get("context") or "").lower()
+              for item in checks if str(item.get("conclusion") or item.get("state") or "").upper() in ("SUCCESS", "PASS", "PASSED")}
+    details = _check_run_details(repo, head_sha, run)
+    print(f"Current reported checks: {len(failed)} failed")
+    for item in failed:
+        _print_failed_check(item, repo, details.get(item.get("name") or item.get("context")) or {}, run)
+    return failed, _review_feedback(repo, number, passed, run)
 
 
 def _ready(body_file):

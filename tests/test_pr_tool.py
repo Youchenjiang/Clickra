@@ -46,11 +46,30 @@ class PrToolTests(unittest.TestCase):
         with patch.object(pr_tool, "inspect", return_value=data), \
              patch.object(pr_tool, "review_threads", return_value=threads), \
              redirect_stdout(StringIO()) as output:
-            failed, active = pr_tool.diagnose("org/repo", 123, lambda argv: self.fail(str(argv)))
+            failed, active = pr_tool.diagnose("org/repo", 123, lambda argv: json.dumps({"check_runs": []}))
         self.assertFalse(failed)
         self.assertEqual(1, len(active))
         self.assertIn("potentially historical unresolved thread(s): 2", output.getvalue())
         self.assertIn("a" * 40, output.getvalue())
+
+    def test_diagnose_reads_external_check_run_summary(self):
+        sha = "a" * 40
+        details = {"check_runs": [{"name": "Sourcery review", "output": {
+            "summary": "Blocking security issues: 6", "text": "Review details"}}]}
+        calls = []
+        def fake(argv):
+            calls.append(argv)
+            return json.dumps(details)
+        data = {"headRefOid": sha, "statusCheckRollup": [
+            {"name": "Sourcery review", "conclusion": "FAILURE", "detailsUrl": "https://sourcery.ai"}]}
+        with patch.object(pr_tool, "inspect", return_value=data), \
+             patch.object(pr_tool, "review_threads", return_value=[]), \
+             redirect_stdout(StringIO()) as output:
+            failed, _ = pr_tool.diagnose("org/repo", 178, fake)
+        self.assertEqual(1, len(failed))
+        self.assertEqual(["gh", "api", f"repos/org/repo/commits/{sha}/check-runs?per_page=100"], calls[0])
+        self.assertIn("Blocking security issues: 6", output.getvalue())
+        self.assertIn("Review details", output.getvalue())
 
     def test_remote_terminal_controls_are_neutralized(self):
         payload = {"number": 177, "title": "safe\x1b[2Jspoof", "url": "https://example.test/\x1b[H",

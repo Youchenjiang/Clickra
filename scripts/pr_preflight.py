@@ -66,7 +66,7 @@ def validate_pr_body(body):
     return errors
 
 
-def _check_history(base, pushed_ref=None, pushed_oid=None):
+def _check_pushed_ref(pushed_ref, pushed_oid):
     errors = []
     branch = git("branch", "--show-current").stdout.strip()
     if not branch or branch in ("main", "master"):
@@ -78,6 +78,30 @@ def _check_history(base, pushed_ref=None, pushed_oid=None):
             errors.append("invalid pushed object ID")
         elif git("rev-parse", "HEAD").stdout.strip().lower() != pushed_oid.lower():
             errors.append("pushed object is not the validated HEAD")
+    return errors
+
+
+def _check_commit_range(base):
+    errors = []
+    if git("merge-base", "--is-ancestor", base, "HEAD").returncode:
+        errors.append("branch is not based on latest origin/main; rebuild/rebase and revalidate")
+    commits = git("log", "--format=%B%x00", f"{base}..HEAD")
+    if commits.returncode:
+        errors.append("cannot read commit range")
+    else:
+        for n, message in enumerate(commits.stdout.split("\0"), 1):
+            if message.strip():
+                errors.extend(f"commit {n}: {e}" for e in validate_message(message.strip()))
+    diff = git("diff", "--quiet", base, "HEAD")
+    if diff.returncode == 0:
+        errors.append("PR branch has no changes against latest origin/main")
+    elif diff.returncode != 1:
+        errors.append("cannot verify branch changes against base")
+    return errors
+
+
+def _check_history(base, pushed_ref=None, pushed_oid=None):
+    errors = _check_pushed_ref(pushed_ref, pushed_oid)
     local = git("rev-parse", base)
     remote = git("ls-remote", "--heads", "origin", "main")
     if local.returncode or remote.returncode or not remote.stdout.strip():
@@ -86,20 +110,7 @@ def _check_history(base, pushed_ref=None, pushed_oid=None):
         sha = remote.stdout.split()[0]
         if local.stdout.strip() != sha:
             errors.append("origin/main is stale; fetch and rebuild before push")
-        if git("merge-base", "--is-ancestor", base, "HEAD").returncode:
-            errors.append("branch is not based on latest origin/main; rebuild/rebase and revalidate")
-        commits = git("log", "--format=%B%x00", f"{base}..HEAD")
-        if commits.returncode:
-            errors.append("cannot read commit range")
-        else:
-            for n, message in enumerate(commits.stdout.split("\0"), 1):
-                if message.strip():
-                    errors.extend(f"commit {n}: {e}" for e in validate_message(message.strip()))
-        diff = git("diff", "--quiet", base, "HEAD")
-        if diff.returncode == 0:
-            errors.append("PR branch has no changes against latest origin/main")
-        elif diff.returncode != 1:
-            errors.append("cannot verify branch changes against base")
+        errors.extend(_check_commit_range(base))
     return errors
 
 

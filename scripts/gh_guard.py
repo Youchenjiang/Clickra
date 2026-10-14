@@ -31,21 +31,26 @@ THREAD_ID = re.compile(r"^PRRT_[A-Za-z0-9_-]+$")
 REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
 
-def _verified_thread(repo, pr_number, thread_id, execute):
-    """Find exactly one open, current thread across all GraphQL pages."""
+def _review_page(repo, pr_number, cursor, execute):
+    """Fetch and validate one review-thread page."""
     owner, name = repo.split("/")
     query = "query($owner:String!,$name:String!,$number:Int!,$after:String){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor} nodes{id isResolved isOutdated comments(last:1){totalCount nodes{id}}}}}}}"
+    argv = ["gh", "api", "graphql", "-f", f"query={query}", "-f", f"owner={owner}", "-f", f"name={name}", "-F", f"number={pr_number}"]
+    if cursor:
+        argv.extend(["-f", f"after={cursor}"])
+    data = json.loads(execute(argv))
+    if data.get("errors"):
+        raise RuntimeError(f"GitHub GraphQL query failed: {data['errors']}")
+    return data["data"]["repository"]["pullRequest"]["reviewThreads"]
+
+
+def _verified_thread(repo, pr_number, thread_id, execute):
+    """Find exactly one open, current thread across all GraphQL pages."""
     matches = []
     cursor = None
     seen = set()
     while True:
-        argv = ["gh", "api", "graphql", "-f", f"query={query}", "-f", f"owner={owner}", "-f", f"name={name}", "-F", f"number={pr_number}"]
-        if cursor:
-            argv.extend(["-f", f"after={cursor}"])
-        data = json.loads(execute(argv))
-        if data.get("errors"):
-            raise RuntimeError(f"GitHub GraphQL query failed: {data['errors']}")
-        page = data["data"]["repository"]["pullRequest"]["reviewThreads"]
+        page = _review_page(repo, pr_number, cursor, execute)
         matches.extend(t for t in page["nodes"] if t["id"] == thread_id)
         if not page["pageInfo"]["hasNextPage"]:
             break

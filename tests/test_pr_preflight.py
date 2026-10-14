@@ -123,7 +123,7 @@ class PrePushHookRefTests(unittest.TestCase):
             self.skipTest("Git Bash sh unavailable")
         hook = Path(__file__).resolve().parents[1] / "scripts" / "hooks" / "pre-push"
         return subprocess.run([shell, str(hook), "origin", "https://example.invalid/repo.git"],
-                              input=updates, capture_output=True, text=True,
+                              input=updates, capture_output=True, text=True, check=False,
                               cwd=hook.parents[2], timeout=15)
 
     def test_destination_main_master_and_ref_remapping_rejected(self):
