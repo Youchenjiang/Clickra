@@ -1,5 +1,5 @@
 ---
-description: "Resolve all unresolved PR review threads on GitHub via GraphQL mutation. Handles thread ID format, PowerShell quote escaping, and orphaned comment re-posting."
+description: "Resolve all unresolved PR review threads on GitHub via GraphQL mutation. Handles thread ID format and PowerShell quote escaping without posting comments."
 ---
 
 # PR Review Thread Resolution
@@ -71,13 +71,9 @@ mutation {
 gh api graphql -F query=@resolve_thread.graphql
 ```
 
-### Step 3: Re-post replies if needed
+### Step 3: Never post or modify comments
 
-If old review comment replies were orphaned (e.g. after branch rename), re-post them as PR conversation comments:
-
-```powershell
-gh api repos/Youchenjiang/Clickra/pulls/PR_NUMBER/comments -f body='REPLY_TEXT'
-```
+Do not create, reply to, edit, re-post, or delete PR review comments or conversation comments. The user prohibits comment replies. Resolve only a verified-fixed thread with explicit authorization. Never resolve a still-open finding solely to make the PR green.
 
 ### Step 4: Verify resolution
 
@@ -88,7 +84,7 @@ Re-run the fetch query from Step 1 and confirm all threads show `isResolved: tru
 - **REST API cannot resolve threads**: `PATCH /pulls/comments/{id}` with `resolved: true` returns success but does nothing. Always use GraphQL.
 - **Thread ID ≠ Comment ID**: Thread ID is `PRRT_...`. Comment node_id is `PRRC_...`. Using the wrong one fails silently or errors.
 - **PowerShell quote escaping**: `-f query='...'` loses backtick-escaped quotes. Always write queries to `.graphql` files and use `-F query=@file.graphql`.
-- **Branch rename orphans replies**: Renaming a branch and creating a new PR orphans old review comments and their replies. Re-post replies as PR conversation comments if they need to persist.
+- **Orphaned replies**: Do not re-post orphaned replies; report the situation locally without creating comments.
 - **SonarCloud C# common code smells to watch for**: static methods, useless init, async console, cognitive complexity, LINQ simplification, empty catch, missing `using System.Linq`.
 
 ## Reference

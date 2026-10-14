@@ -1,4 +1,4 @@
-﻿# Local Build Notes
+# Local Build Notes
 
 > **Agent & Developer Documentation Index**:
 > - [ARCHITECTURE_AND_FRAMEWORK.md](docs/ARCHITECTURE_AND_FRAMEWORK.md): .NET 8 baseline, roll-forward policy, and trimming rules.
@@ -246,6 +246,22 @@ To keep the `main` branch stable, direct pushes to `main` are prohibited. All ch
 The workflow rules above do not grant an agent permission to perform the workflow autonomously. Every external state change requires explicit, operation-specific authorization from the user in the current conversation. This includes branch creation or switching, commits, pushes and force-pushes, tag changes, PR creation or merge, review-thread resolution, release changes, workflow dispatch/rerun/cancel, and Microsoft Store submissions.
 
 Authorization is not transitive: authorization to push a tag does not authorize creating a branch, opening or merging a PR, changing the workflow, deleting a release, or submitting to Partner Center. If an authorized operation fails and a new operation is needed, stop and ask. After the user objects or revokes permission, stop all mutations; do not perform automatic rollback or cleanup.
+
+**Branch suffixes:** use lowercase kebab-case with normally 2?5 meaningful words describing the capability or problem. Avoid PR numbers, dates, versions, and vague `cleanup`/`updates`/`misc` suffixes. Examples: `feature/pdf-batch-export`, `hotfix/shell-startup-crash`. Existing prefix rules remain unchanged.
+
+### GitHub CLI operation guard
+
+Prefer `python scripts/pr_tool.py status 177` or `python scripts/pr_tool.py review 177` for contextual read-only inspection. The lower-level `gh_guard.py` rejects ordinary write verbs and all raw `gh api` requests, especially comment creation/replies. Its only write route is `resolve-thread`, which validates the exact PR and `PRRT_` ID, queries the thread, and calls only GraphQL `resolveReviewThread` when the thread remains unresolved and current. Preview: `python scripts/gh_guard.py resolve-thread --repo Youchenjiang/Clickra --pr 177 --thread PRRT_EXAMPLE`. Only after explicit per-thread user authorization and verified repair: `python scripts/gh_guard.py resolve-thread --repo Youchenjiang/Clickra --pr 177 --thread PRRT_EXAMPLE --execute --authorize 177:PRRT_EXAMPLE`. The confirmation string is not proof of user authorization. Never use this route to post comments or to hide unresolved findings.
+
+The authorization argument is a caller confirmation, **not independent proof of user consent**. This cooperative wrapper cannot intercept direct `gh`, REST calls or other tools given unrestricted GitHub credentials; actual enforcement requires separately restricted execution permissions. CI tests both allowed resolution and denied mutations without contacting GitHub.
+
+### Post-merge PR publication gate
+
+Before preparing the next PR, fetch the latest `origin/main`. Reconstruct **only the next PR scope** on top of that exact commit in a clean worktree, not an obsolete stacked branch. Verify ancestry, patch scope, commit policy, PR body format, all required local tests and NativeAOT publishing. Recheck the actual remote `main` SHA before push and before creating a PR; if it changed, rebuild and retest. Set `CLICKRA_PR_BODY_FILE` to the finalized PR body draft (external path is allowed), run `python scripts/pr_preflight.py --check --body-file <path>`, and use the installed `pre-push` hook. The hook fails closed without a body draft or `test_pdfs` fixtures. It executes the governance tests, project builds, guards, functional and fixture tests, icon checks, Store tests and three NativeAOT publishes. This is intentionally slow; do not bypass it to save time. All external writes still require specific authorization. After a PR is public, prefer additive repair commits, not history rewrites.
+
+**Review threads:** Never post, reply to, edit, repost, or delete PR comments. Check analysis findings, fix and test before explicitly authorized GraphQL-only Resolve. Do not resolve outstanding defects for appearance. GitHub-hosted reviews are post-push gates and cannot be certified by a local script.
+
+**PR body:** Keep `Summary`, `Changes`, `Validation`, optional `Scope`, and `PR Metadata` per `.github/pull_request_template.md`. Avoid internal commit ledgers. Fill metadata before opening a PR. The PR body is not a commit message.
 
 ### Pull Request Convention
 

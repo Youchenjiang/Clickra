@@ -168,6 +168,18 @@ jobs:
       - name: Run functional unit tests (fixture SKIP contract)
         run: dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --property:TreatWarningsAsErrors=true -- --functional
 
+  pr-governance-tests:
+    name: PR governance script tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check PR preflight helpers
+        run: python -m unittest discover -s tests -p 'test_pr_preflight.py' -v
+      - name: Check GitHub command denial cases
+        run: python -m unittest discover -s tests -p 'test_gh_guard.py' -v
+      - name: Check high-level PR workflow
+        run: python -m unittest discover -s tests -p 'test_pr_tool.py' -v
+
   store-publishing-tests:
     name: Store publishing unit tests
     runs-on: ubuntu-24.04

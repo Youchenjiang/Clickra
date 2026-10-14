@@ -23,6 +23,8 @@
     <PackageReference Include="Markdig" Version="1.4.0" />
     <PackageReference Include="PDFsharp" Version="6.2.4" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.31" />
+    <!-- Pin the patched security release above vulnerable transitive 8.0.1. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.2" />
     <PackageReference Include="PdfPig" Version="0.1.14" />
   </ItemGroup>
 

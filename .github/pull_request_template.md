@@ -6,6 +6,8 @@ Do not turn the PR body into an internal audit log: provenance refs, commit-hash
 ancestry math, exhaustive per-job CI output, and publication-policy narration belong in
 internal rollout evidence instead.
 
+Do not publish replies, edits, reposts, or deletions of review comments. Verify the fix, then resolve only with explicit authorization. Rebase/rebuild each next PR on freshly fetched origin/main and pass local push checks before publication.
+
 PR metadata is validated by the Repository Policy workflow (external-provider acknowledgement,
 assignee, labels, milestone)
 and listed in the checklist below.
