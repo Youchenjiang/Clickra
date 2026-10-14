@@ -40,6 +40,12 @@ are large.
 For the three selected public-source fixtures, run
 `python scripts/fetch_public_pdf_fixtures.py 2407 pentest togll` followed by
 `python tests/PdfRegression/test_public_pdf_sources.py` (requires PyMuPDF).
+To exercise the actual Clickra translation pipeline without contacting any
+translation provider, use
+`python tests/PdfRegression/test_public_translation_identity.py` on a machine
+with the .NET SDK and the full Clickra source checkout. This opt-in test runs
+all three PDFs in identity mode and checks basic output integrity. It does not
+test translation language quality or replace curated visual regression checks.
 The downloader verifies pinned SHA-256 digests, stores PDFs in the ignored
 `test_pdfs/downloaded_candidates/` directory and does not commit them to Git.
 This validates retrieval, PDF parsing and extractable text, **not translation
