@@ -24,16 +24,24 @@ def git(*args):
     return invoke(["git", *args], timeout=GIT_TIMEOUT)
 
 
+def _valid_commit_subject(header):
+    return (bool(SUBJECT.fullmatch(header)) and not header.endswith(".")
+            and len(header) <= 72 and header.split(": ", 1)[-1].lower() not in VAGUE)
+
+
+def _numbered_commit_body(lines):
+    return next((line.lstrip(" \t") for line in lines[1:]
+                 if not line.startswith("#") and BODY_NUMBER.match(line.lstrip(" \t"))
+                 and BODY_NUMBER.sub("", line.lstrip(" \t"), count=1).strip()), None)
+
+
 def validate_message(message):
     lines = message.splitlines()
     header = lines[0].strip() if lines else ""
     errors = []
-    if (not SUBJECT.fullmatch(header) or header.endswith(".") or len(header) > 72
-            or header.split(": ", 1)[-1].lower() in VAGUE):
+    if not _valid_commit_subject(header):
         errors.append("invalid conventional commit header")
-    numbered = next((line.lstrip(" \t") for line in lines[1:]
-                     if not line.startswith("#") and BODY_NUMBER.match(line.lstrip(" \t"))
-                     and BODY_NUMBER.sub("", line.lstrip(" \t"), count=1).strip()), None)
+    numbered = _numbered_commit_body(lines)
     if not numbered:
         errors.append("missing numbered English commit body")
     else:
