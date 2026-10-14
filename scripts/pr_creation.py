@@ -45,7 +45,7 @@ def _metadata(repo, label, milestone, assignee):
             raise ValueError("GitHub assignee is not eligible")
 
 
-def _current_branch(repo, branch):
+def current_branch(repo, branch):
     if not REPOSITORY.fullmatch(repo) or not BRANCH.fullmatch(branch):
         raise ValueError("invalid repository or development branch")
     head = _read(["git", "rev-parse", "HEAD"])
@@ -89,7 +89,7 @@ def create(repo, branch, *, title, body_file, label, milestone=None, assignee=No
            execute=False, authorization=None, runner=subprocess.run):
     """Preview first; one authorized create attempt, then independently re-read."""
     body, data = _requested_details(title, body_file, label, milestone, assignee)
-    head = _current_branch(repo, branch)
+    head = current_branch(repo, branch)
     _metadata(repo, label, milestone, assignee)
     fingerprint = hashlib.sha256(
         json.dumps([title, data, label, milestone, assignee], ensure_ascii=False).encode("utf-8")

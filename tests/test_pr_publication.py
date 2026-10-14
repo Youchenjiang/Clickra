@@ -33,12 +33,12 @@ class PublicationTests(unittest.TestCase):
                 runner.assert_not_called()
 
     def test_remote_head_requires_exact_ref(self):
-        with patch.object(pr_publication, "executable", return_value="/bin/git"), \
+        with self.assertRaisesRegex(RuntimeError, "verified"), \
+             patch.object(pr_publication, "executable", return_value="/bin/git"), \
              patch.object(pr_publication.subprocess, "run",
                           return_value=SimpleNamespace(returncode=0,
                                                        stdout="a" * 40 + "\trefs/heads/other\n")):
-            with self.assertRaisesRegex(RuntimeError, "verified"):
-                pr_publication.remote_head("feature/workflow")
+            pr_publication.remote_head("feature/workflow")
 
     def test_successful_push_runs_hook_without_force_and_verifies_remote(self):
         with TemporaryDirectory() as folder:
@@ -69,8 +69,8 @@ class PublicationTests(unittest.TestCase):
         with TemporaryDirectory() as folder:
             body = Path(folder) / "body.md"
             body.write_text("draft", encoding="utf-8")
-            with patch.object(pr_publication, "invoke", side_effect=[
+            with self.assertRaisesRegex(ValueError, "protected"), \
+                 patch.object(pr_publication, "invoke", side_effect=[
                     SimpleNamespace(stdout="main", returncode=0),
                     SimpleNamespace(stdout="a" * 40, returncode=0)]):
-                with self.assertRaisesRegex(ValueError, "protected"):
-                    pr_publication.push(str(body), None)
+                pr_publication.push(str(body), None)

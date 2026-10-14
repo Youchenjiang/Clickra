@@ -26,7 +26,7 @@ class CreateTests(unittest.TestCase):
             body = self.body_file(folder)
             kwargs = dict(title="feat(agent): integrate PR governance", body_file=str(body),
                           label="agent", milestone="Plan")
-            with patch.object(pr_creation, "_current_branch", return_value="a" * 40), \
+            with patch.object(pr_creation, "current_branch", return_value="a" * 40), \
                  patch.object(pr_creation, "_metadata"), \
                  patch.object(pr_creation.subprocess, "run") as runner:
                 preview = pr_creation.create("user/repo", "feature/workflow", **kwargs)
@@ -42,7 +42,7 @@ class CreateTests(unittest.TestCase):
             kwargs = dict(title="feat(agent): integrate PR governance", body_file=str(body),
                           label="agent", milestone="Plan")
             sha = "a" * 40
-            with patch.object(pr_creation, "_current_branch", return_value=sha), \
+            with patch.object(pr_creation, "current_branch", return_value=sha), \
                  patch.object(pr_creation, "_metadata"), \
                  patch.object(pr_creation, "_read", return_value=(
                      '{"number":123,"headRefOid":"' + sha + '","baseRefName":"main",'
@@ -71,15 +71,15 @@ class CreateTests(unittest.TestCase):
             ("git", "ls-remote", "--heads", "origin", "main"): "b" * 40 + "\trefs/heads/main",
             ("gh", "pr", "list", "--state", "all", "--head", "feature/workflow",
              "--repo", "user/repo", "--json", "number"): '[{"number":123}]'}
-        with patch.object(pr_creation, "_read", side_effect=lambda argv: values[tuple(argv)]), \
+        with self.assertRaisesRegex(RuntimeError, "existing"), \
+             patch.object(pr_creation, "_read", side_effect=lambda argv: values[tuple(argv)]), \
              patch.object(pr_creation, "remote_head", return_value=sha):
-            with self.assertRaisesRegex(RuntimeError, "existing"):
-                pr_creation._current_branch("user/repo", "feature/workflow")
+            pr_creation.current_branch("user/repo", "feature/workflow")
 
     def test_invalid_milestone_fails_during_preview(self):
         with TemporaryDirectory() as folder:
             body = self.body_file(folder)
-            with patch.object(pr_creation, "_current_branch", return_value="a" * 40), \
+            with patch.object(pr_creation, "current_branch", return_value="a" * 40), \
                  patch.object(pr_creation, "executable", return_value="/bin/gh"), \
                  patch.object(pr_creation.subprocess, "run") as runner:
                 runner.side_effect = [
@@ -96,7 +96,7 @@ class CreateTests(unittest.TestCase):
         with TemporaryDirectory() as folder:
             body = self.body_file(folder)
             options = dict(title="feat(agent): test", body_file=str(body), label="agent")
-            with patch.object(pr_creation, "_current_branch", return_value="a" * 40), \
+            with patch.object(pr_creation, "current_branch", return_value="a" * 40), \
                  patch.object(pr_creation, "_metadata"), \
                  patch.object(pr_creation, "executable", return_value="/bin/gh"):
                 approval = pr_creation.create("user/repo", "feature/workflow", **options)["preview"]
