@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Identify changes that require the supplementary PDF translation fixture suite."""
+"""Identify changes requiring the public PDF translation E2E regression suite."""
 import argparse
 import subprocess
 import sys

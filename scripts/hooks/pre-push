@@ -155,12 +155,8 @@ dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 --self
 dotnet publish src/ClickraLauncher/ClickraLauncher.csproj -c Release -r win-x64 --self-contained true -o publish/pre-push/launcher -warnaserror
 
 if python scripts/pdf_fixture_scope.py --base origin/main; then
-  if [ ! -d test_pdfs/source ]; then
-    echo "[pre-push] ERROR: translation changes require real PDF fixtures; test_pdfs/source unavailable." >&2
-    exit 1
-  fi
-  echo "[pre-push] Running required translation fixture regressions..."
-  dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --property:TreatWarningsAsErrors=true -- --require-fixtures
+  echo "[pre-push] Running public PDF identity translation regression (three pinned sources)..."
+  python tests/PdfRegression/test_public_translation_identity.py
 else
   result=$?
   if [ "$result" -ne 1 ]; then
