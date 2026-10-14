@@ -24,8 +24,7 @@ def executable(name):
     return str(resolved)
 
 
-def invoke(argv, *, capture=True, env=None, timeout=30):
-    """Run a previously authorized git/gh command using an absolute executable."""
+def _validate_argv(argv):
     if not argv or argv[0] not in {"git", "gh"}:
         raise ValueError("only git and gh are allowed")
     if any(not isinstance(a, str) or "\x00" in a or "\n" in a or "\r" in a for a in argv):
@@ -38,6 +37,11 @@ def invoke(argv, *, capture=True, env=None, timeout=30):
                               not (argv[1] == "api" and argv[2].startswith("repos/") and
                                    "/check-runs?per_page=" in argv[2]))):
         raise ValueError("unauthorized GitHub operation")
+
+
+def invoke(argv, *, capture=True, env=None, timeout=30):
+    """Run a previously authorized git/gh command using an absolute executable."""
+    _validate_argv(argv)
     if env is not None and not isinstance(env, dict):
         raise ValueError("invalid environment")
     return subprocess.run([executable(argv[0]), *argv[1:]], text=True,

@@ -4,7 +4,6 @@ import argparse
 import re
 import subprocess
 import sys
-import shutil
 from pathlib import Path
 from process_guard import invoke
 

@@ -9,7 +9,6 @@ import re
 import subprocess
 import sys
 import json
-import shutil
 from process_guard import invoke
 
 # Exact read-only command verbs. Unknown options/subcommands fail closed.
