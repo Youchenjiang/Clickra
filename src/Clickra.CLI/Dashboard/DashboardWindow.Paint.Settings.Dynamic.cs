@@ -95,7 +95,6 @@ namespace Clickra.UI;
             DrawDynamicSettingHeader(g, descriptor, contentX, y);
             y += SettingsLayout.DynamicNumberHeaderGap;
 
-            var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
             int value = SettingsController.ReadInt(descriptor);
             if (_subFont != null)
             {
