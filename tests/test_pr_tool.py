@@ -56,7 +56,7 @@ class PrToolTests(unittest.TestCase):
         self.assertIn("External provider", output.getvalue())
         self.assertNotIn("\x1b", output.getvalue())
 
-    def test_diagnose_separates_passing_analyzer_legacy_comments(self):
+    def test_diagnose_does_not_hide_deepsource_comments_when_another_analyzer_passes(self):
         data = {"headRefOid": "a" * 40, "statusCheckRollup": [
             {"context": "DeepSource: Python", "state": "SUCCESS"}]}
         threads = [
@@ -68,8 +68,8 @@ class PrToolTests(unittest.TestCase):
              redirect_stdout(StringIO()) as output:
             failed, active = pr_tool.diagnose("org/repo", 123, lambda _argv: json.dumps({"check_runs": []}))
         self.assertFalse(failed)
-        self.assertEqual(1, len(active))
-        self.assertIn("potentially historical unresolved thread(s): 2", output.getvalue())
+        self.assertEqual(2, len(active))
+        self.assertIn("potentially historical unresolved thread(s): 1", output.getvalue())
         self.assertIn("a" * 40, output.getvalue())
 
     def test_diagnose_reads_external_check_run_summary(self):
