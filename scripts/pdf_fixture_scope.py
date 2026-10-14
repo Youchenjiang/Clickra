@@ -13,6 +13,10 @@ TRANSLATION_FILES = (
     "src/Clickra.Core/Processors/FileProcessing/PdfTranslateProcessor.cs",
     "tests/Clickra.Core.Tests/TestSuite.Translation.cs",
     "src/Clickra.Core/FileProcessor.cs",
+    "scripts/fetch_public_pdf_fixtures.py",
+    "scripts/pdf_fixture_scope.py",
+    "scripts/hooks/pre-push",
+    ".github/workflows/ci.yml",
 )
 
 

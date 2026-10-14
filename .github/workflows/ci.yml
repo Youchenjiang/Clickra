@@ -219,7 +219,9 @@ jobs:
         id: scope
         shell: pwsh
         run: |
-          $base = if ('${{ github.event_name }}' -eq 'pull_request') { 'origin/${{ github.base_ref }}' } else { 'HEAD^' }
+          # Compare the full branch against its base, never just HEAD^: a
+          # multi-commit push can otherwise miss translation changes.
+          $base = if ('${{ github.event_name }}' -eq 'pull_request') { 'origin/${{ github.base_ref }}' } else { 'origin/main' }
           python scripts/pdf_fixture_scope.py --base $base
           $result = $LASTEXITCODE
           if ($result -eq 0) {
