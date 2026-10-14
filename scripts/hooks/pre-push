@@ -69,12 +69,21 @@ dotnet publish src/Clickra.CLI/Clickra.csproj -c Release -r win-x64 --self-conta
 dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 --self-contained true -o publish/pre-push/shell -warnaserror
 dotnet publish src/ClickraLauncher/ClickraLauncher.csproj -c Release -r win-x64 --self-contained true -o publish/pre-push/launcher -warnaserror
 
-if [ -d test_pdfs ]; then
-  echo "[pre-push] Running required fixture regression tests..."
+# Private PDF baselines are relevant only to translation changes. This Guard
+# branch must not block unrelated governance changes on gitignored fixtures.
+if ! git diff --name-only origin/main...HEAD > /dev/null; then
+  echo "[pre-push] ERROR: cannot determine translation scope." >&2
+  exit 1
+fi
+if git diff --name-only origin/main...HEAD | grep -E '^(src/Clickra.Core/Processors/PdfTranslation/|src/Clickra.Core/Processors/FileProcessing/PdfTranslateProcessor\.cs$|src/Clickra.Core/FileProcessor\.cs$|tests/PdfRegression/|tests/Clickra.Core.Tests/TestSuite\.Translation\.cs$)' > /dev/null; then
+  if [ ! -d test_pdfs/source ]; then
+    echo "[pre-push] ERROR: PDF translation changes require verified PDF regressions; missing test_pdfs/source." >&2
+    exit 1
+  fi
+  echo "[pre-push] Running translation fixture regressions..."
   dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --property:TreatWarningsAsErrors=true -- --require-fixtures
 else
-  echo "[pre-push] ERROR: test_pdfs fixtures unavailable. Run the fixture CI job or supply fixtures before pushing." >&2
-  exit 1
+  echo "[pre-push] No translation changes; private PDF fixture suite is supplementary."
 fi
 
 echo "All pre-push PR checks passed."
