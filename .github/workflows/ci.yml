@@ -179,6 +179,8 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_gh_guard.py' -v
       - name: Check high-level PR workflow
         run: python -m unittest discover -s tests -p 'test_pr_tool.py' -v
+      - name: Check provider report retrieval
+        run: python -m unittest discover -s tests -p 'test_pr_reports.py' -v
       - name: Check guarded PR publication and acceptance
         run: |
           python -m unittest discover -s tests -p 'test_pr_publication.py' -v

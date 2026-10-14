@@ -183,7 +183,7 @@ public static class SettingsController
     {
         RequireEditor(descriptor, SettingEditorKind.Choice);
         if (descriptor.Options is { Count: > 0 } &&
-            !descriptor.Options.Any(option => string.Equals(option.Value, value, StringComparison.OrdinalIgnoreCase)) &&
+            descriptor.Options.All(option => !string.Equals(option.Value, value, StringComparison.OrdinalIgnoreCase)) &&
             !string.Equals(descriptor.Key, ClickraSettings.OutputDir, StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentOutOfRangeException(nameof(value), value, $"Value is not registered for setting '{descriptor.Key}'.");

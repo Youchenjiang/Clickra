@@ -10,6 +10,8 @@ python scripts/pr_tool.py audit 177
 python scripts/pr_tool.py audit 177 --json
 python scripts/pr_tool.py sonar 177
 python scripts/pr_tool.py diagnose 177
+python scripts/pr_tool.py diagnose 177 --reports failed
+python scripts/pr_tool.py diagnose 177 --reports all
 python scripts/pr_tool.py sonar 177 --json
 python scripts/pr_tool.py audit 177 --sonar --json
 python scripts/pr_tool.py verify 177
@@ -50,6 +52,11 @@ agent instructions, not OS-enforced command interception or credential isolation
 For failing DeepSource checks, `diagnose` reads actionable inline review
 comments from GitHub and displays their findings without another API token.
 An unresolved outdated thread is still reported separately, not auto-resolved.
+`diagnose --reports failed` (default) fetches reports only for failing supported
+providers; `--reports all` fetches available reports for passing providers too.
+The read-only HTML fetcher permits only HTTPS links to known provider domains,
+limits response size, and reports inaccessible or client-rendered content as
+incomplete rather than treating it as a passing analysis.
 
 If a temporary PR body file was lost after creation, use the read-only `body`
 command to export the existing PR description into a **new** UTF-8 file and

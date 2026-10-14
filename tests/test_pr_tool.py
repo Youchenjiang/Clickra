@@ -12,6 +12,26 @@ import pr_tool
 
 
 class PrToolTests(unittest.TestCase):
+    def test_diagnose_report_modes_only_fetch_selected_providers(self):
+        data = {"headRefOid": "a" * 40, "statusCheckRollup": [
+            {"context": "DeepSource: C#", "state": "FAILURE", "targetUrl": "https://app.deepsource.com/fail"},
+            {"context": "DeepSource: Python", "state": "SUCCESS", "targetUrl": "https://app.deepsource.com/pass"}]}
+        urls = []
+        def fetch(url):
+            urls.append(url)
+            return {"bytes": 100, "has_ssr_issues": False, "text": "report"}
+        with patch.object(pr_tool, "inspect", return_value=data), \
+             patch.object(pr_tool, "review_threads", return_value=[]), \
+             redirect_stdout(StringIO()):
+            pr_tool.diagnose("org/repo", 180, lambda _argv: '{"check_runs":[]}', fetch=fetch)
+        self.assertEqual(["https://app.deepsource.com/fail"], urls)
+        urls.clear()
+        with patch.object(pr_tool, "inspect", return_value=data), \
+             patch.object(pr_tool, "review_threads", return_value=[]), \
+             redirect_stdout(StringIO()):
+            pr_tool.diagnose("org/repo", 180, lambda _argv: '{"check_runs":[]}', reports="all", fetch=fetch)
+        self.assertEqual(["https://app.deepsource.com/fail", "https://app.deepsource.com/pass"], urls)
+
     def test_export_body_checks_identity_and_never_overwrites(self):
         calls = []
         def fake(argv):
