@@ -21,6 +21,8 @@ required flag and URL in `checks`. Do not routinely run `gh pr checks` after it.
 Use `pr_tool.py diagnose` for failures. Before exceptional native `gh`, identify
 the specific missing diagnostic capability and record the reason; being
 read-only does not automatically justify bypassing the high-level tool.
+If the temporary PR body was lost, use `pr_tool.py body <PR> --output <new-file>`
+to recover it before `push`, instead of invoking `gh pr view` directly.
 
 ## PR Review Safety (Non-negotiable)
 

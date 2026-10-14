@@ -12,6 +12,7 @@ python scripts/pr_tool.py sonar 177
 python scripts/pr_tool.py sonar 177 --json
 python scripts/pr_tool.py audit 177 --sonar --json
 python scripts/pr_tool.py verify 177
+python scripts/pr_tool.py body 177 --output 'C:\path\to\recovered-pr-body.md'
 python scripts/pr_tool.py ready --body-file 'C:\path\to\pr-body.md'
 python scripts/pr_tool.py prepare --body-file 'C:\path\to\pr-body.md'
 python scripts/pr_tool.py prepare --initial --body-file 'C:\path\to\pr-body.md'
@@ -44,6 +45,12 @@ routine `gh pr checks` calls; use `diagnose` for failing check details. Native
 read-only `gh` is an exception only for a specific missing diagnostic capability;
 document that gap and the reason before invoking it. These are cooperative
 agent instructions, not OS-enforced command interception or credential isolation.
+
+If a temporary PR body file was lost after creation, use the read-only `body`
+command to export the existing PR description into a **new** UTF-8 file and
+pass that path to `push`. The export refuses to overwrite any existing file
+and verifies the returned PR number and nonempty body; this avoids falling
+back to direct `gh pr view` merely to recover publication metadata.
 
 `sonar` reads the SonarQube Cloud `api/issues/search` endpoint for the
 selected PR, requesting `OPEN,CONFIRMED` issues and paging through all results.
