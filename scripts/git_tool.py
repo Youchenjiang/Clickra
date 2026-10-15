@@ -14,6 +14,8 @@ import subprocess
 import sys
 
 MAIN_BRANCH_REF = "refs/heads/main"
+REMOTE_MAIN_REF = "refs/remotes/origin/main"
+PORCELAIN_STATUS = "--porcelain=v1"
 BRANCH_PATTERN = re.compile(r"^(feature|fix|refactor|docs|test)/[a-z0-9][a-z0-9-]*$")
 
 
@@ -46,7 +48,8 @@ def gh(*args):
 def worktree_branches():
     records = []
     for block in output("worktree", "list", "--porcelain").split("\n\n"):
-        entry = dict(line.split(" ", 1) for line in block.splitlines() if " " in line)
+        entry = {key: value for key, value in
+                 (line.split(" ", 1) for line in block.splitlines() if " " in line)}
         if entry:
             records.append(entry)
     return records
@@ -60,7 +63,7 @@ def common_state():
     remote_main = output("ls-remote", "--heads", "origin", "main").split()
     if len(remote_main) != 2 or remote_main[1] != MAIN_BRANCH_REF:
         raise ValueError("cannot verify origin/main")
-    if output("rev-parse", "refs/remotes/origin/main") != remote_main[0]:
+    if output("rev-parse", REMOTE_MAIN_REF) != remote_main[0]:
         raise ValueError("origin/main is stale; fetch first")
     local_main = output("rev-parse", MAIN_BRANCH_REF)
     if not ancestor(local_main, remote_main[0]):
@@ -73,6 +76,60 @@ def common_state():
             "main": local_main, "remote_main": remote_main[0]}
 
 
+def next_snapshot(state, branch):
+    if not branch or not BRANCH_PATTERN.fullmatch(branch):
+        raise ValueError("next requires a safe new feature branch name")
+    if git("show-ref", "--verify", "--quiet", f"refs/heads/{branch}", check=False).returncode == 0:
+        raise ValueError("branch already exists; refuse to overwrite")
+    if output("ls-remote", "--heads", "origin", branch):
+        raise ValueError("remote branch already exists")
+    target = Path(state["root"]).parent / ("Clickra-pr-" + branch.split("/", 1)[1])
+    if target.exists() or any(Path(w["worktree"]).resolve() == target for w in worktree_branches()):
+        raise ValueError("target worktree path already exists")
+    state.update(target_branch=branch, target_path=str(target))
+
+
+def merged_pr_evidence(state, pr):
+    if not isinstance(pr, int) or pr < 1:
+        raise ValueError("cleanup requires a positive PR number")
+    info = gh("pr", "view", str(pr), "--json",
+              "state,headRefName,headRefOid,mergeCommit,baseRefName")
+    target_branch = info.get("headRefName")
+    if (info.get("state") != "MERGED" or info.get("baseRefName") != "main"
+            or not target_branch or not info.get("mergeCommit", {}).get("oid")):
+        raise ValueError("PR merge evidence is incomplete")
+    head = info.get("headRefOid")
+    if not head or not ancestor(head, state["remote_main"]):
+        raise ValueError("merged PR head not reachable from origin/main")
+    if not ancestor(info["mergeCommit"]["oid"], state["remote_main"]):
+        raise ValueError("merge commit not reachable from origin/main")
+    if output("ls-remote", "--heads", "origin", target_branch):
+        raise ValueError("remote PR branch still exists")
+    if target_branch in (state["branch"], "main"):
+        raise ValueError("cleanup must run from another worktree")
+    return info, target_branch, head
+
+
+def cleanup_snapshot(state, pr):
+    info, target_branch, head = merged_pr_evidence(state, pr)
+    target_ref = f"refs/heads/{target_branch}"
+    if git("show-ref", "--verify", "--quiet", target_ref, check=False).returncode:
+        raise ValueError("local PR branch not found")
+    target_head = output("rev-parse", target_ref)
+    if target_head != head or not ancestor(target_head, state["remote_main"]):
+        raise ValueError("local branch differs from merged PR head")
+    matches = [w for w in worktree_branches() if w.get("branch") == target_ref]
+    if len(matches) != 1:
+        raise ValueError("expected exactly one dedicated PR worktree")
+    target = Path(matches[0]["worktree"]).resolve()
+    if target.parent != Path(state["root"]).parent or not target.name.startswith("Clickra-pr-"):
+        raise ValueError("refuse to remove a non-dedicated worktree")
+    if git("-C", str(target), "status", PORCELAIN_STATUS).stdout.strip():
+        raise ValueError("target worktree has uncommitted changes")
+    state.update(pr=pr, target_branch=target_branch, target_path=str(target),
+                 target_head=target_head, merge_commit=info["mergeCommit"]["oid"])
+
+
 def lifecycle_snapshot(action, *, pr=None, branch=None):
     if action not in ("cleanup", "next"):
         raise ValueError("unsupported lifecycle action")
@@ -80,52 +137,9 @@ def lifecycle_snapshot(action, *, pr=None, branch=None):
     if not state["branch"]:
         raise ValueError("detached HEAD unsupported")
     if action == "next":
-        if not branch or not BRANCH_PATTERN.fullmatch(branch):
-            raise ValueError("next requires a safe new feature branch name")
-        if git("show-ref", "--verify", "--quiet", f"refs/heads/{branch}", check=False).returncode == 0:
-            raise ValueError("branch already exists; refuse to overwrite")
-        if output("ls-remote", "--heads", "origin", branch):
-            raise ValueError("remote branch already exists")
-        # Restrict new worktrees to predictable siblings of the main repository.
-        target = Path(state["root"]).parent / ("Clickra-pr-" + branch.split("/", 1)[1])
-        if target.exists() or any(Path(w["worktree"]).resolve() == target for w in worktree_branches()):
-            raise ValueError("target worktree path already exists")
-        state.update(target_branch=branch, target_path=str(target))
+        next_snapshot(state, branch)
     else:
-        if not isinstance(pr, int) or pr < 1:
-            raise ValueError("cleanup requires a positive PR number")
-        info = gh("pr", "view", str(pr), "--json",
-                  "state,headRefName,headRefOid,mergeCommit,baseRefName")
-        target_branch = info.get("headRefName")
-        if (info.get("state") != "MERGED" or info.get("baseRefName") != "main"
-                or not target_branch or not info.get("mergeCommit", {}).get("oid")):
-            raise ValueError("PR merge evidence is incomplete")
-        head = info.get("headRefOid")
-        if not head or not ancestor(head, state["remote_main"]):
-            raise ValueError("merged PR head not reachable from origin/main")
-        if not ancestor(info["mergeCommit"]["oid"], state["remote_main"]):
-            raise ValueError("merge commit not reachable from origin/main")
-        if output("ls-remote", "--heads", "origin", target_branch):
-            raise ValueError("remote PR branch still exists")
-        if target_branch == state["branch"] or target_branch == "main":
-            raise ValueError("cleanup must run from another worktree")
-        target_ref = f"refs/heads/{target_branch}"
-        if git("show-ref", "--verify", "--quiet", target_ref, check=False).returncode:
-            raise ValueError("local PR branch not found")
-        target_head = output("rev-parse", target_ref)
-        if target_head != head or not ancestor(target_head, state["remote_main"]):
-            raise ValueError("local branch differs from merged PR head")
-        matches = [w for w in worktree_branches() if w.get("branch") == target_ref]
-        if len(matches) != 1:
-            raise ValueError("expected exactly one dedicated PR worktree")
-        target = Path(matches[0]["worktree"]).resolve()
-        if (target.parent != Path(state["root"]).parent or
-                not target.name.startswith("Clickra-pr-")):
-            raise ValueError("refuse to remove a non-dedicated worktree")
-        if git("-C", str(target), "status", "--porcelain=v1").stdout.strip():
-            raise ValueError("target worktree has uncommitted changes")
-        state.update(pr=pr, target_branch=target_branch, target_path=str(target),
-                     target_head=target_head, merge_commit=info["mergeCommit"]["oid"])
+        cleanup_snapshot(state, pr)
     return state
 
 
@@ -152,7 +166,7 @@ def lifecycle_run(action, *, pr=None, branch=None, execute=False, authorize=None
 
 
 def assert_clean():
-    if output("status", "--porcelain=v1"):
+    if output("status", PORCELAIN_STATUS):
         raise ValueError("worktree contains tracked or untracked changes")
     if output("rev-parse", "--is-shallow-repository") != "false":
         raise ValueError("shallow history cannot be safely evaluated")
@@ -211,8 +225,8 @@ def status():
     print(json.dumps({"branch": output("branch", "--show-current"),
                       "head": output("rev-parse", "HEAD"),
                       "main": output("rev-parse", MAIN_BRANCH_REF),
-                      "origin_main": output("rev-parse", "refs/remotes/origin/main"),
-                      "dirty": bool(output("status", "--porcelain=v1")),
+                      "origin_main": output("rev-parse", REMOTE_MAIN_REF),
+                      "dirty": bool(output("status", PORCELAIN_STATUS)),
                       "worktrees": output("worktree", "list").splitlines()}, indent=2))
 
 

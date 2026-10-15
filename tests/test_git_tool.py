@@ -103,9 +103,9 @@ class GitToolTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             git_tool.lifecycle_run("cleanup", pr=185, execute=True,
                                    authorize=git_tool.authorization(state))
-        self.assertEqual([call.args[:2] for call in command.call_args_list],
-                         [("update-ref", git_tool.MAIN_BRANCH_REF),
-                          ("worktree", "remove"), ("branch", "-d"), ("worktree", "prune")])
+        self.assertEqual([("update-ref", git_tool.MAIN_BRANCH_REF),
+                          ("worktree", "remove"), ("branch", "-d"), ("worktree", "prune")],
+                         [call.args[:2] for call in command.call_args_list])
 
     @patch.object(git_tool, "lifecycle_snapshot")
     @patch.object(git_tool, "git")
@@ -124,9 +124,10 @@ class GitToolTests(unittest.TestCase):
     def test_lifecycle_rejects_state_drift(self, command, snapshot):
         state = dict(self.state(), action="next", target_branch="feature/new")
         snapshot.side_effect = (state, dict(state, remote="changed"))
+        token = git_tool.authorization(state)
         with self.assertRaisesRegex(ValueError, "changed"):
             git_tool.lifecycle_run("next", branch="feature/new", execute=True,
-                                   authorize=git_tool.authorization(state))
+                                   authorize=token)
         command.assert_not_called()
 
 
