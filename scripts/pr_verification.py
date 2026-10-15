@@ -5,9 +5,9 @@ SKIP = {"SKIPPED", "SKIPPING", "NEUTRAL"}
 PENDING = {"PENDING", "QUEUED", "IN_PROGRESS", "WAITING", "REQUESTED", "EXPECTED"}
 REQUIRED = {"PR and commit policy", "PR governance script tests", "DeepSource: Python",
             "DeepSource: C#", "DeepSource: Secrets", "SonarCloud", "SonarCloud Code Analysis",
-            "Deterministic tests (no fixtures)", "Fixture regression tests",
+            "Deterministic tests (no fixtures)", "Public PDF translation regression",
             "Store publishing unit tests",
-            "Build Clickra.Core", "Build Clickra.Fluent", "Build Core / CLI / Shell / Setup",
+            "Build Clickra.Core", "Build Clickra.Fluent",
             "Publish CLI (NativeAOT)", "Publish Shell Extension (NativeAOT)",
             "Publish ClickraLauncher (NativeAOT)"}
 

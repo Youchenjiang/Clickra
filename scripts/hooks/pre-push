@@ -16,8 +16,8 @@
 #   baseline tracked as PR-B in docs/development/PR46_POST_MERGE_AUDIT_AND_OPTIONS.md.
 # - Never bypass required checks with git push --no-verify. A failed gate must
 #   be repaired or explicitly handled through the project's exception process.
-# - The hook intentionally runs full NativeAOT and fixture regression tests.
-#   Missing fixtures fail closed; no green result is inferred from skipped tests.
+# - Real-document PDF fixtures are supplementary unless translation code or
+#   regression coverage changes; those changes require the fixture suite.
 
 set -e
 
@@ -154,21 +154,16 @@ dotnet publish src/Clickra.CLI/Clickra.csproj -c Release -r win-x64 --self-conta
 dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 --self-contained true -o publish/pre-push/shell -warnaserror
 dotnet publish src/ClickraLauncher/ClickraLauncher.csproj -c Release -r win-x64 --self-contained true -o publish/pre-push/launcher -warnaserror
 
-# Private PDF baselines are relevant only to translation changes. This Guard
-# branch must not block unrelated governance changes on gitignored fixtures.
-if ! git diff --name-only origin/main...HEAD > /dev/null; then
-  echo "[pre-push] ERROR: cannot determine translation scope." >&2
-  exit 1
-fi
-if git diff --name-only origin/main...HEAD | grep -E '^(src/Clickra.Core/Processors/PdfTranslation/|src/Clickra.Core/Processors/FileProcessing/PdfTranslateProcessor\.cs$|src/Clickra.Core/FileProcessor\.cs$|tests/PdfRegression/|tests/Clickra.Core.Tests/TestSuite\.Translation\.cs$)' > /dev/null; then
-  if [ ! -d test_pdfs/source ]; then
-    echo "[pre-push] ERROR: PDF translation changes require verified PDF regressions; missing test_pdfs/source." >&2
-    exit 1
-  fi
-  echo "[pre-push] Running translation fixture regressions..."
-  dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --property:TreatWarningsAsErrors=true -- --require-fixtures
+if python scripts/pdf_fixture_scope.py --base origin/main; then
+  echo "[pre-push] Running public PDF identity translation regression (three pinned sources)..."
+  python tests/PdfRegression/test_public_translation_identity.py
 else
-  echo "[pre-push] No translation changes; private PDF fixture suite is supplementary."
+  result=$?
+  if [ "$result" -ne 1 ]; then
+    echo "[pre-push] ERROR: cannot determine PDF fixture requirement." >&2
+    exit "$result"
+  fi
+  echo "[pre-push] Real PDF fixture regressions supplementary for this change."
 fi
 
 echo "All pre-push PR checks passed."

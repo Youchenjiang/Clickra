@@ -205,47 +205,49 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_*store*.py' -v
 
   fixture-regression-tests:
-    # PR-B (docs/development/PR46_POST_MERGE_AUDIT_AND_OPTIONS.md): the
-    # fixture-dependent layout suite gets its own gate instead of being
-    # folded into the deterministic job. The fixtures live outside git
-    # (test_pdfs/ is git-ignored because the PDFs are large), so this job
-    # only runs the suite when the checkout actually carries them; otherwise
-    # the suite step is skipped (reported as skipped, not red) rather than
-    # pretending to pass. Once a fixture source (LFS / artifact / storage)
-    # exists, wire it into this job before checkout and the suite runs here
-    # as-is with --require-fixtures so any missing fixture fails the gate
-    # loudly. (exit 78 is NOT a GitHub Actions neutral signal - only
-    # CircleCI treats it that way - and hashFiles is only valid in
-    # step-level if, so the availability guard step decides the skip.)
-    name: Fixture regression tests
+    # Public, checksum-pinned source PDFs only; private legacy translated
+    # baselines are not needed. This job fails closed for translation changes.
+    name: Public PDF translation regression
     runs-on: windows-latest
-    # Intentionally independent from build. When fixtures exist, dotnet run
-    # builds its own test runner; without fixtures this job only reports the skip.
-    timeout-minutes: 30
-    # hashFiles is only valid in step-level if, so the skip decision lives
-    # in a guard step. The job itself always runs; with no fixtures the guard
-    # step succeeds and the actual suite step is skipped, which GitHub
-    # reports as skipped, not red.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
-      - name: Check fixture availability
-        id: fixtures
+      - name: Determine translation regression scope
+        id: scope
         shell: pwsh
         run: |
-          if (Test-Path 'test_pdfs/source') {
-            Write-Output "has-fixtures=true"
+          # Compare the full branch against its base, never just HEAD^: a
+          # multi-commit push can otherwise miss translation changes.
+          $base = if ('${{ github.event_name }}' -eq 'pull_request') { 'origin/${{ github.base_ref }}' } else { 'origin/main' }
+          python scripts/pdf_fixture_scope.py --base $base
+          $result = $LASTEXITCODE
+          if ($result -eq 0) {
+            "required=true" >> $env:GITHUB_OUTPUT
+          } elseif ($result -eq 1) {
+            "required=false" >> $env:GITHUB_OUTPUT
           } else {
-            Write-Output "has-fixtures=false"
-            Write-Host "test_pdfs/source not present; fixture suite step skipped."
+            throw "Could not determine PDF regression scope (exit $result)"
           }
 
       - name: Setup .NET
-        if: steps.fixtures.outputs.has-fixtures == 'true'
+        if: steps.scope.outputs.required == 'true'
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Run self-built test runner (with fixtures, missing = fail)
-        if: steps.fixtures.outputs.has-fixtures == 'true'
-        run: dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --property:TreatWarningsAsErrors=true -- --require-fixtures
+      - name: Setup Python
+        if: steps.scope.outputs.required == 'true'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Install PDF parsing dependency
+        if: steps.scope.outputs.required == 'true'
+        run: python -m pip install pymupdf==1.26.7
+
+      - name: Run public PDF identity translation E2E
+        if: steps.scope.outputs.required == 'true'
+        run: python tests/PdfRegression/test_public_translation_identity.py

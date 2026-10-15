@@ -55,6 +55,22 @@ class VerificationTests(unittest.TestCase):
         self.assertTrue(result["checks"][0]["required"])
         self.assertFalse(result["checks"][-1]["required"])
 
+    def test_obsolete_aggregate_build_name_is_not_required(self):
+        self.assertNotIn("Build Core / CLI / Shell / Setup", pr_verification.REQUIRED)
+        self.assertIn("Build Clickra.Core", pr_verification.REQUIRED)
+        self.assertIn("Build Clickra.Fluent", pr_verification.REQUIRED)
+
+    def test_public_pdf_regression_is_required(self):
+        pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
+              "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
+                                    for name in pr_verification.REQUIRED
+                                    if name != "Public PDF translation regression"]}
+        report = {"counts": {"unresolved": 0}, "sonar": {"total": 0}}
+        result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
+        self.assertFalse(result["ready"])
+        self.assertTrue(any("Public PDF translation regression" in issue
+                            for issue in result["problems"]))
+
     def test_missing_checks_fail_closed(self):
         with self.assertRaisesRegex(RuntimeError, "missing"):
             pr_verification.summarize({"headRefOid": "a" * 40},

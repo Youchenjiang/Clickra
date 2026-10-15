@@ -18,6 +18,7 @@ GIT_READ_OPERATIONS = {
     ("merge-base", "--is-ancestor", MAIN_REF, "HEAD"),
     ("log", "--format=%B%x00", f"{MAIN_REF}..HEAD"),
     ("diff", "--quiet", MAIN_REF, "HEAD"),
+    ("diff", "--name-only", f"{MAIN_REF}...HEAD"),
     ("status", "--porcelain"),
 }
 GH_READ_VERBS = {("pr", "view"), ("pr", "checks"), ("pr", "list"),
