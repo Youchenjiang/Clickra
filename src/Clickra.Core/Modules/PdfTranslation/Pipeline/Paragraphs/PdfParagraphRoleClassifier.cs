@@ -36,7 +36,7 @@ internal static class PdfParagraphRoleClassifier
         if (PdfChartLabelClassifier.IsLikelyChartLabel(para)) return false;
         string txt = para.TextWithPlaceholders.Trim();
         if (string.IsNullOrWhiteSpace(txt)) return false;
-        int wordCount = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
+        int wordCount = txt.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
         if (wordCount >= 12 && para.Height >= 25 && txt.IndexOf('.') >= 0) return true;
         if (wordCount >= 10 && para.Width > 100 && txt.IndexOf('.') >= 0) return true;
         if (wordCount >= 18 && para.Width > 100 && txt.Any(char.IsLower) &&

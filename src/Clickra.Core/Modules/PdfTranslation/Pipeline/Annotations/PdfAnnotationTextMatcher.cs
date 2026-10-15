@@ -102,7 +102,7 @@ public static class PdfAnnotationTextMatcher
 
         var spatial = PdfAnnotationSpatialMatcher.MapRenderedCharsBySpatialPosition(
             cleanRendered, targetPdfX, targetPdfY, relWidth, paraWidth);
-        if (spatial != null && spatial.Count > 0)
+        if (spatial?.Count > 0)
         {
             double cx = spatial.Average(rc => (rc.Left + rc.Right) / 2.0);
             double cy = spatial.Average(rc => (rc.Bottom + rc.Top) / 2.0);

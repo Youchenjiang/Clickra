@@ -189,7 +189,7 @@ internal static class PdfDiagramMaskBuilder
     {
         if (regions.Count == 0) return regions;
         var captions = pageList
-            .Where(p => PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(p))
+            .Where(PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph)
             .Where(p =>
             {
                 string t = p.TextWithPlaceholders.Trim();

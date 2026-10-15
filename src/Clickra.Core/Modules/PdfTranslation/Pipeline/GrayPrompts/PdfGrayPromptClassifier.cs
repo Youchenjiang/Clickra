@@ -203,7 +203,7 @@ internal static class PdfGrayPromptClassifier
             return true;
         }
         string txt = para.TextWithPlaceholders.Trim();
-        int wordCount = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
+        int wordCount = txt.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
         if (wordCount >= 8 && para.Width > 80 && txt.IndexOf('.') >= 0) return true;
         if (wordCount >= 6 && para.Height >= 14 && txt.IndexOf('.') >= 0 && txt.Any(char.IsLower))
         {

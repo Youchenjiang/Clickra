@@ -41,7 +41,7 @@ internal static class PdfAnnotationOccurrenceMatcher
 
         if (occurrences.Count <= 1) return 0;
 
-        double targetAvgIndex = targetLetters.Average(tl => allLetters.IndexOf(tl));
+        double targetAvgIndex = targetLetters.Average(allLetters.IndexOf);
         int bestIdx = 0;
         double minDist = double.MaxValue;
         for (int k = 0; k < occurrences.Count; k++)

@@ -219,7 +219,7 @@ internal static class PdfOverlayMaskPlanner
         }
 
         string txt = para.TextWithPlaceholders.Trim();
-        int wordCount = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
+        int wordCount = txt.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
         if (!PdfChartLabelClassifier.IsLikelyChartLabel(para) && wordCount >= 8 && para.Width >= 100 && txt.Any(char.IsLower))
         {
             return false;

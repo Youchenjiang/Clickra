@@ -49,7 +49,7 @@ internal static class PdfGeneralTableParagraphMarker
             string txt = para.TextWithPlaceholders.Trim();
             if (ShouldSkipCandidateText(txt, para)) continue;
 
-            string[] allWords = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] allWords = txt.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
             if (allWords.Length > 50) continue;
 
             if (para.Width < pageWidth * 0.45 && para.Height < 120)
@@ -284,7 +284,7 @@ internal static class PdfGeneralTableParagraphMarker
                     continue;
                 }
 
-                string[] words = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                string[] words = txt.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
                 if (Regex.IsMatch(txt, @"^[A-Z]\.\s")) continue;
                 if (para.Height > 30 && words.Length > 20) continue;
                 if (words.Length <= 150)

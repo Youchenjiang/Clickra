@@ -83,7 +83,7 @@ internal static class PdfAnnotationPatternBuilder
         string trimmed = cleanSearch.TrimEnd(')', ',', '.', ';', ':');
         string digitsOnly = new string(cleanSearch.Where(char.IsDigit).ToArray());
         bool looksLikeFigureNum = digitsOnly.Length > 0 && digitsOnly.Length <= 2 &&
-            (cleanSearch.TrimEnd(')', ',', '.', ';', ':').All(c => char.IsDigit(c)) ||
+            (cleanSearch.TrimEnd(')', ',', '.', ';', ':').All(char.IsDigit) ||
              Regex.IsMatch(cleanSearch, @"^\d+\)$"));
         if (looksLikeFigureNum)
         {
@@ -129,7 +129,7 @@ internal static class PdfAnnotationPatternBuilder
         if (string.IsNullOrEmpty(pattern)) return false;
         string stripped = pattern.TrimStart('第').Trim();
         return stripped.Length >= 1 && stripped.Length <= 6 &&
-            stripped.All(c => "IVXLCDMivxlcdm".Contains(c));
+            stripped.All("IVXLCDMivxlcdm".Contains);
     }
 
     public static bool PrefersVerticalAlignment(string pattern)

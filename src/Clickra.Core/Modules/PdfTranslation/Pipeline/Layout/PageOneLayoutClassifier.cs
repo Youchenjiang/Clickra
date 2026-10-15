@@ -136,7 +136,7 @@ public static class PageOneLayoutClassifier
         double gap = titlePara.Y0 - para.Y1;
         if (gap < -2 || gap > 25) return false;
         int wordCount = para.TextWithPlaceholders.Trim()
-            .Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
+            .Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
         if (wordCount < 1 || wordCount > 8) return false;
         double titleCenterX = titlePara.X0 + titlePara.Width / 2;
         double paraCenterX = para.X0 + para.Width / 2;
