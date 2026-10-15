@@ -18,6 +18,7 @@ from gh_guard import resolve_thread
 from process_guard import invoke
 from pr_audit import inventory
 from sonar_audit import inventory as sonar_inventory
+from sonar_audit import quality_metrics
 from pr_publication import push as guarded_push, remote_head
 from pr_creation import create as guarded_create
 from pr_verification import summarize
@@ -382,6 +383,10 @@ def _verify_pr(run, repo, number):
     report["sonar"] = sonar_inventory(os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
                                       number, base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
                                       token=os.environ.get("SONAR_TOKEN"))
+    report["sonar_quality"] = quality_metrics(
+        os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"), number,
+        base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
+        token=os.environ.get("SONAR_TOKEN"))
     remote = (remote_head(pr.get("headRefName", ""))
               if pr.get("state") == "OPEN" else None)
     result = summarize(pr, report, remote_sha=remote)

@@ -8,6 +8,22 @@ import pr_verification
 
 
 class VerificationTests(unittest.TestCase):
+    def test_new_code_duplication_is_reported_without_new_zero_policy(self):
+        pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
+              "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
+                                    for name in pr_verification.REQUIRED]}
+        quality = {"metrics": {"new_duplicated_lines_density": "0.2"},
+                   "quality_gate": {"status": "OK", "conditions": []}}
+        report = {"counts": {"unresolved": 0}, "sonar": {"total": 0},
+                  "sonar_quality": quality}
+        result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
+        self.assertTrue(result["ready"])
+        self.assertEqual(quality, result["sonar_quality"])
+        quality["quality_gate"]["status"] = "ERROR"
+        result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
+        self.assertFalse(result["ready"])
+        self.assertIn("SonarQube quality gate not passed", result["problems"])
+
     def test_dependency_scan_is_required_only_for_matching_changed_paths(self):
         pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
               "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}

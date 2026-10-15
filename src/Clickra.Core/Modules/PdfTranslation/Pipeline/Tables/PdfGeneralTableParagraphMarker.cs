@@ -186,49 +186,7 @@ internal static class PdfGeneralTableParagraphMarker
 
     private static List<List<PdfParagraph>> BuildCandidateGroups(List<PdfParagraph> candidates, double pageWidth)
     {
-        var groups = new List<List<PdfParagraph>>();
-        foreach (var cand in candidates)
-        {
-            bool added = false;
-            foreach (var group in groups)
-            {
-                bool close = false;
-                foreach (var member in group)
-                {
-                    double center = pageWidth / 2;
-                    bool candIsLeft = cand.X1 <= center + 5;
-                    bool memberIsLeft = member.X1 <= center + 5;
-                    if (candIsLeft != memberIsLeft) continue;
-                    double verticalDist = 0;
-                    if (cand.Y1 < member.Y0)
-                    {
-                        verticalDist = member.Y0 - cand.Y1;
-                    }
-                    else if (member.Y1 < cand.Y0)
-                    {
-                        verticalDist = cand.Y0 - member.Y1;
-                    }
-
-                    if (verticalDist < 45)
-                    {
-                        close = true;
-                        break;
-                    }
-                }
-                if (close)
-                {
-                    group.Add(cand);
-                    added = true;
-                    break;
-                }
-            }
-            if (!added)
-            {
-                groups.Add(new List<PdfParagraph> { cand });
-            }
-        }
-
-        return groups;
+        return PdfTableParagraphGrouping.GroupNearby(candidates, p => p.X1 <= pageWidth / 2 + 5);
     }
 
     private static bool HasHorizontalPair(List<PdfParagraph> group)
