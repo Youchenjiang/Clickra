@@ -106,10 +106,10 @@ internal static class PdfGrayPromptMarker
         List<PdfParagraph> pageList, IReadOnlyList<TableMaskRegion> grayRegions)
     {
         if (grayRegions.Count == 0) return;
-        foreach (var para in pageList.Where(IsShadedPromptCandidate))
+        foreach (var para in pageList.Where(IsShadedPromptCandidate)
+                     .Where(para => ShouldMarkShadedPrompt(para, pageList, grayRegions)))
         {
-            if (ShouldMarkShadedPrompt(para, pageList, grayRegions))
-                MarkAsGrayPromptContent(para);
+            MarkAsGrayPromptContent(para);
         }
     }
 
