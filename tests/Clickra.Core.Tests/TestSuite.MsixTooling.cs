@@ -36,5 +36,17 @@ static partial class TestSuite
             Assert.True(string.Equals(packageName.Groups["name"].Value, manifestIdentity, StringComparison.Ordinal),
                 "reinstall_msix.ps1 must target the exact main MSIX identity from AppxManifest.xml, not a display name or wildcard.");
         });
+
+        runner.RunGuard("ClickraLauncher: activation arguments with whitespace are quoted", () =>
+        {
+            string? root = FindRepoRoot();
+            if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
+
+            string launcherPath = Path.Combine(root, "src", "ClickraLauncher", "Program.cs");
+            string source = File.ReadAllText(launcherPath);
+
+            Assert.True(source.Contains("QuoteArgument", StringComparison.Ordinal),
+                "ClickraLauncher must quote activation arguments to protect paths and tokens containing spaces.");
+        });
     }
 }

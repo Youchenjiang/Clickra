@@ -1,6 +1,7 @@
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Clickra.Launcher;
@@ -71,7 +72,9 @@ internal static class Program
                 if (string.IsNullOrEmpty(familyName)) return false;
 
                 string aumid = familyName + "!FluentApp";
-                string activationArgs = args.Length > 0 ? string.Join(" ", args) : string.Empty;
+                string activationArgs = args.Length > 0
+                    ? string.Join(" ", args.Select(QuoteArgument))
+                    : string.Empty;
                 hr = ActivateApplication(pMgr, aumid, activationArgs, 0, out processId);
                 return hr == 0 && processId != 0;
             }
@@ -119,6 +122,14 @@ internal static class Program
         string? pd = Path.GetDirectoryName(Environment.ProcessPath);
         if (pd != null) { p = Path.Combine(pd, name); if (File.Exists(p)) return p; }
         return null;
+    }
+
+    internal static string QuoteArgument(string arg)
+    {
+        if (string.IsNullOrEmpty(arg)) return "\"\"";
+        if (!arg.Contains(' ') && !arg.Contains('\t')) return arg;
+        if (arg.StartsWith('"') && arg.EndsWith('"')) return arg;
+        return $"\"{arg}\"";
     }
 
     // skipcq: CS-R1138
