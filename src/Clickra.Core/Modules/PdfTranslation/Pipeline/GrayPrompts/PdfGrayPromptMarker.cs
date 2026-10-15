@@ -4,6 +4,7 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline;
 
 internal static class PdfGrayPromptMarker
 {
+    private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(1);
     /// <summary>
     /// Gray prompt / system-message boxes are treated like code: bypass, keep English, no strip.
     /// </summary>
@@ -60,8 +61,8 @@ internal static class PdfGrayPromptMarker
         return PdfParagraphSemanticClassifier.IsHeadingParagraph(para) ||
                (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para) &&
                 PdfGrayPromptClassifier.SharesGrayPromptColumn(para, anchor)) ||
-               System.Text.RegularExpressions.Regex.IsMatch(text, @"^\d+\.\d+\s") ||
-               System.Text.RegularExpressions.Regex.IsMatch(text, @"^[A-Z]\.\d+\s");
+               System.Text.RegularExpressions.Regex.IsMatch(text, @"^\d+\.\d+\s", System.Text.RegularExpressions.RegexOptions.None, RegexTimeout) ||
+               System.Text.RegularExpressions.Regex.IsMatch(text, @"^[A-Z]\.\d+\s", System.Text.RegularExpressions.RegexOptions.None, RegexTimeout);
     }
 
     public static void MarkAsGrayPromptContent(PdfParagraph para)
@@ -105,9 +106,9 @@ internal static class PdfGrayPromptMarker
         List<PdfParagraph> pageList, IReadOnlyList<TableMaskRegion> grayRegions)
     {
         if (grayRegions.Count == 0) return;
-        foreach (var para in pageList)
+        foreach (var para in pageList.Where(IsShadedPromptCandidate))
         {
-            if (IsShadedPromptCandidate(para) && ShouldMarkShadedPrompt(para, pageList, grayRegions))
+            if (ShouldMarkShadedPrompt(para, pageList, grayRegions))
                 MarkAsGrayPromptContent(para);
         }
     }
@@ -118,7 +119,7 @@ internal static class PdfGrayPromptMarker
         if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) ||
             PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para) ||
             PdfGrayPromptClassifier.IsGrayPromptSubheading(para)) return false;
-        return !System.Text.RegularExpressions.Regex.IsMatch(para.TextWithPlaceholders.Trim(), @"^\d+\.\d+\s");
+        return !System.Text.RegularExpressions.Regex.IsMatch(para.TextWithPlaceholders.Trim(), @"^\d+\.\d+\s", System.Text.RegularExpressions.RegexOptions.None, RegexTimeout);
     }
 
     private static bool ShouldMarkShadedPrompt(
@@ -131,7 +132,7 @@ internal static class PdfGrayPromptMarker
             if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) ||
                 PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) return false;
             string text = para.TextWithPlaceholders.Trim();
-            return !System.Text.RegularExpressions.Regex.IsMatch(text, @"^\d+\)\s+[A-Za-z]") ||
+            return !System.Text.RegularExpressions.Regex.IsMatch(text, @"^\d+\)\s+[A-Za-z]", System.Text.RegularExpressions.RegexOptions.None, RegexTimeout) ||
                    PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null);
         }
 

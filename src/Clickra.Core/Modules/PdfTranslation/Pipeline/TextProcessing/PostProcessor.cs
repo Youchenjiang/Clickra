@@ -96,14 +96,9 @@ public static class PostProcessor
 
     private static string ApplyTerminologyReplacements(string originalText, string translatedText, bool isTraditional)
     {
-        if (originalText.Trim().Equals("ABSTRACT", StringComparison.OrdinalIgnoreCase))
-        {
-            translatedText = "摘要";
-        }
-        else
-        {
-            translatedText = translatedText.Replace("抽象", "摘要");
-        }
+        translatedText = originalText.Trim().Equals("ABSTRACT", StringComparison.OrdinalIgnoreCase)
+            ? "摘要"
+            : translatedText.Replace("抽象", "摘要");
 
         if (IsReferencesSectionHeading(originalText.Trim()))
         {
