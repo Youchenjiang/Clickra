@@ -55,6 +55,11 @@ class VerificationTests(unittest.TestCase):
         self.assertTrue(result["checks"][0]["required"])
         self.assertFalse(result["checks"][-1]["required"])
 
+    def test_obsolete_aggregate_build_name_is_not_required(self):
+        self.assertNotIn("Build Core / CLI / Shell / Setup", pr_verification.REQUIRED)
+        self.assertIn("Build Clickra.Core", pr_verification.REQUIRED)
+        self.assertIn("Build Clickra.Fluent", pr_verification.REQUIRED)
+
     def test_public_pdf_regression_is_required(self):
         pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
               "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
