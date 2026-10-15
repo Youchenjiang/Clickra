@@ -10,97 +10,58 @@ internal static class PdfGrayPromptMarker
     public static void MarkGrayPromptBoxesAsCode(
         List<PdfParagraph> pageList, IReadOnlyList<TableMaskRegion> grayShadedRegions)
     {
-        bool inGrayPromptBlock = false;
         PdfParagraph? anchor = null;
         foreach (var para in pageList.OrderByDescending(p => p.Y1))
         {
             if (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para))
             {
-                if (inGrayPromptBlock && anchor != null && PdfGrayPromptClassifier.SharesGrayPromptColumn(para, anchor))
-                {
-                    MarkAsGrayPromptContent(para);
-                    anchor = para;
-                    continue;
-                }
-
-                inGrayPromptBlock = true;
                 anchor = para;
                 MarkAsGrayPromptContent(para);
                 continue;
             }
 
-            if (!inGrayPromptBlock || anchor == null) continue;
+            if (anchor == null) continue;
 
             if (!PdfGrayPromptClassifier.SharesGrayPromptColumn(para, anchor)) continue;
 
             // Descending-Y iteration: only extend block to paragraphs below the anchor.
             if (para.Y1 >= anchor.Y1 - 1) continue;
 
-            double gapBelow = anchor.Y0 - para.Y1;
-            if (gapBelow > 45)
+            if (!CanExtendGrayPromptBlock(para, anchor, grayShadedRegions))
             {
-                inGrayPromptBlock = false;
                 anchor = null;
                 continue;
             }
-
-            if (PdfGrayPromptClassifier.IsGrayPromptSubheading(para))
-            {
-                MarkAsGrayPromptContent(para);
-                anchor = para;
-                continue;
-            }
-
-            if (PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, anchor))
-            {
-                MarkAsGrayPromptContent(para);
-                anchor = para;
-                continue;
-            }
-
-            if (grayShadedRegions.Count > 0 &&
-                (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) &&
-                !PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayShadedRegions))
-            {
-                inGrayPromptBlock = false;
-                anchor = null;
-                continue;
-            }
-
-            string txt = para.TextWithPlaceholders.Trim();
-            if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) ||
-                (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para) && PdfGrayPromptClassifier.SharesGrayPromptColumn(para, anchor)) ||
-                System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d+\.\d+\s") ||
-                System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\d+\s"))
-            {
-                inGrayPromptBlock = false;
-                anchor = null;
-                continue;
-            }
-
-            if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para))
-            {
-                if (PdfGrayPromptClassifier.IsSectionIntroProse(para))
-                {
-                    inGrayPromptBlock = false;
-                    anchor = null;
-                    continue;
-                }
-                if (grayShadedRegions.Count > 0 &&
-                    PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayShadedRegions))
-                {
-                    MarkAsGrayPromptContent(para);
-                    anchor = para;
-                    continue;
-                }
-                inGrayPromptBlock = false;
-                anchor = null;
-                continue;
-            }
-
             MarkAsGrayPromptContent(para);
             anchor = para;
         }
+    }
+
+    private static bool CanExtendGrayPromptBlock(
+        PdfParagraph para, PdfParagraph anchor, IReadOnlyList<TableMaskRegion> grayShadedRegions)
+    {
+        if (anchor.Y0 - para.Y1 > 45) return false;
+        if (PdfGrayPromptClassifier.IsGrayPromptSubheading(para) ||
+            PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, anchor)) return true;
+
+        bool translatable = PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) ||
+                            PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para);
+        bool isShaded = grayShadedRegions.Count > 0 &&
+                        PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayShadedRegions);
+        if (translatable && grayShadedRegions.Count > 0 && !isShaded) return false;
+        if (IsGrayPromptStructuralBoundary(para, anchor)) return false;
+        if (!translatable) return true;
+        return !PdfGrayPromptClassifier.IsSectionIntroProse(para) && isShaded;
+    }
+
+    private static bool IsGrayPromptStructuralBoundary(PdfParagraph para, PdfParagraph anchor)
+    {
+        string text = para.TextWithPlaceholders.Trim();
+        return PdfParagraphSemanticClassifier.IsHeadingParagraph(para) ||
+               (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para) &&
+                PdfGrayPromptClassifier.SharesGrayPromptColumn(para, anchor)) ||
+               System.Text.RegularExpressions.Regex.IsMatch(text, @"^\d+\.\d+\s") ||
+               System.Text.RegularExpressions.Regex.IsMatch(text, @"^[A-Z]\.\d+\s");
     }
 
     public static void MarkAsGrayPromptContent(PdfParagraph para)
@@ -146,53 +107,38 @@ internal static class PdfGrayPromptMarker
         if (grayRegions.Count == 0) return;
         foreach (var para in pageList)
         {
-            if (para.IsTable) continue;
-            if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) continue;
-            if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para)) continue;
-            if (PdfGrayPromptClassifier.IsGrayPromptSubheading(para)) continue;
-            string txt = para.TextWithPlaceholders.Trim();
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d+\.\d+\s")) continue;
-
-            if (PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayRegions))
-            {
-                if (PdfGrayPromptGeometry.IsParagraphInsideAnchoredGrayPromptRegion(para, grayRegions, pageList))
-                {
-                    MarkAsGrayPromptContent(para);
-                    continue;
-                }
-                if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
-                if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d+\)\s+[A-Za-z]") &&
-                    !PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null))
-                {
-                    continue;
-                }
+            if (IsShadedPromptCandidate(para) && ShouldMarkShadedPrompt(para, pageList, grayRegions))
                 MarkAsGrayPromptContent(para);
-                continue;
-            }
-
-            bool overlapsGray = PdfTableMaskPlanner.ParagraphOverlapsAnyTableMask(
-                para.X0, para.Y0, para.X1, para.Y1, PdfGrayPromptRegionBuilder.ExpandGrayShadedRegions(grayRegions), 15.0, 3.0);
-            if (overlapsGray && PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null))
-            {
-                MarkAsGrayPromptContent(para);
-                continue;
-            }
-
-            if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
-
-            if (PdfGrayPromptClassifier.IsGrayPromptSubheading(para) &&
-                PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayRegions))
-            {
-                MarkAsGrayPromptContent(para);
-                continue;
-            }
-
-            if (PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null) &&
-                PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayRegions))
-            {
-                MarkAsGrayPromptContent(para);
-            }
         }
+    }
+
+    private static bool IsShadedPromptCandidate(PdfParagraph para)
+    {
+        if (para.IsTable || PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) return false;
+        if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) ||
+            PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para) ||
+            PdfGrayPromptClassifier.IsGrayPromptSubheading(para)) return false;
+        return !System.Text.RegularExpressions.Regex.IsMatch(para.TextWithPlaceholders.Trim(), @"^\d+\.\d+\s");
+    }
+
+    private static bool ShouldMarkShadedPrompt(
+        PdfParagraph para, List<PdfParagraph> pageList, IReadOnlyList<TableMaskRegion> grayRegions)
+    {
+        if (PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayRegions))
+        {
+            if (PdfGrayPromptGeometry.IsParagraphInsideAnchoredGrayPromptRegion(para, grayRegions, pageList))
+                return true;
+            if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) ||
+                PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) return false;
+            string text = para.TextWithPlaceholders.Trim();
+            return !System.Text.RegularExpressions.Regex.IsMatch(text, @"^\d+\)\s+[A-Za-z]") ||
+                   PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null);
+        }
+
+        return PdfTableMaskPlanner.ParagraphOverlapsAnyTableMask(
+                   para.X0, para.Y0, para.X1, para.Y1,
+                   PdfGrayPromptRegionBuilder.ExpandGrayShadedRegions(grayRegions), 15.0, 3.0) &&
+               PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null);
     }
 
     /// <summary>Strip gray/code flags from column body clearly below the shaded vector box bottom.</summary>
@@ -235,49 +181,45 @@ internal static class PdfGrayPromptMarker
         {
             if (!para.IsGrayPromptContent) continue;
             if (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para)) continue;
-            if (grayRegions.Count > 0)
+            if (IsBelowGrayShadedBottom(para, grayRegions) || IsOutsideGrayBodyProse(para, grayRegions))
             {
-                double shadedBottom = grayRegions.Min(r => r.Y0);
-                if (para.Y1 < shadedBottom - 8 &&
-                    !PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null) &&
-                    !PdfGrayPromptClassifier.IsGrayPromptSubheading(para))
-                {
-                    para.IsGrayPromptContent = false;
-                    para.IsCode = false;
-                    continue;
-                }
-            }
-            if (grayRegions.Count > 0 &&
-                !PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayRegions) &&
-                !PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null) &&
-                !PdfGrayPromptClassifier.IsGrayPromptSubheading(para))
-            {
-                string txt = para.TextWithPlaceholders.Trim();
-                int wordCount = txt.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
-                bool multiSentenceBody = PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) ||
-                    (wordCount >= 8 && para.Width > 100 && txt.IndexOf('.') >= 0 && txt.Any(char.IsLower));
-                if (multiSentenceBody)
-                {
-                    para.IsGrayPromptContent = false;
-                    para.IsCode = false;
-                    continue;
-                }
+                ClearGrayPromptCodeFlags(para);
+                continue;
             }
             if (grayRegions.Count > 0 && PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayRegions)) continue;
             if (PdfGrayPromptClassifier.HasNearbyGrayPromptAbove(para, pageList)) continue;
-            if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para))
-            {
-                para.IsGrayPromptContent = false;
-                para.IsCode = false;
-                continue;
-            }
-            if (PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
-            {
-                para.IsGrayPromptContent = false;
-                para.IsCode = false;
-                continue;
-            }
+            if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) ||
+                PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
+                ClearGrayPromptCodeFlags(para);
         }
+    }
+
+    private static bool IsBelowGrayShadedBottom(PdfParagraph para, IReadOnlyList<TableMaskRegion> regions)
+    {
+        if (regions.Count == 0) return false;
+        double bottom = regions.Min(region => region.Y0);
+        return para.Y1 < bottom - 8 &&
+               !PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null) &&
+               !PdfGrayPromptClassifier.IsGrayPromptSubheading(para);
+    }
+
+    private static bool IsOutsideGrayBodyProse(PdfParagraph para, IReadOnlyList<TableMaskRegion> regions)
+    {
+        if (regions.Count == 0 || PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, regions) ||
+            PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null) ||
+            PdfGrayPromptClassifier.IsGrayPromptSubheading(para)) return false;
+
+        string text = para.TextWithPlaceholders.Trim();
+        int wordCount = text.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
+        return PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) ||
+               PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) ||
+               (wordCount >= 8 && para.Width > 100 && text.IndexOf('.') >= 0 && text.Any(char.IsLower));
+    }
+
+    private static void ClearGrayPromptCodeFlags(PdfParagraph para)
+    {
+        para.IsGrayPromptContent = false;
+        para.IsCode = false;
     }
 
     /// <summary>Body prose must never remain flagged as gray prompt content when outside shaded boxes.</summary>
@@ -291,30 +233,26 @@ internal static class PdfGrayPromptMarker
             if (!PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) && !PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
             if (PdfGrayPromptClassifier.IsSectionIntroProse(para))
             {
-                para.IsGrayPromptContent = false;
-                para.IsCode = false;
+                ClearGrayPromptCodeFlags(para);
                 continue;
             }
-            if (PdfGrayPromptClassifier.IsGrayPromptSubheading(para)) continue;
-            if (grayRegions.Count > 0 && PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayRegions)) continue;
-            if (PdfGrayPromptClassifier.HasNearbyGrayPromptAbove(para, pageList)) continue;
-            if (PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null) &&
-                grayRegions.Count > 0 &&
-                PdfTableMaskPlanner.ParagraphOverlapsAnyTableMask(
-                    para.X0, para.Y0, para.X1, para.Y1,
-                    PdfGrayPromptRegionBuilder.ExpandGrayShadedRegions(grayRegions), 15.0, 3.0))
-            {
-                continue;
-            }
-            if (PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null) &&
-                grayRegions.Count > 0 &&
-                PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayRegions))
-            {
-                continue;
-            }
-            para.IsGrayPromptContent = false;
-            para.IsCode = false;
+            if (ShouldRetainTranslatableGrayFlags(para, pageList, grayRegions)) continue;
+            ClearGrayPromptCodeFlags(para);
         }
+    }
+
+    private static bool ShouldRetainTranslatableGrayFlags(
+        PdfParagraph para, List<PdfParagraph> pageList, IReadOnlyList<TableMaskRegion> grayRegions)
+    {
+        if (PdfGrayPromptClassifier.IsGrayPromptSubheading(para)) return true;
+        if (grayRegions.Count > 0 && PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayRegions)) return true;
+        if (PdfGrayPromptClassifier.HasNearbyGrayPromptAbove(para, pageList)) return true;
+        if (!PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null) || grayRegions.Count == 0)
+            return false;
+        return PdfTableMaskPlanner.ParagraphOverlapsAnyTableMask(
+                   para.X0, para.Y0, para.X1, para.Y1,
+                   PdfGrayPromptRegionBuilder.ExpandGrayShadedRegions(grayRegions), 15.0, 3.0) ||
+               PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayRegions);
     }
 
     /// <summary>Re-apply gray flags on prompt continuations cleared by translatable-prose heuristics (p4/p7/p14).</summary>

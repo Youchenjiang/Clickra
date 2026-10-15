@@ -114,46 +114,55 @@ internal static class PdfDiagramMaskBuilder
         for (int i = 0; i < rawBounds.Count; i++)
         {
             if (used[i]) continue;
-            var r = rawBounds[i];
-            double x0 = r.X0, y0 = r.Y0, x1 = r.X1, y1 = r.Y1;
-            used[i] = true;
-            int count = 1;
-            // Track whether any original constituent was already large enough to be a diagram on its own
-            bool hasLargeOriginal = (r.X1 - r.X0 > 80 && r.Y1 - r.Y0 > 30) || (r.X1 - r.X0 > 30 && r.Y1 - r.Y0 > 60);
-            bool changed = true;
-            while (changed)
-            {
-                changed = false;
-                for (int j = 0; j < rawBounds.Count; j++)
-                {
-                    if (used[j]) continue;
-                    var o = rawBounds[j];
-                    bool closeX = o.X0 <= x1 + 25 && o.X1 >= x0 - 25;
-                    bool closeY = o.Y0 <= y1 + 25 && o.Y1 >= y0 - 25;
-                    if (closeX && closeY)
-                    {
-                        x0 = Math.Min(x0, o.X0);
-                        y0 = Math.Min(y0, o.Y0);
-                        x1 = Math.Max(x1, o.X1);
-                        y1 = Math.Max(y1, o.Y1);
-                        used[j] = true;
-                        changed = true;
-                        count++;
-                        if ((o.X1 - o.X0 > 80 && o.Y1 - o.Y0 > 30) || (o.X1 - o.X0 > 30 && o.Y1 - o.Y0 > 60))
-                            hasLargeOriginal = true;
-                    }
-                }
-            }
-            double mergedW = x1 - x0;
-            double mergedH = y1 - y0;
-            // Retain: originally large element, cluster of 3+ small paths, or merged area is sizeable
+            var (region, count, hasLargeOriginal) = GrowDiagramCluster(rawBounds, used, i);
+            double mergedW = region.X1 - region.X0;
+            double mergedH = region.Y1 - region.Y0;
             if (hasLargeOriginal || count >= 3 ||
                 (mergedW > 80 && mergedH > 40) || (mergedW > 40 && mergedH > 80))
             {
-                merged.Add(new TableMaskRegion(x0 - 4, y0 - 4, x1 + 4, y1 + 4));
+                merged.Add(new TableMaskRegion(region.X0 - 4, region.Y0 - 4, region.X1 + 4, region.Y1 + 4));
             }
         }
         return merged;
+    }
+
+    private static (TableMaskRegion Region, int Count, bool HasLargeOriginal) GrowDiagramCluster(
+        IReadOnlyList<TableMaskRegion> rawBounds, bool[] used, int start)
+    {
+        var initial = rawBounds[start];
+        double x0 = initial.X0, y0 = initial.Y0, x1 = initial.X1, y1 = initial.Y1;
+        used[start] = true;
+        int count = 1;
+        bool hasLargeOriginal = IsLargeDiagramOriginal(initial);
+        bool changed = true;
+        while (changed)
+        {
+            changed = false;
+            for (int j = 0; j < rawBounds.Count; j++)
+            {
+                if (used[j]) continue;
+                var other = rawBounds[j];
+                bool closeX = other.X0 <= x1 + 25 && other.X1 >= x0 - 25;
+                bool closeY = other.Y0 <= y1 + 25 && other.Y1 >= y0 - 25;
+                if (!closeX || !closeY) continue;
+                x0 = Math.Min(x0, other.X0);
+                y0 = Math.Min(y0, other.Y0);
+                x1 = Math.Max(x1, other.X1);
+                y1 = Math.Max(y1, other.Y1);
+                used[j] = true;
+                changed = true;
+                count++;
+                if (IsLargeDiagramOriginal(other)) hasLargeOriginal = true;
+            }
+        }
+        return (new TableMaskRegion(x0, y0, x1, y1), count, hasLargeOriginal);
+    }
+
+    private static bool IsLargeDiagramOriginal(TableMaskRegion region)
+    {
+        double width = region.X1 - region.X0;
+        double height = region.Y1 - region.Y0;
+        return (width > 80 && height > 30) || (width > 30 && height > 60);
     }
 
     /// <summary>

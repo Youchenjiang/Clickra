@@ -115,7 +115,7 @@ public static class PostProcessor
         if (originalText.Contains("title", StringComparison.OrdinalIgnoreCase) &&
             !originalText.Contains("entitle", StringComparison.OrdinalIgnoreCase))
         {
-            translatedText = translatedText.Replace("標題", isTraditional ? "作品" : "作品");
+            translatedText = translatedText.Replace("標題", "作品");
             translatedText = translatedText.Replace("标题", "作品");
         }
 
@@ -176,14 +176,9 @@ public static class PostProcessor
         try
         {
             var fullMatch = FullFormulaArtifactRegex.Match(translatedText.Trim());
-            if (fullMatch.Success)
-            {
-                translatedText = fullMatch.Groups[1].Value.Trim();
-            }
-            else
-            {
-                translatedText = TrailingFormulaArtifactRegex.Replace(translatedText, "").Trim();
-            }
+            translatedText = fullMatch.Success
+                ? fullMatch.Groups[1].Value.Trim()
+                : TrailingFormulaArtifactRegex.Replace(translatedText, "").Trim();
 
             translatedText = LeadingFormulaArtifactRegex.Replace(translatedText, "").Trim();
         }

@@ -179,29 +179,28 @@ internal static class PdfDiagramLabelMarker
         if (diagramRegions.Count == 0) return;
         foreach (var para in pageList)
         {
-            if (para.IsCode || para.IsGrayPromptContent || isGrayPromptCodeParagraph(para)) continue;
-            if (para.IsTable) continue;
-            if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(para, pageHeight)) continue;
-            if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para) ||
-                PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) continue;
-            if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) ||
-                PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
-            if (!PdfDiagramRegionGeometry.OverlapsAnyRegion(para, diagramRegions)) continue;
-            string txt = para.TextWithPlaceholders.Trim();
-            if (para.Height > 24 || txt.Length > 220) continue;
-            double letterRatio = PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, diagramRegions);
-            if (para.Height <= 22 && letterRatio >= 0.08)
-            {
-                para.IsDiagram = true;
-                para.IsTable = false;
-                continue;
-            }
-            if (PdfChartLabelClassifier.IsLikelyChartLabel(para) || letterRatio >= 0.15)
-            {
-                para.IsDiagram = true;
-                para.IsTable = false;
-            }
+            if (!ShouldMarkWorkflowBanner(para, diagramRegions, pageHeight, isGrayPromptCodeParagraph)) continue;
+            para.IsDiagram = true;
+            para.IsTable = false;
         }
+    }
+
+    private static bool ShouldMarkWorkflowBanner(
+        PdfParagraph para, IReadOnlyList<TableMaskRegion> diagramRegions, double pageHeight,
+        Func<PdfParagraph, bool> isGrayPromptCodeParagraph)
+    {
+        if (para.IsCode || para.IsGrayPromptContent || isGrayPromptCodeParagraph(para) || para.IsTable) return false;
+        if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(para, pageHeight) ||
+            PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para) ||
+            PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) return false;
+        if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) ||
+            PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) return false;
+        if (!PdfDiagramRegionGeometry.OverlapsAnyRegion(para, diagramRegions)) return false;
+        if (para.Height > 24 || para.TextWithPlaceholders.Trim().Length > 220) return false;
+
+        double letterRatio = PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, diagramRegions);
+        return (para.Height <= 22 && letterRatio >= 0.08) ||
+               PdfChartLabelClassifier.IsLikelyChartLabel(para) || letterRatio >= 0.15;
     }
 
     /// <summary>

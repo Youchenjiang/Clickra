@@ -212,7 +212,7 @@ public static class FontUtilities
         {
             return "Arial";
         }
-        else if (originalFontName.Contains("Sym", StringComparison.OrdinalIgnoreCase) ||
+        if (originalFontName.Contains("Sym", StringComparison.OrdinalIgnoreCase) ||
             originalFontName.Contains("Math", StringComparison.OrdinalIgnoreCase) ||
             originalFontName.Contains("MSAM", StringComparison.OrdinalIgnoreCase) ||
             originalFontName.Contains("MSBM", StringComparison.OrdinalIgnoreCase) ||
@@ -220,7 +220,7 @@ public static class FontUtilities
         {
             return "Cambria Math";
         }
-        else if (originalFontName.Contains("Courier", StringComparison.OrdinalIgnoreCase) ||
+        if (originalFontName.Contains("Courier", StringComparison.OrdinalIgnoreCase) ||
                  originalFontName.Contains("Console", StringComparison.OrdinalIgnoreCase) ||
                  originalFontName.Contains("Inconsolata", StringComparison.OrdinalIgnoreCase) ||
                  originalFontName.Contains("Typewriter", StringComparison.OrdinalIgnoreCase) ||

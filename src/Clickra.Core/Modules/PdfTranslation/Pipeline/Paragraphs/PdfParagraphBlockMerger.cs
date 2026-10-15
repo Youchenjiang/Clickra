@@ -182,25 +182,27 @@ public static class PdfParagraphBlockMerger
         double secondCenter = second.TextLines.Average(l => (l.BoundingBox.Left + l.BoundingBox.Right) / 2.0);
         if ((firstCenter < center) != (secondCenter < center)) return false;
 
-        foreach (var firstLine in first.TextLines)
-        {
-            foreach (var secondLine in second.TextLines)
-            {
-                double overlap = Math.Min(firstLine.BoundingBox.Top, secondLine.BoundingBox.Top) -
-                                 Math.Max(firstLine.BoundingBox.Bottom, secondLine.BoundingBox.Bottom);
-                double minHeight = Math.Min(firstLine.BoundingBox.Height, secondLine.BoundingBox.Height);
-                if (minHeight <= 0 || overlap / minHeight <= 0.5) continue;
+        return first.TextLines.Any(firstLine =>
+            second.TextLines.Any(secondLine => CanMergeLinePair(firstLine, secondLine, center, maxGap)));
+    }
 
-                double gap = firstLine.BoundingBox.Left < secondLine.BoundingBox.Left
-                    ? secondLine.BoundingBox.Left - firstLine.BoundingBox.Right
-                    : firstLine.BoundingBox.Left - secondLine.BoundingBox.Right;
-                double firstLineCenter = (firstLine.BoundingBox.Left + firstLine.BoundingBox.Right) / 2.0;
-                double secondLineCenter = (secondLine.BoundingBox.Left + secondLine.BoundingBox.Right) / 2.0;
-                double allowedGap = (firstLineCenter < center) != (secondLineCenter < center) ? 5.0 : maxGap;
-                if (gap >= -5.0 && gap <= allowedGap) return true;
-            }
-        }
-        return false;
+    private static bool CanMergeLinePair(
+        UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine first,
+        UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine second,
+        double center, double maxGap)
+    {
+        double overlap = Math.Min(first.BoundingBox.Top, second.BoundingBox.Top) -
+                         Math.Max(first.BoundingBox.Bottom, second.BoundingBox.Bottom);
+        double minHeight = Math.Min(first.BoundingBox.Height, second.BoundingBox.Height);
+        if (minHeight <= 0 || overlap / minHeight <= 0.5) return false;
+
+        double gap = first.BoundingBox.Left < second.BoundingBox.Left
+            ? second.BoundingBox.Left - first.BoundingBox.Right
+            : first.BoundingBox.Left - second.BoundingBox.Right;
+        double firstCenter = (first.BoundingBox.Left + first.BoundingBox.Right) / 2.0;
+        double secondCenter = (second.BoundingBox.Left + second.BoundingBox.Right) / 2.0;
+        double allowedGap = (firstCenter < center) != (secondCenter < center) ? 5.0 : maxGap;
+        return gap >= -5.0 && gap <= allowedGap;
     }
 
 }

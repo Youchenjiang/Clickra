@@ -124,57 +124,14 @@ internal static class PdfOverlayMaskPlanner
         double center = pageWidth / 2.0;
         foreach (var para in pageParagraphs)
         {
-            if (!PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) continue;
-            string t = para.TextWithPlaceholders.Trim();
-            if (!t.StartsWith("Figure", StringComparison.OrdinalIgnoreCase) &&
-                !t.StartsWith("Fig.", StringComparison.OrdinalIgnoreCase) &&
-                !t.StartsWith("Fig ", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            bool rightCol = para.X0 >= center - 20;
-            TableMaskRegion? tightDiagram = null;
-            foreach (var region in diagramMaskRegions)
-            {
-                double regionCenter = (region.X0 + region.X1) / 2.0;
-                bool regionRightCol = regionCenter >= center - 20;
-                if (regionRightCol != rightCol) continue;
-                // PdfPig coordinates grow upward. A conventional figure sits above its
-                // caption, so compare the figure's lower edge with the caption's upper edge.
-                // Using region.Y1 against caption.Y0 rejects the real figure and creates a
-                // fallback clip below the caption, truncating masks for nearby inline math.
-                if (region.Y0 < para.Y1 - 8 || region.Y0 > para.Y1 + 200) continue;
-                if (!tightDiagram.HasValue || region.Y0 < tightDiagram.Value.Y0)
-                {
-                    tightDiagram = region;
-                }
-            }
-
-            if (tightDiagram.HasValue)
-            {
-                clips.Add(tightDiagram.Value);
-                continue;
-            }
-
-            double y0 = Math.Max(40, para.Y0 - 100);
-            double y1 = para.Y1 + 10;
-            double x0 = rightCol ? center + 5 : 40;
-            double x1 = rightCol ? pageWidth - 40 : center - 5;
-            clips.Add(new TableMaskRegion(x0, y0, x1, y1));
+            var captionClip = GetCaptionClip(para, diagramMaskRegions, pageWidth, center);
+            if (captionClip.HasValue) clips.Add(captionClip.Value);
         }
 
         foreach (var para in pageParagraphs.Where(p => p.IsDiagram))
         {
             if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) continue;
-            bool rightCol = para.X0 >= center - 20;
-            double padX = 6;
-            double padY = 4;
-            double x0 = Math.Max(rightCol ? center + 5 : 40, para.X0 - padX);
-            double x1 = Math.Min(rightCol ? pageWidth - 40 : center - 5, para.X1 + padX);
-            double y0 = para.Y0 - padY;
-            double y1 = para.Y1 + padY;
-            clips.Add(new TableMaskRegion(x0, y0, x1, y1));
+            clips.Add(GetDiagramParagraphClip(para, pageWidth, center));
         }
 
         if (clips.Count > 0)
@@ -195,6 +152,40 @@ internal static class PdfOverlayMaskPlanner
             .ToList();
     }
 
+    private static TableMaskRegion? GetCaptionClip(
+        PdfParagraph para, IReadOnlyList<TableMaskRegion> diagramRegions, double pageWidth, double center)
+    {
+        if (!PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) return null;
+        string text = para.TextWithPlaceholders.Trim();
+        if (!text.StartsWith("Figure", StringComparison.OrdinalIgnoreCase) &&
+            !text.StartsWith("Fig.", StringComparison.OrdinalIgnoreCase) &&
+            !text.StartsWith("Fig ", StringComparison.OrdinalIgnoreCase)) return null;
+
+        bool rightCol = para.X0 >= center - 20;
+        TableMaskRegion? tightDiagram = null;
+        foreach (var region in diagramRegions)
+        {
+            bool regionRightCol = (region.X0 + region.X1) / 2.0 >= center - 20;
+            if (regionRightCol != rightCol) continue;
+            // PDF coordinates grow upward: a conventional figure begins above its caption.
+            if (region.Y0 < para.Y1 - 8 || region.Y0 > para.Y1 + 200) continue;
+            if (!tightDiagram.HasValue || region.Y0 < tightDiagram.Value.Y0) tightDiagram = region;
+        }
+
+        if (tightDiagram.HasValue) return tightDiagram.Value;
+        return new TableMaskRegion(
+            rightCol ? center + 5 : 40, Math.Max(40, para.Y0 - 100),
+            rightCol ? pageWidth - 40 : center - 5, para.Y1 + 10);
+    }
+
+    private static TableMaskRegion GetDiagramParagraphClip(PdfParagraph para, double pageWidth, double center)
+    {
+        bool rightCol = para.X0 >= center - 20;
+        return new TableMaskRegion(
+            Math.Max(rightCol ? center + 5 : 40, para.X0 - 6), para.Y0 - 4,
+            Math.Min(rightCol ? pageWidth - 40 : center - 5, para.X1 + 6), para.Y1 + 4);
+    }
+
     /// <summary>
     /// Skip white masks / translated overlay only when a paragraph is a diagram label or
     /// substantially inside a figure region — not when column body text barely touches the gutter.
@@ -211,12 +202,7 @@ internal static class PdfOverlayMaskPlanner
         if (para.IsCode && PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(para)) return true;
         if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) return false;
         if (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para)) return false;
-        // Body prose, callouts, and section headings always receive Pass 1 mask + Pass 2 overlay.
-        if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) ||
-            PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
-        {
-            return false;
-        }
+        if (IsTranslatableDiagramProse(para)) return false;
 
         string txt = para.TextWithPlaceholders.Trim();
         int wordCount = txt.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
@@ -232,41 +218,44 @@ internal static class PdfOverlayMaskPlanner
         double letterRatio = PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, protectRegions);
         if (letterRatio >= 0.4) return true;
 
-        if (PdfChartLabelClassifier.IsLikelyChartLabel(para))
-        {
-            foreach (var region in protectRegions)
-            {
-                if (pageWidth > 0 &&
-                    !PdfMaskGeometry.ParagraphSharesColumnWithRegion(para.X0, para.X1, region, pageWidth, 15.0))
-                {
-                    continue;
-                }
-                if (PdfTableMaskPlanner.ParagraphOverlapsTableMask(para.X0, para.Y0, para.X1, para.Y1,
-                        region.X0, region.Y0, region.X1, region.Y1, 15.0, 3.0))
-                {
-                    return true;
-                }
-            }
-        }
+        if (PdfChartLabelClassifier.IsLikelyChartLabel(para) &&
+            HasOverlappingDiagramClip(para, protectRegions, pageWidth)) return true;
+        return txt.Length <= 80 && HasCenterInsideDiagramClip(para, protectRegions, pageWidth);
+    }
 
-        if (txt.Length <= 80)
-        {
-            double cx = para.X0 + para.Width / 2;
-            double cy = para.Y0 + para.Height / 2;
-            foreach (var region in protectRegions)
-            {
-                if (pageWidth > 0 &&
-                    !PdfMaskGeometry.ParagraphSharesColumnWithRegion(para.X0, para.X1, region, pageWidth, 15.0))
-                {
-                    continue;
-                }
-                if (cx >= region.X0 && cx <= region.X1 && cy >= region.Y0 && cy <= region.Y1)
-                {
-                    return true;
-                }
-            }
-        }
+    private static bool IsTranslatableDiagramProse(PdfParagraph para)
+        => PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) ||
+           PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) ||
+           PdfParagraphSemanticClassifier.IsHeadingParagraph(para) ||
+           PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para);
 
+    private static bool HasOverlappingDiagramClip(
+        PdfParagraph para, IReadOnlyList<TableMaskRegion> regions, double pageWidth)
+    {
+        foreach (var region in regions)
+        {
+            if (pageWidth > 0 &&
+                !PdfMaskGeometry.ParagraphSharesColumnWithRegion(para.X0, para.X1, region, pageWidth, 15.0))
+                continue;
+            if (PdfTableMaskPlanner.ParagraphOverlapsTableMask(
+                para.X0, para.Y0, para.X1, para.Y1,
+                region.X0, region.Y0, region.X1, region.Y1, 15.0, 3.0)) return true;
+        }
+        return false;
+    }
+
+    private static bool HasCenterInsideDiagramClip(
+        PdfParagraph para, IReadOnlyList<TableMaskRegion> regions, double pageWidth)
+    {
+        double cx = para.X0 + para.Width / 2;
+        double cy = para.Y0 + para.Height / 2;
+        foreach (var region in regions)
+        {
+            if (pageWidth > 0 &&
+                !PdfMaskGeometry.ParagraphSharesColumnWithRegion(para.X0, para.X1, region, pageWidth, 15.0))
+                continue;
+            if (cx >= region.X0 && cx <= region.X1 && cy >= region.Y0 && cy <= region.Y1) return true;
+        }
         return false;
     }
 }
