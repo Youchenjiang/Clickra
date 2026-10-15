@@ -1,6 +1,6 @@
 using Clickra.Core;
 using Clickra.Core.Presentation.Convert;
-using Clickra.Core.Presentation.History;
+using Clickra.Core.Modules.HistoryTasks.Presentation;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;

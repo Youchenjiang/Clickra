@@ -8,6 +8,22 @@ import pr_verification
 
 
 class VerificationTests(unittest.TestCase):
+    def test_new_code_duplication_is_reported_without_new_zero_policy(self):
+        pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
+              "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
+                                    for name in pr_verification.REQUIRED]}
+        quality = {"metrics": {"new_duplicated_lines_density": "0.2"},
+                   "quality_gate": {"status": "OK", "conditions": []}}
+        report = {"counts": {"unresolved": 0}, "sonar": {"total": 0},
+                  "sonar_quality": quality}
+        result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
+        self.assertTrue(result["ready"])
+        self.assertEqual(quality, result["sonar_quality"])
+        quality["quality_gate"]["status"] = "ERROR"
+        result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
+        self.assertFalse(result["ready"])
+        self.assertIn("SonarQube quality gate not passed", result["problems"])
+
     def test_dependency_scan_is_required_only_for_matching_changed_paths(self):
         pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
               "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
@@ -70,6 +86,44 @@ class VerificationTests(unittest.TestCase):
         self.assertFalse(result["ready"])
         self.assertTrue(any("Public PDF translation regression" in issue
                             for issue in result["problems"]))
+    def test_merged_deleted_branch_reports_historical_checks(self):
+        pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "MERGED",
+              "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
+                                    for name in pr_verification.REQUIRED]}
+        report = {"counts": {"unresolved": 0}, "sonar": {"total": 0}}
+        result = pr_verification.summarize(pr, report, remote_sha=None)
+        self.assertFalse(result["ready"])
+        self.assertEqual("MERGED", result["state"])
+        self.assertTrue(result["historical_checks_passed"])
+        self.assertIn("PR is not open", result["problems"])
+
+    def test_open_missing_remote_sha_remains_blocked(self):
+        pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
+              "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
+                                    for name in pr_verification.REQUIRED]}
+        report = {"counts": {"unresolved": 0}, "sonar": {"total": 0}}
+        result = pr_verification.summarize(pr, report, remote_sha=None)
+        self.assertFalse(result["ready"])
+        self.assertIn("PR HEAD differs from remote SHA", result["problems"])
+
+    def test_merged_historical_checks_do_not_hide_failed_checks(self):
+        pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "MERGED",
+              "statusCheckRollup": [{"name": name, "conclusion": "FAILURE" if name == "DeepSource: C#" else "SUCCESS"}
+                                    for name in pr_verification.REQUIRED]}
+        report = {"counts": {"unresolved": 0}, "sonar": {"total": 0}}
+        result = pr_verification.summarize(pr, report, remote_sha=None)
+        self.assertFalse(result["historical_checks_passed"])
+        self.assertTrue(any("DeepSource: C#" in problem for problem in result["problems"]))
+
+    def test_closed_unmerged_pr_not_ready(self):
+        pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "CLOSED",
+              "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
+                                    for name in pr_verification.REQUIRED]}
+        report = {"counts": {"unresolved": 0}, "sonar": {"total": 0}}
+        result = pr_verification.summarize(pr, report, remote_sha=None)
+        self.assertFalse(result["ready"])
+        self.assertFalse(result["historical_checks_passed"])
+        self.assertIn("PR is not open", result["problems"])
 
     def test_missing_checks_fail_closed(self):
         with self.assertRaisesRegex(RuntimeError, "missing"):

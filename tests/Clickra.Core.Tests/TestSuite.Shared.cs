@@ -1,5 +1,5 @@
 using System.Globalization;
-using Clickra.Core.Models;
+using Clickra.Core.Modules.PdfTranslation.Model;
 using Clickra.Core.Processors;
 using PdfSharp.Drawing;
 using PdfSharp.Fonts;

@@ -1,5 +1,5 @@
 using Clickra.Core;
-using Clickra.Core.Presentation.History;
+using Clickra.Core.Modules.HistoryTasks.Presentation;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;

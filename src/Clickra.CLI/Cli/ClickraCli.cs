@@ -1,3 +1,4 @@
+using Clickra.Core.Modules.Settings.Application;
 using System;
 using System.IO;
 using System.Linq;
@@ -7,7 +8,13 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using Clickra.Core;
 using Clickra.Core.Application;
-using Clickra.Core.Models;
+using Clickra.Core.Modules.Image.Application;
+using Clickra.Core.Modules.Markdown.Processing;
+using Clickra.Core.Modules.PdfCompression.Application;
+using Clickra.Core.Modules.PdfDecrypt.Application;
+using Clickra.Core.Modules.PdfMerge.Application;
+using Clickra.Core.Modules.PdfSplit.Application;
+using Clickra.Core.Modules.PdfTranslation.Application;
 using Clickra.Core.Processors;
 using Clickra.UI;
 

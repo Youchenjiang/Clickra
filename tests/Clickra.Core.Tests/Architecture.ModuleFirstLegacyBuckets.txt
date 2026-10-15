@@ -1,0 +1,46 @@
+# Frozen shared generic-bucket baseline after the module-first feature migration.
+# Existing entries may be removed/moved, but new feature-private production C# files must not be added here.
+# To expand this list requires an explicit architecture decision and guard review.
+src/Clickra.Core/Application/ConversionInteraction.cs
+src/Clickra.Core/Application/ConversionPlan.cs
+src/Clickra.Core/Application/ConversionRequest.cs
+src/Clickra.Core/Application/ConversionResult.cs
+src/Clickra.Core/Application/ConversionTaskCleanup.cs
+src/Clickra.Core/Application/ConversionTaskLifecycle.cs
+src/Clickra.Core/Application/ConversionTaskProgressController.cs
+src/Clickra.Core/Application/ConversionUseCaseBase.cs
+src/Clickra.Core/Application/ConversionUseCaseRegistry.cs
+src/Clickra.Core/Application/ConversionUseCases.cs
+src/Clickra.Core/Application/ConvertCommandRegistry.cs
+src/Clickra.Core/Application/IConversionUseCase.cs
+src/Clickra.Core/Application/PerFileConversionUseCaseBase.cs
+src/Clickra.Core/Application/SingleOutputConversionUseCaseBase.cs
+src/Clickra.Core/Presentation/Convert/ConversionExecutionController.cs
+src/Clickra.Core/Presentation/Convert/ConvertWorkspaceController.cs
+src/Clickra.Core/Presentation/Dashboard/DashboardPresentationController.cs
+src/Clickra.Core/Presentation/Native/DashboardLayout.cs
+src/Clickra.Core/Presentation/Native/HistoryLayout.cs
+src/Clickra.Core/Presentation/Progress/TaskProgressController.cs
+src/Clickra.Core/Presentation/Shared/VectorIcons.cs
+src/Clickra.Core/Processors/ExecutionLocalizationOptions.cs
+src/Clickra.Core/Processors/FileProcessing/FileBackupScope.cs
+src/Clickra.Core/Processors/FileProcessing/IFileProcessor.cs
+src/Clickra.Core/Processors/FileProcessing/MultiFileProcessorBase.cs
+src/Clickra.Core/Processors/FileProcessing/ProgressCalculator.cs
+src/Clickra.Core/Processors/FileProcessing/SingleFileProcessorBase.cs
+src/Clickra.Core/Processors/ProcessorExecutionOptions.cs
+src/Clickra.Core/Storage/ClickraSettings.cs
+src/Clickra.Core/Storage/ClickraStorage.ActiveRecord.cs
+src/Clickra.Core/Storage/ClickraStorage.cs
+src/Clickra.Core/Storage/ClickraStorage.History.cs
+src/Clickra.Core/Storage/ClickraStorage.LegacyActiveRecord.cs
+src/Clickra.Core/Storage/HistoryStore.cs
+src/Clickra.Core/Storage/LegacyActiveRecordStore.cs
+src/Clickra.Core/Storage/ParkedTaskCoordinator.cs
+src/Clickra.Core/Storage/SettingsStore.cs
+src/Clickra.Core/Storage/StoragePathResolver.cs
+src/Clickra.Core/Storage/StorageRuntime.cs
+src/Clickra.Core/Storage/TaskPruningCoordinator.cs
+src/Clickra.Core/Storage/TaskQueueStore.cs
+src/Clickra.Core/Storage/TaskRecordStore.cs
+src/Clickra.Core/Storage/TaskRetentionPolicy.cs

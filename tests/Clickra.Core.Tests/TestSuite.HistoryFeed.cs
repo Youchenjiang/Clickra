@@ -238,7 +238,7 @@ static partial class TestSuite
         }
 
         // 清單本身住在 Core，兩個介面才可能共用；放進任一個介面就不可能被另一個使用。
-        string feed = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Presentation", "History", "HistoryFeed.cs"));
+        string feed = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Modules", "HistoryTasks", "Presentation", "HistoryFeed.cs"));
         foreach (string member in new[] { "HistoryItemKind.Active", "HistoryItemKind.Parked", "HistoryItemKind.Completed", "DescribeRetention" })
         {
             Assert.True(feed.Contains(member, StringComparison.Ordinal),
@@ -253,7 +253,7 @@ static partial class TestSuite
 
         string cli = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.History.cs"));
         string fluent = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.History.cs"));
-        string model = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Presentation", "History", "HistoryFeed.cs"));
+        string model = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Modules", "HistoryTasks", "Presentation", "HistoryFeed.cs"));
 
         // 每一列的事實都取自項目，而不是當場重算。
         foreach ((string surface, string source) in new[] { (CliDashboardSurface, cli), (FluentHistorySurface, fluent) })

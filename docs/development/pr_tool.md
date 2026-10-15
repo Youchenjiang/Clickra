@@ -47,6 +47,14 @@ failed or pending checks, missing required provider jobs, a non-main target,
 or a non-open PR. SonarQube access errors fail closed. A `Skipping` provider
 is never claimed as having independently reviewed the code.
 
+For a merged PR whose source branch has been deleted, `verify` reads the
+recorded PR head and historical check rollup without requiring the deleted
+remote ref. It returns `state: MERGED`, `ready: false`, and
+`historical_checks_passed` to distinguish post-merge review from permission
+to merge; its exit status remains nonzero because the PR is no longer open.
+OPEN PRs still require remote SHA verification. Closed-but-unmerged PRs
+are reported as `CLOSED`, never as ready, even if the ref is gone.
+
 The `verify` JSON `checks` array includes each check's current status,
 whether it is required, and its GitHub/provider details URL. This replaces
 routine `gh pr checks` calls; use `diagnose` for failing check details. Native

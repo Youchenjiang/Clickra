@@ -206,8 +206,8 @@ static partial class TestSuite
         {
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException("Could not locate repository root.");
-            string processor = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "FileProcessing", "ImageCompressionProcessor.cs"));
-            string wic = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "FileProcessing", "WicImageHelper.cs"));
+            string processor = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Modules", "Image", "Processing", "ImageCompressionProcessor.cs"));
+            string wic = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Modules", "Image", "Processing", "WicImageHelper.cs"));
 
             Assert.True(processor.Contains("IsMultiFrameImage(filePath, extension)", StringComparison.Ordinal)
                         && processor.Contains("error_img_compress_multiframe_resize", StringComparison.Ordinal),
