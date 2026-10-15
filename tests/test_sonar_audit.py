@@ -11,6 +11,8 @@ import sonar_audit
 class SonarAuditTests(unittest.TestCase):
     def test_quality_metrics_exposes_duplication_and_gate_conditions(self):
         def fake(host, endpoint, params, token=None):
+            self.assertEqual(sonar_audit.DEFAULT_HOST, host)
+            self.assertIsNone(token)
             self.assertEqual(183, params["pullRequest"])
             if endpoint == "/api/measures/component":
                 return {"component": {"measures": [
@@ -29,9 +31,9 @@ class SonarAuditTests(unittest.TestCase):
         self.assertEqual("3", result["quality_gate"]["conditions"][0]["errorThreshold"])
 
     def test_missing_quality_gate_fails_closed(self):
-        with patch.object(sonar_audit, "_get_json", return_value={}):
-            with self.assertRaisesRegex(RuntimeError, "invalid SonarQube quality"):
-                sonar_audit.quality_metrics("A_B", 183)
+        with patch.object(sonar_audit, "_get_json", return_value={}), \
+             self.assertRaisesRegex(RuntimeError, "invalid SonarQube quality"):
+            sonar_audit.quality_metrics("A_B", 183)
 
     def test_quality_gate_actual_value_fallback_when_measure_absent(self):
         responses = [
