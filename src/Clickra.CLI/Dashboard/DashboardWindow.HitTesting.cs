@@ -2,7 +2,7 @@ using System;
 using System.Drawing;
 using System.Linq;
 using Clickra.Core;
-using Clickra.Core.Layout;
+using Clickra.UI.Layout;
 
 using static Clickra.UI.Native.Win32;
 
@@ -140,8 +140,8 @@ namespace Clickra.UI
             float wGit = _wGit;
             float wGmail = _wGmail;
 
-            if (x >= contentX && x < contentX + wGit && y >= _githubBtnY && y < _githubBtnY + 32) return 23;
-            if (x >= contentX && x < contentX + wGmail && y >= _aboutBtnY && y < _aboutBtnY + 32) return 24;
+            if (DashboardLayout.AboutButtonHit(contentX, _githubBtnY, wGit, x, y)) return 23;
+            if (DashboardLayout.AboutButtonHit(contentX, _aboutBtnY, wGmail, x, y)) return 24;
             return -1;
         }
     }

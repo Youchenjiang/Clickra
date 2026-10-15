@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using Clickra.Core;
-using Clickra.Core.Layout;
+using Clickra.UI.Layout;
 using Clickra.Core.Modules.Settings.Model;
 using static Clickra.UI.Native.Win32;
 

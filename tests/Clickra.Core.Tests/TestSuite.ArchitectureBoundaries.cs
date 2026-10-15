@@ -1127,9 +1127,9 @@ static partial class TestSuite
         string core = Path.Combine(root, "src", ArchitectureCoreProjectDirectory);
         var expectations = new[]
         {
-            (Path.Combine(core, ArchitecturePresentationDirectory, "Native", "DashboardLayout.cs"), "namespace Clickra.Core.Presentation.Native;"),
-            (Path.Combine(core, ArchitecturePresentationDirectory, "Native", "HistoryLayout.cs"), "namespace Clickra.Core.Presentation.Native;"),
-            (Path.Combine(core, ArchitecturePresentationDirectory, "Shared", "VectorIcons.cs"), "namespace Clickra.Core.Presentation;")
+            (Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", "Layout", "DashboardLayout.cs"), "namespace Clickra.UI.Layout;"),
+            (Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", "Layout", "HistoryLayout.cs"), "namespace Clickra.UI.Layout;"),
+            (Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", "Layout", "VectorIcons.cs"), "namespace Clickra.UI.Layout;")
         };
 
         foreach ((string file, string namespaceDeclaration) in expectations)

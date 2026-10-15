@@ -23,7 +23,7 @@ global using Clickra.Core.Modules.PdfTranslation.Application;
 global using Clickra.Core.Modules.PdfTranslation.Execution;
 global using Clickra.Core.Presentation;
 global using Clickra.Core.Modules.PdfTranslation.Pipeline;
-global using Clickra.Core.Presentation.Native;
+global using Clickra.UI.Layout;
 global using Clickra.Core.Modules.HistoryTasks.Presentation;
 global using Clickra.Core.Modules.Settings.Presentation;
 global using Clickra.Core.Modules.PdfTranslation.Model;

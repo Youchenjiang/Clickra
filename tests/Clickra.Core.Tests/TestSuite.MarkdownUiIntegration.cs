@@ -45,7 +45,7 @@ static partial class TestSuite
         RequireInOrder(window, "private void StartProcessingThread", "if (_processingStarted) return;", "_processingStarted = true;", "bgThread.Start()");
         RequireInOrder(window, "private void ResolveMarkdownDecision", "if (_markdownDecisionResolved) return;", "_markdownDecisionResolved = true;", "_markdownDecision?.Invoke(startConversion)");
         RequireInOrder(options, "private void StartMarkdownConversion", "ResolveMarkdownDecision(true);", "_isPromptingMarkdownOptions = false;", "StartProcessingThread(hwnd)");
-        RequireInOrder(options, "new RectangleF(386, 398, 98, 32)", "ResolveMarkdownDecision(false);", "DestroyWindow(hwnd)");
+        RequireInOrder(options, "MarkdownOptionsLayout.CancelRect", "ResolveMarkdownDecision(false);", "DestroyWindow(hwnd)");
         RequireInOrder(controls, "private IntPtr HandleClose", "if (_isPromptingMarkdownOptions)", "ResolveMarkdownDecision(false);", "DestroyWindow(hwnd)", "return IntPtr.Zero;");
         RequireInOrder(controls, "private IntPtr HandleLButtonDown", "if (_isPromptingMarkdownOptions && HandleMarkdownOptionsClick", "if (_isPromptingVisualSplitter", "HandleProgressClick");
     }

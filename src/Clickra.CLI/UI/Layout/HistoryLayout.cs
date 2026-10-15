@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Clickra.Core.Layout;
+using Clickra.UI.Layout;
 
-namespace Clickra.Core.Presentation.Native;
+namespace Clickra.UI.Layout;
 
 /// <summary>History 頁由上而下的三個區塊；順序即畫面順序。</summary>
 public enum HistoryBlockKind

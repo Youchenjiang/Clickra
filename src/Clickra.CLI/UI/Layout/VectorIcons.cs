@@ -2,16 +2,16 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 
-namespace Clickra.Core.Presentation;
+namespace Clickra.UI.Layout;
 
 /// <summary>
-/// Font-independent vector geometries and drawing routines shared across Clickra UIs.
+/// Font-independent vector geometries and drawing routines used by Native Clickra UI.
 /// Eliminates runtime font dependency, broken emoji glyphs, and cross-platform metric differences
 /// for status headers (check/cross) and visual splitter controls (plus/minus/chevrons).
 /// </summary>
 public static class VectorIcons
 {
-    // --- XAML Path Data strings for Fluent UI -----------------------------
+    // --- Vector path data retained for Native UI compatibility -----------------------------
     public const string CheckmarkPathData = "M 2,7.5 L 5.5,11 L 12,3.5";
     public const string CrossPathData = "M 3,3 L 11,11 M 11,3 L 3,11";
     public const string PlusPathData = "M 1,6 H 11 M 6,1 V 11";

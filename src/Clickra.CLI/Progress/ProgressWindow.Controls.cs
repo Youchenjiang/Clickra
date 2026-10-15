@@ -284,7 +284,7 @@ namespace Clickra.UI
                     }
                     else
                     {
-                        bool hovered = (mouseX >= 456 && mouseX <= 484 && mouseY >= 36 && mouseY <= 64);
+                        bool hovered = ProgressLayout.TrayButton.ContainsInclusive(mouseX, mouseY);
                         if (hovered != _isTrayBtnHovered)
                         {
                             _isTrayBtnHovered = hovered;
@@ -308,11 +308,7 @@ namespace Clickra.UI
                 using var tempG = Graphics.FromImage(tempBmp);
                 logicalPctW = tempG.MeasureString(drawPctStr, _pctFont).Width / _dpiScale;
             }
-            float logicalMaxMsgW = 448f;
-            if (logicalPctW > 0)
-            {
-                logicalMaxMsgW = 448f - logicalPctW - 10f;
-            }
+            float logicalMaxMsgW = ProgressLayout.MessageAvailableWidth(logicalPctW);
 
             float fullMsgW = 0f;
             using (var tempBmp = new Bitmap(1, 1))
@@ -380,29 +376,29 @@ namespace Clickra.UI
         {
             if (!_visualSplitIsZoomed) return false;
 
-            float zoomBtnY = ZoomModalTop + ZoomModalH - 34f;
-            float zoomBtnH = 22f;
+            float zoomBtnY = VisualSplitterLayout.ZoomButton(0).Y;
+            float zoomBtnH = VisualSplitterLayout.ZoomButton(0).Height;
             if (mouseY >= zoomBtnY && mouseY <= zoomBtnY + zoomBtnH)
             {
-                float btnInX = ZoomModalLeft + ZoomModalW - 120f; // Zoom out (-)
-                float btnOutX = ZoomModalLeft + ZoomModalW - 86f; // Zoom in (+)
-                float btnFitX = ZoomModalLeft + ZoomModalW - 52f; // Fit
+                float btnInX = VisualSplitterLayout.ZoomButton(0).X; // Zoom out (-)
+                float btnOutX = VisualSplitterLayout.ZoomButton(1).X; // Zoom in (+)
+                float btnFitX = VisualSplitterLayout.ZoomButton(2).X; // Fit
                 float cx = ZoomImgLeft + ZoomImgW / 2f;
                 float cy = ZoomImgTop + ZoomImgH / 2f;
 
-                if (mouseX >= btnInX && mouseX <= btnInX + 28f)
+                if (mouseX >= btnInX && mouseX <= btnInX + VisualSplitterLayout.ZoomButton(0).Width)
                 {
                     SetVisualSplitZoomFactor(VisualSplitModel.ZoomFactorAfter(_visualSplitZoomFactor, -1), cx, cy);
                     InvalidateRect(hwnd, IntPtr.Zero, true);
                     return true;
                 }
-                if (mouseX >= btnOutX && mouseX <= btnOutX + 28f)
+                if (mouseX >= btnOutX && mouseX <= btnOutX + VisualSplitterLayout.ZoomButton(1).Width)
                 {
                     SetVisualSplitZoomFactor(VisualSplitModel.ZoomFactorAfter(_visualSplitZoomFactor, +1), cx, cy);
                     InvalidateRect(hwnd, IntPtr.Zero, true);
                     return true;
                 }
-                if (mouseX >= btnFitX && mouseX <= btnFitX + 44f)
+                if (mouseX >= btnFitX && mouseX <= btnFitX + VisualSplitterLayout.ZoomButton(2).Width)
                 {
                     _visualSplitZoomFactor = VisualSplitModel.ZoomMinFactor;
                     _visualSplitZoomPanX = 0f;
@@ -429,12 +425,12 @@ namespace Clickra.UI
         /// <summary>Handles clicks on the split mode switcher bar.</summary>
         private bool HandleSplitterModeBarClick(IntPtr hwnd, int mouseX, int mouseY)
         {
-            if (mouseY < 102 || mouseY > 128) return false;
+            if (mouseY < VisualSplitterLayout.ModeHitRow.Y || mouseY > VisualSplitterLayout.ModeHitRow.Bottom) return false;
 
             int mode = _visualSplitMode;
-            if (mouseX >= 36 && mouseX <= 176) mode = VisualSplitModel.ModeCustom;
-            else if (mouseX >= 184 && mouseX <= 324) mode = VisualSplitModel.ModeEachPage;
-            else if (mouseX >= 332 && mouseX <= 484) mode = VisualSplitModel.ModeFixedPages;
+            if (VisualSplitterLayout.ModeButton(0).ContainsInclusive(mouseX, mouseY)) mode = VisualSplitModel.ModeCustom;
+            else if (VisualSplitterLayout.ModeButton(1).ContainsInclusive(mouseX, mouseY)) mode = VisualSplitModel.ModeEachPage;
+            else if (VisualSplitterLayout.ModeButton(2).ContainsInclusive(mouseX, mouseY)) mode = VisualSplitModel.ModeFixedPages;
 
             _visualSplitModel.SetMode(mode);
             SyncVisualSplitStateFromModel();
@@ -445,16 +441,16 @@ namespace Clickra.UI
         /// <summary>Handles clicks on the pages-per-segment +/- selector (mode 2 only).</summary>
         private bool HandleSplitterNPagesClick(IntPtr hwnd, int mouseX, int mouseY)
         {
-            if (_visualSplitMode != 2 || mouseY < 131 || mouseY > 149) return false;
+            if (_visualSplitMode != 2 || mouseY < VisualSplitterLayout.PagesHitRow.Y || mouseY > VisualSplitterLayout.PagesHitRow.Bottom) return false;
 
-            if (mouseX >= 36 && mouseX <= 60) // [-]
+            if (VisualSplitterLayout.PagesButton(false).ContainsInclusive(mouseX, mouseY)) // [-]
             {
                 _visualSplitModel.AdjustPagesPerSegment(-1);
                 SyncVisualSplitStateFromModel();
                 InvalidateRect(hwnd, IntPtr.Zero, true);
                 return true;
             }
-            if (mouseX >= 132 && mouseX <= 156) // [+]
+            if (VisualSplitterLayout.PagesButton(true).ContainsInclusive(mouseX, mouseY)) // [+]
             {
                 _visualSplitModel.AdjustPagesPerSegment(+1);
                 SyncVisualSplitStateFromModel();
@@ -467,8 +463,8 @@ namespace Clickra.UI
         /// <summary>Handles clicks on the left segment cards list.</summary>
         private bool HandleSplitterSegmentCardsClick(IntPtr hwnd, int mouseX, int mouseY)
         {
-            int cardStartY = 158 + (_visualSplitMode == 2 ? 22 : 0);
-            if (mouseX < 36 || mouseX > 252 || mouseY < cardStartY || mouseY > 374) return false;
+            int cardStartY = VisualSplitterLayout.SegmentHitArea(_visualSplitMode == 2).Y;
+            if (!VisualSplitterLayout.SegmentHitArea(_visualSplitMode == 2).ContainsInclusive(mouseX, mouseY)) return false;
 
             int cardIdx = (mouseY - cardStartY) / 23;
             if (cardIdx >= _visualSplitSegments.Count) return false;
@@ -482,24 +478,23 @@ namespace Clickra.UI
         /// <summary>Handles clicks on the right-panel page navigation bar.</summary>
         private bool HandleSplitterNavBarClick(IntPtr hwnd, int mouseX, int mouseY)
         {
-            int navOffset = (_visualSplitMode == 2 ? 22 : 0);
-            if (mouseX < 260 || mouseX > 484 || mouseY < 170 + navOffset || mouseY > 200 + navOffset) return false;
+            if (!VisualSplitterLayout.NavHitArea(_visualSplitMode == 2).ContainsInclusive(mouseX, mouseY)) return false;
 
-            if (mouseX >= 266 && mouseX <= 292) // <
+            if (VisualSplitterLayout.NavHitButton(0, _visualSplitMode == 2).ContainsInclusive(mouseX, mouseY)) // <
             {
                 _visualSplitModel.NavigatePreview(-1);
                 SyncVisualSplitStateFromModel();
                 InvalidateRect(hwnd, IntPtr.Zero, true);
                 return true;
             }
-            if (mouseX >= 452 && mouseX <= 478) // >
+            if (VisualSplitterLayout.NavHitButton(1, _visualSplitMode == 2).ContainsInclusive(mouseX, mouseY)) // >
             {
                 _visualSplitModel.NavigatePreview(+1);
                 SyncVisualSplitStateFromModel();
                 InvalidateRect(hwnd, IntPtr.Zero, true);
                 return true;
             }
-            if (mouseX >= 410 && mouseX <= 450) // 切開 (split at current preview page)
+            if (VisualSplitterLayout.NavHitButton(2, _visualSplitMode == 2).ContainsInclusive(mouseX, mouseY)) // 切開 (split at current preview page)
             {
                 SplitVisualSegmentAtCurrentPage();
                 InvalidateRect(hwnd, IntPtr.Zero, true);
@@ -511,8 +506,7 @@ namespace Clickra.UI
         /// <summary>Opens the zoom lightbox when the preview image area is clicked.</summary>
         private bool HandleSplitterPreviewZoomClick(IntPtr hwnd, int mouseX, int mouseY)
         {
-            int navOffset = (_visualSplitMode == 2 ? 22 : 0);
-            if (mouseX < 266 || mouseX > 478 || mouseY < 200 + navOffset || mouseY > 374) return false;
+            if (!VisualSplitterLayout.PreviewHitArea(_visualSplitMode == 2).ContainsInclusive(mouseX, mouseY)) return false;
             OpenVisualSplitZoom(hwnd);
             return true;
         }
@@ -521,21 +515,21 @@ namespace Clickra.UI
         /// confirm/cancel split).</summary>
         private bool HandleSplitterActionButtonsClick(IntPtr hwnd, int mouseX, int mouseY)
         {
-            if (mouseY < 380 || mouseY > 406) return false;
+            if (mouseY < VisualSplitterLayout.ActionHitRow.Y || mouseY > VisualSplitterLayout.ActionHitRow.Bottom) return false;
 
-            if (mouseX >= 36 && mouseX <= 132) // Add segment
+            if (VisualSplitterLayout.ActionButton(0).ContainsInclusive(mouseX, mouseY)) // Add segment
             {
                 AddVisualSplitSegment();
             }
-            else if (mouseX >= 138 && mouseX <= 222) // Delete segment
+            else if (VisualSplitterLayout.ActionButton(1).ContainsInclusive(mouseX, mouseY)) // Delete segment
             {
                 DeleteVisualSplitSegment();
             }
-            else if (mouseX >= 228 && mouseX <= 312) // Clear segments
+            else if (VisualSplitterLayout.ActionButton(2).ContainsInclusive(mouseX, mouseY)) // Clear segments
             {
                 ClearVisualSplitSegments();
             }
-            else if (mouseX >= 336 && mouseX <= 410) // 確定分割
+            else if (VisualSplitterLayout.ActionButton(3).ContainsInclusive(mouseX, mouseY)) // 確定分割
             {
                 PostMessageW(hwnd, WM_USER_HIDE_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
                 ResizeWindowForVisualSplitter(hwnd, false);
@@ -546,7 +540,7 @@ namespace Clickra.UI
                 }
                 _passwordEvent.Set();
             }
-            else if (mouseX >= 416 && mouseX <= 484) // 取消
+            else if (VisualSplitterLayout.ActionButton(4).ContainsInclusive(mouseX, mouseY)) // 取消
             {
                 PostMessageW(hwnd, WM_USER_HIDE_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
                 ResizeWindowForVisualSplitter(hwnd, false);
@@ -582,7 +576,7 @@ namespace Clickra.UI
 
         /// <summary>Whether the point is inside the minimize-to-tray button.</summary>
         private static bool IsTrayButtonHit(int mouseX, int mouseY)
-            => mouseX >= 456 && mouseX <= 484 && mouseY >= 36 && mouseY <= 64;
+            => ProgressLayout.TrayButton.ContainsInclusive(mouseX, mouseY);
 
         /// <summary>Starts dragging the status-message scrollbar when the click lands on its
         /// thumb track.</summary>
@@ -596,13 +590,9 @@ namespace Clickra.UI
                 using var tempG = Graphics.FromImage(tempBmp);
                 logicalPctW = tempG.MeasureString(drawPctStr, _pctFont).Width / _dpiScale;
             }
-            float logicalMaxMsgW = 448f;
-            if (logicalPctW > 0)
-            {
-                logicalMaxMsgW = 448f - logicalPctW - 10f;
-            }
+            float logicalMaxMsgW = ProgressLayout.MessageAvailableWidth(logicalPctW);
 
-            if (mouseX < 36 || mouseX > 36 + logicalMaxMsgW || mouseY < 148 || mouseY > 158) return;
+            if (!ProgressLayout.ScrollbarHit(mouseX, mouseY, logicalMaxMsgW)) return;
 
             string statusMsg = _message;
             float fullMsgW = 0f;

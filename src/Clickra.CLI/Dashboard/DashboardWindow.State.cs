@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Drawing;
 using Clickra.Core;
-using Clickra.Core.Layout;
+using Clickra.UI.Layout;
 using Clickra.Core.Presentation.Convert;
 using Clickra.Core.Modules.HistoryTasks.Presentation;
 using static Clickra.UI.Native.Win32;

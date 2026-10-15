@@ -1,4 +1,4 @@
-namespace Clickra.Core.Layout;
+namespace Clickra.UI.Layout;
 
 /// <summary>
 /// Shared geometry for the NativeAOT settings surface. Painting registers hit rectangles from

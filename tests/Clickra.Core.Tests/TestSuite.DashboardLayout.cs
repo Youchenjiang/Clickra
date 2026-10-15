@@ -1,12 +1,12 @@
 using System;
 using System.IO;
-using Clickra.Core.Layout;
+using Clickra.UI.Layout;
 
 namespace Clickra.Core.Tests;
 
 /// <summary>
 /// The dashboard keeps every row height, row stride and block height in one table
-/// (<c>Clickra.Core.Presentation.Native</c>) so painting, hit-testing and the scroll height cannot drift
+/// (<c>Clickra.UI.Layout</c>) so painting, hit-testing and the scroll height cannot drift
 /// apart. The table is pure arithmetic, so the stack itself is asserted here rather than
 /// through a source scan; the scans below only pin the plumbing (who consumes what).
 /// </summary>

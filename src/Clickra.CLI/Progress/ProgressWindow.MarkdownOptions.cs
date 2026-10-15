@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using Clickra.Core.Modules.Markdown.Processing;
 using Clickra.Core.Processors;
+using Clickra.UI.Layout;
 
 using static Clickra.UI.Native.Win32;
 
@@ -11,11 +12,7 @@ namespace Clickra.UI;
 
     public partial class ProgressWindow
     {
-        private const float MarkdownOptionLeft = 36f;
-        private const float MarkdownControlLeft = 154f;
-        private const float MarkdownControlWidth = 330f;
-        private const float MarkdownOptionButtonHeight = 30f;
-        private const int MarkdownOptionsClientHeight = 442;
+        private const int MarkdownOptionsClientHeight = MarkdownOptionsLayout.ClientHeight;
 
         private int _markdownStyleIndex = 0;
         private int _markdownPaperIndex = 0;
@@ -31,21 +28,21 @@ namespace Clickra.UI;
             using var bodyBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
             using var mutedBrush = new SolidBrush(Color.FromArgb(145, 145, 145));
             g.DrawString(Loc("md_options_hint"), _tipFont, mutedBrush,
-                new RectangleF(36 * s, 126 * s, 448 * s, 36 * s));
+                ScaleMarkdownRect(MarkdownOptionsLayout.HintRect, s));
 
-            PaintCompactMarkdownOptionRow(g, s, Loc("md_options_layout_source"), 168,
+            PaintCompactMarkdownOptionRow(g, s, Loc("md_options_layout_source"), MarkdownOptionsLayout.LayoutSourceY,
                 new[] { Loc("md_options_layout_clickra"), Loc("md_options_layout_word") }, _markdownLayoutSourceIndex);
 
             if (_markdownLayoutSourceIndex == 0)
             {
-                PaintCompactMarkdownOptionRow(g, s, Loc("md_options_style"), 210,
+                PaintCompactMarkdownOptionRow(g, s, Loc("md_options_style"), MarkdownOptionsLayout.StyleOrTemplateY,
                     new[] { Loc("md_options_style_default"), Loc("md_options_style_minimal"), Loc("md_options_style_academic") },
                     _markdownStyleIndex);
             }
             else
             {
-                DrawMarkdownRowLabel(g, s, Loc("md_options_template"), 210, bodyBrush);
-                DrawMarkdownButton(g, s, new RectangleF(MarkdownControlLeft, 210, 132, 30), Loc("md_options_template_browse"), false);
+                DrawMarkdownRowLabel(g, s, Loc("md_options_template"), MarkdownOptionsLayout.StyleOrTemplateY, bodyBrush);
+                DrawMarkdownButton(g, s, MarkdownOptionsLayout.TemplateBrowseRect, Loc("md_options_template_browse"), false);
                 using var statusFormat = new StringFormat
                 {
                     LineAlignment = StringAlignment.Center,
@@ -53,50 +50,47 @@ namespace Clickra.UI;
                     FormatFlags = StringFormatFlags.NoWrap
                 };
                 g.DrawString(_markdownTemplateStatus, _tipFont, mutedBrush,
-                    new RectangleF(296 * s, 210 * s, 188 * s, 30 * s), statusFormat);
+                    ScaleMarkdownRect(MarkdownOptionsLayout.TemplateStatusRect, s), statusFormat);
             }
 
-            PaintCompactMarkdownOptionRow(g, s, Loc("md_options_paper"), 252,
+            PaintCompactMarkdownOptionRow(g, s, Loc("md_options_paper"), MarkdownOptionsLayout.PaperY,
                 new[] { "A4", "Letter" }, _markdownPaperIndex);
-            PaintCompactMarkdownOptionRow(g, s, Loc("md_options_text_size"), 294,
+            PaintCompactMarkdownOptionRow(g, s, Loc("md_options_text_size"), MarkdownOptionsLayout.TextSizeY,
                 new[] { Loc("md_options_text_small"), Loc("md_options_text_standard"), Loc("md_options_text_large") },
                 _markdownTextSizeIndex);
-            PaintCompactMarkdownOptionRow(g, s, Loc("md_options_code_theme"), 336,
+            PaintCompactMarkdownOptionRow(g, s, Loc("md_options_code_theme"), MarkdownOptionsLayout.CodeThemeY,
                 new[] { Loc("md_options_code_dark"), Loc("md_options_code_light") }, _markdownCodeThemeIndex);
 
             using var separatorPen = new Pen(Color.FromArgb(58, 58, 58), 1f * s);
-            g.DrawLine(separatorPen, 36 * s, 384 * s, 484 * s, 384 * s);
-            DrawMarkdownButton(g, s, new RectangleF(254, 398, 120, 32), Loc("md_options_convert"), true);
-            DrawMarkdownButton(g, s, new RectangleF(386, 398, 98, 32), Loc("dialog_cancel"), false);
+            g.DrawLine(separatorPen, 36 * s, MarkdownOptionsLayout.SeparatorY * s, 484 * s, MarkdownOptionsLayout.SeparatorY * s);
+            DrawMarkdownButton(g, s, MarkdownOptionsLayout.ConfirmRect, Loc("md_options_convert"), true);
+            DrawMarkdownButton(g, s, MarkdownOptionsLayout.CancelRect, Loc("dialog_cancel"), false);
         }
 
-        private void PaintCompactMarkdownOptionRow(Graphics g, float s, string label, float y, string[] values, int selectedIndex)
+        private void PaintCompactMarkdownOptionRow(Graphics g, float s, string label, int y, string[] values, int selectedIndex)
         {
             if (_msgFont is null) return;
             using var labelBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
             DrawMarkdownRowLabel(g, s, label, y, labelBrush);
 
-            float gap = 6;
-            float width = (MarkdownControlWidth - gap * (values.Length - 1)) / values.Length;
             for (int i = 0; i < values.Length; i++)
             {
-                var rect = new RectangleF(MarkdownControlLeft + i * (width + gap), y, width, MarkdownOptionButtonHeight);
+                var rect = MarkdownOptionsLayout.RowButtonRect(y, values.Length, i);
                 DrawMarkdownButton(g, s, rect, values[i], i == selectedIndex);
             }
         }
 
-        private void DrawMarkdownRowLabel(Graphics g, float s, string label, float y, Brush brush)
+        private void DrawMarkdownRowLabel(Graphics g, float s, string label, int y, Brush brush)
         {
             if (_msgFont is null) return;
             using var format = new StringFormat { LineAlignment = StringAlignment.Center };
             g.DrawString(label, _msgFont, brush,
-                new RectangleF(MarkdownOptionLeft * s, y * s, (MarkdownControlLeft - MarkdownOptionLeft - 12) * s,
-                    MarkdownOptionButtonHeight * s), format);
+                ScaleMarkdownRect(MarkdownOptionsLayout.LabelRect(y), s), format);
         }
 
-        private void DrawMarkdownButton(Graphics g, float s, RectangleF logicalRect, string text, bool selected)
+        private void DrawMarkdownButton(Graphics g, float s, LayoutRect logicalRect, string text, bool selected)
         {
-            var rect = new RectangleF(logicalRect.X * s, logicalRect.Y * s, logicalRect.Width * s, logicalRect.Height * s);
+            var rect = ScaleMarkdownRect(logicalRect, s);
             using var path = UIHelper.GetRoundedRectPath(rect, 5 * s);
             Color accent = UIHelper.GetSystemColorizationColor();
             using var fill = new SolidBrush(selected ? accent : Color.FromArgb(45, 45, 45));
@@ -110,9 +104,12 @@ namespace Clickra.UI;
             g.DrawString(text, font, textBrush, rect, format);
         }
 
+        private static RectangleF ScaleMarkdownRect(LayoutRect rect, float scale) =>
+            new(rect.X * scale, rect.Y * scale, rect.Width * scale, rect.Height * scale);
+
         private bool HandleMarkdownOptionsClick(IntPtr hwnd, int mouseX, int mouseY)
         {
-            if (TryHitCompactMarkdownOptionRow(mouseX, mouseY, 168, 2, out int source))
+            if (MarkdownOptionsLayout.TryHitRow(mouseX, mouseY, MarkdownOptionsLayout.LayoutSourceY, 2, out int source))
             {
                 _markdownLayoutSourceIndex = source;
                 InvalidateRect(hwnd, IntPtr.Zero, false);
@@ -121,41 +118,41 @@ namespace Clickra.UI;
 
             if (_markdownLayoutSourceIndex == 0)
             {
-                if (TryHitCompactMarkdownOptionRow(mouseX, mouseY, 210, 3, out int style))
+                if (MarkdownOptionsLayout.TryHitRow(mouseX, mouseY, MarkdownOptionsLayout.StyleOrTemplateY, 3, out int style))
                 {
                     _markdownStyleIndex = style;
                     InvalidateRect(hwnd, IntPtr.Zero, false);
                     return true;
                 }
             }
-            else if (ContainsMarkdownRect(mouseX, mouseY, new RectangleF(MarkdownControlLeft, 210, 132, 30)))
+            else if (MarkdownOptionsLayout.TemplateBrowseRect.ContainsInclusive(mouseX, mouseY))
             {
                 BrowseMarkdownTemplate(hwnd);
                 return true;
             }
 
-            if (TryHitCompactMarkdownOptionRow(mouseX, mouseY, 252, 2, out int paper))
+            if (MarkdownOptionsLayout.TryHitRow(mouseX, mouseY, MarkdownOptionsLayout.PaperY, 2, out int paper))
             {
                 _markdownPaperIndex = paper;
                 InvalidateRect(hwnd, IntPtr.Zero, false);
                 return true;
             }
-            if (TryHitCompactMarkdownOptionRow(mouseX, mouseY, 294, 3, out int textSize))
+            if (MarkdownOptionsLayout.TryHitRow(mouseX, mouseY, MarkdownOptionsLayout.TextSizeY, 3, out int textSize))
             {
                 _markdownTextSizeIndex = textSize;
                 InvalidateRect(hwnd, IntPtr.Zero, false);
                 return true;
             }
-            if (TryHitCompactMarkdownOptionRow(mouseX, mouseY, 336, 2, out int codeTheme))
+            if (MarkdownOptionsLayout.TryHitRow(mouseX, mouseY, MarkdownOptionsLayout.CodeThemeY, 2, out int codeTheme))
             {
                 _markdownCodeThemeIndex = codeTheme;
                 InvalidateRect(hwnd, IntPtr.Zero, false);
                 return true;
             }
 
-            if (ContainsMarkdownRect(mouseX, mouseY, new RectangleF(254, 398, 120, 32)))
+            if (MarkdownOptionsLayout.ConfirmRect.ContainsInclusive(mouseX, mouseY))
                 return TryConfirmMarkdownConversion(hwnd);
-            if (ContainsMarkdownRect(mouseX, mouseY, new RectangleF(386, 398, 98, 32)))
+            if (MarkdownOptionsLayout.CancelRect.ContainsInclusive(mouseX, mouseY))
             {
                 ResolveMarkdownDecision(false);
                 DestroyWindow(hwnd);
@@ -216,27 +213,6 @@ namespace Clickra.UI;
             ResizeWindowForMarkdownOptions(hwnd, false);
             StartProcessingThread(hwnd);
         }
-
-        private static bool TryHitCompactMarkdownOptionRow(int mouseX, int mouseY, float y, int count, out int index)
-        {
-            index = -1;
-            if (mouseY < y || mouseY > y + MarkdownOptionButtonHeight) return false;
-            const float gap = 6;
-            float width = (MarkdownControlWidth - gap * (count - 1)) / count;
-            for (int i = 0; i < count; i++)
-            {
-                float x = MarkdownControlLeft + i * (width + gap);
-                if (mouseX >= x && mouseX <= x + width)
-                {
-                    index = i;
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private static bool ContainsMarkdownRect(int x, int y, RectangleF rect) =>
-            x >= rect.Left && x <= rect.Right && y >= rect.Top && y <= rect.Bottom;
 
         private void BrowseMarkdownTemplate(IntPtr owner)
         {
