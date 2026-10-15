@@ -10,6 +10,18 @@ class PdfFixtureScopeTests(unittest.TestCase):
     def test_governance_changes_do_not_require_external_pdfs(self):
         self.assertFalse(requires_fixtures(["AGENTS.md", "scripts/pr_tool.py"]))
 
+    def test_generic_ci_and_git_hook_changes_do_not_require_external_pdfs(self):
+        self.assertFalse(requires_fixtures([
+            ".github/workflows/ci.yml", "scripts/hooks/pre-push",
+            ".github/pull_request_template.md", "scripts/pr_preflight.py",
+        ]))
+
+    def test_unrelated_changes_do_not_mask_translation_changes(self):
+        self.assertTrue(requires_fixtures([
+            ".github/workflows/ci.yml", "scripts/hooks/pre-push",
+            "tests/PdfRegression/test_public_translation_identity.py",
+        ]))
+
     def test_translation_pipeline_requires_fixtures(self):
         self.assertTrue(requires_fixtures([
             "src/Clickra.Core/Processors/PdfTranslation/Layout/PdfTranslationLayoutPlanner.cs"
