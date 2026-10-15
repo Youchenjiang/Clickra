@@ -72,8 +72,9 @@ class GitToolTests(unittest.TestCase):
         state = self.state()
         changed = dict(state, remote_main="d" * 40)
         snapshot.side_effect = (state, changed)
+        token = git_tool.authorization(state)
         with self.assertRaisesRegex(ValueError, "changed"):
-            git_tool.run("sync", True, git_tool.authorization(state))
+            git_tool.run("sync", True, token)
         command.assert_not_called()
 
 

@@ -12,6 +12,8 @@ import shutil
 import subprocess
 import sys
 
+MAIN_BRANCH_REF = "refs/heads/main"
+
 
 def git(*args, check=True):
     executable = shutil.which("git")
@@ -42,41 +44,40 @@ def ancestor(older, newer):
     return proc.returncode == 0
 
 
+def check_action_branch(action, branch, local_base, remote_head, current_head):
+    if branch == "main":
+        raise ValueError("sync must run from a separate worktree" if action == "sync"
+                         else "cannot rebase main")
+    if action == "sync":
+        if not ancestor(local_base, remote_head):
+            raise ValueError("local main cannot fast-forward")
+        worktrees = output("worktree", "list", "--porcelain")
+        if f"branch {MAIN_BRANCH_REF}\n" in worktrees + "\n":
+            raise ValueError("main is checked out in another worktree")
+        return
+    if output("ls-remote", "--heads", "origin", branch):
+        raise ValueError("branch exists on origin; refuse to rewrite published history")
+    if not ancestor(local_base, current_head):
+        raise ValueError("branch does not descend from local main")
+
+
 def snapshot(action):
     branch = output("branch", "--show-current")
     if not branch:
         raise ValueError("detached HEAD is unsupported")
-    if output("rev-parse", "--show-toplevel") == "":
+    if not output("rev-parse", "--show-toplevel"):
         raise ValueError("repository root unavailable")
     assert_clean()
-    local_base = output("rev-parse", "refs/heads/main")
+    local_base = output("rev-parse", MAIN_BRANCH_REF)
     remote_base = output("ls-remote", "--heads", "origin", "main").split()
-    if len(remote_base) != 2 or remote_base[1] != "refs/heads/main":
+    if len(remote_base) != 2 or remote_base[1] != MAIN_BRANCH_REF:
         raise ValueError("cannot verify remote main")
     if output("rev-parse", "refs/remotes/origin/main") != remote_base[0]:
         raise ValueError("origin/main is stale; fetch origin main first")
     current_head = output("rev-parse", "HEAD")
-    if action == "sync":
-        if branch == "main":
-            raise ValueError("sync must run from a separate worktree")
-        if not ancestor(local_base, remote_base[0]):
-            raise ValueError("local main cannot fast-forward")
-        worktrees = output("worktree", "list", "--porcelain")
-        if "branch refs/heads/main\n" in worktrees + "\n":
-            raise ValueError("main is checked out in another worktree")
-        state = {"action": action, "branch": branch, "head": current_head,
-                 "main": local_base, "remote_main": remote_base[0]}
-    else:
-        if branch == "main":
-            raise ValueError("cannot rebase main")
-        published = output("ls-remote", "--heads", "origin", branch)
-        if published:
-            raise ValueError("branch exists on origin; refuse to rewrite published history")
-        if not ancestor(local_base, current_head):
-            raise ValueError("branch does not descend from local main")
-        state = {"action": action, "branch": branch, "head": current_head,
-                 "main": local_base, "remote_main": remote_base[0]}
-    return state
+    check_action_branch(action, branch, local_base, remote_base[0], current_head)
+    return {"action": action, "branch": branch, "head": current_head,
+            "main": local_base, "remote_main": remote_base[0]}
 
 
 def authorization(state):
@@ -88,7 +89,7 @@ def authorization(state):
 def status():
     print(json.dumps({"branch": output("branch", "--show-current"),
                       "head": output("rev-parse", "HEAD"),
-                      "main": output("rev-parse", "refs/heads/main"),
+                      "main": output("rev-parse", MAIN_BRANCH_REF),
                       "origin_main": output("rev-parse", "refs/remotes/origin/main"),
                       "dirty": bool(output("status", "--porcelain=v1")),
                       "worktrees": output("worktree", "list").splitlines()}, indent=2))
@@ -108,7 +109,7 @@ def run(action, execute=False, authorize=None):
         raise ValueError("repository changed since authorization")
     if action == "sync":
         if state["main"] != state["remote_main"]:
-            git("update-ref", "refs/heads/main", state["remote_main"], state["main"])
+            git("update-ref", MAIN_BRANCH_REF, state["remote_main"], state["main"])
     else:
         if state["head"] != state["remote_main"]:
             result = git("rebase", "--no-autostash", "origin/main", check=False)
