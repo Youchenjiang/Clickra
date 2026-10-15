@@ -159,12 +159,12 @@ jobs:
             // provider or that the user explicitly selected that provider before
             // implementation. This prevents capability requirements from being
             // silently converted into vendor choices.
-            const providerAcknowledged = /- \[[xX]\] \*\*External provider\*\*:/.test(
+            const providerAcknowledged = /^## Review Checklist\s*$[\s\S]*?^- \[[xX]\] \*\*External provider\*\*:\s*\S+/m.test(
               pr.body || "",
             );
             if (pr.user.type !== "Bot" && !providerAcknowledged) {
               failures.push(
-                "PR must check the 'External provider' metadata item. Confirm that no new named " +
+                "PR must check the 'External provider' review item. Confirm that no new named " +
                   "provider is introduced, or that the provider was explicitly selected by the user " +
                   "before implementation.",
               );

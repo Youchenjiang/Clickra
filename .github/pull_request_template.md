@@ -8,9 +8,9 @@ internal rollout evidence instead.
 
 Do not publish replies, edits, reposts, or deletions of review comments. Verify the fix, then resolve only with explicit authorization. Rebase/rebuild each next PR on freshly fetched origin/main and pass local push checks before publication.
 
-PR metadata is validated by the Repository Policy workflow (external-provider acknowledgement,
-assignee, labels, milestone)
-and listed in the checklist below.
+GitHub assignees, labels and milestones are checked from actual PR metadata,
+not self-reported checkboxes. The provider decision remains a required
+acknowledgement, because tooling cannot infer prior user authorization.
 
 Release-preparation PRs are the exception: the tag-triggered release workflow uses the
 merged release-preparation PR body as GitHub Release notes. Keep that PR public-facing and
@@ -34,10 +34,12 @@ roadmap codes like "R1-3" -- those belong in the milestone only.
 ## Scope
 <!-- Optional: include only when exclusions or ownership boundaries are important to review. -->
 
-## PR Metadata
-<!-- Checked by the Repository Policy workflow; fill these in before opening the PR. -->
-- [ ] **Assignee**: self-assigned (the workflow auto-assigns the author if left empty).
-- [ ] **Label**: added at least one matching the title scope (`cli` / `core` / `shell` / `msix` / `docs` / `ci` / `deps` / `store` / `agent`).
-- [ ] **Milestone**: linked to the roadmap phase or target version (exempt for `release` / `hotfix` / `deps` / `dependencies` / `docs`-labeled PRs).
-- [ ] **Development**: linked to the issue(s) this PR closes, if any.
-- [ ] **External provider**: this PR does not introduce or bind a new named external provider, or that provider was explicitly selected by the user before implementation.
+## Review Checklist
+<!-- Check only what you actually reviewed. Explain any relevant exception or N/A in Validation or Scope.
+     These are reviewer prompts, not substitutes for test results or evidence. -->
+- [ ] **Behavior**: reviewed intentional behavior changes and unintended side effects.
+- [ ] **Regression**: assessed affected paths and recorded relevant test evidence above.
+- [ ] **Compatibility**: reviewed compatibility and migration impact, if applicable.
+- [ ] **Security**: assessed security implications, if applicable.
+- [ ] **Documentation**: updated relevant docs or confirmed no change is required.
+- [ ] **External provider**: no new named provider is introduced, or any new provider was explicitly selected by the user before implementation (required acknowledgement).

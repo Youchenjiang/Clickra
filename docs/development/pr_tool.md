@@ -3,6 +3,14 @@
 Use the high-level `scripts/pr_tool.py` interface rather than manually assembling
 `gh`, GraphQL and pre-push commands. From the Clickra repository worktree:
 
+The PR body uses Summary, Changes, Validation and a reviewer-facing Review Checklist.
+Behavior, Regression, Compatibility, Security and Documentation checkboxes are
+prompts for genuine human review, not automatic pass/fail assertions; leave
+inapplicable items unchecked and briefly explain relevant exceptions in Validation
+or Scope. The External provider checkbox is a required explicit acknowledgement
+of the provider-selection policy. Assignees, labels and milestones are verified
+against actual GitHub metadata rather than duplicated as PR-body checkboxes.
+
 Branch names must describe the work, not their PR sequence. The shared
 preflight, push preview/execution, PR creation, and CI policy reject suffixes
 such as `-pr1`, `-pr2`, or `-pr10`, while retaining meaningful identifiers such
