@@ -13,9 +13,8 @@ ALLOWED_TYPES = "feat|fix|refactor|docs|test|chore|style|perf|security"
 ALLOWED_SCOPES = "cli|core|shell|msix|docs|ci|deps|store|agent"
 SUBJECT = re.compile(rf"^(?:{ALLOWED_TYPES})(?:\((?:{ALLOWED_SCOPES})\))?: [a-z0-9].*$")
 BODY_NUMBER = re.compile(r"1[.)][ \t]+")
-METADATA_SECTION = "## PR Metadata"
-REQUIRED_SECTIONS = ("## Summary", "## Changes", "## Validation", METADATA_SECTION)
-REQUIRED_METADATA = ("Assignee", "Label", "Milestone", "External provider")
+CHECKLIST_SECTION = "## Review Checklist"
+REQUIRED_SECTIONS = ("## Summary", "## Changes", "## Validation", CHECKLIST_SECTION)
 PLACEHOLDER = re.compile(r"(?i)\b(?:todo|tbd|placeholder|describe the|assign the|add an appropriate|choose the|not run: full pre-push)\b")
 VAGUE = {"update", "misc", "stuff", "changes", "fix bug", "bug fix"}
 GIT_TIMEOUT = 30
@@ -66,27 +65,11 @@ def _split_pr_sections(body):
     return sections
 
 
-def _draft_metadata_errors(lines, metadata):
-    errors = []
-    for label in REQUIRED_METADATA if metadata is None else ("External provider",):
-        pattern = rf"(?mi)^- \[x\] \*\*{re.escape(label)}\*\*:[ \t]*([^\s\r\n][^\r\n]*)$"
-        match = re.search(pattern, lines)
-        invalid = not match or bool(PLACEHOLDER.search(match.group(1)))
-        if not invalid and label == "Milestone":
-            invalid = (match.group(1).strip().lower() in {"none", "n/a", "not applicable"}
-                       and not _draft_exempt_label(lines))
-        if invalid:
-            errors.append(f"completed {label} metadata required")
-    return errors
-
-
-def _draft_exempt_label(lines):
-    for line in lines.splitlines():
-        if line.lower().startswith("- [x] **label**:"):
-            value = line.split(":", 1)[1].lower()
-            return bool(set(re.findall(r"[a-z]+", value)) &
-                        {"release", "hotfix", "deps", "dependencies", "docs"})
-    return False
+def _provider_acknowledgement_errors(lines):
+    match = re.search(r"(?mi)^- \[x\] \*\*External provider\*\*:[ \t]*(\S[^\r\n]*)$", lines)
+    if not match or PLACEHOLDER.search(match.group(1)):
+        return ["completed External provider acknowledgement required"]
+    return []
 
 
 def _live_metadata_errors(metadata):
@@ -107,9 +90,9 @@ def validate_pr_body(body, metadata=None):
             errors.append(heading)
             continue
         content = "\n".join(sections[heading]).strip()
-        if not content or (heading != METADATA_SECTION and PLACEHOLDER.search(content)):
+        if not content or (heading != CHECKLIST_SECTION and PLACEHOLDER.search(content)):
             errors.append(f"empty or placeholder {heading}")
-    errors.extend(_draft_metadata_errors("\n".join(sections.get(METADATA_SECTION, [])), metadata))
+    errors.extend(_provider_acknowledgement_errors("\n".join(sections.get(CHECKLIST_SECTION, []))))
     if metadata is not None:
         errors.extend(_live_metadata_errors(metadata))
     return errors

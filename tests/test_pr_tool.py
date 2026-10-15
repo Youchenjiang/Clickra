@@ -222,7 +222,7 @@ class PrToolTests(unittest.TestCase):
         with TemporaryDirectory() as folder:
             body = Path(folder) / "pr.md"
             body.write_text(
-                "## Summary\nA\n## Changes\nB\n## Validation\nC\n## PR Metadata\n"
+                "## Summary\nA\n## Changes\nB\n## Validation\nC\n## Review Checklist\n"
                 "- [x] **Assignee**: @owner\n- [x] **Label**: agent\n"
                 "- [x] **Milestone**: Plan\n- [x] **External provider**: none\n",
                 encoding="utf-8")
