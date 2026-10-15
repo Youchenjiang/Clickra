@@ -25,6 +25,7 @@ static partial class TestSuite
     private const string FileA2 = @"\a2.pdf";
     private const string FluentProjectDirectory = "Clickra.Fluent";
     private const string RepoRootNotFoundMessage = "Could not locate the repository root from the test output directory.";
+    private const string LifecycleFixtureContent = "fixture";
     private const string FluentMainPageFile = "MainPage.xaml.cs";
     private const string FluentHistoryPageFile = "MainPage.History.cs";
     private const string CliProjectDirectory = "Clickra.CLI";
@@ -190,7 +191,7 @@ static partial class TestSuite
         RunWithTempDirectory(tempDir =>
         {
             string input = Path.Combine(tempDir, "park.pdf");
-            File.WriteAllText(input, "fixture");
+            File.WriteAllText(input, LifecycleFixtureContent);
             var useCase = new ParkingPerFileUseCase();
             ConversionPlan plan = useCase.Plan(new ConversionRequest(
                 CompressPdfUseCase.CommandName,
@@ -216,8 +217,8 @@ static partial class TestSuite
         {
             string first = Path.Combine(tempDir, "a.pdf");
             string second = Path.Combine(tempDir, "b.pdf");
-            File.WriteAllText(first, "fixture");
-            File.WriteAllText(second, "fixture");
+            File.WriteAllText(first, LifecycleFixtureContent);
+            File.WriteAllText(second, LifecycleFixtureContent);
             var useCase = new CancelingSingleOutputUseCase();
             ConversionPlan plan = useCase.Plan(new ConversionRequest(
                 MergePdfUseCase.CommandName,
@@ -242,7 +243,7 @@ static partial class TestSuite
         RunWithTempDirectory(tempDir =>
         {
             string input = Path.Combine(tempDir, "missing.pdf");
-            File.WriteAllText(input, "fixture");
+            File.WriteAllText(input, LifecycleFixtureContent);
             var useCase = new ClassifiedFailurePerFileUseCase();
             ConversionPlan plan = useCase.Plan(new ConversionRequest(
                 CompressPdfUseCase.CommandName,

@@ -86,9 +86,8 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
 
         int completedFiles = GetInitialCompletedFiles(plan);
         return await ConversionLifecycleResultRunner.RunAsync(
-            plan,
-            stopwatch,
-            lifecycle,
+            new ConversionLifecycleRunContext(
+                plan, stopwatch, lifecycle, string.Join(";", plan.Outputs), true, ClassifyFailure),
             async currentLifecycle =>
             {
             for (int i = completedFiles; i < plan.Inputs.Count; i++)
@@ -106,10 +105,7 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
                 completedFiles = i + 1;
             }
             },
-            () => completedFiles,
-            string.Join(";", plan.Outputs),
-            parkOnSignal: true,
-            ClassifyFailure);
+            () => completedFiles);
     }
 
     protected static void ReportFileProgress(

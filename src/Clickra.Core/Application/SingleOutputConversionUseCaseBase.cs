@@ -67,17 +67,14 @@ public abstract class SingleOutputConversionUseCaseBase : ConversionUseCaseBase
 
         int completedFiles = 0;
         return await ConversionLifecycleResultRunner.RunAsync(
-            plan,
-            stopwatch,
-            lifecycle,
+            new ConversionLifecycleRunContext(
+                plan, stopwatch, lifecycle, plan.Outputs[0], true),
             async _ =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 await ExecuteSingleAsync(plan, progress, cancellationToken);
                 completedFiles = plan.Inputs.Count;
             },
-            () => completedFiles,
-            plan.Outputs[0],
-            parkOnSignal: true);
+            () => completedFiles);
     }
 }

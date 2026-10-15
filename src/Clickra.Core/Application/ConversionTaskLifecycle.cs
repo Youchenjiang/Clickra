@@ -119,18 +119,22 @@ public sealed class ConversionTaskLifecycle
 /// Centralizes lifecycle completion and result mapping without owning command planning or execution bodies.
 /// Execution families keep their own loops, checkpoints, batch semantics, and processor options.
 /// </summary>
+internal sealed record ConversionLifecycleRunContext(
+    ConversionPlan Plan,
+    Stopwatch Stopwatch,
+    ConversionTaskLifecycle? Lifecycle,
+    string OutputRecord,
+    bool ParkOnSignal,
+    Func<Exception, ConversionFailureKind>? ClassifyFailure = null);
+
 internal static class ConversionLifecycleResultRunner
 {
     public static async Task<ConversionResult> RunAsync(
-        ConversionPlan plan,
-        Stopwatch stopwatch,
-        ConversionTaskLifecycle? lifecycle,
+        ConversionLifecycleRunContext context,
         Func<ConversionTaskLifecycle?, Task> executeAsync,
-        Func<int> completedFiles,
-        string outputRecord,
-        bool parkOnSignal,
-        Func<Exception, ConversionFailureKind>? classifyFailure = null)
+        Func<int> completedFiles)
     {
+        var (plan, stopwatch, lifecycle, outputRecord, parkOnSignal, classifyFailure) = context;
         try
         {
             await executeAsync(lifecycle);

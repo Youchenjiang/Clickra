@@ -66,9 +66,8 @@ public abstract class OfficeToPdfUseCaseBase : ConversionUseCaseBase
 
         int completedFiles = 0;
         return await ConversionLifecycleResultRunner.RunAsync(
-            plan,
-            stopwatch,
-            lifecycle,
+            new ConversionLifecycleRunContext(
+                plan, stopwatch, lifecycle, string.Join(";", plan.Outputs), false),
             async _ =>
             {
                 string? readinessError = GetReadinessError(plan);
@@ -78,9 +77,7 @@ public abstract class OfficeToPdfUseCaseBase : ConversionUseCaseBase
                 await ExecuteBatchAsync(plan, progress, cancellationToken);
                 completedFiles = plan.Inputs.Count;
             },
-            () => completedFiles,
-            string.Join(";", plan.Outputs),
-            parkOnSignal: false);
+            () => completedFiles);
     }
 
     private string? GetReadinessError(ConversionPlan plan)

@@ -6,6 +6,34 @@ namespace Clickra.Core.Tests;
 static partial class TestSuite
 {
     private const string NullDisplay = "<null>";
+    private const string OfficeTestLanguage = "en-US";
+
+    private static void WithRestoredOfficeSettings(Action action)
+    {
+        string originalEngine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
+        string originalLanguage = ClickraStorage.GetSetting(ClickraSettings.Language);
+        string originalLibreOfficePath = ClickraStorage.GetSetting(ClickraSettings.LibreOfficePath);
+        string originalRemovalPending = ClickraStorage.GetSetting(ClickraSettings.LibreOfficeRemovalPendingRestart);
+        try
+        {
+            action();
+        }
+        finally
+        {
+            ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, originalEngine);
+            ClickraStorage.SaveSetting(ClickraSettings.Language, originalLanguage);
+            ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, originalLibreOfficePath);
+            ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, originalRemovalPending);
+        }
+    }
+
+    private static void SetUnavailableOfficeTestSettings(string path)
+    {
+        ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineLibreOffice);
+        ClickraStorage.SaveSetting(ClickraSettings.Language, OfficeTestLanguage);
+        ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, path);
+        ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueTrue);
+    }
 
     public static void RegisterOfficeEngineReliabilityTests(TestRunner runner)
     {
@@ -31,17 +59,9 @@ static partial class TestSuite
                 "fixture"));
 
         runner.Run("Office conversion planning snapshots saved execution settings", () =>
-        {
-            string originalEngine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
-            string originalLanguage = ClickraStorage.GetSetting(ClickraSettings.Language);
-            string originalLibreOfficePath = ClickraStorage.GetSetting(ClickraSettings.LibreOfficePath);
-            string originalRemovalPending = ClickraStorage.GetSetting(ClickraSettings.LibreOfficeRemovalPendingRestart);
-            try
+            WithRestoredOfficeSettings(() =>
             {
-                ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineLibreOffice);
-                ClickraStorage.SaveSetting(ClickraSettings.Language, "en-US");
-                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, @"C:\snapshot\soffice.exe");
-                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueTrue);
+                SetUnavailableOfficeTestSettings(@"C:\snapshot\soffice.exe");
 
                 RunWithTempDirectory(tempDir =>
                 {
@@ -58,34 +78,18 @@ static partial class TestSuite
                     ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueFalse);
 
                     Assert.Equal(ClickraSettings.OfficeEngineLibreOffice, plan.NormalizedOptions["office_engine"].ToString() ?? "");
-                    Assert.Equal("en-US", plan.NormalizedOptions["office_language"].ToString() ?? "");
+                    Assert.Equal(OfficeTestLanguage, plan.NormalizedOptions["office_language"].ToString() ?? "");
                     Assert.Equal(@"C:\snapshot\soffice.exe", plan.NormalizedOptions["libreoffice_path"].ToString() ?? "");
                     Assert.True(
                         plan.NormalizedOptions["libreoffice_removal_pending_restart"] is bool removalPending && removalPending,
                         "Office conversion must retain the removal-pending value captured during planning.");
                 });
-            }
-            finally
-            {
-                ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, originalEngine);
-                ClickraStorage.SaveSetting(ClickraSettings.Language, originalLanguage);
-                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, originalLibreOfficePath);
-                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, originalRemovalPending);
-            }
-        });
+            }));
 
         runner.Run("Office execution enforces readiness from the planned settings snapshot", () =>
-        {
-            string originalEngine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
-            string originalLanguage = ClickraStorage.GetSetting(ClickraSettings.Language);
-            string originalLibreOfficePath = ClickraStorage.GetSetting(ClickraSettings.LibreOfficePath);
-            string originalRemovalPending = ClickraStorage.GetSetting(ClickraSettings.LibreOfficeRemovalPendingRestart);
-            try
+            WithRestoredOfficeSettings(() =>
             {
-                ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineLibreOffice);
-                ClickraStorage.SaveSetting(ClickraSettings.Language, "en-US");
-                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, @"C:\planned\soffice.exe");
-                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueTrue);
+                SetUnavailableOfficeTestSettings(@"C:\planned\soffice.exe");
 
                 RunWithTempDirectory(tempDir =>
                 {
@@ -113,20 +117,12 @@ static partial class TestSuite
                         result.Status == ConversionResultStatus.Failed,
                         $"Expected readiness failure, got {result.Status}.");
                     Assert.Equal(
-                        Localization.T("error_libreoffice_not_ready", "en-US"),
+                        Localization.T("error_libreoffice_not_ready", OfficeTestLanguage),
                         result.Error ?? "");
                     Assert.False(File.Exists(plan.Outputs[0]),
                         "Office readiness failure must stop before processor execution creates output.");
                 });
-            }
-            finally
-            {
-                ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, originalEngine);
-                ClickraStorage.SaveSetting(ClickraSettings.Language, originalLanguage);
-                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, originalLibreOfficePath);
-                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, originalRemovalPending);
-            }
-        });
+            }));
 
         runner.Run("Office readiness maps commands and supported app types", () =>
         {
