@@ -16,8 +16,8 @@ internal static class PdfGrayPromptRegionBuilder
         IReadOnlyList<PdfParagraph>? pageList = null)
     {
         if (diagramRegions.Count == 0) return new List<TableMaskRegion>();
-        if (pageList != null && pageList.Any(p =>
-                p.TextWithPlaceholders.Trim().Contains("WORK DIVISION", StringComparison.OrdinalIgnoreCase)))
+        if (pageList?.Any(p =>
+                p.TextWithPlaceholders.Trim().Contains("WORK DIVISION", StringComparison.OrdinalIgnoreCase)) == true)
         {
             return new List<TableMaskRegion>();
         }
