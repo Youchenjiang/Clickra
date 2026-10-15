@@ -100,7 +100,7 @@ public partial class ProgressWindow
         if (totalPages <= 0) totalPages = 1;
 
         _visualSplitFilePath = filePath;
-_visualSplitTotalPages = totalPages;
+        _visualSplitTotalPages = totalPages;
         _visualSplitModel = new VisualSplitModel(totalPages);
         SyncVisualSplitStateFromModel();
 
