@@ -74,6 +74,60 @@ static partial class TestSuite
             }
         });
 
+        runner.Run("Office execution enforces readiness from the planned settings snapshot", () =>
+        {
+            string originalEngine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
+            string originalLanguage = ClickraStorage.GetSetting(ClickraSettings.Language);
+            string originalLibreOfficePath = ClickraStorage.GetSetting(ClickraSettings.LibreOfficePath);
+            string originalRemovalPending = ClickraStorage.GetSetting(ClickraSettings.LibreOfficeRemovalPendingRestart);
+            try
+            {
+                ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineLibreOffice);
+                ClickraStorage.SaveSetting(ClickraSettings.Language, "en-US");
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, @"C:\planned\soffice.exe");
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueTrue);
+
+                RunWithTempDirectory(tempDir =>
+                {
+                    string input = Path.Combine(tempDir, "not-executed.docx");
+                    File.WriteAllText(input, "fixture");
+                    var useCase = new WordToPdfUseCase();
+                    ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                        WordToPdfUseCase.CommandName,
+                        new[] { input },
+                        TrackTaskLifecycle: false));
+
+                    // Mutating live settings after planning must not make execution use a different policy snapshot.
+                    ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineMicrosoft);
+                    ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueFalse);
+
+                    var interaction = new DelegateConversionInteraction(
+                        (_, _, _, _) => Task.FromResult<string?>(null),
+                        (_, _, _) => Task.FromResult<string?>(null),
+                        (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+                    ConversionResult result = useCase.ExecuteAsync(plan, interaction, null)
+                        .GetAwaiter()
+                        .GetResult();
+
+                    Assert.True(
+                        result.Status == ConversionResultStatus.Failed,
+                        $"Expected readiness failure, got {result.Status}.");
+                    Assert.Equal(
+                        Localization.T("error_libreoffice_not_ready", "en-US"),
+                        result.Error ?? "");
+                    Assert.False(File.Exists(plan.Outputs[0]),
+                        "Office readiness failure must stop before processor execution creates output.");
+                });
+            }
+            finally
+            {
+                ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, originalEngine);
+                ClickraStorage.SaveSetting(ClickraSettings.Language, originalLanguage);
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, originalLibreOfficePath);
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, originalRemovalPending);
+            }
+        });
+
         runner.Run("Office readiness maps commands and supported app types", () =>
         {
             Assert.Equal(

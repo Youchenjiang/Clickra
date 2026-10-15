@@ -1,4 +1,5 @@
 using Clickra.Core.Application;
+using Clickra.Core.Modules.Office.Infrastructure;
 using Clickra.Core.Modules.Office.Processing;
 using Clickra.Core.Modules.Settings.Application;
 using Clickra.Core.Processors;
@@ -66,6 +67,10 @@ public abstract class OfficeToPdfUseCaseBase : ConversionUseCaseBase
         int completedFiles = 0;
         try
         {
+            string? readinessError = GetReadinessError(plan);
+            if (readinessError is not null)
+                throw new InvalidOperationException(readinessError);
+
             await ExecuteBatchAsync(plan, progress, cancellationToken);
             completedFiles = plan.Inputs.Count;
 
@@ -94,5 +99,21 @@ public abstract class OfficeToPdfUseCaseBase : ConversionUseCaseBase
                 stopwatch.Elapsed,
                 completedFiles,
                 lifecycle?.TaskId ?? "");
+    }
+
+    private string? GetReadinessError(ConversionPlan plan)
+    {
+        OfficeConversionSettings settings = OfficeConversionOptions.Read(plan.NormalizedOptions);
+        if (OfficeEngineDetector.IsCommandReady(
+                Command,
+                settings.Engine,
+                settings.LibreOfficeRemovalPendingRestart,
+                settings.LibreOfficePath))
+        {
+            return null;
+        }
+
+        string errorKey = OfficeEngineDetector.GetUnavailableErrorKey(settings.Engine);
+        return Localization.T(errorKey, settings.Language);
     }
 }

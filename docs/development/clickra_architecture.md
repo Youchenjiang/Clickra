@@ -672,6 +672,14 @@ Local completion evidence for this consolidation slice:
 - product icon asset verification passed;
 - NativeAOT publish succeeded for CLI, ClickraShell, and ClickraLauncher.
 
+### Native execution lifecycle follow-up
+
+Office batch conversion now verifies engine readiness from the plan-time
+engine/path/removal snapshot inside the Application use case, before invoking
+the processor. Native and Fluent preflight checks remain early user feedback,
+not a substitute for enforcement in a headless execution path. Tests cover
+an unavailable engine and a plan snapshot that differs from later settings.
+
 ---
 
 ## 10. Contributor dependency checklist

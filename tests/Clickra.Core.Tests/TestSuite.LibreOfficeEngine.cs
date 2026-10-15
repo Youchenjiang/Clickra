@@ -384,6 +384,14 @@ static partial class TestSuite
                     .Select(File.ReadAllText));
             string cliPaint = File.ReadAllText(Path.Combine(dashboardDir, "DashboardWindow.Paint.Settings.cs"));
             string settings = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraSettings.cs"));
+            string officeUseCaseBase = File.ReadAllText(Path.Combine(
+                root,
+                "src",
+                "Clickra.Core",
+                "Modules",
+                "Office",
+                "Application",
+                "OfficeToPdfUseCaseBase.cs"));
 
             foreach ((string name, string source) in new[] { ("Fluent", fluent), ("CLI", cliEvents) })
             {
@@ -405,6 +413,10 @@ static partial class TestSuite
             Assert.True(cliPaint.Contains("SettingsPresentationController.Shared.GetLibreOfficeState()", StringComparison.Ordinal) &&
                         cliPaint.Contains("setting_libreoffice_external_hint", StringComparison.Ordinal),
                 "The CLI settings page must hide the uninstall button and explain why.");
+            Assert.True(
+                officeUseCaseBase.Contains("OfficeEngineDetector.IsCommandReady(", StringComparison.Ordinal)
+                && officeUseCaseBase.Contains("OfficeConversionOptions.Read(plan.NormalizedOptions)", StringComparison.Ordinal),
+                "Office Application execution must enforce readiness from the planned settings snapshot; UI preflight is UX only.");
 
             Assert.True(settings.Contains("public const string LibreOfficeInstalledByClickra", StringComparison.Ordinal),
                 "The shared ownership key must be registered in ClickraSettings.");
