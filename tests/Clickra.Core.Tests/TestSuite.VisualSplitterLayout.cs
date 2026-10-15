@@ -51,5 +51,22 @@ static partial class TestSuite
             Assert.True(VisualSplitterLayout.PagesButton(true).ContainsInclusive(160, 148), "Full painted plus button is included.");
             Assert.True(VisualSplitterLayout.PagesButton(false).ContainsInclusive(60, 148), "Full painted minus button is included.");
         });
+        runner.Run("Visual splitter thumbnails: pages beyond preload request rendering", () =>
+        {
+            Assert.Equal(20, VisualSplitThumbnailPolicy.PreloadedPages);
+            Assert.Equal(12, VisualSplitThumbnailPolicy.DynamicCacheLimit);
+            Assert.True(VisualSplitThumbnailPolicy.NeedsRender(21, 37, false, false),
+                "First uncached page beyond preload must be requested.");
+            Assert.True(VisualSplitThumbnailPolicy.NeedsRender(37, 37, false, false),
+                "Last page must remain available for on-demand rendering.");
+            Assert.False(VisualSplitThumbnailPolicy.NeedsRender(21, 37, true, false),
+                "Cached pages must not rerender.");
+            Assert.False(VisualSplitThumbnailPolicy.NeedsRender(21, 37, false, true),
+                "Concurrent requests for the same page must coalesce.");
+            Assert.False(VisualSplitThumbnailPolicy.NeedsRender(38, 37, false, false),
+                "A page after the document end is invalid.");
+            Assert.False(VisualSplitThumbnailPolicy.NeedsRender(0, 37, false, false),
+                "Page numbers start at one.");
+        });
     }
 }
