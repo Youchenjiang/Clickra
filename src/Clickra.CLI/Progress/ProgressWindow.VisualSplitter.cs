@@ -421,10 +421,10 @@ public partial class ProgressWindow
         }
     }
 
-    /// <summary>Paints the pages-per-segment selector (mode 2 only) and returns its height.</summary>
-    private float PaintSplitterNSelector(Graphics g, float s)
+    /// <summary>Paints the pages-per-segment selector when fixed-page mode is active.</summary>
+    private void PaintSplitterNSelector(Graphics g, float s)
     {
-        if (_visualSplitMode != 2) return 0f;
+        if (_visualSplitMode != 2) return;
 
         var minusRect = VisualSplitterLayout.PagesButton(false);
         float nSelY = minusRect.Y * s;
@@ -449,9 +449,8 @@ public partial class ProgressWindow
         VectorIcons.DrawPlus(g, plusX + plusW / 2f, nSelY + nSelH / 2f, 4 * s, nTextBrush.Color, 1.5f * s);
 
         Font? uiFont = _msgFont ?? _tipFont;
-        if (uiFont == null) return 22 * s;
+        if (uiFont == null) return;
         g.DrawString(Loc("pdf_split_pages_n", _visualSplitNPages), uiFont, nLabelBrush, nLabelX, nSelY + 1 * s);
-        return 22 * s;
     }
 
     /// <summary>Paints the dual-panel background frames and delegates to the segment-card and
