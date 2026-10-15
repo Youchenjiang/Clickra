@@ -376,7 +376,7 @@ def _show_sonar(args, repo, number):
         print_sonar(data)
 
 
-def _verify_pr(args, run, repo, number):
+def _verify_pr(run, repo, number):
     pr = inspect(repo, number, run)
     report = inventory(repo, number, pr.get("headRefOid"), review_threads(repo, number, run), run)
     report["sonar"] = sonar_inventory(os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
@@ -401,7 +401,7 @@ def _execute_pr_action(args, run, repo, number):
     elif args.action == "diagnose":
         diagnose(repo, number, run, reports=args.reports)
     elif args.action == "verify":
-        return _verify_pr(args, run, repo, number)
+        return _verify_pr(run, repo, number)
     elif args.action == "review":
         print_review(repo, number, run)
     else:

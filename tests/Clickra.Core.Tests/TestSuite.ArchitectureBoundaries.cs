@@ -759,11 +759,9 @@ static partial class TestSuite
                      Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory)
                  })
         {
-            foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
-            {
-                if (IsSettingsGatewayViolation(file, settingsGatewayPath))
-                    violations.Add(NormalizeRepoPath(root, file));
-            }
+            violations.AddRange(Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories)
+                .Where(file => IsSettingsGatewayViolation(file, settingsGatewayPath))
+                .Select(file => NormalizeRepoPath(root, file)));
         }
 
         string gatewaySource = File.ReadAllText(settingsGatewayPath);
