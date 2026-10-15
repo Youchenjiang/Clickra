@@ -33,23 +33,7 @@ static partial class TestSuite
         {
             foreach ((int y, int count) in new[] { (168, 2), (210, 3), (252, 2), (294, 3), (336, 2) })
             {
-                for (int i = 0; i < count; i++)
-                {
-                    LayoutRect rect = MarkdownOptionsLayout.RowButtonRect(y, count, i);
-                    int x = rect.X;
-                    Assert.True(MarkdownOptionsLayout.TryHitRow(x, y, y, count, out int topIndex) && topIndex == i,
-                        $"Row {y}, button {i} must include its upper-left corner.");
-                    Assert.True(MarkdownOptionsLayout.TryHitRow(x, y + 30, y, count, out int bottomIndex) && bottomIndex == i,
-                        $"Row {y}, button {i} must include its bottom edge.");
-                    Assert.True(rect.ContainsInclusive(x, y + 30), "Bottom edge is inclusive.");
-                    Assert.True(!rect.ContainsInclusive(x, y + 31), "Below the bottom edge is excluded.");
-                    if (i < count - 1)
-                    {
-                        int gapX = rect.Right + 2;
-                        Assert.True(!MarkdownOptionsLayout.TryHitRow(gapX, y + 15, y, count, out _),
-                            $"Row {y} must preserve the gap between buttons.");
-                    }
-                }
+                AssertMarkdownRowParity(y, count);
                 Assert.True(!MarkdownOptionsLayout.TryHitRow(154, y - 1, y, count, out _), "Above row excluded.");
                 Assert.True(!MarkdownOptionsLayout.TryHitRow(154, y + 31, y, count, out _), "Below row excluded.");
             }
@@ -61,6 +45,27 @@ static partial class TestSuite
                     "Beyond right edge excluded.");
             }
         });
+    }
+
+    private static void AssertMarkdownRowParity(int y, int count)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            LayoutRect rect = MarkdownOptionsLayout.RowButtonRect(y, count, i);
+            int x = rect.X;
+            Assert.True(MarkdownOptionsLayout.TryHitRow(x, y, y, count, out int topIndex) && topIndex == i,
+                $"Row {y}, button {i} must include its upper-left corner.");
+            Assert.True(MarkdownOptionsLayout.TryHitRow(x, y + 30, y, count, out int bottomIndex) && bottomIndex == i,
+                $"Row {y}, button {i} must include its bottom edge.");
+            Assert.True(rect.ContainsInclusive(x, y + 30), "Bottom edge is inclusive.");
+            Assert.True(!rect.ContainsInclusive(x, y + 31), "Below the bottom edge is excluded.");
+            if (i < count - 1)
+            {
+                int gapX = rect.Right + 2;
+                Assert.True(!MarkdownOptionsLayout.TryHitRow(gapX, y + 15, y, count, out _),
+                    $"Row {y} must preserve the gap between buttons.");
+            }
+        }
     }
 
     private static void AssertMarkdownRect(LayoutRect expected, LayoutRect actual)

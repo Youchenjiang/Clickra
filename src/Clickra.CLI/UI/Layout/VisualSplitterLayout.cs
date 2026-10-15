@@ -16,7 +16,11 @@ public static class VisualSplitterLayout
         LayoutRect first = SegmentCard(0, fixedPages);
         return new(first.X - 6, first.Y, first.Width + 12, 374 - first.Y);
     }
-    public static LayoutRect NavButton(int i, bool fixedPages) => new(i == 0 ? 266 : i == 1 ? 454 : 410, BodyTop(fixedPages) + 41, i == 2 ? 40 : 24, 20);
+    public static LayoutRect NavButton(int i, bool fixedPages)
+    {
+        int x = i switch { 0 => 266, 1 => 454, _ => 410 };
+        return new(x, BodyTop(fixedPages) + 41, i == 2 ? 40 : 24, 20);
+    }
     public static LayoutRect NavHitArea(bool fixedPages)
     {
         LayoutRect previous = NavButton(0, fixedPages);

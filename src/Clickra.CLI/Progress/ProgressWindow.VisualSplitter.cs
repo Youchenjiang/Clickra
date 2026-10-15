@@ -377,7 +377,7 @@ public partial class ProgressWindow
 
         PaintSplitterModeBar(g, s);
         float nSelectorHeight = PaintSplitterNSelector(g, s);
-        PaintSplitterBody(g, s, nSelectorHeight);
+        PaintSplitterBody(g, s);
         PaintSplitterButtons(g, s);
         PaintSplitterZoomOverlay(g, s);
     }
@@ -390,7 +390,6 @@ public partial class ProgressWindow
     private void PaintSplitterModeBar(Graphics g, float s)
     {
         float modeY = VisualSplitterLayout.ModeButton(0).Y * s;
-        float modeWidth = VisualSplitterLayout.ModeButton(0).Width * s;
         float modeHeight = VisualSplitterLayout.ModeButton(0).Height * s;
 
         string[] modeTitles =
@@ -403,7 +402,7 @@ public partial class ProgressWindow
         {
             var modeRect = VisualSplitterLayout.ModeButton(i);
             float modeX = modeRect.X * s;
-            modeWidth = modeRect.Width * s;
+            float modeWidth = modeRect.Width * s;
 
             bool isSelected = (_visualSplitMode == i);
 
@@ -457,7 +456,7 @@ public partial class ProgressWindow
 
     /// <summary>Paints the dual-panel background frames and delegates to the segment-card and
     /// preview-panel painters.</summary>
-    private void PaintSplitterBody(Graphics g, float s, float nSelectorHeight)
+    private void PaintSplitterBody(Graphics g, float s)
     {
         float bodyY = VisualSplitterLayout.BodyTop(_visualSplitMode == 2) * s;
         float leftX = 36 * s;
@@ -477,7 +476,7 @@ public partial class ProgressWindow
             g.DrawString($"[ {Loc("pdf_split_segment_header")} ]", _msgFont, headerBrush, leftX + 8 * s, bodyY + 4 * s);
         }
 
-        PaintSegmentCards(g, s, bodyY, leftX, leftW);
+        PaintSegmentCards(g, s, bodyY, leftX);
 
         g.FillRectangle(panelBg, rightX, bodyY, rightW, panelH);
         g.DrawRectangle(panelPen, rightX, bodyY, rightW, panelH);
@@ -486,7 +485,7 @@ public partial class ProgressWindow
     }
 
     /// <summary>Paints the scrollable list of segment cards in the left panel.</summary>
-    private void PaintSegmentCards(Graphics g, float s, float bodyY, float leftX, float leftW)
+    private void PaintSegmentCards(Graphics g, float s, float bodyY, float leftX)
     {
         float cardY = bodyY + 24 * s;
         float cardH = 20 * s;

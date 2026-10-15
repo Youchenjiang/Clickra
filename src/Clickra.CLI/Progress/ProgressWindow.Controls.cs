@@ -478,7 +478,6 @@ namespace Clickra.UI
         /// <summary>Handles clicks on the right-panel page navigation bar.</summary>
         private bool HandleSplitterNavBarClick(IntPtr hwnd, int mouseX, int mouseY)
         {
-            int navOffset = (_visualSplitMode == 2 ? 22 : 0);
             if (!VisualSplitterLayout.NavHitArea(_visualSplitMode == 2).ContainsInclusive(mouseX, mouseY)) return false;
 
             if (VisualSplitterLayout.NavHitButton(0, _visualSplitMode == 2).ContainsInclusive(mouseX, mouseY)) // <
@@ -507,7 +506,6 @@ namespace Clickra.UI
         /// <summary>Opens the zoom lightbox when the preview image area is clicked.</summary>
         private bool HandleSplitterPreviewZoomClick(IntPtr hwnd, int mouseX, int mouseY)
         {
-            int navOffset = (_visualSplitMode == 2 ? 22 : 0);
             if (!VisualSplitterLayout.PreviewHitArea(_visualSplitMode == 2).ContainsInclusive(mouseX, mouseY)) return false;
             OpenVisualSplitZoom(hwnd);
             return true;
