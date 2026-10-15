@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+import shutil
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -13,7 +14,8 @@ import git_tool
 
 
 class GitToolTests(unittest.TestCase):
-    def state(self, action="sync"):
+    @staticmethod
+    def state(action="sync"):
         return {"action": action, "branch": "feature/work", "head": "a" * 40,
                 "main": "b" * 40, "remote_main": "c" * 40}
 
@@ -84,7 +86,9 @@ class GitToolIntegrationTests(unittest.TestCase):
             feature = base / "feature"
 
             def call(cwd, *argv):
-                result = subprocess.run(["git", *argv], cwd=cwd, text=True,
+                git_exe = shutil.which("git")
+                self.assertIsNotNone(git_exe)
+                result = subprocess.run([str(Path(git_exe).resolve()), *argv], cwd=cwd, text=True,
                                         capture_output=True, timeout=15, check=False)
                 self.assertEqual(0, result.returncode, result.stderr)
                 return result.stdout.strip()

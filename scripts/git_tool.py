@@ -7,12 +7,17 @@ unpublished feature branch. No stash, reset, force push, or worktree switching.
 import argparse
 import hashlib
 import json
+from pathlib import Path
+import shutil
 import subprocess
 import sys
 
 
 def git(*args, check=True):
-    proc = subprocess.run(["git", *args], capture_output=True, text=True,
+    executable = shutil.which("git")
+    if not executable:
+        raise RuntimeError("git executable not found")
+    proc = subprocess.run([str(Path(executable).resolve()), *args], capture_output=True, text=True,
                           timeout=30, check=False)
     if check and proc.returncode:
         raise RuntimeError(f"git {args[0]} failed: {proc.stderr.strip()}")
