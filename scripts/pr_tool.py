@@ -366,6 +366,29 @@ def _execute_action(args, run):
     return _execute_pr_action(args, run, repo, number)
 
 
+def _show_sonar(args, repo, number):
+    data = sonar_inventory(os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
+                           number, base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
+                           token=os.environ.get("SONAR_TOKEN"))
+    if args.json:
+        print(json.dumps(data, indent=2, ensure_ascii=False))
+    else:
+        print_sonar(data)
+
+
+def _verify_pr(args, run, repo, number):
+    pr = inspect(repo, number, run)
+    report = inventory(repo, number, pr.get("headRefOid"), review_threads(repo, number, run), run)
+    report["sonar"] = sonar_inventory(os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
+                                      number, base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
+                                      token=os.environ.get("SONAR_TOKEN"))
+    remote = (remote_head(pr.get("headRefName", ""))
+              if pr.get("state") == "OPEN" else None)
+    result = summarize(pr, report, remote_sha=remote)
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+    return 0 if result["ready"] else 2
+
+
 def _execute_pr_action(args, run, repo, number):
     if args.action == "body":
         export_body(repo, number, args.output, run)
@@ -374,26 +397,11 @@ def _execute_pr_action(args, run, repo, number):
     elif args.action == "audit":
         audit(repo, number, run, args.json, args.sonar)
     elif args.action == "sonar":
-        data = sonar_inventory(os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
-                               number, base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
-                               token=os.environ.get("SONAR_TOKEN"))
-        if args.json:
-            print(json.dumps(data, indent=2, ensure_ascii=False))
-        else:
-            print_sonar(data)
+        _show_sonar(args, repo, number)
     elif args.action == "diagnose":
         diagnose(repo, number, run, reports=args.reports)
     elif args.action == "verify":
-        pr = inspect(repo, number, run)
-        report = inventory(repo, number, pr.get("headRefOid"), review_threads(repo, number, run), run)
-        report["sonar"] = sonar_inventory(os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
-                                          number, base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
-                                          token=os.environ.get("SONAR_TOKEN"))
-        remote = (remote_head(pr.get("headRefName", ""))
-                  if pr.get("state") == "OPEN" else None)
-        result = summarize(pr, report, remote_sha=remote)
-        print(json.dumps(result, indent=2, ensure_ascii=False))
-        return 0 if result["ready"] else 2
+        return _verify_pr(args, run, repo, number)
     elif args.action == "review":
         print_review(repo, number, run)
     else:

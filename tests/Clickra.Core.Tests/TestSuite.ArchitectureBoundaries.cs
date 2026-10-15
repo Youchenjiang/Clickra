@@ -12,6 +12,7 @@ static partial class TestSuite
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
     private const string ArchitectureApplicationDirectory = "Application";
+    private const string ArchitectureModulesDirectory = "Modules";
     private const string ArchitectureFluentProjectDirectory = "Clickra.Fluent";
     private const string ArchitectureProgressDirectory = "Progress";
     private const string ArchitectureProcessorsDirectory = "Processors";
@@ -236,7 +237,7 @@ static partial class TestSuite
         string[] legacyDirectories =
         {
             ArchitectureApplicationDirectory,
-            "Presentation",
+            ArchitecturePresentationDirectory,
             ArchitectureProcessorsDirectory,
             "Storage",
             "Models"
@@ -261,12 +262,12 @@ static partial class TestSuite
     private static void TestModuleFirstModulesKeepCapabilityAsFirstAxis()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
-        string modulesRoot = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Modules");
+        string modulesRoot = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory);
         if (!Directory.Exists(modulesRoot))
             return;
 
         string[] filesAtModulesRoot = Directory.EnumerateFiles(modulesRoot, "*.cs", SearchOption.TopDirectoryOnly)
-            .Select(path => Path.GetFileName(path)!)
+            .Select(path => Path.GetFileName(path))
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
         Assert.True(
@@ -276,8 +277,8 @@ static partial class TestSuite
 
         var technicalRoleNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "Application",
-            "Presentation",
+            ArchitectureApplicationDirectory,
+            ArchitecturePresentationDirectory,
             "Model",
             "Models",
             "Analysis",
@@ -292,7 +293,7 @@ static partial class TestSuite
         };
 
         string[] invalidFirstAxis = Directory.EnumerateDirectories(modulesRoot, "*", SearchOption.TopDirectoryOnly)
-            .Select(path => Path.GetFileName(path)!)
+            .Select(path => Path.GetFileName(path))
             .Where(name => !string.IsNullOrWhiteSpace(name) && technicalRoleNames.Contains(name))
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -402,7 +403,7 @@ static partial class TestSuite
     private static void TestMarkdownPresentationOptionsHaveSingleOwner()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
-        string processingDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Modules", "Markdown", "Processing");
+        string processingDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, "Markdown", "Processing");
         string profile = File.ReadAllText(Path.Combine(processingDir, "MarkdownRenderProfile.cs"));
         string pdf = File.ReadAllText(Path.Combine(processingDir, "MarkdownToPdfProcessor.cs"));
         string word = File.ReadAllText(Path.Combine(processingDir, "MarkdownToWordProcessor.cs"));
@@ -604,7 +605,7 @@ static partial class TestSuite
         {
             Path.Combine(coreDirectory, "Infrastructure")
         };
-        string modulesDirectory = Path.Combine(coreDirectory, "Modules");
+        string modulesDirectory = Path.Combine(coreDirectory, ArchitectureModulesDirectory);
         if (Directory.Exists(modulesDirectory))
         {
             infrastructureDirectories.AddRange(
@@ -726,6 +727,14 @@ static partial class TestSuite
             "EnsureFreshSettings"
         };
 
+    private static bool IsSettingsGatewayViolation(string file, string gatewayPath)
+    {
+        if (string.Equals(file, gatewayPath, StringComparison.OrdinalIgnoreCase)) return false;
+        if (file.Contains($"{Path.DirectorySeparatorChar}Infrastructure{Path.DirectorySeparatorChar}",
+                          StringComparison.OrdinalIgnoreCase)) return false;
+        return DirectSettingsStorageAccess.IsMatch(File.ReadAllText(file));
+    }
+
     private static void TestSettingsPersistenceHasSingleApplicationGateway()
     {
         string? root = FindRepoRoot();
@@ -735,9 +744,9 @@ static partial class TestSuite
             root,
             "src",
             ArchitectureCoreProjectDirectory,
-            "Modules",
+            ArchitectureModulesDirectory,
             "Settings",
-            "Application",
+            ArchitectureApplicationDirectory,
             "SettingsController.cs");
         Assert.True(File.Exists(settingsGatewayPath), "Application settings gateway must exist.");
 
@@ -747,19 +756,13 @@ static partial class TestSuite
                      Path.Combine(root, "src", ArchitectureCliProjectDirectory),
                      Path.Combine(root, "src", ArchitectureFluentProjectDirectory),
                      Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureApplicationDirectory),
-                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Modules")
+                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory)
                  })
         {
             foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
             {
-                if (string.Equals(file, settingsGatewayPath, StringComparison.OrdinalIgnoreCase)) continue;
-                if (file.Contains(
-                        $"{Path.DirectorySeparatorChar}Infrastructure{Path.DirectorySeparatorChar}",
-                        StringComparison.OrdinalIgnoreCase))
-                    continue; // Infrastructure owners are checked by the stricter per-owner key allowlist guard.
-                string source = File.ReadAllText(file);
-                if (!DirectSettingsStorageAccess.IsMatch(source)) continue;
-                violations.Add(NormalizeRepoPath(root, file));
+                if (IsSettingsGatewayViolation(file, settingsGatewayPath))
+                    violations.Add(NormalizeRepoPath(root, file));
             }
         }
 
@@ -815,7 +818,7 @@ static partial class TestSuite
         var violations = PresentationSettingsViolations(root).ToList();
 
         string gateway = File.ReadAllText(Path.Combine(
-            root, "src", ArchitectureCoreProjectDirectory, "Modules", "Settings", "Application", "SettingsController.cs"));
+            root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, "Settings", ArchitectureApplicationDirectory, "SettingsController.cs"));
         foreach (string typedContract in new[]
                  {
                      "public static string Language",
@@ -827,7 +830,7 @@ static partial class TestSuite
             violations.Add($"SettingsController missing typed contract: {typedContract}");
 
         string presentationGateway = File.ReadAllText(Path.Combine(
-            root, "src", ArchitectureCoreProjectDirectory, "Modules", "Settings", "Presentation", "SettingsPresentationController.cs"));
+            root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, "Settings", ArchitecturePresentationDirectory, "SettingsPresentationController.cs"));
 
         foreach (string typedContract in new[]
                  {
@@ -871,9 +874,9 @@ static partial class TestSuite
             root,
             "src",
             ArchitectureCoreProjectDirectory,
-            "Modules",
+            ArchitectureModulesDirectory,
             "HistoryTasks",
-            "Application",
+            ArchitectureApplicationDirectory,
             "ParkedTaskController.cs");
         Assert.True(File.Exists(gatewayPath), "Application parked-task gateway must exist.");
 
@@ -883,7 +886,7 @@ static partial class TestSuite
                      Path.Combine(root, "src", ArchitectureCliProjectDirectory),
                      Path.Combine(root, "src", ArchitectureFluentProjectDirectory),
                      Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureApplicationDirectory),
-                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Modules")
+                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory)
                  })
         {
             foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
@@ -987,10 +990,10 @@ static partial class TestSuite
 
         foreach ((string relativePath, string expectedNamespace) in new[]
                  {
-                     (Path.Combine("Presentation", "Convert", "ConvertWorkspaceController.cs"), "Clickra.Core.Presentation.Convert"),
-                     (Path.Combine("Presentation", "Convert", "ConversionExecutionController.cs"), "Clickra.Core.Presentation.Convert"),
-                     (Path.Combine("Presentation", "Progress", "TaskProgressController.cs"), "Clickra.Core.Presentation.Progress"),
-                     (Path.Combine("Presentation", "Dashboard", "DashboardPresentationController.cs"), "Clickra.Core.Presentation.Dashboard")
+                     (Path.Combine(ArchitecturePresentationDirectory, "Convert", "ConvertWorkspaceController.cs"), "Clickra.Core.Presentation.Convert"),
+                     (Path.Combine(ArchitecturePresentationDirectory, "Convert", "ConversionExecutionController.cs"), "Clickra.Core.Presentation.Convert"),
+                     (Path.Combine(ArchitecturePresentationDirectory, "Progress", "TaskProgressController.cs"), "Clickra.Core.Presentation.Progress"),
+                     (Path.Combine(ArchitecturePresentationDirectory, "Dashboard", "DashboardPresentationController.cs"), "Clickra.Core.Presentation.Dashboard")
 
                  })
         {
@@ -1220,7 +1223,7 @@ static partial class TestSuite
 
         string core = Path.Combine(root, "src", ArchitectureCoreProjectDirectory);
         string legacyProviderDirectory = Path.Combine(core, "Translation");
-        string module = Path.Combine(core, "Modules", "PdfTranslation");
+        string module = Path.Combine(core, ArchitectureModulesDirectory, "PdfTranslation");
         string providerDirectory = Path.Combine(module, "Translation");
         string legacyPdfTranslationDirectory = Path.Combine(module, "Pipeline", "Translation");
         string textProcessingDirectory = Path.Combine(module, "Pipeline", "TextProcessing");
