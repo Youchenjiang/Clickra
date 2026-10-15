@@ -28,3 +28,39 @@ If a rebase conflicts, Git retains the rebase state for explicit recovery
 
 Post-merge PR verification and safe worktree cleanup are planned for a separate
 follow-up PR, not this foundation.
+
+## Post-merge lifecycle
+
+Run `cleanup` from a **different clean worktree** after the operator merges the PR
+and deletes its remote branch:
+
+```powershell
+git fetch origin main --prune
+python scripts/git_tool.py cleanup --pr 185
+# After reviewing the preview:
+python scripts/git_tool.py cleanup --pr 185 --execute --authorize '<preview token>'
+```
+
+`cleanup` requires GitHub MERGED status, the merge commit and original PR
+head reachable from the latest `origin/main`, the deleted remote feature
+branch, a matching local head, and a clean dedicated sibling worktree named
+`Clickra-pr-*`. It refuses squash/rebase merges when the original head is
+not in ancestry: those require a separately reviewed equivalence mechanism,
+not a guess that MERGED means the local branch can be removed. It fast-forwards
+the local main ref using compare-and-swap before removing the dedicated
+worktree and deleting the local branch with `git branch -d`.
+If an operation fails partway, inspect the resulting state and do not blindly
+retry with a stale token.
+
+Create a **new**, unpublished worktree from the latest remote main:
+
+```powershell
+python scripts/git_tool.py next --branch feature/example-task
+python scripts/git_tool.py next --branch feature/example-task --execute --authorize '<preview token>'
+```
+
+`next` refuses existing local or remote branch names and existing target paths;
+it never rebases a previously published branch. Both lifecycle actions are
+preview-only by default; the token includes PR/branch, paths, repository origin,
+current HEAD and main SHAs, and is revalidated before mutation. GitHub PR
+merges and remote branch deletion remain operator actions.
