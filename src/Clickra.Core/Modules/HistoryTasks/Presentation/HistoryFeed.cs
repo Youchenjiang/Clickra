@@ -24,35 +24,6 @@ public enum HistoryStatusVisualKind
     Other
 }
 
-/// <summary>Application-facing immutable task/history facts used by both presentation surfaces.</summary>
-public sealed record HistoryRecord(
-    string Id,
-    string Time,
-    string Command,
-    int FileCount,
-    HistoryQueryStatus Status,
-    string ErrorMessage,
-    string EndTime,
-    long ElapsedMs,
-    string InputPaths,
-    string OutputPath,
-    int CurrentIndex,
-    int Pid,
-    int? ParkedRetentionDays,
-    string ParkedSince)
-{
-    public bool IsSuccess => Status == HistoryQueryStatus.Success;
-}
-
-/// <summary>Application-facing parked-task retention facts without exposing storage implementation types.</summary>
-public readonly record struct ParkedRetentionState(
-    bool IsUnlimited,
-    int RemainingDays,
-    TimeSpan RemainingTime,
-    bool IsExpiringSoon,
-    bool HasExpired,
-    bool IsTaskOverride);
-
 /// <summary>
 /// 甇瑕皜銝剔?銝???殷???蝝?????拙??ａ閬＊蝷箇?鈭祕??///
 /// ??鈭祕嚗???獢?擗???獢?餈啜匱蝥蝚砍嗾??獢??芸?ㄐ蝞?甈～?/// 隞亙? Win32 dashboard ??Fluent ??History ???芸?銝遢?脣??亥岷??典?摰?
@@ -66,8 +37,8 @@ public sealed class HistoryItem
         string language)
     {
         Kind = kind;
-        Entry = Snapshot(entry);
-        Retention = retention.HasValue ? Snapshot(retention.Value) : null;
+        Entry = entry;
+        Retention = retention;
 
         CommandLabelKey = ConvertCommandRegistry.GetLabelKey(entry.Command ?? "");
         IsCanceled = kind == HistoryItemKind.Completed && HistoryQueryController.IsUserCanceledReason(entry.ErrorMessage);
@@ -89,7 +60,7 @@ public sealed class HistoryItem
     public HistoryItemKind Kind { get; }
 
     /// <summary>??蝝???瑞憯改??閬??亦???嚗匱蝥?瘨?蝝堆??賜摰?/summary>
-    public HistoryRecord Entry { get; }
+    public HistoryQueryRecord Entry { get; }
 
     /// <summary>?誘璅惜??啣??蛛??芰?誘?停?舀?隞斗頨恬???<c>ConvertCommandRegistry</c> 銝?湛???/summary>
     public string CommandLabelKey { get; }
@@ -127,7 +98,7 @@ public sealed class HistoryItem
     public bool HasRetentionOverride => Retention?.IsTaskOverride == true;
 
     /// <summary>靽?????芣?敺匱蝥遙????/summary>
-    public ParkedRetentionState? Retention { get; }
+    public ParkedRetentionQueryState? Retention { get; }
 
     public bool IsSuccess => Kind == HistoryItemKind.Completed && Entry.Status == HistoryQueryStatus.Success;
 
@@ -202,29 +173,6 @@ public sealed class HistoryItem
     private static string JoinParts(params string[] parts)
         => string.Join(" 繚 ", parts.Where(part => !string.IsNullOrWhiteSpace(part)));
 
-    private static HistoryRecord Snapshot(HistoryQueryRecord entry) => new(
-        entry.Id ?? "",
-        entry.Time ?? "",
-        entry.Command ?? "",
-        entry.FileCount,
-        entry.Status,
-        entry.ErrorMessage ?? "",
-        entry.EndTime ?? "",
-        entry.ElapsedMs,
-        entry.InputPaths ?? "",
-        entry.OutputPath ?? "",
-        entry.CurrentIndex,
-        entry.Pid,
-        entry.ParkedRetentionDays,
-        entry.ParkedSince ?? "");
-
-    private static ParkedRetentionState Snapshot(ParkedRetentionQueryState info) => new(
-        info.IsUnlimited,
-        info.RemainingDays,
-        info.RemainingTime,
-        info.IsExpiringSoon,
-        info.HasExpired,
-        info.IsTaskOverride);
 }
 
 /// <summary>

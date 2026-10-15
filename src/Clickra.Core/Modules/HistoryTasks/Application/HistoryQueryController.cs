@@ -23,7 +23,10 @@ public sealed record HistoryQueryRecord(
     int CurrentIndex,
     int Pid,
     int? ParkedRetentionDays,
-    string ParkedSince);
+    string ParkedSince)
+{
+    public bool IsSuccess => Status == HistoryQueryStatus.Success;
+}
 
 public readonly record struct ParkedRetentionQueryState(
     bool IsUnlimited,

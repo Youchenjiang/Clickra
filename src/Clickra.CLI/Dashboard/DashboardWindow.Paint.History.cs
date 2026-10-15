@@ -385,7 +385,7 @@ namespace Clickra.UI
         }
 
         static void DrawParkedRowText(ParkedRowRenderContext context, float fileX,
-            HistoryItem item, ParkedRetentionState info, bool needsAttention)
+            HistoryItem item, ParkedRetentionQueryState info, bool needsAttention)
         {
             Graphics g = context.Graphics;
             float contentX = context.ContentX;
@@ -464,14 +464,14 @@ namespace Clickra.UI
             }
         }
 
-        static Color ParkedRowBorder(ParkedRetentionState info)
+        static Color ParkedRowBorder(ParkedRetentionQueryState info)
         {
             if (info.HasExpired) return Color.FromArgb(200, 60, 60);
             if (info.IsExpiringSoon) return ParkedAlertColor;
             return Color.FromArgb(70, 70, 100);
         }
 
-        static Color ParkedTtlColor(ParkedRetentionState info, bool needsAttention)
+        static Color ParkedTtlColor(ParkedRetentionQueryState info, bool needsAttention)
         {
             if (info.HasExpired) return Color.FromArgb(255, 90, 70);
             if (needsAttention) return ParkedAlertColor;

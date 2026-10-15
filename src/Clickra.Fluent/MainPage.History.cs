@@ -1,3 +1,4 @@
+using Clickra.Core.Modules.HistoryTasks.Application;
 using Clickra.Core;
 using Clickra.Core.Modules.HistoryTasks.Presentation;
 using Microsoft.UI;
@@ -280,7 +281,7 @@ public sealed partial class MainPage
     /// <summary>Resumes a parked conversion through the shared "resume" entry point, so the persisted
     /// task keeps its identity and next-file index. The status is left untouched here: TaskProgressPage
     /// only accepts a Parked task, and it flips the task to InProgress itself once it starts.</summary>
-    private void ResumeParkedTask(HistoryRecord task)
+    private void ResumeParkedTask(HistoryQueryRecord task)
     {
         if (string.IsNullOrWhiteSpace(task.Id)) return;
         if (App.FindTaskPage(task.Id) is { } alreadyRunning)
@@ -294,7 +295,7 @@ public sealed partial class MainPage
     }
 
     /// <summary>Cancels a parked conversion after confirmation; the Canceled history line is written by Core.</summary>
-    private async Task CancelParkedTaskAsync(HistoryRecord task)
+    private async Task CancelParkedTaskAsync(HistoryQueryRecord task)
     {
         if (string.IsNullOrWhiteSpace(task.Id)) return;
         if (!await ConfirmAsync(L("task_parked_cancel_confirm"))) return;
