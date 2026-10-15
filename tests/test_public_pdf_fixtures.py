@@ -11,11 +11,11 @@ from fetch_public_pdf_fixtures import SOURCES, verify
 class PublicPdfFixtureTests(unittest.TestCase):
     @staticmethod
     def test_three_pinned_public_sources():
-        assert set(SOURCES) == {"2407", "pentest", "togll"}
+        unittest.TestCase().assertEqual(set(SOURCES), {"2407", "pentest", "togll"})
         for url, filename, checksum in SOURCES.values():
-            assert url.startswith("https://")
-            assert filename.endswith(".pdf")
-            assert len(checksum) == 64
+            unittest.TestCase().assertTrue(url.startswith("https://"))
+            unittest.TestCase().assertTrue(filename.endswith(".pdf"))
+            unittest.TestCase().assertEqual(len(checksum), 64)
 
     def test_rejects_other_content(self):
         with self.assertRaisesRegex(ValueError, "not a PDF"):

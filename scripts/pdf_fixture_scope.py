@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Identify changes requiring the public PDF translation E2E regression suite."""
 import argparse
-import shutil
-import subprocess
 import sys
+
+from process_guard import invoke
 
 
 TRANSLATION_PREFIXES = (
@@ -34,13 +34,13 @@ def main():
     parser.add_argument("--base", default="origin/main")
     args = parser.parse_args()
     try:
-        executable = shutil.which("git")
-        if not executable:
-            raise OSError("git executable unavailable")
-        changed = subprocess.check_output(
-            [executable, "diff", "--name-only", f"{args.base}...HEAD"], text=True
-        ).splitlines()
-    except (subprocess.CalledProcessError, OSError) as exc:
+        if args.base != "origin/main":
+            raise ValueError("unsupported PDF scope base")
+        result = invoke(["git", "diff", "--name-only", "origin/main...HEAD"])
+        if result.returncode:
+            raise OSError("Git diff failed")
+        changed = result.stdout.splitlines()
+    except (OSError, ValueError) as exc:
         print(f"Cannot determine PDF test scope: {exc}", file=sys.stderr)
         return 2
     required = requires_fixtures(changed)
