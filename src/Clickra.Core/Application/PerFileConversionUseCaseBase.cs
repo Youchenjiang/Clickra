@@ -85,12 +85,16 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
             observer);
 
         int completedFiles = GetInitialCompletedFiles(plan);
-        try
-        {
+        return await ConversionLifecycleResultRunner.RunAsync(
+            plan,
+            stopwatch,
+            lifecycle,
+            async currentLifecycle =>
+            {
             for (int i = completedFiles; i < plan.Inputs.Count; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                lifecycle?.RecordFileStarting(i);
+                currentLifecycle?.RecordFileStarting(i);
                 observer?.OnFileStarting(i);
                 await ExecuteFileAsync(
                     i,
@@ -101,42 +105,11 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
                     cancellationToken);
                 completedFiles = i + 1;
             }
-
-            lifecycle?.CompleteSuccess(string.Join(";", plan.Outputs));
-            stopwatch.Stop();
-            return Result(ConversionResultStatus.Succeeded, null);
-        }
-        catch (ConversionParkedException ex)
-        {
-            lifecycle?.Park(ex.Message, ex.NextFileIndex);
-            stopwatch.Stop();
-            return Result(ConversionResultStatus.Parked, ex.Message);
-        }
-        catch (OperationCanceledException)
-        {
-            lifecycle?.CompleteFailure("Canceled", string.Join(";", plan.Outputs));
-            stopwatch.Stop();
-            return Result(ConversionResultStatus.Canceled, null);
-        }
-        catch (Exception ex)
-        {
-            lifecycle?.CompleteFailure(ex.Message, string.Join(";", plan.Outputs));
-            stopwatch.Stop();
-            return Result(ConversionResultStatus.Failed, ex.Message, ClassifyFailure(ex));
-        }
-
-        ConversionResult Result(
-            ConversionResultStatus status,
-            string? error,
-            ConversionFailureKind failureKind = ConversionFailureKind.None) =>
-            new(
-                status,
-                plan.Outputs,
-                error,
-                stopwatch.Elapsed,
-                completedFiles,
-                lifecycle?.TaskId ?? "",
-                failureKind);
+            },
+            () => completedFiles,
+            string.Join(";", plan.Outputs),
+            parkOnSignal: true,
+            ClassifyFailure);
     }
 
     protected static void ReportFileProgress(

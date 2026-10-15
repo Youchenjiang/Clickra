@@ -66,42 +66,18 @@ public abstract class SingleOutputConversionUseCaseBase : ConversionUseCaseBase
             observer);
 
         int completedFiles = 0;
-        try
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            await ExecuteSingleAsync(plan, progress, cancellationToken);
-            completedFiles = plan.Inputs.Count;
-
-            lifecycle?.CompleteSuccess(plan.Outputs[0]);
-            stopwatch.Stop();
-            return Result(ConversionResultStatus.Succeeded, null);
-        }
-        catch (ConversionParkedException ex)
-        {
-            lifecycle?.Park(ex.Message, ex.NextFileIndex);
-            stopwatch.Stop();
-            return Result(ConversionResultStatus.Parked, ex.Message);
-        }
-        catch (OperationCanceledException)
-        {
-            lifecycle?.CompleteFailure("Canceled", plan.Outputs[0]);
-            stopwatch.Stop();
-            return Result(ConversionResultStatus.Canceled, null);
-        }
-        catch (Exception ex)
-        {
-            lifecycle?.CompleteFailure(ex.Message, plan.Outputs[0]);
-            stopwatch.Stop();
-            return Result(ConversionResultStatus.Failed, ex.Message);
-        }
-
-        ConversionResult Result(ConversionResultStatus status, string? error) =>
-            new(
-                status,
-                plan.Outputs,
-                error,
-                stopwatch.Elapsed,
-                completedFiles,
-                lifecycle?.TaskId ?? "");
+        return await ConversionLifecycleResultRunner.RunAsync(
+            plan,
+            stopwatch,
+            lifecycle,
+            async _ =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await ExecuteSingleAsync(plan, progress, cancellationToken);
+                completedFiles = plan.Inputs.Count;
+            },
+            () => completedFiles,
+            plan.Outputs[0],
+            parkOnSignal: true);
     }
 }

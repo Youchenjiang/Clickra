@@ -65,40 +65,22 @@ public abstract class OfficeToPdfUseCaseBase : ConversionUseCaseBase
             observer);
 
         int completedFiles = 0;
-        try
-        {
-            string? readinessError = GetReadinessError(plan);
-            if (readinessError is not null)
-                throw new InvalidOperationException(readinessError);
+        return await ConversionLifecycleResultRunner.RunAsync(
+            plan,
+            stopwatch,
+            lifecycle,
+            async _ =>
+            {
+                string? readinessError = GetReadinessError(plan);
+                if (readinessError is not null)
+                    throw new InvalidOperationException(readinessError);
 
-            await ExecuteBatchAsync(plan, progress, cancellationToken);
-            completedFiles = plan.Inputs.Count;
-
-            lifecycle?.CompleteSuccess(string.Join(";", plan.Outputs));
-            stopwatch.Stop();
-            return Result(ConversionResultStatus.Succeeded, null);
-        }
-        catch (OperationCanceledException)
-        {
-            lifecycle?.CompleteFailure("Canceled", string.Join(";", plan.Outputs));
-            stopwatch.Stop();
-            return Result(ConversionResultStatus.Canceled, null);
-        }
-        catch (Exception ex)
-        {
-            lifecycle?.CompleteFailure(ex.Message, string.Join(";", plan.Outputs));
-            stopwatch.Stop();
-            return Result(ConversionResultStatus.Failed, ex.Message);
-        }
-
-        ConversionResult Result(ConversionResultStatus status, string? error) =>
-            new(
-                status,
-                plan.Outputs,
-                error,
-                stopwatch.Elapsed,
-                completedFiles,
-                lifecycle?.TaskId ?? "");
+                await ExecuteBatchAsync(plan, progress, cancellationToken);
+                completedFiles = plan.Inputs.Count;
+            },
+            () => completedFiles,
+            string.Join(";", plan.Outputs),
+            parkOnSignal: false);
     }
 
     private string? GetReadinessError(ConversionPlan plan)

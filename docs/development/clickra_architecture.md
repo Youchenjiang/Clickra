@@ -679,6 +679,11 @@ engine/path/removal snapshot inside the Application use case, before invoking
 the processor. Native and Fluent preflight checks remain early user feedback,
 not a substitute for enforcement in a headless execution path. Tests cover
 an unavailable engine and a plan snapshot that differs from later settings.
+Per-file, single-output, and Office batch execution families also share
+lifecycle result mapping through `ConversionLifecycleResultRunner`; their
+individual conversion loops, resume checkpoints, and batch processing remain
+separate. An architecture guard prevents reintroducing duplicated success,
+cancellation, parking, and failure completion mapping in those families.
 
 ---
 

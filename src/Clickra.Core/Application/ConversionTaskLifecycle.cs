@@ -114,3 +114,63 @@ public sealed class ConversionTaskLifecycle
         }
     }
 }
+
+/// <summary>
+/// Centralizes lifecycle completion and result mapping without owning command planning or execution bodies.
+/// Execution families keep their own loops, checkpoints, batch semantics, and processor options.
+/// </summary>
+internal static class ConversionLifecycleResultRunner
+{
+    public static async Task<ConversionResult> RunAsync(
+        ConversionPlan plan,
+        Stopwatch stopwatch,
+        ConversionTaskLifecycle? lifecycle,
+        Func<ConversionTaskLifecycle?, Task> executeAsync,
+        Func<int> completedFiles,
+        string outputRecord,
+        bool parkOnSignal,
+        Func<Exception, ConversionFailureKind>? classifyFailure = null)
+    {
+        try
+        {
+            await executeAsync(lifecycle);
+            lifecycle?.CompleteSuccess(outputRecord);
+            stopwatch.Stop();
+            return Result(ConversionResultStatus.Succeeded, null);
+        }
+        catch (ConversionParkedException ex) when (parkOnSignal)
+        {
+            lifecycle?.Park(ex.Message, ex.NextFileIndex);
+            stopwatch.Stop();
+            return Result(ConversionResultStatus.Parked, ex.Message);
+        }
+        catch (OperationCanceledException)
+        {
+            lifecycle?.CompleteFailure("Canceled", outputRecord);
+            stopwatch.Stop();
+            return Result(ConversionResultStatus.Canceled, null);
+        }
+        catch (Exception ex)
+        {
+            lifecycle?.CompleteFailure(ex.Message, outputRecord);
+            stopwatch.Stop();
+            return Result(
+                ConversionResultStatus.Failed,
+                ex.Message,
+                classifyFailure?.Invoke(ex) ?? ConversionFailureKind.None);
+        }
+
+        ConversionResult Result(
+            ConversionResultStatus status,
+            string? error,
+            ConversionFailureKind failureKind = ConversionFailureKind.None) =>
+            new(
+                status,
+                plan.Outputs,
+                error,
+                stopwatch.Elapsed,
+                completedFiles(),
+                lifecycle?.TaskId ?? "",
+                failureKind);
+    }
+}

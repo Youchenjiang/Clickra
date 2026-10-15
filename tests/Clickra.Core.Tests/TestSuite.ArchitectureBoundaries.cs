@@ -137,6 +137,9 @@ static partial class TestSuite
             "Architecture boundaries: Modules keep capability as the first directory axis",
             TestModuleFirstModulesKeepCapabilityAsFirstAxis);
         runner.RunGuard(
+            "Architecture boundaries: conversion execution families share lifecycle result mapping",
+            TestConversionExecutionFamiliesShareLifecycleResultMapping);
+        runner.RunGuard(
             "Architecture boundaries: translation provider and PDF text contexts stay distinct",
             TestTranslationContextsStayDistinct);
         runner.RunGuard(
@@ -199,6 +202,45 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: migrated Markdown Word workflow has one execution owner",
             TestMarkdownToWordWorkflowHasSingleExecutionOwner);
+    }
+
+    private static void TestConversionExecutionFamiliesShareLifecycleResultMapping()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
+        string application = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureApplicationDirectory);
+        string[] familyPaths =
+        {
+            Path.Combine(application, "PerFileConversionUseCaseBase.cs"),
+            Path.Combine(application, "SingleOutputConversionUseCaseBase.cs"),
+            Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Modules",
+                "Office", "Application", "OfficeToPdfUseCaseBase.cs")
+        };
+        foreach (string path in familyPaths)
+        {
+            string source = File.ReadAllText(path);
+            Assert.True(
+                source.Contains("ConversionLifecycleResultRunner.RunAsync(", StringComparison.Ordinal),
+                $"{NormalizeRepoPath(root, path)} must share lifecycle result mapping.");
+            Assert.False(
+                source.Contains("catch (OperationCanceledException)", StringComparison.Ordinal)
+                || source.Contains("lifecycle?.CompleteSuccess(", StringComparison.Ordinal)
+                || source.Contains("lifecycle?.CompleteFailure(", StringComparison.Ordinal),
+                $"{NormalizeRepoPath(root, path)} must not duplicate lifecycle completion.");
+        }
+        string lifecycle = File.ReadAllText(Path.Combine(application, "ConversionTaskLifecycle.cs"));
+        foreach (string required in new[]
+                 {
+                     "internal static class ConversionLifecycleResultRunner",
+                     "catch (ConversionParkedException ex) when (parkOnSignal)",
+                     "catch (OperationCanceledException)",
+                     "lifecycle?.CompleteSuccess(outputRecord)",
+                     "lifecycle?.CompleteFailure(\"Canceled\", outputRecord)",
+                     "lifecycle?.Park(ex.Message, ex.NextFileIndex)"
+                 })
+        {
+            Assert.True(lifecycle.Contains(required, StringComparison.Ordinal),
+                $"Shared lifecycle mapping must preserve: {required}");
+        }
     }
 
     private static void TestModuleFirstOrganizationDoesNotExpandLegacyBuckets()
