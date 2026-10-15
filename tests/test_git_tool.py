@@ -98,7 +98,7 @@ class GitToolTests(unittest.TestCase):
     @patch.object(git_tool, "git")
     def test_cleanup_removes_only_verified_worktree(self, command, snapshot):
         state = dict(self.state(), action="cleanup", target_branch="feature/old",
-                     target_path="C:/safe/Clickra-pr-old")
+                     target_path="C:/safe/Clickra-pr-old", merge_mode="ancestry")
         snapshot.return_value = state
         with contextlib.redirect_stdout(io.StringIO()):
             git_tool.lifecycle_run("cleanup", pr=185, execute=True,
@@ -129,6 +129,46 @@ class GitToolTests(unittest.TestCase):
             git_tool.lifecycle_run("next", branch="feature/new", execute=True,
                                    authorize=token)
         command.assert_not_called()
+
+    @patch.object(git_tool, "ancestor", return_value=True)
+    def test_merge_equivalence_direct_ancestry(self, ancestry):
+        self.assertEqual("ancestry", git_tool.merge_equivalence("a", "b", "c"))
+        ancestry.assert_called_once_with("a", "c")
+
+    @patch.object(git_tool, "output")
+    @patch.object(git_tool, "ancestor", return_value=False)
+    def test_merge_equivalence_squash(self, ancestry, read):
+        read.side_effect = ["merge parent", "base", "same patch", "same patch"]
+        self.assertEqual("squash", git_tool.merge_equivalence("head", "merge", "main"))
+
+    @patch.object(git_tool, "output")
+    @patch.object(git_tool, "ancestor", return_value=False)
+    def test_merge_equivalence_rebase_and_unmatched_changes(self, ancestry, read):
+        read.side_effect = ["merge parent", "base", "original", "different",
+                            "- commit1\n- commit2"]
+        self.assertEqual("rebase", git_tool.merge_equivalence("head", "merge", "main"))
+        read.side_effect = ["merge parent", "base", "original", "different",
+                            "- commit1\n+ commit2"]
+        with self.assertRaisesRegex(ValueError, "cannot prove"):
+            git_tool.merge_equivalence("head", "merge", "main")
+
+    @patch.object(git_tool, "output", return_value="merge parent1 parent2")
+    @patch.object(git_tool, "ancestor", return_value=False)
+    def test_nonancestral_merge_commit_shape_fails_closed(self, ancestry, read):
+        with self.assertRaisesRegex(ValueError, "parent structure"):
+            git_tool.merge_equivalence("head", "merge", "main")
+
+    @patch.object(git_tool, "lifecycle_snapshot")
+    @patch.object(git_tool, "git")
+    def test_patch_equivalent_cleanup_uses_exact_ref_cas(self, command, snapshot):
+        state = dict(self.state(), action="cleanup", target_branch="feature/old",
+                     target_path="C:/safe/Clickra-pr-old", target_head="a" * 40,
+                     merge_mode="squash", main="c" * 40)
+        snapshot.return_value = state
+        with contextlib.redirect_stdout(io.StringIO()):
+            git_tool.lifecycle_run("cleanup", pr=185, execute=True,
+                                   authorize=git_tool.authorization(state))
+        command.assert_any_call("update-ref", "-d", "refs/heads/feature/old", "a" * 40)
 
 
 class GitToolIntegrationTests(unittest.TestCase):

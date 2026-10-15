@@ -92,6 +92,28 @@ def next_snapshot(state, branch):
     state.update(target_branch=branch, target_path=str(target))
 
 
+def merge_equivalence(head, merge_commit, remote_main):
+    """Return verified integration mode; fail closed without exact evidence."""
+    if ancestor(head, remote_main):
+        return "ancestry"
+    parents = output("rev-list", "--parents", "-n", "1", merge_commit).split()
+    if len(parents) != 2:
+        raise ValueError("non-ancestral merge has an unexpected parent structure")
+    base = output("merge-base", parents[1], head)
+    # Squash: compare the *entire* introduced patch, not just the final tree.
+    original = output("diff", "--no-ext-diff", "--binary", "--no-renames", base, head)
+    merged = output("diff", "--no-ext-diff", "--binary", "--no-renames",
+                    parents[1], merge_commit)
+    if original and original == merged:
+        return "squash"
+    # Rebase merge: every PR commit must have an equivalent upstream patch.
+    # A '+' entry is an unmatched change and must block deletion.
+    cherry = output("cherry", remote_main, head, base).splitlines()
+    if cherry and all(line.startswith("- ") for line in cherry):
+        return "rebase"
+    raise ValueError("cannot prove all PR changes were integrated")
+
+
 def merged_pr_evidence(state, pr):
     if not isinstance(pr, int) or pr < 1:
         raise ValueError("cleanup requires a positive PR number")
@@ -102,10 +124,10 @@ def merged_pr_evidence(state, pr):
             or not target_branch or not info.get("mergeCommit", {}).get("oid")):
         raise ValueError("PR merge evidence is incomplete")
     head = info.get("headRefOid")
-    if not head or not ancestor(head, state["remote_main"]):
-        raise ValueError("merged PR head not reachable from origin/main")
     if not ancestor(info["mergeCommit"]["oid"], state["remote_main"]):
         raise ValueError("merge commit not reachable from origin/main")
+    if not head:
+        raise ValueError("PR head unavailable")
     if output("ls-remote", "--heads", "origin", target_branch):
         raise ValueError("remote PR branch still exists")
     if target_branch in (state["branch"], "main"):
@@ -119,8 +141,9 @@ def cleanup_snapshot(state, pr):
     if git("show-ref", "--verify", "--quiet", target_ref, check=False).returncode:
         raise ValueError("local PR branch not found")
     target_head = output("rev-parse", target_ref)
-    if target_head != head or not ancestor(target_head, state["remote_main"]):
+    if target_head != head:
         raise ValueError("local branch differs from merged PR head")
+    mode = merge_equivalence(head, info["mergeCommit"]["oid"], state["remote_main"])
     matches = [w for w in worktree_branches() if w.get("branch") == target_ref]
     if len(matches) != 1:
         raise ValueError("expected exactly one dedicated PR worktree")
@@ -130,7 +153,8 @@ def cleanup_snapshot(state, pr):
     if git("-C", str(target), "status", PORCELAIN_STATUS).stdout.strip():
         raise ValueError("target worktree has uncommitted changes")
     state.update(pr=pr, target_branch=target_branch, target_path=str(target),
-                 target_head=target_head, merge_commit=info["mergeCommit"]["oid"])
+                 target_head=target_head, merge_commit=info["mergeCommit"]["oid"],
+                 merge_mode=mode)
 
 
 def lifecycle_snapshot(action, *, pr=None, branch=None):
@@ -160,7 +184,13 @@ def lifecycle_run(action, *, pr=None, branch=None, execute=False, authorize=None
         git("update-ref", MAIN_BRANCH_REF, state["remote_main"], state["main"])
     if action == "cleanup":
         git("worktree", "remove", state["target_path"])
-        git("branch", "-d", state["target_branch"])
+        if state["merge_mode"] == "ancestry":
+            git("branch", "-d", state["target_branch"])
+        else:
+            # Equivalence is verified, but Git -d only accepts ancestry.
+            # Delete exactly the approved ref value, never an updated branch.
+            git("update-ref", "-d", f"refs/heads/{state['target_branch']}",
+                state["target_head"])
         git("worktree", "prune")
     else:
         git("worktree", "add", "-b", state["target_branch"],
