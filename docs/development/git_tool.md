@@ -41,14 +41,16 @@ python scripts/git_tool.py cleanup --pr 185
 python scripts/git_tool.py cleanup --pr 185 --execute --authorize '<preview token>'
 ```
 
-`cleanup` requires GitHub MERGED status, the merge commit and original PR
-head reachable from the latest `origin/main`, the deleted remote feature
+`cleanup` requires GitHub MERGED status, a merge commit reachable from the
+latest `origin/main`, the deleted remote feature
 branch, a matching local head, and a clean dedicated sibling worktree named
-`Clickra-pr-*`. It refuses squash/rebase merges when the original head is
-not in ancestry: those require a separately reviewed equivalence mechanism,
-not a guess that MERGED means the local branch can be removed. It fast-forwards
+`Clickra-pr-*`. Ordinary merges require original-head ancestry. Squash merges
+require exact introduced patch equivalence; rebase merges require every original
+commit patch to be equivalent upstream. Ambiguous integration, missing changes,
+or an unexpected commit structure fails closed. It fast-forwards
 the local main ref using compare-and-swap before removing the dedicated
-worktree and deleting the local branch with `git branch -d`.
+worktree. Ancestry-based cleanup uses `git branch -d`; verified patch-equivalent
+cleanup uses a compare-and-swap ref deletion at the exact approved HEAD.
 If an operation fails partway, inspect the resulting state and do not blindly
 retry with a stale token.
 

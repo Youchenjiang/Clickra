@@ -25,6 +25,7 @@ static partial class TestSuite
     private const string FileA2 = @"\a2.pdf";
     private const string FluentProjectDirectory = "Clickra.Fluent";
     private const string RepoRootNotFoundMessage = "Could not locate the repository root from the test output directory.";
+    private const string LifecycleFixtureContent = "fixture";
     private const string FluentMainPageFile = "MainPage.xaml.cs";
     private const string FluentHistoryPageFile = "MainPage.History.cs";
     private const string CliProjectDirectory = "Clickra.CLI";
@@ -85,6 +86,12 @@ static partial class TestSuite
             TestConversionLifecycleTaskIdMatchesPersistedRecord);
         runner.Run("Conversion output planning preserves each source directory",
             TestConversionOutputPlanningPreservesSourceDirectories);
+        runner.Run("Conversion lifecycle runner preserves per-file parking semantics",
+            TestConversionLifecycleRunnerPreservesParking);
+        runner.Run("Conversion lifecycle runner preserves single-output cancellation semantics",
+            TestConversionLifecycleRunnerPreservesCancellation);
+        runner.Run("Conversion lifecycle runner preserves per-file failure classification",
+            TestConversionLifecycleRunnerPreservesFailureClassification);
         runner.RunGuard("Conversion lifecycle: Native and Fluent runners share task tracking",
             TestConversionLifecycleIsShared);
     }
@@ -177,6 +184,85 @@ static partial class TestSuite
         {
             ClickraStorage.SaveSetting(ClickraSettings.OutputDir, previous);
         }
+    }
+
+    private static void TestConversionLifecycleRunnerPreservesParking()
+    {
+        RunWithTempDirectory(tempDir =>
+        {
+            string input = Path.Combine(tempDir, "park.pdf");
+            File.WriteAllText(input, LifecycleFixtureContent);
+            var useCase = new ParkingPerFileUseCase();
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                CompressPdfUseCase.CommandName,
+                new[] { input },
+                TrackTaskLifecycle: false));
+
+            ConversionResult result = useCase.ExecuteAsync(
+                    plan,
+                    CreateNoOpConversionInteraction(),
+                    progress: null)
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.True(result.Status == ConversionResultStatus.Parked, $"Expected Parked, got {result.Status}.");
+            Assert.Equal("test park", result.Error ?? "");
+            Assert.Equal(0, result.CompletedFiles);
+        });
+    }
+
+    private static void TestConversionLifecycleRunnerPreservesCancellation()
+    {
+        RunWithTempDirectory(tempDir =>
+        {
+            string first = Path.Combine(tempDir, "a.pdf");
+            string second = Path.Combine(tempDir, "b.pdf");
+            File.WriteAllText(first, LifecycleFixtureContent);
+            File.WriteAllText(second, LifecycleFixtureContent);
+            var useCase = new CancelingSingleOutputUseCase();
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                MergePdfUseCase.CommandName,
+                new[] { first, second },
+                TrackTaskLifecycle: false));
+
+            ConversionResult result = useCase.ExecuteAsync(
+                    plan,
+                    CreateNoOpConversionInteraction(),
+                    progress: null)
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.True(result.Status == ConversionResultStatus.Canceled, $"Expected Canceled, got {result.Status}.");
+            Assert.True(result.Error is null, "Cancellation must preserve a null presentation error.");
+            Assert.Equal(0, result.CompletedFiles);
+        });
+    }
+
+    private static void TestConversionLifecycleRunnerPreservesFailureClassification()
+    {
+        RunWithTempDirectory(tempDir =>
+        {
+            string input = Path.Combine(tempDir, "missing.pdf");
+            File.WriteAllText(input, LifecycleFixtureContent);
+            var useCase = new ClassifiedFailurePerFileUseCase();
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                CompressPdfUseCase.CommandName,
+                new[] { input },
+                TrackTaskLifecycle: false));
+
+            ConversionResult result = useCase.ExecuteAsync(
+                    plan,
+                    CreateNoOpConversionInteraction(),
+                    progress: null)
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.True(result.Status == ConversionResultStatus.Failed, $"Expected Failed, got {result.Status}.");
+            Assert.True(
+                result.FailureKind == ConversionFailureKind.FileNotFound,
+                $"Expected FileNotFound classification, got {result.FailureKind}.");
+            Assert.Equal(0, result.CompletedFiles);
+        });
     }
 
     private static void TestConversionLifecycleIsShared()
@@ -935,5 +1021,65 @@ static partial class TestSuite
         // ProgressWindow defines ShowResume
         Assert.True(progress.Contains("ShowResume(string taskId)", StringComparison.Ordinal),
             "ProgressWindow must declare ShowResume(string taskId).");
+    }
+
+    private sealed class ParkingPerFileUseCase : PerFileConversionUseCaseBase
+    {
+        public override string Command => CompressPdfUseCase.CommandName;
+        protected override string UseCaseName => nameof(ParkingPerFileUseCase);
+        protected override string InputRequirementError => "input required";
+        protected override string UnsupportedInputError(string path) => path;
+        protected override string OutputCountError => "output mismatch";
+        protected override string GetOutputFileName(string input) =>
+            Path.GetFileNameWithoutExtension(input) + "_park.pdf";
+
+        protected override Task ExecuteFileAsync(
+            int index,
+            ConversionPlan plan,
+            IConversionInteraction interaction,
+            IProgress<ConversionProgress>? progress,
+            object? executionState,
+            CancellationToken cancellationToken) =>
+            throw new ConversionParkedException("test park", index);
+    }
+
+    private sealed class ClassifiedFailurePerFileUseCase : PerFileConversionUseCaseBase
+    {
+        public override string Command => CompressPdfUseCase.CommandName;
+        protected override string UseCaseName => nameof(ClassifiedFailurePerFileUseCase);
+        protected override string InputRequirementError => "input required";
+        protected override string UnsupportedInputError(string path) => path;
+        protected override string OutputCountError => "output mismatch";
+        protected override string GetOutputFileName(string input) =>
+            Path.GetFileNameWithoutExtension(input) + "_failed.pdf";
+        protected override ConversionFailureKind ClassifyFailure(Exception exception) =>
+            exception is FileNotFoundException
+                ? ConversionFailureKind.FileNotFound
+                : ConversionFailureKind.None;
+
+        protected override Task ExecuteFileAsync(
+            int index,
+            ConversionPlan plan,
+            IConversionInteraction interaction,
+            IProgress<ConversionProgress>? progress,
+            object? executionState,
+            CancellationToken cancellationToken) =>
+            throw new FileNotFoundException("test missing");
+    }
+
+    private sealed class CancelingSingleOutputUseCase : SingleOutputConversionUseCaseBase
+    {
+        public override string Command => MergePdfUseCase.CommandName;
+        protected override string UseCaseName => nameof(CancelingSingleOutputUseCase);
+        protected override string InputRequirementError => "two inputs required";
+        protected override string UnsupportedInputError(string path) => path;
+        protected override string PlannedOutputFileName => "canceled.pdf";
+        protected override string OutputCountError => "output mismatch";
+
+        protected override Task ExecuteSingleAsync(
+            ConversionPlan plan,
+            IProgress<ConversionProgress>? progress,
+            CancellationToken cancellationToken) =>
+            throw new OperationCanceledException();
     }
 }

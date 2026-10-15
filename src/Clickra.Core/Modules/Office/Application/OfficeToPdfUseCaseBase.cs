@@ -1,4 +1,5 @@
 using Clickra.Core.Application;
+using Clickra.Core.Modules.Office.Infrastructure;
 using Clickra.Core.Modules.Office.Processing;
 using Clickra.Core.Modules.Settings.Application;
 using Clickra.Core.Processors;
@@ -64,35 +65,34 @@ public abstract class OfficeToPdfUseCaseBase : ConversionUseCaseBase
             observer);
 
         int completedFiles = 0;
-        try
-        {
-            await ExecuteBatchAsync(plan, progress, cancellationToken);
-            completedFiles = plan.Inputs.Count;
+        return await ConversionLifecycleResultRunner.RunAsync(
+            new ConversionLifecycleRunContext(
+                plan, stopwatch, lifecycle, string.Join(";", plan.Outputs), false),
+            async _ =>
+            {
+                string? readinessError = GetReadinessError(plan);
+                if (readinessError is not null)
+                    throw new InvalidOperationException(readinessError);
 
-            lifecycle?.CompleteSuccess(string.Join(";", plan.Outputs));
-            stopwatch.Stop();
-            return Result(ConversionResultStatus.Succeeded, null);
-        }
-        catch (OperationCanceledException)
+                await ExecuteBatchAsync(plan, progress, cancellationToken);
+                completedFiles = plan.Inputs.Count;
+            },
+            () => completedFiles);
+    }
+
+    private string? GetReadinessError(ConversionPlan plan)
+    {
+        OfficeConversionSettings settings = OfficeConversionOptions.Read(plan.NormalizedOptions);
+        if (OfficeEngineDetector.IsCommandReady(
+                Command,
+                settings.Engine,
+                settings.LibreOfficeRemovalPendingRestart,
+                settings.LibreOfficePath))
         {
-            lifecycle?.CompleteFailure("Canceled", string.Join(";", plan.Outputs));
-            stopwatch.Stop();
-            return Result(ConversionResultStatus.Canceled, null);
-        }
-        catch (Exception ex)
-        {
-            lifecycle?.CompleteFailure(ex.Message, string.Join(";", plan.Outputs));
-            stopwatch.Stop();
-            return Result(ConversionResultStatus.Failed, ex.Message);
+            return null;
         }
 
-        ConversionResult Result(ConversionResultStatus status, string? error) =>
-            new(
-                status,
-                plan.Outputs,
-                error,
-                stopwatch.Elapsed,
-                completedFiles,
-                lifecycle?.TaskId ?? "");
+        string errorKey = OfficeEngineDetector.GetUnavailableErrorKey(settings.Engine);
+        return Localization.T(errorKey, settings.Language);
     }
 }
