@@ -27,7 +27,7 @@ class PublicPdfFixtureTests(unittest.TestCase):
 
     def test_accepts_pinned_pdf(self):
         data = b"%PDF-1.7\nfixture"
-        verify(data, hashlib.sha256(data).hexdigest())
+        self.assertIsNone(verify(data, hashlib.sha256(data).hexdigest()))
 
 
 if __name__ == "__main__":
