@@ -1,12 +1,11 @@
-namespace Clickra.Core.Modules.PdfTranslation.Pipeline
+namespace Clickra.Core.Modules.PdfTranslation.Pipeline;
+
+public sealed class PdfLayoutElement
 {
-    public sealed class PdfLayoutElement
-    {
-        public string Text { get; set; } = "";
-        public bool IsFormula { get; set; }
-        public bool IsStyleMarker { get; set; }
-        public bool StyleBold { get; set; }
-        public int FormulaId { get; set; }
-        public double Width { get; set; }
-    }
+    public string Text { get; set; } = "";
+    public bool IsFormula { get; set; }
+    public bool IsStyleMarker { get; set; }
+    public bool StyleBold { get; set; }
+    public int FormulaId { get; set; }
+    public double Width { get; set; }
 }
