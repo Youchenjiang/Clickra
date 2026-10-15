@@ -376,7 +376,7 @@ public partial class ProgressWindow
             g.DrawLine(_linePen, 36 * s, 96 * s, 484 * s, 96 * s);
 
         PaintSplitterModeBar(g, s);
-        float nSelectorHeight = PaintSplitterNSelector(g, s);
+        PaintSplitterNSelector(g, s);
         PaintSplitterBody(g, s);
         PaintSplitterButtons(g, s);
         PaintSplitterZoomOverlay(g, s);
