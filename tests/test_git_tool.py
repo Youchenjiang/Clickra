@@ -77,6 +77,58 @@ class GitToolTests(unittest.TestCase):
             git_tool.run("sync", True, token)
         command.assert_not_called()
 
+    @patch.object(git_tool, "lifecycle_snapshot")
+    @patch.object(git_tool, "git")
+    def test_lifecycle_preview_does_not_mutate(self, command, snapshot):
+        snapshot.return_value = dict(self.state(), action="next", target_branch="feature/new")
+        with contextlib.redirect_stdout(io.StringIO()) as captured:
+            git_tool.lifecycle_run("next", branch="feature/new")
+        self.assertIn("authorize", captured.getvalue())
+        command.assert_not_called()
+
+    @patch.object(git_tool, "lifecycle_snapshot")
+    @patch.object(git_tool, "git")
+    def test_lifecycle_requires_matching_approval(self, command, snapshot):
+        snapshot.return_value = dict(self.state(), action="cleanup", target_branch="feature/old")
+        with self.assertRaisesRegex(ValueError, "authorization"):
+            git_tool.lifecycle_run("cleanup", pr=185, execute=True, authorize="wrong")
+        command.assert_not_called()
+
+    @patch.object(git_tool, "lifecycle_snapshot")
+    @patch.object(git_tool, "git")
+    def test_cleanup_removes_only_verified_worktree(self, command, snapshot):
+        state = dict(self.state(), action="cleanup", target_branch="feature/old",
+                     target_path="C:/safe/Clickra-pr-old")
+        snapshot.return_value = state
+        with contextlib.redirect_stdout(io.StringIO()):
+            git_tool.lifecycle_run("cleanup", pr=185, execute=True,
+                                   authorize=git_tool.authorization(state))
+        self.assertEqual([call.args[:2] for call in command.call_args_list],
+                         [("update-ref", git_tool.MAIN_BRANCH_REF),
+                          ("worktree", "remove"), ("branch", "-d"), ("worktree", "prune")])
+
+    @patch.object(git_tool, "lifecycle_snapshot")
+    @patch.object(git_tool, "git")
+    def test_next_creates_from_remote_main(self, command, snapshot):
+        state = dict(self.state(), action="next", target_branch="feature/new",
+                     target_path="C:/safe/Clickra-pr-new", main="c" * 40)
+        snapshot.return_value = state
+        with contextlib.redirect_stdout(io.StringIO()):
+            git_tool.lifecycle_run("next", branch="feature/new", execute=True,
+                                   authorize=git_tool.authorization(state))
+        command.assert_called_once_with("worktree", "add", "-b", "feature/new",
+                                        "C:/safe/Clickra-pr-new", "c" * 40)
+
+    @patch.object(git_tool, "lifecycle_snapshot")
+    @patch.object(git_tool, "git")
+    def test_lifecycle_rejects_state_drift(self, command, snapshot):
+        state = dict(self.state(), action="next", target_branch="feature/new")
+        snapshot.side_effect = (state, dict(state, remote="changed"))
+        with self.assertRaisesRegex(ValueError, "changed"):
+            git_tool.lifecycle_run("next", branch="feature/new", execute=True,
+                                   authorize=git_tool.authorization(state))
+        command.assert_not_called()
+
 
 class GitToolIntegrationTests(unittest.TestCase):
     def test_real_repositories_refuse_published_and_dirty_branches(self):
