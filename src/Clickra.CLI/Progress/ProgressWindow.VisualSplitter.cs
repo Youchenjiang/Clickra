@@ -145,8 +145,7 @@ public partial class ProgressWindow
         catch { /* Ignored: an unreadable PDF must not crash the splitter window. */ }
     }
 
-    /// <summary>Fetches uncached pages in the background without blocking the Win32 paint thread.
-    /// Requests for the same page are coalesced, and dynamic thumbnails have a fixed budget.</summary>
+    /// <summary>Fetches uncached pages without blocking the paint thread.</summary>
     private void RequestVisualSplitThumbnail(int page)
     {
         if (string.IsNullOrEmpty(_visualSplitFilePath)) return;
@@ -162,60 +161,82 @@ public partial class ProgressWindow
             filePath = _visualSplitFilePath;
         }
 
-        _ = Task.Run(() =>
-        {
-            Bitmap? bitmap = null;
-            bool acquired = false;
-            try
-            {
-                _visualSplitRenderSlots.Wait();
-                acquired = true;
-                lock (_stateLock)
-                    if (generation != _visualSplitThumbnailGeneration || !_isPromptingVisualSplitter)
-                        return;
-                bitmap = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, page, 660, GetThumbnailFontName());
-                lock (_stateLock)
-                {
-                    if (generation != _visualSplitThumbnailGeneration || !_isPromptingVisualSplitter)
-                        return;
-                    if (bitmap == null)
-                    {
-                        _visualSplitFailedPages.Add(page);
-                        return;
-                    }
-                    _visualSplitPageThumbnails[page] = bitmap;
-                    bitmap = null; // The cache owns the bitmap from here.
-                    if (page > VisualSplitThumbnailPolicy.PreloadedPages)
-                    {
-                        _visualSplitDynamicPageOrder.Enqueue(page);
-                        while (_visualSplitDynamicPageOrder.Count > VisualSplitThumbnailPolicy.DynamicCacheLimit)
-                        {
-                            int evicted = _visualSplitDynamicPageOrder.Dequeue();
-                            if (_visualSplitPageThumbnails.Remove(evicted, out Bitmap? oldBitmap))
-                                oldBitmap.Dispose();
-                        }
-                    }
-                }
-                if (_hwnd != IntPtr.Zero)
-                    PostMessageW(_hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-            }
-            catch
-            {
-                lock (_stateLock)
-                    if (generation == _visualSplitThumbnailGeneration)
-                        _visualSplitFailedPages.Add(page);
-            }
-            finally
-            {
-                bitmap?.Dispose();
-                if (acquired) _visualSplitRenderSlots.Release();
-                lock (_stateLock)
-                    if (generation == _visualSplitThumbnailGeneration)
-                        _visualSplitPendingPages.Remove(page);
-            }
-        });
+        _ = Task.Run(() => RenderRequestedVisualSplitThumbnail(page, generation, filePath), _cts.Token);
     }
 
+    private bool IsVisualSplitThumbnailCurrent(int generation) =>
+        generation == _visualSplitThumbnailGeneration && _isPromptingVisualSplitter;
+
+    private void RenderRequestedVisualSplitThumbnail(int page, int generation, string filePath)
+    {
+        Bitmap? bitmap = null;
+        bool acquired = false;
+        try
+        {
+            _visualSplitRenderSlots.Wait(_cts.Token);
+            acquired = true;
+            lock (_stateLock)
+                if (!IsVisualSplitThumbnailCurrent(generation)) return;
+
+            bitmap = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, page, 660, GetThumbnailFontName());
+            if (!TryCacheVisualSplitThumbnail(page, generation, bitmap)) return;
+            bitmap = null; // Ownership has moved into the cache.
+            if (_hwnd != IntPtr.Zero)
+                PostMessageW(_hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
+        }
+        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        {
+            // Window shutdown: cancellation is not a rendering failure.
+        }
+        catch
+        {
+            RecordVisualSplitThumbnailFailure(page, generation);
+        }
+        finally
+        {
+            bitmap?.Dispose();
+            if (acquired) _visualSplitRenderSlots.Release();
+            lock (_stateLock)
+                if (generation == _visualSplitThumbnailGeneration)
+                    _visualSplitPendingPages.Remove(page);
+        }
+    }
+
+    private void RecordVisualSplitThumbnailFailure(int page, int generation)
+    {
+        lock (_stateLock)
+            if (generation == _visualSplitThumbnailGeneration)
+                _visualSplitFailedPages.Add(page);
+    }
+
+    private bool TryCacheVisualSplitThumbnail(int page, int generation, Bitmap? bitmap)
+    {
+        lock (_stateLock)
+        {
+            if (!IsVisualSplitThumbnailCurrent(generation)) return false;
+            if (bitmap == null)
+            {
+                _visualSplitFailedPages.Add(page);
+                return false;
+            }
+            _visualSplitPageThumbnails[page] = bitmap;
+            if (page > VisualSplitThumbnailPolicy.PreloadedPages)
+                RetainRecentVisualSplitThumbnails(page);
+            return true;
+        }
+    }
+
+    /// <summary>Called under _stateLock; disposes evicted bitmaps only when no paint owns them.</summary>
+    private void RetainRecentVisualSplitThumbnails(int page)
+    {
+        _visualSplitDynamicPageOrder.Enqueue(page);
+        while (_visualSplitDynamicPageOrder.Count > VisualSplitThumbnailPolicy.DynamicCacheLimit)
+        {
+            int evicted = _visualSplitDynamicPageOrder.Dequeue();
+            if (_visualSplitPageThumbnails.Remove(evicted, out Bitmap? oldBitmap))
+                oldBitmap.Dispose();
+        }
+    }
     /// <summary>Returns the UI font family for the current language, so thumbnails render
     /// CJK text with a font that actually contains the glyphs (Segoe UI does not).</summary>
     private static string GetThumbnailFontName()
