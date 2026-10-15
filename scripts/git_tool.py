@@ -48,8 +48,11 @@ def gh(*args):
 def worktree_branches():
     records = []
     for block in output("worktree", "list", "--porcelain").split("\n\n"):
-        entry = {key: value for key, value in
-                 (line.split(" ", 1) for line in block.splitlines() if " " in line)}
+        entry = {}
+        for line in block.splitlines():
+            if " " in line:
+                key, value = line.split(" ", 1)
+                entry[key] = value
         if entry:
             records.append(entry)
     return records
