@@ -7,8 +7,8 @@ import argparse
 import hashlib
 import sys
 from pathlib import Path
-from urllib.parse import urlsplit
-from urllib.request import Request, urlopen
+from http.client import HTTPSConnection
+from urllib.parse import urljoin, urlsplit
 
 
 SOURCES = {
@@ -16,6 +16,38 @@ SOURCES = {
     "pentest": ("https://shensecurity.com/assets/pdf/PentestAgent_AsiaCCS_camera_ready.pdf", "PentestAgent_AsiaCCS_camera_ready.pdf", "ec63c7e004da12f20517bea06c9ee13b5eae585b07572531cc5639227844e432"),
     "togll": ("https://arxiv.org/pdf/2405.03786v1", "TOGLL_arxiv_v1.pdf", "55854a3e45dac8699456ae5ef4d294b6dc771daec74702b3f963a2ebd3144f4c"),
 }
+
+
+ALLOWED_HOSTS = {"arxiv.org", "www.arxiv.org", "shensecurity.com"}
+MAX_BYTES = 25_000_000
+
+
+def download_pinned_pdf(url):
+    """Allow HTTPS only, including at most three approved-host redirects."""
+    for _ in range(4):
+        parsed = urlsplit(url)
+        if (parsed.scheme != "https" or parsed.hostname not in ALLOWED_HOSTS
+                or parsed.port not in (None, 443) or parsed.username or parsed.password):
+            raise ValueError("Unexpected PDF URL destination")
+        connection = HTTPSConnection(parsed.hostname, port=443, timeout=45)
+        try:
+            path = parsed.path or "/"
+            if parsed.query:
+                path += "?" + parsed.query
+            connection.request("GET", path, headers={"User-Agent": "Clickra-PDF-Regression/1.0"})
+            response = connection.getresponse()
+            if response.status in (301, 302, 303, 307, 308):
+                location = response.getheader("Location")
+                if not location:
+                    raise ValueError("PDF redirect missing location")
+                url = urljoin(url, location)
+                continue
+            if response.status != 200:
+                raise ValueError(f"PDF HTTP response {response.status}")
+            return response.read(MAX_BYTES + 1)
+        finally:
+            connection.close()
+    raise ValueError("Too many PDF redirects")
 
 
 def verify(data, expected):
@@ -33,12 +65,7 @@ def fetch(name, destination):
         verify(target.read_bytes(), digest)
         print(f"PASS {name}: existing verified fixture {target}")
         return target
-    request = Request(url, headers={"User-Agent": "Clickra-PDF-Regression/1.0"})
-    with urlopen(request, timeout=45) as response:
-        redirect = urlsplit(response.geturl())
-        if redirect.scheme != "https" or redirect.hostname not in {"arxiv.org", "www.arxiv.org", "shensecurity.com"}:
-            raise ValueError("Unexpected redirect destination")
-        data = response.read(25_000_001)
+    data = download_pinned_pdf(url)
     if len(data) > 25_000_000:
         raise ValueError("PDF exceeds the 25 MB limit")
     verify(data, digest)

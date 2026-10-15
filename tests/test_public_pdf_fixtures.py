@@ -9,12 +9,13 @@ from fetch_public_pdf_fixtures import SOURCES, verify
 
 
 class PublicPdfFixtureTests(unittest.TestCase):
-    def test_three_pinned_public_sources(self):
-        self.assertEqual(set(SOURCES), {"2407", "pentest", "togll"})
+    @staticmethod
+    def test_three_pinned_public_sources():
+        assert set(SOURCES) == {"2407", "pentest", "togll"}
         for url, filename, checksum in SOURCES.values():
-            self.assertTrue(url.startswith("https://"))
-            self.assertTrue(filename.endswith(".pdf"))
-            self.assertEqual(len(checksum), 64)
+            assert url.startswith("https://")
+            assert filename.endswith(".pdf")
+            assert len(checksum) == 64
 
     def test_rejects_other_content(self):
         with self.assertRaisesRegex(ValueError, "not a PDF"):
