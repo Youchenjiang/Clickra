@@ -361,12 +361,17 @@ public partial class ProgressWindow
     private void ClampVisualSplitZoomPan()
     {
         float fitW = ZoomImgW, fitH = ZoomImgH;
-        var bmp = GetCurrentZoomBitmap();
-        if (bmp != null)
+        // Read bitmap dimensions under the same lock used when background rendering
+        // replaces/disposes zoom images. Never retain a disposable Bitmap here.
+        lock (_stateLock)
         {
-            float aspect = (float)bmp.Width / bmp.Height;
-            if (aspect > fitW / fitH) fitH = fitW / aspect;
-            else fitW = fitH * aspect;
+            var bmp = GetCurrentZoomBitmap();
+            if (bmp != null)
+            {
+                float aspect = (float)bmp.Width / bmp.Height;
+                if (aspect > fitW / fitH) fitH = fitW / aspect;
+                else fitW = fitH * aspect;
+            }
         }
         float scaledW = fitW * _visualSplitZoomFactor;
         float scaledH = fitH * _visualSplitZoomFactor;
