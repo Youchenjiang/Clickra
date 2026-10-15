@@ -114,63 +114,9 @@ public static class PdfParagraphBlockMerger
 
         var list = new List<MergedBlock>();
 
-        // Always split Docstrum blocks at the page center. Skipping this on table pages
-        // merges left-column tables with right-column body text into full-width paragraphs.
         foreach (var b in initialBlocks)
         {
-            var leftLines = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>();
-            var rightLines = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>();
-            bool hasSpanningLine = false;
-
-            foreach (var line in b.TextLines)
-            {
-                if (line.BoundingBox.Left < center && line.BoundingBox.Right > center)
-                {
-                    var (leftPart, rightPart) = SplitLine(line, center);
-                    if (leftPart != null && rightPart != null)
-                    {
-                        leftLines.Add(leftPart);
-                        rightLines.Add(rightPart);
-                    }
-                    else
-                    {
-                        hasSpanningLine = true;
-                        break;
-                    }
-                }
-                else if (line.BoundingBox.Right <= center)
-                {
-                    leftLines.Add(line);
-                }
-                else
-                {
-                    rightLines.Add(line);
-                }
-            }
-
-            if (hasSpanningLine)
-            {
-                list.Add(b);
-            }
-            else
-            {
-                if (leftLines.Count > 0)
-                {
-                    list.Add(new MergedBlock
-                    {
-                        TextLines = leftLines,
-                        Right = leftLines.Max(l => l.BoundingBox.Right)
-                    });
-                }
-                if (rightLines.Count > 0)
-                {
-                    list.Add(new MergedBlock
-                    {
-                        TextLines = rightLines,
-                        Right = rightLines.Max(l => l.BoundingBox.Right)
-                    });
-                }
-            }
+            SplitBlockAtPageCenter(b, center, list);
         }
 
         bool mergedAny = true;
@@ -184,42 +130,7 @@ public static class PdfParagraphBlockMerger
                 {
                     var b2 = list[j];
 
-                    // Never merge blocks from different columns
-                    double b1Center = b1.TextLines.Average(l => (l.BoundingBox.Left + l.BoundingBox.Right) / 2.0);
-                    double b2Center = b2.TextLines.Average(l => (l.BoundingBox.Left + l.BoundingBox.Right) / 2.0);
-                    if ((b1Center < center) != (b2Center < center)) continue;
-
-                    // Check if they should be merged horizontally
-                    bool canMerge = false;
-                    foreach (var l1 in b1.TextLines)
-                    {
-                        foreach (var l2 in b2.TextLines)
-                        {
-                            double verticalOverlap = Math.Min(l1.BoundingBox.Top, l2.BoundingBox.Top) - Math.Max(l1.BoundingBox.Bottom, l2.BoundingBox.Bottom);
-                            double minHeight = Math.Min(l1.BoundingBox.Height, l2.BoundingBox.Height);
-                            if (minHeight <= 0 || verticalOverlap / minHeight <= 0.5) continue;
-
-                            // Check gap between their horizontal boundaries
-                            double gap = l1.BoundingBox.Left < l2.BoundingBox.Left
-                                ? l2.BoundingBox.Left - l1.BoundingBox.Right
-                                : l1.BoundingBox.Left - l2.BoundingBox.Right;
-
-                            double c1 = (l1.BoundingBox.Left + l1.BoundingBox.Right) / 2.0;
-                            double c2 = (l2.BoundingBox.Left + l2.BoundingBox.Right) / 2.0;
-                            bool isL1Left = c1 < center;
-                            bool isL2Left = c2 < center;
-                            double allowedGap = (isL1Left != isL2Left) ? 5.0 : maxGap;
-
-                            if (gap >= -5.0 && gap <= allowedGap)
-                            {
-                                canMerge = true;
-                                break;
-                            }
-                        }
-                        if (canMerge) break;
-                    }
-
-                    if (canMerge)
+                    if (CanMergeBlocksHorizontally(b1, b2, center, maxGap))
                     {
                         // Merge b2 into b1
                         b1.TextLines.AddRange(b2.TextLines);
@@ -235,6 +146,61 @@ public static class PdfParagraphBlockMerger
         }
 
         return list;
+    }
+
+    private static void SplitBlockAtPageCenter(MergedBlock block, double center, List<MergedBlock> result)
+    {
+        // Split even on table pages so two-column tables remain isolated.
+        var leftLines = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>();
+        var rightLines = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>();
+        foreach (var line in block.TextLines)
+        {
+            if (line.BoundingBox.Left < center && line.BoundingBox.Right > center)
+            {
+                var (leftPart, rightPart) = SplitLine(line, center);
+                if (leftPart == null || rightPart == null)
+                {
+                    result.Add(block);
+                    return;
+                }
+                leftLines.Add(leftPart);
+                rightLines.Add(rightPart);
+            }
+            else if (line.BoundingBox.Right <= center) leftLines.Add(line);
+            else rightLines.Add(line);
+        }
+
+        if (leftLines.Count > 0)
+            result.Add(new MergedBlock { TextLines = leftLines, Right = leftLines.Max(l => l.BoundingBox.Right) });
+        if (rightLines.Count > 0)
+            result.Add(new MergedBlock { TextLines = rightLines, Right = rightLines.Max(l => l.BoundingBox.Right) });
+    }
+
+    private static bool CanMergeBlocksHorizontally(MergedBlock first, MergedBlock second, double center, double maxGap)
+    {
+        double firstCenter = first.TextLines.Average(l => (l.BoundingBox.Left + l.BoundingBox.Right) / 2.0);
+        double secondCenter = second.TextLines.Average(l => (l.BoundingBox.Left + l.BoundingBox.Right) / 2.0);
+        if ((firstCenter < center) != (secondCenter < center)) return false;
+
+        foreach (var firstLine in first.TextLines)
+        {
+            foreach (var secondLine in second.TextLines)
+            {
+                double overlap = Math.Min(firstLine.BoundingBox.Top, secondLine.BoundingBox.Top) -
+                                 Math.Max(firstLine.BoundingBox.Bottom, secondLine.BoundingBox.Bottom);
+                double minHeight = Math.Min(firstLine.BoundingBox.Height, secondLine.BoundingBox.Height);
+                if (minHeight <= 0 || overlap / minHeight <= 0.5) continue;
+
+                double gap = firstLine.BoundingBox.Left < secondLine.BoundingBox.Left
+                    ? secondLine.BoundingBox.Left - firstLine.BoundingBox.Right
+                    : firstLine.BoundingBox.Left - secondLine.BoundingBox.Right;
+                double firstLineCenter = (firstLine.BoundingBox.Left + firstLine.BoundingBox.Right) / 2.0;
+                double secondLineCenter = (secondLine.BoundingBox.Left + secondLine.BoundingBox.Right) / 2.0;
+                double allowedGap = (firstLineCenter < center) != (secondLineCenter < center) ? 5.0 : maxGap;
+                if (gap >= -5.0 && gap <= allowedGap) return true;
+            }
+        }
+        return false;
     }
 
 }

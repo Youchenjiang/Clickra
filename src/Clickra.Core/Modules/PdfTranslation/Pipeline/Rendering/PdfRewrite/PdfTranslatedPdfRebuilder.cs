@@ -336,7 +336,7 @@ internal static class PdfTranslatedPdfRebuilder
         ref double maskPdfY1)
     {
         const double maskPad = 1.5;
-        PdfMaskGeometry.ExpandMaskToColumnWidth(ref maskPdfX0, ref maskPdfX1, ctx.Para, ctx.PageWidth);
+        PdfMaskGeometry.ExpandMaskToColumnWidth(ctx.Para, ctx.PageWidth, ref maskPdfX0, ref maskPdfX1);
 
         if (ctx.PageOneTitlePara != null && ctx.Para == ctx.PageOneTitlePara)
         {
@@ -361,7 +361,7 @@ internal static class PdfTranslatedPdfRebuilder
         out double maskPdfX0, out double maskPdfY0, out double maskPdfX1, out double maskPdfY1)
     {
         const double maskPad = 1.5;
-        PdfMaskGeometry.GetParagraphPaintBounds(ctx.Para, out double maskX0, out double maskY0, out double maskX1, out double maskY1);
+        var (maskX0, maskY0, maskX1, maskY1) = PdfMaskGeometry.GetParagraphPaintBounds(ctx.Para);
         if (ctx.IsFigureCaption)
         {
             maskX0 = Math.Min(ctx.Para.OriginalX0, ctx.Para.X0);

@@ -6,14 +6,12 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline;
 internal static class PdfMaskGeometry
 {
     /// <summary>Union paragraph bbox with per-letter ink extents for white-mask coverage.</summary>
-    public static void GetParagraphPaintBounds(
-        PdfParagraph para, out double x0, out double y0, out double x1, out double y1)
+    public static (double X0, double Y0, double X1, double Y1) GetParagraphPaintBounds(PdfParagraph para)
     {
-        x0 = Math.Min(para.OriginalX0, para.X0);
-        y0 = Math.Min(para.OriginalY0, para.Y0);
-        x1 = Math.Max(para.OriginalX1, para.X1);
-        y1 = Math.Max(para.OriginalY1, para.Y1);
-        if (para.AllLetters.Count == 0) return;
+        double x0 = Math.Min(para.OriginalX0, para.X0);
+        double y0 = Math.Min(para.OriginalY0, para.Y0);
+        double x1 = Math.Max(para.OriginalX1, para.X1);
+        double y1 = Math.Max(para.OriginalY1, para.Y1);
         foreach (var letter in para.AllLetters)
         {
             if (letter.Left < x0) x0 = letter.Left;
@@ -21,11 +19,12 @@ internal static class PdfMaskGeometry
             if (letter.Right > x1) x1 = letter.Right;
             if (letter.Top > y1) y1 = letter.Top;
         }
+        return (x0, y0, x1, y1);
     }
 
     /// <summary>Expand white masks to full column width for body prose to erase orphan glyph runs.</summary>
     public static void ExpandMaskToColumnWidth(
-        ref double maskX0, ref double maskX1, PdfParagraph para, double pageWidth)
+        PdfParagraph para, double pageWidth, ref double maskX0, ref double maskX1)
     {
         // Findings callouts are fixed vector containers. Expanding their
         // text mask to the whole column erases the source fill and border.

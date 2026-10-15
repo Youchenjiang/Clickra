@@ -48,7 +48,7 @@ internal static class PdfParagraphMathClassifier
             return true;
         }
 
-        if (letter.Value != null && letter.Value.StartsWith("(cid:", StringComparison.OrdinalIgnoreCase)) return true;
+        if (letter.Value?.StartsWith("(cid:", StringComparison.OrdinalIgnoreCase) == true) return true;
 
         if (letter.Value != null)
         {

@@ -603,7 +603,7 @@ static partial class TestSuite
 
             double x0 = finding.X0;
             double x1 = finding.X1;
-            PdfMaskGeometry.ExpandMaskToColumnWidth(ref x0, ref x1, finding, 612);
+            PdfMaskGeometry.ExpandMaskToColumnWidth(finding, 612, ref x0, ref x1);
             Assert.True(Math.Abs(finding.X0 - x0) < 0.001, "Finding mask must not expand left to the column edge.");
             Assert.True(Math.Abs(finding.X1 - x1) < 0.001, "Finding mask must not expand right to the column edge.");
         });

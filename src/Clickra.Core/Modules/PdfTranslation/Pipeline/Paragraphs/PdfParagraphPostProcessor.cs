@@ -28,44 +28,12 @@ internal static class PdfParagraphPostProcessor
             for (int i = 0; i < sorted.Count - 1; i++)
             {
                 var p1 = sorted[i];
-                if (p1.IsBypassed || string.IsNullOrWhiteSpace(p1.TextWithPlaceholders)) continue;
-
-                // If p1 is a heading, do not merge anything into it
-                if (isHeadingParagraph(p1)) continue;
-
-                // If p1 ends with sentence-ending punctuation, do not merge subsequent paragraphs
-                string clean1 = p1.TextWithPlaceholders.Trim();
-                if (clean1.EndsWith(".") || clean1.EndsWith("?") || clean1.EndsWith("!") || clean1.EndsWith(":") ||
-                    clean1.EndsWith("。") || clean1.EndsWith("」") || clean1.EndsWith("\""))
-                {
-                    continue;
-                }
+                if (!CanStartVerticalMerge(p1, isHeadingParagraph)) continue;
 
                 for (int j = i + 1; j < sorted.Count; j++)
                 {
                     var p2 = sorted[j];
-                    if (p2.IsBypassed || string.IsNullOrWhiteSpace(p2.TextWithPlaceholders)) continue;
-
-                    // Check same column / horizontal overlap > 60%
-                    double minWidth = Math.Min(p1.Width, p2.Width);
-                    if (minWidth <= 0) continue;
-
-                    double overlap = Math.Min(p1.X1, p2.X1) - Math.Max(p1.X0, p2.X0);
-                    if (overlap / minWidth <= 0.6) continue;
-
-                    // Check vertical gap
-                    double gap = p1.Y0 - p2.Y1;
-
-                    // Allow a vertical gap of up to 6 pt (tightened from 14 pt to prevent paragraph merging)
-                    if (gap > 6 || gap < -10) continue;
-
-                    // Ensure p2 does not start a new list item, reference, or heading
-                    if (PdfParagraphBlockMerger.StartsNewParagraphOrSection(p2.TextWithPlaceholders)) continue;
-
-                    // Only merge reference/list multi-line items; never merge ordinary body paragraphs
-                    bool isP1RefOrList = ReferenceSectionDetector.IsReferenceParagraph(p1) || PdfParagraphBlockMerger.StartsNewParagraphOrSection(p1.TextWithPlaceholders);
-                    bool isP2RefOrList = ReferenceSectionDetector.IsReferenceParagraph(p2) || PdfParagraphBlockMerger.StartsNewParagraphOrSection(p2.TextWithPlaceholders);
-                    if (!isP1RefOrList && !isP2RefOrList) continue;
+                    if (!CanMergeVerticalPair(p1, p2)) continue;
 
                     // Merge p2 into p1
                     p1.MergeWith(p2);
@@ -78,6 +46,38 @@ internal static class PdfParagraphPostProcessor
                 if (mergedAny) break;
             }
         }
+    }
+
+    private static bool CanStartVerticalMerge(PdfParagraph paragraph, Func<PdfParagraph, bool> isHeadingParagraph)
+    {
+        if (paragraph.IsBypassed || string.IsNullOrWhiteSpace(paragraph.TextWithPlaceholders) ||
+            isHeadingParagraph(paragraph)) return false;
+
+        string text = paragraph.TextWithPlaceholders.Trim();
+        return !text.EndsWith('.') && !text.EndsWith('?') && !text.EndsWith('!') &&
+               !text.EndsWith(':') && !text.EndsWith('。') && !text.EndsWith('」') &&
+               !text.EndsWith('"');
+    }
+
+    private static bool CanMergeVerticalPair(PdfParagraph upper, PdfParagraph lower)
+    {
+        if (lower.IsBypassed || string.IsNullOrWhiteSpace(lower.TextWithPlaceholders)) return false;
+
+        double minWidth = Math.Min(upper.Width, lower.Width);
+        if (minWidth <= 0) return false;
+        double overlap = Math.Min(upper.X1, lower.X1) - Math.Max(upper.X0, lower.X0);
+        if (overlap / minWidth <= 0.6) return false;
+
+        // Tight gap prevents merging ordinary adjacent paragraphs.
+        double gap = upper.Y0 - lower.Y1;
+        if (gap > 6 || gap < -10) return false;
+        if (PdfParagraphBlockMerger.StartsNewParagraphOrSection(lower.TextWithPlaceholders)) return false;
+
+        bool upperIsReferenceOrList = ReferenceSectionDetector.IsReferenceParagraph(upper) ||
+                                      PdfParagraphBlockMerger.StartsNewParagraphOrSection(upper.TextWithPlaceholders);
+        bool lowerIsReferenceOrList = ReferenceSectionDetector.IsReferenceParagraph(lower) ||
+                                      PdfParagraphBlockMerger.StartsNewParagraphOrSection(lower.TextWithPlaceholders);
+        return upperIsReferenceOrList || lowerIsReferenceOrList;
     }
 
     /// <summary>

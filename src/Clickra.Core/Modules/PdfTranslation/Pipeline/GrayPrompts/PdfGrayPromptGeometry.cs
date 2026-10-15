@@ -57,8 +57,8 @@ internal static class PdfGrayPromptGeometry
 
     /// <summary>Clip or reject a mask rect so it cannot paint over gray prompt shaded areas.</summary>
     public static bool TryClipMaskBelowGrayRegions(
-        ref double maskX0, ref double maskY0, ref double maskX1, ref double maskY1,
-        IReadOnlyList<TableMaskRegion> grayRegions, double pageWidth)
+        IReadOnlyList<TableMaskRegion> grayRegions, double pageWidth,
+        ref double maskX0, ref double maskY0, ref double maskX1, ref double maskY1)
     {
         if (grayRegions.Count == 0) return maskY1 > maskY0 + 0.5;
         const double clearance = 4.0;

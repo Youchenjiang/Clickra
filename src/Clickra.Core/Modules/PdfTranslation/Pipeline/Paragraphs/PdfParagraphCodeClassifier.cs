@@ -54,7 +54,7 @@ internal static class PdfParagraphCodeClassifier
         string textWithoutPlaceholders = Regex.Replace(text, @"\{v\d+\}", "");
         if (IsAlgorithmPseudoCodeLine(textWithoutPlaceholders)) return true;
 
-        bool containsBrace = textWithoutPlaceholders.Contains("{") || textWithoutPlaceholders.Contains("}");
+        bool containsBrace = textWithoutPlaceholders.Contains('{') || textWithoutPlaceholders.Contains('}');
         if (!containsBrace) return false;
 
         var codeKeywordsRegex = new Regex(

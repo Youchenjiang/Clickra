@@ -188,13 +188,29 @@ public static class FontUtilities
         else if (isItalic) style = XFontStyleEx.Italic;
         else if (isBold) style = XFontStyleEx.Bold;
 
-        string fontName = "Times New Roman";
+        string fontName = SelectMathFontFamily(originalFontName);
+        try
+        {
+            return new XFont(fontName, fontSize, style);
+        }
+        catch
+        {
+            // Some embedded/subset math fonts request a style that the active
+            // resolver cannot provide. Keep PDF reconstruction alive with a
+            // broadly available regular face.
+            try { return new XFont(fontName, fontSize, XFontStyleEx.Regular); }
+            catch { return new XFont("Arial", fontSize, XFontStyleEx.Regular); }
+        }
+    }
+
+    private static string SelectMathFontFamily(string originalFontName)
+    {
         if (originalFontName.Contains("Helvetica", StringComparison.OrdinalIgnoreCase) ||
             originalFontName.Contains("Arial", StringComparison.OrdinalIgnoreCase) ||
             originalFontName.Contains("Sans", StringComparison.OrdinalIgnoreCase) ||
             originalFontName.Contains("SFNSText", StringComparison.OrdinalIgnoreCase))
         {
-            fontName = "Arial";
+            return "Arial";
         }
         else if (originalFontName.Contains("Sym", StringComparison.OrdinalIgnoreCase) ||
             originalFontName.Contains("Math", StringComparison.OrdinalIgnoreCase) ||
@@ -202,7 +218,7 @@ public static class FontUtilities
             originalFontName.Contains("MSBM", StringComparison.OrdinalIgnoreCase) ||
             originalFontName.Contains("CMSY", StringComparison.OrdinalIgnoreCase))
         {
-            fontName = "Cambria Math";
+            return "Cambria Math";
         }
         else if (originalFontName.Contains("Courier", StringComparison.OrdinalIgnoreCase) ||
                  originalFontName.Contains("Console", StringComparison.OrdinalIgnoreCase) ||
@@ -218,21 +234,9 @@ public static class FontUtilities
                  originalFontName.Contains("Code", StringComparison.OrdinalIgnoreCase) ||
                  Regex.IsMatch(originalFontName, @"tt\d+", RegexOptions.IgnoreCase))
         {
-            fontName = "Courier New";
+            return "Courier New";
         }
-
-        try
-        {
-            return new XFont(fontName, fontSize, style);
-        }
-        catch
-        {
-            // Some embedded/subset math fonts request a style that the active
-            // resolver cannot provide. Keep PDF reconstruction alive with a
-            // broadly available regular face.
-            try { return new XFont(fontName, fontSize, XFontStyleEx.Regular); }
-            catch { return new XFont("Arial", fontSize, XFontStyleEx.Regular); }
-        }
+        return "Times New Roman";
     }
 
     public static bool IsMathOrGreekCharacter(char c)
