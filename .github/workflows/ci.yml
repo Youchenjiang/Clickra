@@ -234,6 +234,9 @@ jobs:
           } else {
             throw "Could not determine PDF regression scope (exit $result)"
           }
+          # The GitHub pwsh wrapper exits with the last native exit code even
+          # after the supplementary case is handled successfully.
+          exit 0
 
       - name: Setup .NET
         if: steps.scope.outputs.required == 'true'
