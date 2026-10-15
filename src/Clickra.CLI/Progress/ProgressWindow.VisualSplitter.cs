@@ -461,7 +461,7 @@ public partial class ProgressWindow
     }
 
     /// <summary>Builds the page-range spec string for the active split mode via
-    /// <see cref="PdfSplitProcessor.BuildSegmentSpec"/>.</summary>
+    /// <see cref="VisualSplitModel.BuildSpec"/>.</summary>
     private string BuildVisualSplitSpec() => _visualSplitModel.BuildSpec();
 
     /// <summary>Copies shared model state into the Win32 view fields used by paint/layout code.</summary>

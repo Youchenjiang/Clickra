@@ -6,6 +6,7 @@ using System.Threading;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 using Clickra.Core.Processors;
+using Clickra.Core.Modules.PdfSplit.Application;
 
 namespace Clickra.Core.Modules.PdfSplit.Processing;
 
@@ -183,32 +184,8 @@ public class PdfSplitProcessor : SingleFileProcessorBase
     /// <param name="totalPages">Total number of pages in the source document.</param>
     /// <param name="customSegments">User-defined segments (1-based inclusive ranges) for mode 0.</param>
     /// <returns>A ";"-separated range spec, or "all" when every page is split individually.</returns>
-    public static string BuildSegmentSpec(int mode, int nPages, int totalPages, IReadOnlyList<(int Start, int End)> customSegments)
-    {
-        if (mode == 1) return "all";
-
-        if (mode == 2)
-        {
-            int n = Math.Max(1, nPages);
-            var segs = new List<string>();
-            for (int start = 1; start <= totalPages; start += n)
-            {
-                int end = Math.Min(totalPages, start + n - 1);
-                segs.Add(start == end ? $"{start}" : $"{start}-{end}");
-            }
-            return string.Join("; ", segs);
-        }
-
-        if (customSegments.Count == 0) return "all";
-
-        var specs = new List<string>();
-        foreach (var seg in customSegments)
-        {
-            if (seg.Start == seg.End) specs.Add($"{seg.Start}");
-            else specs.Add($"{seg.Start}-{seg.End}");
-        }
-        return string.Join("; ", specs);
-    }
+    public static string BuildSegmentSpec(int mode, int nPages, int totalPages, IReadOnlyList<(int Start, int End)> customSegments) =>
+        PdfSplitSpecBuilder.BuildSegmentSpec(mode, nPages, totalPages, customSegments);
 
     /// <summary>
     /// Parses a page-range specification such as "1-3", "1, 5, 8-10" or "12-15" into a sorted

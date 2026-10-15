@@ -12,7 +12,7 @@ namespace Clickra_Fluent;
 /// page-range spec visually. Mirrors the CLI's splitter-as-window-mode design:
 /// the preview gets the whole window instead of being squeezed into a dialog,
 /// so pages are readable without zooming. The spec is produced by the hosted
-/// <see cref="VisualSplitterControl"/> through Core's PdfSplitProcessor.
+/// <see cref="VisualSplitterControl"/> through Core's <see cref="Clickra.Core.Modules.PdfSplit.Presentation.VisualSplitModel"/>.
 /// </summary>
 public sealed partial class SplitPagesOverlay : UserControl
 {

@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Clickra.Core.Modules.PdfSplit.Processing;
+using Clickra.Core.Modules.PdfSplit.Application;
 
 namespace Clickra.Core.Modules.PdfSplit.Presentation;
 
@@ -184,7 +184,7 @@ public sealed class VisualSplitModel
     }
 
     public string BuildSpec() =>
-        PdfSplitProcessor.BuildSegmentSpec(Mode, PagesPerSegment, TotalPages, _segments);
+        PdfSplitSpecBuilder.BuildSegmentSpec(Mode, PagesPerSegment, TotalPages, _segments);
 
     public static float ClampZoomFactor(float factor) =>
         Math.Clamp(factor, ZoomMinFactor, ZoomMaxFactor);
