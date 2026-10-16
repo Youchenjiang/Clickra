@@ -101,7 +101,7 @@ class CreateTests(unittest.TestCase):
     def test_unknown_create_outcome_is_not_retried(self):
         with TemporaryDirectory() as folder:
             body = self.body_file(folder)
-            options = dict(title="feat(agent): test", body_file=str(body), label="agent")
+            options = dict(title="feat(agent): test", body_file=str(body), label="agent", milestone="Plan")
             with patch.object(pr_creation, "current_branch", return_value="a" * 40), \
                  patch.object(pr_creation, "_metadata"), \
                  patch.object(pr_creation, "executable", return_value="/bin/gh"):
@@ -111,6 +111,14 @@ class CreateTests(unittest.TestCase):
                     pr_creation.create("user/repo", "feature/workflow", **options,
                                        execute=True, authorization=approval, runner=runner)
                 runner.assert_called_once()
+
+    def test_non_exempt_pr_requires_milestone(self):
+        with TemporaryDirectory() as folder:
+            body = self.body_file(folder)
+            with self.assertRaisesRegex(ValueError, "milestone required"):
+                pr_creation._requested_details("feat(core): test", str(body), "agent", None, None)
+            for exempt in ("release", "hotfix", "deps", "dependencies", "docs"):
+                pr_creation._requested_details("docs: update", str(body), exempt, None, None)
 
 
 if __name__ == "__main__":

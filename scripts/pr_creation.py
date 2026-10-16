@@ -69,11 +69,19 @@ def current_branch(repo, branch):
     return head
 
 
+MILESTONE_EXEMPT_LABELS = {"release", "hotfix", "deps", "dependencies", "docs"}
+
+
 def _requested_details(title, body_file, label, milestone, assignee):
     if not title or len(title) > 120 or any(ord(c) < 32 for c in title):
         raise ValueError("invalid PR title")
     if not LABEL.fullmatch(label or ""):
         raise ValueError("explicit label required")
+    if not milestone and (label or "").lower() not in MILESTONE_EXEMPT_LABELS:
+        raise ValueError(
+            f"GitHub milestone required for PR with label '{label}'. "
+            "Release, hotfix, dependency, and docs PRs are exempt."
+        )
     if milestone and (len(milestone) > 100 or any(ord(c) < 32 for c in milestone)):
         raise ValueError("invalid milestone")
     if assignee and not LABEL.fullmatch(assignee):
