@@ -116,9 +116,9 @@ class CreateTests(unittest.TestCase):
         with TemporaryDirectory() as folder:
             body = self.body_file(folder)
             with self.assertRaisesRegex(ValueError, "milestone required"):
-                pr_creation._requested_details("feat(core): test", str(body), "agent", None, None)
+                pr_creation.validate_creation_inputs("feat(core): test", str(body), "agent", None, None)
             for exempt in ("release", "hotfix", "deps", "dependencies", "docs"):
-                pr_creation._requested_details("docs: update", str(body), exempt, None, None)
+                pr_creation.validate_creation_inputs("docs: update", str(body), exempt, None, None)
 
 
 if __name__ == "__main__":
