@@ -4,7 +4,7 @@ namespace Clickra.Core.Modules.Image.Application;
 
 internal static class ImageOutputSafety
 {
-    public static void EnsureUniqueOutputs(IEnumerable<string> outputs)
+    public static void EnsureUniqueOutputs(IEnumerable<string> outputs, string? language = null)
     {
         var duplicate = outputs
             .GroupBy(Path.GetFullPath, StringComparer.OrdinalIgnoreCase)
@@ -13,13 +13,14 @@ internal static class ImageOutputSafety
 
         string template = Localization.T(
             "error_image_output_collision",
-            SettingsController.Language);
+            language ?? SettingsController.Language);
         throw new InvalidOperationException(string.Format(template, duplicate.Key));
     }
 
     public static void EnsureOutputsDoNotOverwriteInputs(
         IEnumerable<string> inputs,
-        IEnumerable<string> outputs)
+        IEnumerable<string> outputs,
+        string? language = null)
     {
         var inputPaths = inputs
             .Select(Path.GetFullPath)
@@ -31,7 +32,7 @@ internal static class ImageOutputSafety
 
         string template = Localization.T(
             "error_image_output_overwrites_input",
-            SettingsController.Language);
+            language ?? SettingsController.Language);
         throw new InvalidOperationException(string.Format(template, collision));
     }
 }
