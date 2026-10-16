@@ -6,7 +6,7 @@
 
 ## 1. 架構管線流程概述
 
-翻譯的進入點為 [FileProcessor.TranslatePdf](../src/Clickra.Core/FileProcessor.cs#L305)。整體工作流程遵循以下 6 個 distinct 階段：
+翻譯的進入點為 [PdfTranslateProcessor](../src/Clickra.Core/Modules/PdfTranslation/Execution/PdfTranslateProcessor.cs)（底層驅動 [PdfTranslationPipeline.TranslatePdf](../src/Clickra.Core/Modules/PdfTranslation/Pipeline/PdfTranslationPipeline.cs)）。整體工作流程遵循以下 6 個 distinct 階段：
 
 ```mermaid
 graph TD
