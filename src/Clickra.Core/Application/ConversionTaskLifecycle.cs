@@ -57,6 +57,22 @@ public sealed class ConversionTaskLifecycle
         return lifecycle;
     }
 
+    /// <summary>Records an early dispatch failure directly to task history and cleans up task tracking without timing delays.</summary>
+    public static void RecordDispatchFailure(
+        string command,
+        string error,
+        string? startTime = null,
+        IReadOnlyCollection<string>? files = null)
+    {
+        var lifecycle = Start(
+            command,
+            files ?? Array.Empty<string>(),
+            bestEffort: true,
+            startTimeOverride: startTime);
+        lifecycle.CompleteFailure(error, outputPath: "");
+        lifecycle.Delete();
+    }
+
     public void CompleteSuccess(string outputPath, string? endTime = null) =>
         Complete(isSuccess: true, error: "", outputPath, endTime);
 
