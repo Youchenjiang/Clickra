@@ -73,10 +73,6 @@ public class PdfParagraph
     public double Width => X1 - X0;
     public double Height => Y1 - Y0;
 
-    public PdfParagraph()
-    {
-    }
-
     public void SetOriginalBounds(double x0, double y0, double x1, double y1)
     {
         OriginalX0 = x0;
