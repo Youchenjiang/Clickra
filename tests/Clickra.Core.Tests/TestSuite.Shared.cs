@@ -94,13 +94,15 @@ static partial class TestSuite
         double x0 = 0, double y0 = 0, double x1 = 0, double y1 = 0,
         double fontSize = 10)
     {
-        return new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+        var p = new PdfParagraph
         {
             TextWithPlaceholders = text,
             X0 = x0, Y0 = y0, X1 = x1, Y1 = y1,
             AverageFontSize = fontSize,
             SourceVisualFontSize = fontSize
         };
+        p.SetOriginalBounds(x0, y0, x1, y1);
+        return p;
     }
 
     private static PdfParagraph MakeParagraph(
@@ -166,7 +168,7 @@ static partial class TestSuite
         double y1 = 0,
         double fontSize = 10)
     {
-        var paragraph = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+        var paragraph = new PdfParagraph()
         {
             TextWithPlaceholders = source,
             TranslatedText = translated,
