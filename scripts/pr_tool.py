@@ -131,31 +131,40 @@ def _extract_comment_findings(items):
     return findings
 
 
-def print_review(repo, number, run=command):
-    items = [x for x in review_threads(repo, number, run) if not x["isResolved"]]
-    print(f"PR #{number}: {len(items)} unresolved review thread(s)")
-    for thread in items:
-        comments = thread.get("comments", {}).get("nodes", [])
-        first = comments[0] if comments else {}
-        print(f"- {safe_terminal(thread['id'])} {safe_terminal(thread.get('path') or '?')}:{safe_terminal(thread.get('line') or '?')}"
-              f"{' [outdated]' if thread.get('isOutdated') else ''}")
-        print(f"  {safe_terminal(first.get('body') or '(no comment text)')[:500]}")
-        if first.get("url"):
-            print(f"  {safe_terminal(first['url'])}")
+def _print_thread_item(thread):
+    comments = thread.get("comments", {}).get("nodes", [])
+    first = comments[0] if comments else {}
+    print(f"- {safe_terminal(thread['id'])} {safe_terminal(thread.get('path') or '?')}:{safe_terminal(thread.get('line') or '?')}"
+          f"{' [outdated]' if thread.get('isOutdated') else ''}")
+    print(f"  {safe_terminal(first.get('body') or '(no comment text)')[:500]}")
+    if first.get("url"):
+        print(f"  {safe_terminal(first['url'])}")
+
+
+def _print_top_findings(repo, number, run):
     try:
         top_reviews = paged(repo, number, "pulls/reviews", run)
         top_findings = _extract_comment_findings(top_reviews)
     except (OSError, RuntimeError, ValueError):
         top_findings = []
-    if top_findings:
-        print(f"\nTop-level review finding(s): {len(top_findings)}")
-        for finding in top_findings:
-            author_tag = f"@{finding['author']}"
-            state_tag = f" [{finding['state']}]" if finding["state"] else ""
-            print(f"- {safe_terminal(author_tag)}{state_tag}")
-            print(f"  {safe_terminal(finding['body'])[:600]}")
-            if finding["url"]:
-                print(f"  {safe_terminal(finding['url'])}")
+    if not top_findings:
+        return
+    print(f"\nTop-level review finding(s): {len(top_findings)}")
+    for finding in top_findings:
+        author_tag = f"@{finding['author']}"
+        state_tag = f" [{finding['state']}]" if finding["state"] else ""
+        print(f"- {safe_terminal(author_tag)}{state_tag}")
+        print(f"  {safe_terminal(finding['body'])[:600]}")
+        if finding["url"]:
+            print(f"  {safe_terminal(finding['url'])}")
+
+
+def print_review(repo, number, run=command):
+    items = [x for x in review_threads(repo, number, run) if not x["isResolved"]]
+    print(f"PR #{number}: {len(items)} unresolved review thread(s)")
+    for thread in items:
+        _print_thread_item(thread)
+    _print_top_findings(repo, number, run)
     return items
 
 
