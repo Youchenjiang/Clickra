@@ -30,10 +30,12 @@ public sealed class Img2PdfUseCase : PerFileConversionUseCaseBase
         object? executionState,
         CancellationToken cancellationToken)
     {
+        var processor = new ImageToPdfProcessor();
         await Task.Run(
-            () => FileProcessor.ConvertImagesToPdf(
+            () => processor.Process(
                 new List<string> { plan.Inputs[index] },
                 plan.Outputs[index],
+                null,
                 (current, total, message) =>
                     ReportFileProgress(plan, index, progress, current, message),
                 cancellationToken),

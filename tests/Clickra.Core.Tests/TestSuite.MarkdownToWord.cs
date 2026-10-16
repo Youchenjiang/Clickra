@@ -7,6 +7,7 @@ using System.Threading;
 using System.Xml.Linq;
 using Clickra.Core;
 using Clickra.Core.Application;
+using Clickra.Core.Modules.Markdown.Processing;
 using Clickra.Core.Processors;
 using Clickra.Shared;
 
@@ -76,7 +77,7 @@ static partial class TestSuite
                 byte[] original = { 6, 7, 8, 9 };
                 File.WriteAllBytes(output, original);
                 bool failed = false;
-                try { FileProcessor.ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create()); }
+                try { ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create()); }
                 catch (ArgumentException) { failed = true; }
                 catch (OutOfMemoryException) { failed = true; }
                 Assert.True(failed, "Corrupt local image bytes must fail before replacing the document.");
@@ -159,7 +160,7 @@ static partial class TestSuite
                     ```
                     """);
 
-                FileProcessor.ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create());
+                ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create());
 
                 Assert.True(File.Exists(output) && new FileInfo(output).Length > 0, "DOCX output must be created.");
                 using ZipArchive archive = ZipFile.OpenRead(output);
@@ -218,7 +219,7 @@ static partial class TestSuite
                 string output = Path.Combine(tempDir, "image.docx");
                 File.WriteAllText(input, "# Image\n\n![pixel](pixel.png)\n\n![remote](https://example.com/remote.png)");
 
-                FileProcessor.ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create());
+                ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create());
 
                 using ZipArchive archive = ZipFile.OpenRead(output);
                 Assert.True(archive.GetEntry("word/media/image1.png") is not null,
@@ -238,9 +239,9 @@ static partial class TestSuite
 
                 string minimalPath = Path.Combine(tempDir, "minimal.docx");
                 string academicPath = Path.Combine(tempDir, "academic.docx");
-                FileProcessor.ConvertMarkdownToWord(input, minimalPath,
+                ConvertMarkdownToWord(input, minimalPath,
                     MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeMinimal));
-                FileProcessor.ConvertMarkdownToWord(input, academicPath,
+                ConvertMarkdownToWord(input, academicPath,
                     MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeAcademic));
 
                 using ZipArchive minimal = ZipFile.OpenRead(minimalPath);
@@ -312,8 +313,8 @@ static partial class TestSuite
                     ```
                     """);
 
-                FileProcessor.ConvertMarkdownToPdf(input, pdfPath, MarkdownPdfOptions.Create());
-                FileProcessor.ConvertMarkdownToWord(input, wordPath, MarkdownPdfOptions.Create());
+                ConvertMarkdownToPdf(input, pdfPath, MarkdownPdfOptions.Create());
+                ConvertMarkdownToWord(input, wordPath, MarkdownPdfOptions.Create());
 
                 MarkdownResolvedLayout layout = MarkdownResolvedLayout.Create(MarkdownTemplateCatalog.Default, 1);
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(pdfPath);
@@ -388,7 +389,7 @@ static partial class TestSuite
                     }
                     """);
 
-                FileProcessor.ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create(templatePath: templatePath));
+                ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create(templatePath: templatePath));
 
                 using ZipArchive archive = ZipFile.OpenRead(output);
                 string styles = ReadAllText(archive.GetEntry(WordStylesPart)!);
@@ -503,7 +504,7 @@ static partial class TestSuite
                 CreateWordTemplateFixture(templatePath);
                 File.WriteAllText(input, "# Thesis title\n\nBody paragraph for imported formatting.");
 
-                FileProcessor.ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create(templatePath: templatePath));
+                ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create(templatePath: templatePath));
 
                 using ZipArchive archive = ZipFile.OpenRead(output);
                 XNamespace w = WordprocessingNamespace;
@@ -534,7 +535,7 @@ static partial class TestSuite
                 string output = Path.Combine(tempDir, "academic-list.docx");
                 File.WriteAllText(input, "- First list paragraph.\n\n  Second list paragraph in the same item.\n\n> Quoted evidence.");
 
-                FileProcessor.ConvertMarkdownToWord(input, output,
+                ConvertMarkdownToWord(input, output,
                     MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeAcademic));
 
                 using ZipArchive archive = ZipFile.OpenRead(output);
@@ -581,7 +582,7 @@ static partial class TestSuite
                       | one | two |
                     """);
 
-                FileProcessor.ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create());
+                ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create());
 
                 using ZipArchive archive = ZipFile.OpenRead(output);
                 XDocument document = ReadXml(archive, WordDocumentPart);
@@ -621,7 +622,7 @@ static partial class TestSuite
                     > | one | two |
                     """);
 
-                FileProcessor.ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create());
+                ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create());
 
                 using ZipArchive archive = ZipFile.OpenRead(output);
                 XDocument document = ReadXml(archive, WordDocumentPart);
@@ -644,7 +645,7 @@ static partial class TestSuite
                 string output = Path.Combine(tempDir, "scaled-indent.docx");
                 File.WriteAllText(input, "# Academic\n\nScaled body paragraph.");
 
-                FileProcessor.ConvertMarkdownToWord(input, output,
+                ConvertMarkdownToWord(input, output,
                     MarkdownPdfOptions.Create(
                         MarkdownPdfOptions.ThemeAcademic,
                         textSize: MarkdownPdfOptions.TextLarge));
@@ -665,7 +666,7 @@ static partial class TestSuite
                 File.WriteAllText(input,
                     "## 一、作業封包來源\n\n取得：保留中文標點。File ➔ Export Objects\n\n- 題目連結：Root-Me\n- 學習核心：保留原文\n\n3. Third\n4. Fourth");
 
-                FileProcessor.ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create());
+                ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create());
 
                 using ZipArchive archive = ZipFile.OpenRead(output);
                 XDocument document = ReadXml(archive, WordDocumentPart);
@@ -816,4 +817,17 @@ static partial class TestSuite
         using Stream stream = entry.Open();
         document.Save(stream);
     }
+
+    private static void ConvertMarkdownToWord(
+        string inputPath,
+        string outputPath,
+        Dictionary<string, object> options,
+        Action<int, int, string>? onProgress = null,
+        CancellationToken cancellationToken = default) =>
+        new MarkdownToWordProcessor().Process(
+            new List<string> { inputPath },
+            outputPath,
+            options,
+            onProgress,
+            cancellationToken);
 }

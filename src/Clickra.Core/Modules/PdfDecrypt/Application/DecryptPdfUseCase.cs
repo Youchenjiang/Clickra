@@ -46,12 +46,18 @@ public sealed class DecryptPdfUseCase : PerFileConversionUseCaseBase
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
+                var processor = new PdfDecryptProcessor();
+                var options = new Dictionary<string, object>
+                {
+                    [ExecutionLocalizationOptions.LanguageKey] = plan.NormalizedOptions[ExecutionLocalizationOptions.LanguageKey].ToString() ?? ClickraSettings.DefaultEmpty
+                };
+                if (!string.IsNullOrEmpty(password)) options["password"] = password;
+
                 await Task.Run(
-                    () => FileProcessor.DecryptPdf(
-                        plan.Inputs[index],
+                    () => processor.Process(
+                        new List<string> { plan.Inputs[index] },
                         plan.Outputs[index],
-                        password,
-                        plan.NormalizedOptions[ExecutionLocalizationOptions.LanguageKey].ToString() ?? ClickraSettings.DefaultEmpty,
+                        options,
                         (current, total, message) =>
                             ReportFileProgress(plan, index, progress, current, message),
                         cancellationToken),

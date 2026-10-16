@@ -1,4 +1,5 @@
 using Clickra.Core.Application;
+using Clickra.Core.Modules.PdfMerge.Processing;
 using Clickra.Core.Processors;
 
 namespace Clickra.Core.Modules.PdfMerge.Application;
@@ -21,10 +22,12 @@ public sealed class MergePdfUseCase : SingleOutputConversionUseCaseBase
         IProgress<ConversionProgress>? progress,
         CancellationToken cancellationToken)
     {
+        var processor = new PdfMergeProcessor();
         await Task.Run(
-            () => FileProcessor.MergePdfs(
+            () => processor.Process(
                 plan.Inputs.ToList(),
                 plan.Outputs[0],
+                null,
                 (current, total, message) => progress?.Report(
                     new ConversionProgress(current, total, message)),
                 cancellationToken),

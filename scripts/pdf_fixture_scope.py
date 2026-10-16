@@ -7,13 +7,13 @@ from process_guard import invoke
 
 
 TRANSLATION_PREFIXES = (
+    "src/Clickra.Core/Modules/PdfTranslation/",
     "src/Clickra.Core/Processors/PdfTranslation/",
     "tests/PdfRegression/",
 )
 TRANSLATION_FILES = (
     "src/Clickra.Core/Processors/FileProcessing/PdfTranslateProcessor.cs",
     "tests/Clickra.Core.Tests/TestSuite.Translation.cs",
-    "src/Clickra.Core/FileProcessor.cs",
     "scripts/fetch_public_pdf_fixtures.py",
     "scripts/pdf_fixture_scope.py",
 )

@@ -61,9 +61,10 @@ public sealed class CompressPdfUseCase : PerFileConversionUseCaseBase
     {
         var options = (IReadOnlyDictionary<string, object>?)executionState
             ?? plan.NormalizedOptions;
+        var processor = new PdfCompressionProcessor();
         await Task.Run(
-            () => FileProcessor.CompressPdf(
-                plan.Inputs[index],
+            () => processor.Process(
+                new List<string> { plan.Inputs[index] },
                 plan.Outputs[index],
                 new Dictionary<string, object>(options, StringComparer.Ordinal),
                 (current, total, message) =>

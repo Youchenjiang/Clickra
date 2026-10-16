@@ -1,6 +1,7 @@
 using Clickra.Core;
 using Clickra.Core.Application;
 using Clickra.Core.Modules.PdfSplit.Application;
+using Clickra.Core.Modules.PdfSplit.Processing;
 using Clickra.Core.Processors;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
@@ -43,14 +44,14 @@ static partial class TestSuite
             Assert.True(r3.Count == 0, "Expected out of bound range to yield empty list.");
         });
 
-        runner.Run("FileProcessor.SplitPdf extracts specified page ranges to new document", () =>
+        runner.Run("PdfSplitProcessor extracts specified page ranges to new document", () =>
         {
             string inputPath = CreateTempPdf($"clickra-split-src-{Guid.NewGuid():N}", 3);
             string outputPath = Path.Combine(Path.GetTempPath(), $"clickra-split-out-{Guid.NewGuid():N}.pdf");
 
             try
             {
-                FileProcessor.SplitPdf(inputPath, outputPath, "1-2");
+                new PdfSplitProcessor().Process(new List<string> { inputPath }, outputPath, new Dictionary<string, object> { ["pages"] = "1-2" });
 
                 Assert.True(File.Exists(outputPath), "Expected output split PDF file to exist.");
                 using var outDoc = PdfReader.Open(outputPath, PdfDocumentOpenMode.Import);
@@ -108,7 +109,7 @@ static partial class TestSuite
 
             try
             {
-                FileProcessor.SplitPdf(inputPath, outputPath, "1-2; 4");
+                new PdfSplitProcessor().Process(new List<string> { inputPath }, outputPath, new Dictionary<string, object> { ["pages"] = "1-2; 4" });
 
                 Assert.True(File.Exists(seg1Path), "Expected segment 1-2 output file to exist.");
                 Assert.True(File.Exists(seg2Path), "Expected segment 4 output file to exist.");
@@ -239,7 +240,7 @@ static partial class TestSuite
             bool threw = false;
             try
             {
-                FileProcessor.SplitPdf(inputPath, Path.Combine(tempDir, "unused.pdf"), spec);
+                new PdfSplitProcessor().Process(new List<string> { inputPath }, Path.Combine(tempDir, "unused.pdf"), new Dictionary<string, object> { ["pages"] = spec });
             }
             catch (ArgumentException)
             {

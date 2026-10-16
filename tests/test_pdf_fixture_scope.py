@@ -34,7 +34,7 @@ class PdfFixtureScopeTests(unittest.TestCase):
 
     def test_pdf_regression_and_translation_entrypoint_require_fixtures(self):
         self.assertTrue(requires_fixtures(["tests/PdfRegression/pdf_test_common.py"]))
-        self.assertTrue(requires_fixtures(["src/Clickra.Core/FileProcessor.cs"]))
+        self.assertTrue(requires_fixtures(["src/Clickra.Core/Modules/PdfTranslation/Pipeline/PdfTranslationPipeline.cs"]))
         self.assertTrue(requires_fixtures(["scripts/pdf_fixture_scope.py"]))
 
 

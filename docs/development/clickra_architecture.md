@@ -329,19 +329,19 @@ Shared `Fonts`, `Rendering`, `Localization`, and `Diagnostics` remain outside th
 - `Processing/PdfCompressionSettings`, `PdfCompressionEngine`, and `PdfStructuralCompressionOptimizer` — compression policy and native PDF optimization implementation;
 - `Processing/PdfCompressionProcessor` — the capability-specific adapter over the shared single-file processor base.
 
-Shared conversion contracts, `FileProcessor`, generic processor base/progress helpers, Fonts, and Settings remain outside the module because they have real non-PDF-compression consumers. The move changes ownership and namespace boundaries only; compression presets, output planning, saved settings behavior, and NativeAOT execution remain unchanged.
+Shared conversion contracts, generic processor base/progress helpers, Fonts, and Settings remain outside the module because they have real non-PDF-compression consumers. The move changes ownership and namespace boundaries only; compression presets, output planning, saved settings behavior, and NativeAOT execution remain unchanged.
 
 #### PDF Decrypt module
 
 `Modules/PdfDecrypt` owns the password-removal workflow and its PDF processor. The use case remains the authoritative owner of password interaction, planning, saved execution language, and task behavior; the processor remains responsible for opening and rewriting the PDF.
 
-Shared interaction/contracts, localization execution options, `FileProcessor`, Settings, and generic single-file/progress helpers remain outside the module. The ownership move does not change password retry behavior, output naming, exception semantics, or NativeAOT behavior.
+Shared interaction/contracts, localization execution options, Settings, and generic single-file/progress helpers remain outside the module. The ownership move does not change password retry behavior, output naming, exception semantics, or NativeAOT behavior.
 
 #### PDF Merge module
 
 `Modules/PdfMerge` owns the single-output PDF merge workflow and its processor. The application owner keeps output planning, collision semantics, and task behavior authoritative while the processor owns page aggregation.
 
-Shared conversion contracts, `FileProcessor`, and the generic multi-file processor base remain outside the capability. The ownership move does not change input ordering, output naming, overwrite safety, or NativeAOT behavior.
+Shared conversion contracts and the generic multi-file processor base remain outside the capability. The ownership move does not change input ordering, output naming, overwrite safety, or NativeAOT behavior.
 
 #### PDF Split module
 
@@ -352,13 +352,13 @@ Shared conversion contracts, `FileProcessor`, and the generic multi-file process
 - `Processing/PdfSplitProcessor` — PDF page extraction and segment-spec execution;
 - `Presentation/VisualSplitModel` — pure shared Native/Fluent splitter state, selection, segment editing, and zoom behavior.
 
-The semantic graph shows this slice has no domain-specific outgoing dependencies once the shared conversion kernel and processor base helpers are excluded. The Native and Fluent visual splitters render and wire input independently, but both consume the same `VisualSplitModel`. Shared conversion contracts, `FileProcessor`, generic processor base/progress helpers, and rendering helpers remain outside the module. The ownership move does not change split specs, page-count semantics, output naming, interaction flow, or NativeAOT behavior.
+The semantic graph shows this slice has no domain-specific outgoing dependencies once the shared conversion kernel and processor base helpers are excluded. The Native and Fluent visual splitters render and wire input independently, but both consume the same `VisualSplitModel`. Shared conversion contracts, generic processor base/progress helpers, and rendering helpers remain outside the module. The ownership move does not change split specs, page-count semantics, output naming, interaction flow, or NativeAOT behavior.
 
 #### Image module
 
 `Modules/Image` owns image format conversion, compression, stitching, image-to-PDF, and image merge workflows together with their shared WIC/output-safety implementation. Keeping these together avoids artificial cross-module coupling around `WicImageHelper`, `ImageFormatConvertProcessor`, and `ImageOutputSafety`.
 
-Shared conversion contracts, `FileProcessor`, generic multi-file execution/localization helpers, Settings, and Localization remain outside the capability because they have consumers beyond image conversion. The move preserves codec checks, saved compression settings, output collision safety, image orientation/multi-frame guards, and NativeAOT behavior.
+Shared conversion contracts, generic multi-file execution/localization helpers, Settings, and Localization remain outside the capability because they have consumers beyond image conversion. The move preserves codec checks, saved compression settings, output collision safety, image orientation/multi-frame guards, and NativeAOT behavior.
 
 #### Office module
 
@@ -369,7 +369,7 @@ Shared conversion contracts, `FileProcessor`, generic multi-file execution/local
 - `Infrastructure/PowerShellHelper`, `OfficeEngineDetector`, and `LibreOfficeHelper` — Microsoft Office automation, engine readiness/fallback policy, and LibreOffice execution;
 - `Infrastructure/LibreOfficeEngineInstaller` — LibreOffice installation/adoption/removal infrastructure used by the Settings capability.
 
-Settings may depend on Office infrastructure for LibreOffice management and readiness, but generic conversion contracts, `FileProcessor`, `SingleFileProcessorBase`, `ProcessorExecutionOptions`, lifecycle storage, and localization remain shared. The installer retains its existing explicit per-owner settings allowlist; moving the owner does not change settings keys, management identity, install/uninstall semantics, fallback policy, or NativeAOT behavior.
+Settings may depend on Office infrastructure for LibreOffice management and readiness, but generic conversion contracts, `SingleFileProcessorBase`, `ProcessorExecutionOptions`, lifecycle storage, and localization remain shared. The installer retains its existing explicit per-owner settings allowlist; moving the owner does not change settings keys, management identity, install/uninstall semantics, fallback policy, or NativeAOT behavior.
 
 #### Markdown module
 
@@ -380,7 +380,7 @@ Settings may depend on Office infrastructure for LibreOffice management and read
 - `Processing/MarkdownDocumentTemplate`, template loaders, layout/palette helpers, and table sizing — shared PDF/DOCX rendering policy;
 - `Processing/MarkdownToPdfProcessor`, `MarkdownToWordProcessor`, and `MarkdownSingleFileProcessorBase` — Markdown-specific execution backends.
 
-Shared conversion contracts, `FileProcessor`, generic processor execution/localization helpers, `Fonts`, and Settings remain outside the module because they have real non-Markdown consumers. The move changes ownership and namespace boundaries only; PDF/DOCX output semantics, NativeAOT behavior, and interactive option flow remain unchanged.
+Shared conversion contracts, generic processor execution/localization helpers, `Fonts`, and Settings remain outside the module because they have real non-Markdown consumers. The move changes ownership and namespace boundaries only; PDF/DOCX output semantics, NativeAOT behavior, and interactive option flow remain unchanged.
 
 #### Settings module
 

@@ -1,5 +1,6 @@
 using Clickra.Core;
 using Clickra.Core.Application;
+using Clickra.Core.Processors;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 
@@ -25,7 +26,14 @@ static partial class TestSuite
                     document.Save(input);
                 }
 
-                FileProcessor.DecryptPdf(input, output, password);
+                new Clickra.Core.Modules.PdfDecrypt.Processing.PdfDecryptProcessor().Process(
+                    new List<string> { input },
+                    output,
+                    new Dictionary<string, object>
+                    {
+                        ["password"] = password,
+                        [ExecutionLocalizationOptions.LanguageKey] = "zh-TW"
+                    });
 
                 Assert.True(File.Exists(output), "Expected decrypted PDF to be written.");
                 using var decrypted = PdfReader.Open(output, PdfDocumentOpenMode.Import);

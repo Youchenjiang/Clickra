@@ -65,12 +65,17 @@ public sealed class ImageFormatConvertUseCase : PerFileConversionUseCaseBase
         object? executionState,
         CancellationToken cancellationToken)
     {
+        var processor = new ImageFormatConvertProcessor();
+        var options = new Dictionary<string, object>
+        {
+            ["format"] = _targetFormat,
+            [ExecutionLocalizationOptions.LanguageKey] = plan.NormalizedOptions[ExecutionLocalizationOptions.LanguageKey].ToString() ?? ClickraSettings.DefaultEmpty
+        };
         await Task.Run(
-            () => FileProcessor.ConvertImageFormat(
-                plan.Inputs[index],
+            () => processor.Process(
+                new List<string> { plan.Inputs[index] },
                 plan.Outputs[index],
-                _targetFormat,
-                plan.NormalizedOptions[ExecutionLocalizationOptions.LanguageKey].ToString() ?? ClickraSettings.DefaultEmpty,
+                options,
                 (current, total, message) =>
                     ReportFileProgress(plan, index, progress, current, message),
                 cancellationToken),

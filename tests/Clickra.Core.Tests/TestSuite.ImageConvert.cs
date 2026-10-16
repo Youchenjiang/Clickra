@@ -1,5 +1,6 @@
 using Clickra.Core;
 using Clickra.Core.Application;
+using Clickra.Core.Modules.Image.Processing;
 using Clickra.Core.Processors;
 using Clickra.Shared;
 using System;
@@ -43,7 +44,7 @@ static partial class TestSuite
             {
                 string input = CreateTestImage(tempDir, InputPng, ImageFormat.Png);
                 string output = Path.Combine(tempDir, "output.jpg");
-                FileProcessor.ConvertImageFormat(input, output, "jpg");
+                ConvertImageFormat(input, output, "jpg");
                 Assert.True(File.Exists(output), "Expected JPG output to exist.");
                 Assert.True(HasJpegMagicBytes(output), "Expected JPG magic bytes (FF D8 FF).");
             }));
@@ -53,7 +54,7 @@ static partial class TestSuite
             {
                 string input = CreateTestImage(tempDir, "input.jpg", ImageFormat.Jpeg);
                 string output = Path.Combine(tempDir, "output.png");
-                FileProcessor.ConvertImageFormat(input, output, "png");
+                ConvertImageFormat(input, output, "png");
                 Assert.True(File.Exists(output), "Expected PNG output to exist.");
                 Assert.True(HasPngMagicBytes(output), "Expected PNG magic bytes (89 50 4E 47).");
             }));
@@ -63,12 +64,12 @@ static partial class TestSuite
             {
                 string input = CreateTestImage(tempDir, InputPng, ImageFormat.Png);
                 string gif = Path.Combine(tempDir, "out.gif");
-                FileProcessor.ConvertImageFormat(input, gif, "gif");
+                ConvertImageFormat(input, gif, "gif");
                 Assert.True(File.Exists(gif), "Expected GIF output to exist.");
 
                 string webp = Path.Combine(tempDir, "out.webp");
                 Assert.True(ImageFormatConvertProcessor.IsWebpEncodingSupported(), "WEBP encoding should be bundled with Clickra.");
-                FileProcessor.ConvertImageFormat(input, webp, "webp");
+                ConvertImageFormat(input, webp, "webp");
                 Assert.True(File.Exists(webp), "Expected WEBP output to exist.");
                 Assert.True(HasWebpMagicBytes(webp), "Expected RIFF/WEBP magic bytes.");
             }));
@@ -79,7 +80,7 @@ static partial class TestSuite
                 string input = CreateTestImage(tempDir, InputPng, ImageFormat.Png);
                 long originalSize = new FileInfo(input).Length;
                 string same = Path.Combine(tempDir, InputPng);
-                FileProcessor.ConvertImageFormat(input, same, "png");
+                ConvertImageFormat(input, same, "png");
                 Assert.True(File.Exists(same), "Expected the source file to still exist.");
                 Assert.True(new FileInfo(same).Length == originalSize, "Source must not be overwritten by a same-format conversion.");
             }));
@@ -89,7 +90,7 @@ static partial class TestSuite
             {
                 string input = CreateTestImage(tempDir, InputPng, ImageFormat.Png);
                 string output = Path.Combine(tempDir, "out.xyz");
-                Assert.Throws<NotSupportedException>(() => FileProcessor.ConvertImageFormat(input, output, "xyz"));
+                Assert.Throws<NotSupportedException>(() => ConvertImageFormat(input, output, "xyz"));
             }));
 
         runner.Run("ImageFormatConvertProcessor supports HEIC output when a codec is available", () =>
@@ -99,33 +100,33 @@ static partial class TestSuite
                 string output = Path.Combine(tempDir, "out.heic");
                 if (ImageFormatConvertProcessor.IsHeicEncodingSupported())
                 {
-                    FileProcessor.ConvertImageFormat(input, output, "heic");
+                    ConvertImageFormat(input, output, "heic");
                     Assert.True(File.Exists(output), "Expected HEIC output to exist when a HEIC encoder is present.");
                     Assert.True(HasHeicMagicBytes(output), "Expected HEIC ftyp magic bytes.");
 
                     string backPng = Path.Combine(tempDir, "from_heic.png");
-                    FileProcessor.ConvertImageFormat(output, backPng, "png");
+                    ConvertImageFormat(output, backPng, "png");
                     Assert.True(File.Exists(backPng), "Expected PNG output decoded from HEIC to exist.");
                     Assert.True(HasPngMagicBytes(backPng), "Expected PNG magic bytes from HEIC decode.");
 
                     string backJpg = Path.Combine(tempDir, "from_heic.jpg");
-                    FileProcessor.ConvertImageFormat(output, backJpg, "jpg");
+                    ConvertImageFormat(output, backJpg, "jpg");
                     Assert.True(File.Exists(backJpg), "Expected JPG output decoded from HEIC to exist.");
                     Assert.True(HasJpegMagicBytes(backJpg), "Expected JPG magic bytes from HEIC decode.");
 
                     string heicPdf = Path.Combine(tempDir, "heic_to_pdf.pdf");
-                    FileProcessor.ConvertImagesToPdf(new List<string> { output }, heicPdf);
+                    ConvertImagesToPdf(new List<string> { output }, heicPdf);
                     Assert.True(File.Exists(heicPdf), "Expected PDF output from HEIC input to exist.");
                     Assert.True(new FileInfo(heicPdf).Length > 0, "Expected non-empty PDF from HEIC.");
 
                     string stitchedOut = Path.Combine(tempDir, "stitched.png");
-                    FileProcessor.StitchImages(new List<string> { output, output }, stitchedOut);
+                    StitchImages(new List<string> { output, output }, stitchedOut);
                     Assert.True(File.Exists(stitchedOut), "Expected stitched output from HEIC inputs to exist.");
                     Assert.True(HasPngMagicBytes(stitchedOut), "Expected valid PNG header from stitched HEIC.");
                 }
                 else
                 {
-                    Assert.Throws<NotSupportedException>(() => FileProcessor.ConvertImageFormat(input, output, "heic"));
+                    Assert.Throws<NotSupportedException>(() => ConvertImageFormat(input, output, "heic"));
                 }
             }));
     }
@@ -672,4 +673,20 @@ static partial class TestSuite
         return header[0] == (byte)'R' && header[1] == (byte)'I' && header[2] == (byte)'F' && header[3] == (byte)'F' &&
                header[8] == (byte)'W' && header[9] == (byte)'E' && header[10] == (byte)'B' && header[11] == (byte)'P';
     }
+
+    private static void ConvertImageFormat(string inputPath, string outputPath, string format) =>
+        new ImageFormatConvertProcessor().Process(
+            new List<string> { inputPath },
+            outputPath,
+            new Dictionary<string, object>
+            {
+                ["format"] = format,
+                [ExecutionLocalizationOptions.LanguageKey] = "zh-TW"
+            });
+
+    private static void ConvertImagesToPdf(List<string> files, string outputPath) =>
+        new ImageToPdfProcessor().Process(files, outputPath, new Dictionary<string, object>());
+
+    private static void StitchImages(List<string> files, string outputPath) =>
+        new ImageStitchProcessor().Process(files, outputPath, new Dictionary<string, object>());
 }

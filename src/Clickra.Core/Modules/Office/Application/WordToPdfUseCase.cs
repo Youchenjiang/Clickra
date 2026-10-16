@@ -1,4 +1,5 @@
 using Clickra.Core.Application;
+using Clickra.Core.Modules.Office.Processing;
 using Clickra.Core.Processors;
 
 namespace Clickra.Core.Modules.Office.Application;
@@ -25,8 +26,9 @@ public sealed class WordToPdfUseCase : OfficeToPdfUseCaseBase
         IProgress<ConversionProgress>? progress,
         CancellationToken cancellationToken) =>
         Task.Run(
-            () => FileProcessor.ConvertWordToPdf(
+            () => new WordToPdfProcessor().Process(
                 plan.Inputs.ToList(),
+                null,
                 BuildExecutionOptions(plan),
                 (current, total, message) => progress?.Report(
                     new ConversionProgress(current, total, message)),

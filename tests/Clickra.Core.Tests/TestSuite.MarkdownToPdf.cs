@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using Clickra.Core;
 using Clickra.Core.Application;
+using Clickra.Core.Modules.Markdown.Processing;
 using Clickra.Core.Processors;
 using Clickra.Shared;
 
@@ -37,7 +38,7 @@ static partial class TestSuite
         string templatePath = Path.Combine(tempDir, stem + ".docx");
         CreateWordTemplateFixture(templatePath);
         File.WriteAllText(input, markdown);
-        FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create(templatePath: templatePath));
+        ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create(templatePath: templatePath));
         return output;
     }
 
@@ -302,8 +303,8 @@ static partial class TestSuite
                 File.WriteAllText(input, "# Geometry\n\nRendered body text.");
                 File.WriteAllText(templatePath, "{\"version\":1,\"layout\":{\"margin\":96}}");
 
-                FileProcessor.ConvertMarkdownToPdf(input, defaultOutput, MarkdownPdfOptions.Create());
-                FileProcessor.ConvertMarkdownToPdf(input, customOutput, MarkdownPdfOptions.Create(templatePath: templatePath));
+                ConvertMarkdownToPdf(input, defaultOutput, MarkdownPdfOptions.Create());
+                ConvertMarkdownToPdf(input, customOutput, MarkdownPdfOptions.Create(templatePath: templatePath));
 
                 using var defaultPdf = UglyToad.PdfPig.PdfDocument.Open(defaultOutput);
                 using var customPdf = UglyToad.PdfPig.PdfDocument.Open(customOutput);
@@ -362,7 +363,7 @@ static partial class TestSuite
                 string output = Path.Combine(tempDir, "link.pdf");
                 File.WriteAllText(input, "# Links\n\nOpen [Root-Me #101](https://www.root-me.org/) now.");
 
-                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
+                ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
 
                 using var textPdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 var textPage = textPdf.GetPage(1);
@@ -391,7 +392,7 @@ static partial class TestSuite
                 const string sentence = "Alpha\u3001Beta\u3002Gamma\uff1a\u300cDelta\u300d\u300eEcho\u300f\u3010Foxtrot\u3011";
                 File.WriteAllText(input, "# Punctuation\n\n" + sentence);
 
-                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create(templatePath: templatePath));
+                ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create(templatePath: templatePath));
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 var page = pdf.GetPage(1);
@@ -415,7 +416,7 @@ static partial class TestSuite
                 File.WriteAllText(input, "# Academic\n\nZebra begins the academic paragraph with enough repeated words to wrap onto another line while preserving the first-line indentation convention. " +
                     "More words ensure wrapping occurs on an A4 page at the configured academic body size and margin.");
 
-                FileProcessor.ConvertMarkdownToPdf(input, output,
+                ConvertMarkdownToPdf(input, output,
                     MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeAcademic));
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
@@ -434,7 +435,7 @@ static partial class TestSuite
                     "# Academic\n\nZebra begins a deliberately long academic paragraph whose first physical line must be expanded across the available thesis measure while the final line remains naturally ragged. " +
                     "Additional carefully spaced words force several wraps so the geometry check observes a real non-final justified line rather than a short paragraph.");
 
-                FileProcessor.ConvertMarkdownToPdf(input, output,
+                ConvertMarkdownToPdf(input, output,
                     MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeAcademic));
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
@@ -458,7 +459,7 @@ static partial class TestSuite
                     "# 學術排版\n\n中文測試Q，v標點應該貼近文字而不是被左右對齊拉開。中文測試，標點應該貼近文字而不是被左右對齊拉開。" +
                     "中文測試，標點應該貼近文字而不是被左右對齊拉開。中文測試，標點應該貼近文字而不是被左右對齊拉開。");
 
-                FileProcessor.ConvertMarkdownToPdf(input, output,
+                ConvertMarkdownToPdf(input, output,
                     MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeAcademic));
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
@@ -484,7 +485,7 @@ static partial class TestSuite
                 string output = Path.Combine(tempDir, "academic-quote.pdf");
                 File.WriteAllText(input, "# Academic\n\n> Quoted evidence should use the quote inset without the ordinary body first-line indent.");
 
-                FileProcessor.ConvertMarkdownToPdf(input, output,
+                ConvertMarkdownToPdf(input, output,
                     MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeAcademic));
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
@@ -500,7 +501,7 @@ static partial class TestSuite
                 string output = Path.Combine(tempDir, "academic-list.pdf");
                 File.WriteAllText(input, "# Academic\n\n- First list paragraph.\n\n  Second list paragraph in the same item.");
 
-                FileProcessor.ConvertMarkdownToPdf(input, output,
+                ConvertMarkdownToPdf(input, output,
                     MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeAcademic));
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
@@ -529,7 +530,7 @@ static partial class TestSuite
                     MarkdownPdfOptions.TextLarge,
                     MarkdownPdfOptions.CodeLight);
 
-                FileProcessor.ConvertMarkdownToPdf(input, output, options);
+                ConvertMarkdownToPdf(input, output, options);
 
                 using var pdf = PdfSharp.Pdf.IO.PdfReader.Open(output, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
                 double width = pdf.Pages[0].Width.Point;
@@ -609,7 +610,7 @@ static partial class TestSuite
                 File.WriteAllText(input, markdown);
                 byte[] original = File.ReadAllBytes(input);
 
-                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
+                ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
 
                 Assert.True(File.Exists(output), "Markdown conversion must create the PDF output.");
                 Assert.True(File.ReadAllBytes(output).Take(4).SequenceEqual("%PDF"u8.ToArray()), "Markdown output must have a PDF header.");
@@ -632,7 +633,7 @@ static partial class TestSuite
                     $"Paragraph {i}: This is enough text to verify that Markdown rendering creates additional PDF pages rather than drawing beyond the A4 page boundary."));
                 File.WriteAllText(input, "# Long document\n\n" + body);
 
-                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
+                ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 Assert.True(pdf.NumberOfPages > 1, "Long Markdown documents must paginate across multiple PDF pages.");
@@ -650,7 +651,7 @@ static partial class TestSuite
                 File.WriteAllText(input,
                     "# Pagination test\n\n" + lead + "\n\n## NEXT_SECTION_HEADING\n\nSECTION_BODY_MARKER should travel with its heading.\n");
 
-                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
+                ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 var pages = pdf.GetPages().ToList();
@@ -675,7 +676,7 @@ static partial class TestSuite
                 string output = Path.Combine(tempDir, "image.pdf");
                 File.WriteAllText(input, "# Local image\n\nBefore image ![Diagram](diagram.png) after image.");
 
-                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
+                ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 Assert.True(pdf.NumberOfPages >= 1, "Markdown with a local image must produce a readable PDF.");
@@ -695,7 +696,7 @@ static partial class TestSuite
                 File.WriteAllText(input,
                     "| Column | Value |\n| --- | --- |\n| Long | " + longCell + " TABLE_END_MARKER |\n\nAfter table.");
 
-                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
+                ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 Assert.True(pdf.NumberOfPages > 1, "An oversized Markdown table row must split across pages.");
@@ -721,7 +722,7 @@ static partial class TestSuite
                     ```
                     """);
 
-                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
+                ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 string text = string.Join("\n", pdf.GetPages().Select(page => page.Text));
@@ -735,4 +736,17 @@ static partial class TestSuite
                     "Technical arrow glyphs must not be rewritten to a different source character.");
             }));
     }
+
+    private static void ConvertMarkdownToPdf(
+        string inputPath,
+        string outputPath,
+        Dictionary<string, object> options,
+        Action<int, int, string>? onProgress = null,
+        CancellationToken cancellationToken = default) =>
+        new MarkdownToPdfProcessor().Process(
+            new List<string> { inputPath },
+            outputPath,
+            options,
+            onProgress,
+            cancellationToken);
 }
