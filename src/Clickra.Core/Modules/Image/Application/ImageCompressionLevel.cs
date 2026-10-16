@@ -1,4 +1,4 @@
-namespace Clickra.Core.Modules.Image.Processing;
+namespace Clickra.Core.Modules.Image.Application;
 
 public enum ImageCompressionLevel
 {
