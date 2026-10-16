@@ -39,7 +39,8 @@ static partial class TestSuite
             Assert.True(typeof(HistoryItem).GetProperty(nameof(HistoryItem.Retention))?.PropertyType
                 == typeof(Clickra.Core.Modules.HistoryTasks.Application.ParkedRetentionQueryState?),
                 "Parked retention must use the application query state without a presentation copy.");
-        });        runner.Run("History feed: one list carries active, parked and completed items in display order",
+        });
+        runner.Run("History feed: one list carries active, parked and completed items in display order",
             TestHistoryFeedCarriesAllThreeKinds);
         runner.Run("History feed: row status wording comes from the shared item, and canceled is recognized",
             TestHistoryFeedStatusWording);
