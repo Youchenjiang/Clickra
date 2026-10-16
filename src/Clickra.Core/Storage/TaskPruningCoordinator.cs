@@ -38,17 +38,17 @@ internal static class TaskPruningCoordinator
         if (taskId.StartsWith(StorageRuntime.TaskFilePrefix, StringComparison.OrdinalIgnoreCase))
             taskId = taskId[StorageRuntime.TaskFilePrefix.Length..];
 
-        ClickraStorage.HistoryEntry? entry = TaskRecordStore.Read(taskId);
+        HistoryEntry? entry = TaskRecordStore.Read(taskId);
         if (!entry.HasValue) return;
 
-        ClickraStorage.HistoryEntry task = entry.Value;
+        HistoryEntry task = entry.Value;
         bool finished = task.Status is ConversionStatus.Success or ConversionStatus.Failed;
         bool parked = task.Status == ConversionStatus.Parked;
         TimeSpan age = now - File.GetLastWriteTimeUtc(file);
 
         if (IsOrphaned(task, finished, parked, age))
         {
-            string reason = IsDeadPid(task, finished, parked) ? ClickraStorage.AbandonedReason : ClickraStorage.CanceledReason;
+            string reason = IsDeadPid(task, finished, parked) ? StorageTaskReasons.Abandoned : StorageTaskReasons.Canceled;
             HistoryStore.AppendCanceled(task, reason, now);
             File.Delete(file);
             return;
@@ -63,10 +63,10 @@ internal static class TaskPruningCoordinator
             File.Delete(file);
     }
 
-    private static bool IsDeadPid(ClickraStorage.HistoryEntry entry, bool finished, bool parked) =>
+    private static bool IsDeadPid(HistoryEntry entry, bool finished, bool parked) =>
         !finished && !parked && entry.Pid > 0 && !IsProcessAlive(entry.Pid);
 
-    private static bool IsOrphaned(ClickraStorage.HistoryEntry entry, bool finished, bool parked, TimeSpan age)
+    private static bool IsOrphaned(HistoryEntry entry, bool finished, bool parked, TimeSpan age)
     {
         if (IsDeadPid(entry, finished, parked)) return true;
         return !finished && !parked && age.TotalHours > AbandonedTaskTtlHours;

@@ -63,7 +63,7 @@ static partial class TestSuite
         {
             ClickraStorage.SetTaskInProgress(parkedId);
             ClickraStorage.ParkTask(parkedId, FeedParkReason, 1);
-            ClickraStorage.CompleteTask(doneId, FeedCommand, new ClickraStorage.CompleteTaskRequest
+            ClickraStorage.CompleteTask(doneId, FeedCommand, new CompleteTaskRequest
             {
                 StartTime = "2026-09-17 12:00:00",
                 IsSuccess = true,
@@ -123,7 +123,7 @@ static partial class TestSuite
             ClickraStorage.SetTaskInProgress(canceledId);
             ClickraStorage.ParkTask(canceledId, FeedParkReason, 1);
             ClickraStorage.CancelParkedTask(canceledId);
-            ClickraStorage.CompleteTask(failedId, FeedCommand, new ClickraStorage.CompleteTaskRequest
+            ClickraStorage.CompleteTask(failedId, FeedCommand, new CompleteTaskRequest
             {
                 StartTime = "2026-09-17 13:00:00",
                 IsSuccess = false,

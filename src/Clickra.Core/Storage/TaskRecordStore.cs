@@ -5,6 +5,63 @@ using System.Linq;
 
 namespace Clickra.Core.Storage;
 
+/// <summary>Canonical reason identifiers and predicates for task terminal states.</summary>
+public static class StorageTaskReasons
+{
+    public const string Canceled = "Canceled";
+    public const string Abandoned = "Abandoned";
+    public const string LegacyUserAborted = "User Aborted";
+
+    public static bool IsUserCanceled(string? errorMessage) =>
+        errorMessage is not null &&
+        (errorMessage.Equals(Canceled, StringComparison.Ordinal) ||
+         errorMessage.Equals(LegacyUserAborted, StringComparison.OrdinalIgnoreCase));
+}
+
+/// <summary>Task entry as recorded in the history log and task queue files.</summary>
+public struct HistoryEntry
+{
+    public string Id { get; set; }
+    public string Time { get; set; }
+    public string Command { get; set; }
+    public int FileCount { get; set; }
+    public ConversionStatus Status { get; set; }
+    public bool IsSuccess => Status == ConversionStatus.Success;
+    public string ErrorMessage { get; set; }
+    public string EndTime { get; set; }
+    public long ElapsedMs { get; set; }
+    public string InputPaths { get; set; }
+    public string OutputPath { get; set; }
+    public int CurrentIndex { get; set; }
+    public int Pid { get; set; }
+    public int? ParkedRetentionDays { get; set; }
+    public string ParkedSince { get; set; }
+}
+
+/// <summary>Request contract for completing a task execution.</summary>
+public record CompleteTaskRequest
+{
+    public string StartTime { get; init; } = string.Empty;
+    public bool IsSuccess { get; init; }
+    public string ErrorMsg { get; init; } = string.Empty;
+    public string? EndTime { get; init; }
+    public long ElapsedMs { get; init; } = -1;
+    public string? InputPaths { get; init; }
+    public string? OutputPath { get; init; }
+}
+
+/// <summary>Resume data returned when claiming a parked task.</summary>
+public record ResumedTaskInfo(string TaskId, string Command, List<string> Files, int StartIndex);
+
+/// <summary>Calculated retention status for a parked task.</summary>
+public readonly record struct ParkedRetentionInfo(
+    bool IsUnlimited,
+    int RemainingDays,
+    TimeSpan RemainingTime,
+    bool IsExpiringSoon,
+    bool HasExpired,
+    bool IsTaskOverride = false);
+
 internal sealed record TaskFileData
 {
     internal string TaskId { get; init; } = string.Empty;
@@ -87,7 +144,7 @@ internal static class TaskRecordStore
         }
     }
 
-    internal static ClickraStorage.HistoryEntry? Read(string taskId)
+    internal static HistoryEntry? Read(string taskId)
     {
         lock (StorageRuntime.FileLock)
         {
@@ -103,7 +160,7 @@ internal static class TaskRecordStore
                 if (!int.TryParse(values.GetValueOrDefault("Pid", "0"), out int pid)) pid = 0;
                 int? parkedDays = int.TryParse(values.GetValueOrDefault("ParkedRetentionDays", ""), out int parsedDays) ? parsedDays : null;
 
-                return new ClickraStorage.HistoryEntry
+                return new HistoryEntry
                 {
                     Id = values.GetValueOrDefault("Id", taskId),
                     Time = values.GetValueOrDefault("Time", ""),
@@ -129,7 +186,7 @@ internal static class TaskRecordStore
     }
 
     internal static TaskFileData FromEntry(
-        ClickraStorage.HistoryEntry entry,
+        HistoryEntry entry,
         ConversionStatus status,
         string? errorMessage = null,
         string? endTime = null,

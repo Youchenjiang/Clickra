@@ -50,7 +50,7 @@ public static class HistoryQueryController
 
     public static ParkedRetentionQueryState GetParkedRetention(string taskId)
     {
-        ClickraStorage.ParkedRetentionInfo state = ClickraStorage.GetParkedRetentionInfo(taskId);
+        ParkedRetentionInfo state = ClickraStorage.GetParkedRetentionInfo(taskId);
         return new ParkedRetentionQueryState(
             state.IsUnlimited,
             state.RemainingDays,
@@ -62,7 +62,7 @@ public static class HistoryQueryController
 
     public static bool IsUserCanceledReason(string? errorMessage) => ClickraStorage.IsUserCanceledReason(errorMessage);
 
-    private static HistoryQueryRecord Snapshot(ClickraStorage.HistoryEntry entry) => new(
+    private static HistoryQueryRecord Snapshot(HistoryEntry entry) => new(
         entry.Id ?? string.Empty,
         entry.Time ?? string.Empty,
         entry.Command ?? string.Empty,

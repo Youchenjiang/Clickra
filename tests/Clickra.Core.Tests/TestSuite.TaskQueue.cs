@@ -114,7 +114,7 @@ static partial class TestSuite
         try
         {
             lifecycle.RecordFileStarting(1);
-            ClickraStorage.HistoryEntry? entry = ClickraStorage.GetTask(lifecycle.TaskId);
+            HistoryEntry? entry = ClickraStorage.GetTask(lifecycle.TaskId);
             Assert.True(entry.HasValue && entry.Value.CurrentIndex == 1,
                 "The shared lifecycle must persist the current file index for resume.");
         }
@@ -131,7 +131,7 @@ static partial class TestSuite
             new[] { TestInDir + FileA });
         try
         {
-            ClickraStorage.HistoryEntry? entry = ClickraStorage.GetTask(lifecycle.TaskId);
+            HistoryEntry? entry = ClickraStorage.GetTask(lifecycle.TaskId);
             Assert.True(entry.HasValue, "A started conversion lifecycle must persist its task record.");
             Assert.Equal(lifecycle.TaskId, entry!.Value.Id);
         }
@@ -793,7 +793,7 @@ static partial class TestSuite
         string b = ClickraStorage.StartTask(CmdDecryptPdf, 1, TestInDir + "\\b.pdf");
         try
         {
-            ClickraStorage.CompleteTask(a, CmdSplitPdf, new ClickraStorage.CompleteTaskRequest
+            ClickraStorage.CompleteTask(a, CmdSplitPdf, new CompleteTaskRequest
             {
                 StartTime = "2026-08-16 12:00:00",
                 IsSuccess = true,
@@ -857,7 +857,7 @@ static partial class TestSuite
             Assert.True(resumed.HasValue && resumed.Value.Status == ConversionStatus.InProgress,
                 "Resumed task must be InProgress.");
             Assert.True(resumed.HasValue && resumed.Value.CurrentIndex == 1, "Resumed task must keep its next index.");
-            ClickraStorage.CompleteTask(a, CmdDecryptPdf, new ClickraStorage.CompleteTaskRequest
+            ClickraStorage.CompleteTask(a, CmdDecryptPdf, new CompleteTaskRequest
             {
                 StartTime = "2026-08-16 12:00:00",
                 IsSuccess = true,

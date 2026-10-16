@@ -93,7 +93,7 @@ public sealed class ConversionTaskLifecycle
     private void Complete(bool isSuccess, string error, string outputPath, string? endTime)
     {
         Stop();
-        RunStorage(() => ClickraStorage.CompleteTask(TaskId, _command, new ClickraStorage.CompleteTaskRequest
+        RunStorage(() => ClickraStorage.CompleteTask(TaskId, _command, new CompleteTaskRequest
         {
             StartTime = StartTime,
             IsSuccess = isSuccess,

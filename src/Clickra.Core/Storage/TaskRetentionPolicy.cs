@@ -5,14 +5,14 @@ namespace Clickra.Core.Storage;
 /// <summary>Pure parked-task retention calculations kept separate from task-file persistence.</summary>
 internal static class TaskRetentionPolicy
 {
-    internal static ClickraStorage.ParkedRetentionInfo CalculateInfo(
+    internal static ParkedRetentionInfo CalculateInfo(
         int retentionDays,
         TimeSpan age,
         bool isTaskOverride = false)
     {
         if (retentionDays <= 0)
         {
-            return new ClickraStorage.ParkedRetentionInfo(
+            return new ParkedRetentionInfo(
                 IsUnlimited: true,
                 RemainingDays: 0,
                 RemainingTime: TimeSpan.Zero,
@@ -26,7 +26,7 @@ internal static class TaskRetentionPolicy
         int remainingDays = isExpired ? 0 : Math.Max(1, (int)Math.Ceiling(remaining.TotalDays));
         bool isExpiringSoon = !isExpired && remaining.TotalHours < 24.0;
 
-        return new ClickraStorage.ParkedRetentionInfo(
+        return new ParkedRetentionInfo(
             IsUnlimited: false,
             RemainingDays: remainingDays,
             RemainingTime: remaining,

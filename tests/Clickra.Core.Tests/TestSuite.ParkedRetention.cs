@@ -295,7 +295,7 @@ static partial class TestSuite
         string pruner = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "TaskPruningCoordinator.cs"));
 
         Assert.True(
-            coordinator.Contains("internal static ClickraStorage.ParkedRetentionInfo GetRetentionInfo(string taskId)", StringComparison.Ordinal) &&
+            coordinator.Contains("internal static ParkedRetentionInfo GetRetentionInfo(string taskId)", StringComparison.Ordinal) &&
             coordinator.Contains("GetWindow(entry.Value, path, DateTime.UtcNow)", StringComparison.Ordinal),
             "ParkedTaskCoordinator.GetRetentionInfo must take the task's effective window from the shared calculation.");
         Assert.True(
