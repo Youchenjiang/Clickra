@@ -69,15 +69,29 @@ def current_branch(repo, branch):
     return head
 
 
-def _requested_details(title, body_file, label, milestone, assignee):
+MILESTONE_EXEMPT_LABELS = {"release", "hotfix", "deps", "dependencies", "docs"}
+
+
+def _validate_title(title):
     if not title or len(title) > 120 or any(ord(c) < 32 for c in title):
         raise ValueError("invalid PR title")
+
+
+def _validate_milestone_and_assignee(label, milestone, assignee):
     if not LABEL.fullmatch(label or ""):
         raise ValueError("explicit label required")
+    if not milestone and (label or "").lower() not in MILESTONE_EXEMPT_LABELS:
+        raise ValueError(
+            f"GitHub milestone required for PR with label '{label}'. "
+            "Release, hotfix, dependency, and docs PRs are exempt."
+        )
     if milestone and (len(milestone) > 100 or any(ord(c) < 32 for c in milestone)):
         raise ValueError("invalid milestone")
     if assignee and not LABEL.fullmatch(assignee):
         raise ValueError("invalid assignee")
+
+
+def _read_body_file(body_file):
     body = Path(body_file).resolve()
     if not body.is_file():
         raise ValueError("finalized PR body file missing")
@@ -88,10 +102,19 @@ def _requested_details(title, body_file, label, milestone, assignee):
     return body, data
 
 
+def validate_creation_inputs(title, body_file, label, milestone, assignee):
+    _validate_title(title)
+    _validate_milestone_and_assignee(label, milestone, assignee)
+    return _read_body_file(body_file)
+
+
+_requested_details = validate_creation_inputs
+
+
 def create(repo, branch, *, title, body_file, label, milestone=None, assignee=None,
            execute=False, authorization=None, runner=subprocess.run):
     """Preview first; one authorized create attempt, then independently re-read."""
-    body, data = _requested_details(title, body_file, label, milestone, assignee)
+    body, data = validate_creation_inputs(title, body_file, label, milestone, assignee)
     head = current_branch(repo, branch)
     _metadata(repo, label, milestone, assignee)
     fingerprint = hashlib.sha256(

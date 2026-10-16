@@ -1,5 +1,6 @@
 using Clickra.Core;
 using Clickra.Core.Application;
+using Clickra.Core.Modules.PdfSplit.Application;
 using Clickra.Core.Processors;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
@@ -87,6 +88,14 @@ static partial class TestSuite
 
             var clamped = PdfSplitProcessor.BuildSegmentSpec(2, 0, 7, new List<(int, int)>());
             Assert.Equal("1; 2; 3; 4; 5; 6; 7", clamped);
+        });
+
+        runner.Run("PdfSplitSpecBuilder.BuildSegmentSpec builds specifications in application layer", () =>
+        {
+            var segs = new List<(int Start, int End)> { (1, 2), (3, 3), (7, 9) };
+            Assert.Equal("1-2; 3; 7-9", PdfSplitSpecBuilder.BuildSegmentSpec(0, 5, 10, segs));
+            Assert.Equal("all", PdfSplitSpecBuilder.BuildSegmentSpec(1, 5, 10, segs));
+            Assert.Equal("1-3; 4-6; 7", PdfSplitSpecBuilder.BuildSegmentSpec(2, 3, 7, new List<(int, int)>()));
         });
 
         runner.Run("PdfSplitProcessor emits one output file per multi-segment spec", () =>

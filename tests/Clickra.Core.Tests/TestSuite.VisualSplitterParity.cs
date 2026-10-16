@@ -259,7 +259,7 @@ static partial class TestSuite
 
             string[] cliModelCalls =
             {
-                "new VisualSplitModel(totalPages)",
+                "VisualSplitModel.FromFile(filePath)",
                 "_visualSplitModel.SetMode(",
                 "_visualSplitModel.AdjustPagesPerSegment(",
                 "_visualSplitModel.SelectSegment(",
@@ -278,7 +278,7 @@ static partial class TestSuite
 
             string[] fluentModelCalls =
             {
-                "new VisualSplitModel(_totalPages)",
+                "VisualSplitModel.FromFile(pdfPath)",
                 "_splitModel.SetMode(",
                 "_splitModel.AdjustPagesPerSegment(",
                 "_splitModel.SelectSegment(",

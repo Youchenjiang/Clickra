@@ -30,14 +30,35 @@ function Assert-Png {
     }
 }
 
+function Get-FileSha256 {
+    param(
+        [string]$Path
+    )
+
+    $resolvedPath = Resolve-Path -LiteralPath $Path
+    $hasher = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $stream = [System.IO.File]::OpenRead($resolvedPath)
+        try {
+            return ([BitConverter]::ToString($hasher.ComputeHash($stream)) -replace '-')
+        }
+        finally {
+            $stream.Dispose()
+        }
+    }
+    finally {
+        $hasher.Dispose()
+    }
+}
+
 function Assert-SameFile {
     param(
         [string]$Expected,
         [string]$Actual
     )
 
-    $expectedHash = (Get-FileHash -LiteralPath $Expected -Algorithm SHA256).Hash
-    $actualHash = (Get-FileHash -LiteralPath $Actual -Algorithm SHA256).Hash
+    $expectedHash = Get-FileSha256 -Path $Expected
+    $actualHash = Get-FileSha256 -Path $Actual
     if ($expectedHash -ne $actualHash) {
         throw "Asset drift detected: $Actual no longer matches $Expected"
     }

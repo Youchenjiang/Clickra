@@ -1,6 +1,4 @@
 using Clickra.Core;
-using Clickra.Core.Application;
-using Clickra.Core.Modules.PdfSplit.Application;
 using Clickra.Core.Modules.PdfSplit.Presentation;
 using Clickra.Core.Processors;
 using Clickra.Core.Rendering;
@@ -24,7 +22,7 @@ namespace Clickra_Fluent;
 /// WinUI visual PDF splitter, mirroring the CLI's visual splitter: a segment list,
 /// a live page preview with inline zoom (buttons / Ctrl+wheel), page navigation
 /// and "split at current page", and custom / split-each / fixed-pages modes. The
-/// page-range spec is built by <see cref="PdfSplitProcessor.BuildSegmentSpec"/> so
+/// page-range spec is built by <see cref="VisualSplitModel.BuildSpec"/> so
 /// both tracks share one Core source of truth.
 /// </summary>
 public sealed partial class VisualSplitterControl : UserControl
@@ -32,7 +30,6 @@ public sealed partial class VisualSplitterControl : UserControl
     private const int PreviewWidth = 660;
     private const int ZoomWidth = 1500;
     private readonly string _pdfPath;
-    private readonly int _totalPages;
     private readonly VisualSplitModel _splitModel;
 
     // Split mode: 0 = custom segments, 1 = split every page, 2 = fixed pages per segment.
@@ -55,9 +52,7 @@ public sealed partial class VisualSplitterControl : UserControl
         InitializeComponent();
 
         _pdfPath = pdfPath;
-        _totalPages = PdfPageCountQuery.Get(pdfPath);
-        if (_totalPages <= 0) _totalPages = 1;
-        _splitModel = new VisualSplitModel(_totalPages);
+        _splitModel = VisualSplitModel.FromFile(pdfPath);
         SyncModelState();
 
         string L(string key) => Localization.T(key, SettingsPresentationController.Shared.Language);
@@ -203,7 +198,7 @@ public sealed partial class VisualSplitterControl : UserControl
     }
 
     /// <summary>Builds the page-range spec for the active mode via
-    /// <see cref="PdfSplitProcessor.BuildSegmentSpec"/> (always non-null; an empty
+    /// <see cref="VisualSplitModel.BuildSpec"/> (always non-null; an empty
     /// custom list falls back to "all", matching the CLI splitter).</summary>
     public string GetSpec() => _splitModel.BuildSpec();
 

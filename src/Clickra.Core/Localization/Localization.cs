@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Clickra.Core.Modules.Settings.Application;
 
 namespace Clickra.Core
 {
@@ -78,7 +79,7 @@ namespace Clickra.Core
         /// Translates a resource key using the currently configured language setting.
         /// </summary>
         public static string T(string key) =>
-            T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
+            T(key, SettingsController.Language);
 
         /// <summary>
         /// Translates a resource key using the currently configured language setting and formats it with arguments.
@@ -200,7 +201,7 @@ namespace Clickra.Core
         /// </summary>
         public static (string Subject, string Body) BuildDiagnosticsEmail(string version, string time, string? langCode = null)
         {
-            string lang = langCode ?? ClickraStorage.GetSetting(ClickraSettings.Language);
+            string lang = langCode ?? SettingsController.Language;
             string subject = T("diag_email_subject", lang);
             string body =
                 T("diag_email_thanks", lang) + "\r\n\r\n" +

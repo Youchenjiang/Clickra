@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Clickra.Core.Modules.PdfSplit.Processing;
+using Clickra.Core.Modules.PdfSplit.Application;
 
 namespace Clickra.Core.Modules.PdfSplit.Presentation;
 
@@ -19,6 +19,12 @@ public sealed class VisualSplitModel
 
     private readonly List<(int Start, int End)> _segments = new();
     private readonly List<(int Start, int End)> _customSegments = new();
+
+    /// <summary>
+    /// Creates a visual split model initialized with the page count of the specified PDF file.
+    /// </summary>
+    public static VisualSplitModel FromFile(string filePath) =>
+        new(Math.Max(1, PdfPageCountQuery.Get(filePath)));
 
     public VisualSplitModel(int totalPages)
     {
@@ -184,7 +190,7 @@ public sealed class VisualSplitModel
     }
 
     public string BuildSpec() =>
-        PdfSplitProcessor.BuildSegmentSpec(Mode, PagesPerSegment, TotalPages, _segments);
+        PdfSplitSpecBuilder.BuildSegmentSpec(Mode, PagesPerSegment, TotalPages, _segments);
 
     public static float ClampZoomFactor(float factor) =>
         Math.Clamp(factor, ZoomMinFactor, ZoomMaxFactor);

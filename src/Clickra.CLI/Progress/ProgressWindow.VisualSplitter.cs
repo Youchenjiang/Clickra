@@ -9,7 +9,6 @@ using System.Text;
 using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Application;
-using Clickra.Core.Modules.PdfSplit.Application;
 using Clickra.Core.Modules.PdfSplit.Presentation;
 using Clickra.Core.Processors;
 using Clickra.Core.Rendering;
@@ -96,12 +95,9 @@ public partial class ProgressWindow
     /// </summary>
     private void InitializeVisualSplitter(string filePath)
     {
-        int totalPages = PdfPageCountQuery.Get(filePath);
-        if (totalPages <= 0) totalPages = 1;
-
         _visualSplitFilePath = filePath;
-        _visualSplitTotalPages = totalPages;
-        _visualSplitModel = new VisualSplitModel(totalPages);
+        _visualSplitModel = VisualSplitModel.FromFile(filePath);
+        _visualSplitTotalPages = _visualSplitModel.TotalPages;
         SyncVisualSplitStateFromModel();
 
         CachePdfPageThumbnails(filePath);
@@ -361,12 +357,17 @@ public partial class ProgressWindow
     private void ClampVisualSplitZoomPan()
     {
         float fitW = ZoomImgW, fitH = ZoomImgH;
-        var bmp = GetCurrentZoomBitmap();
-        if (bmp != null)
+        // Read bitmap dimensions under the same lock used when background rendering
+        // replaces/disposes zoom images. Never retain a disposable Bitmap here.
+        lock (_stateLock)
         {
-            float aspect = (float)bmp.Width / bmp.Height;
-            if (aspect > fitW / fitH) fitH = fitW / aspect;
-            else fitW = fitH * aspect;
+            var bmp = GetCurrentZoomBitmap();
+            if (bmp != null)
+            {
+                float aspect = (float)bmp.Width / bmp.Height;
+                if (aspect > fitW / fitH) fitH = fitW / aspect;
+                else fitW = fitH * aspect;
+            }
         }
         float scaledW = fitW * _visualSplitZoomFactor;
         float scaledH = fitH * _visualSplitZoomFactor;
@@ -456,7 +457,7 @@ public partial class ProgressWindow
     }
 
     /// <summary>Builds the page-range spec string for the active split mode via
-    /// <see cref="PdfSplitProcessor.BuildSegmentSpec"/>.</summary>
+    /// <see cref="VisualSplitModel.BuildSpec"/>.</summary>
     private string BuildVisualSplitSpec() => _visualSplitModel.BuildSpec();
 
     /// <summary>Copies shared model state into the Win32 view fields used by paint/layout code.</summary>

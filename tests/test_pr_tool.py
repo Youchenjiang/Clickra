@@ -131,14 +131,17 @@ class PrToolTests(unittest.TestCase):
         calls = []
         def fake(argv):
             calls.append(argv)
-            self.assertEqual(["gh", "api", "graphql"], argv[:3])
-            cursor = "-f" in argv and "after=next" in argv
-            return json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {
-                "nodes": [{"id": "PRRT_second" if cursor else "PRRT_first", "isResolved": cursor,
-                           "isOutdated": False, "path": "src/file.cs", "line": 14,
-                           "comments": {"nodes": [{"body": "Check fallback", "url": "https://example.test"}]}}],
-                "pageInfo": {"hasNextPage": not cursor, "endCursor": "next" if not cursor else None}
-            }}}}})
+            if argv[:3] == ["gh", "api", "graphql"]:
+                cursor = "-f" in argv and "after=next" in argv
+                return json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {
+                    "nodes": [{"id": "PRRT_second" if cursor else "PRRT_first", "isResolved": cursor,
+                               "isOutdated": False, "path": "src/file.cs", "line": 14,
+                               "comments": {"nodes": [{"body": "Check fallback", "url": "https://example.test"}]}}],
+                    "pageInfo": {"hasNextPage": not cursor, "endCursor": "next" if not cursor else None}
+                }}}}})
+            if "pulls/177/reviews" in argv[2]:
+                return json.dumps([])
+            self.fail(f"unexpected call: {argv}")
         threads = pr_tool.review_threads("Youchenjiang/Clickra", 177, fake)
         self.assertEqual(2, len(threads))
         self.assertEqual(2, len(calls))
@@ -146,6 +149,30 @@ class PrToolTests(unittest.TestCase):
         with redirect_stdout(StringIO()) as output:
             self.assertEqual(1, len(pr_tool.print_review("Youchenjiang/Clickra", 177, fake)))
         self.assertIn("PRRT_first", output.getvalue())
+
+    def test_review_surfaces_top_level_findings(self):
+        def fake(argv):
+            if argv[:3] == ["gh", "api", "graphql"]:
+                return json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {
+                    "nodes": [], "pageInfo": {"hasNextPage": False, "endCursor": None}}}}}})
+            if "pulls/177/reviews" in argv[2]:
+                return json.dumps([
+                    {"id": 1, "body": "### LlamaPReview — Blocking issues found\nPR blocked by milestone",
+                     "state": "COMMENTED", "user": {"login": "llamapreview[bot]"},
+                     "html_url": "https://github.com/review/1"},
+                    {"id": 2, "body": "Looks good!", "state": "APPROVED",
+                     "user": {"login": "reviewer"}, "html_url": "https://github.com/review/2"}
+                ])
+            self.fail(f"unexpected call: {argv}")
+
+        with redirect_stdout(StringIO()) as output:
+            unresolved = pr_tool.print_review("Youchenjiang/Clickra", 177, fake)
+        self.assertEqual(0, len(unresolved))
+        self.assertIn("Top-level review finding(s): 1", output.getvalue())
+        self.assertIn("@llamapreview[bot]", output.getvalue())
+        self.assertIn("Blocking issues found", output.getvalue())
+        self.assertIn("https://github.com/review/1", output.getvalue())
+        self.assertNotIn("@reviewer", output.getvalue())
 
     def test_review_rejects_stuck_pagination(self):
         def fake(_argv):

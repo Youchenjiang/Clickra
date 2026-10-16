@@ -1228,14 +1228,26 @@ static partial class TestSuite
         var violations = new List<string>();
 
         var forbidden = new Regex(
-            @"\b(?:ClickraStorage|ClickraSettings|ConversionStatus)\b|using\s+Clickra\.Core\.(?:Storage|Processors|Infrastructure)\s*;",
+            @"\b(?:ClickraStorage|ClickraSettings|ConversionStatus)\b|using\s+Clickra\.Core\.(?:Storage|Processors|Infrastructure)\s*;|using\s+Clickra\.Core\.Modules\.[A-Za-z0-9_]+\.Processing\s*;",
             RegexOptions.Compiled,
             ArchitectureRegexTimeout);
-        foreach (string file in Directory.EnumerateFiles(presentation, "*.cs", SearchOption.AllDirectories))
+
+        var presentationDirectories = new List<string> { presentation };
+        string modulesDirectory = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory);
+        if (Directory.Exists(modulesDirectory))
         {
-            string source = File.ReadAllText(file);
-            if (forbidden.IsMatch(source))
-                violations.Add(NormalizeRepoPath(root, file));
+            presentationDirectories.AddRange(
+                Directory.EnumerateDirectories(modulesDirectory, ArchitecturePresentationDirectory, SearchOption.AllDirectories));
+        }
+
+        foreach (string directory in presentationDirectories)
+        {
+            foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
+            {
+                string source = File.ReadAllText(file);
+                if (forbidden.IsMatch(source))
+                    violations.Add(NormalizeRepoPath(root, file));
+            }
         }
 
         Assert.True(

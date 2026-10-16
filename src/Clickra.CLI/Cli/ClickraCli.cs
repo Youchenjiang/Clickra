@@ -84,25 +84,17 @@ namespace Clickra
                 ClickraDebug.Clear();
                 Console.WriteLine($"[Progress] {Loc("cli_progress_translating_pdf_start", Path.GetFileName(f), i + 1, files.Count)}");
                 WriteConsoleProgress(0, 100, Loc("cli_progress_translating_pdf", Path.GetFileName(f), i + 1, files.Count));
-                IConversionUseCase useCase = ConversionUseCases.GetRequired(TranslatePdfUseCase.CommandName);
-                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                var progress = new SynchronousProgress<ConversionProgress>(state =>
+                    WriteConsoleProgress(state.Current, state.Total, state.Message));
+                ConversionResult result = ExecuteUseCase(
                     TranslatePdfUseCase.CommandName,
                     new[] { f },
                     new Dictionary<string, object>
                     {
                         [TranslatePdfUseCase.TargetLanguageOptionKey] = targetLang
                     },
-                    OutputOverride: outputDir,
-                    TrackTaskLifecycle: false));
-                var interaction = new DelegateConversionInteraction(
-                    (_, _, _, _) => Task.FromResult<string?>(null),
-                    (_, _, _) => Task.FromResult<string?>(null),
-                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-                var progress = new SynchronousProgress<ConversionProgress>(state =>
-                    WriteConsoleProgress(state.Current, state.Total, state.Message));
-                ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
-                    .GetAwaiter()
-                    .GetResult();
+                    outputDir,
+                    progress);
 
                 if (result.Status == ConversionResultStatus.Succeeded)
                 {
@@ -393,6 +385,33 @@ namespace Clickra
             IConversionExecutionObserver? observer = null,
             bool reportProgress = true)
         {
+            IProgress<ConversionProgress>? progress = reportProgress
+                ? new SynchronousProgress<ConversionProgress>(state =>
+                    Console.WriteLine($"[Progress] {state.Message}"))
+                : null;
+
+            ConversionResult result = ExecuteUseCase(
+                command,
+                files,
+                options,
+                outputDir,
+                progress,
+                interaction,
+                observer);
+
+            if (result.Status != ConversionResultStatus.Succeeded)
+                throw new InvalidOperationException(result.Error ?? Loc(ErrorProcessingFailedKey));
+        }
+
+        private static ConversionResult ExecuteUseCase(
+            string command,
+            IReadOnlyList<string> files,
+            IReadOnlyDictionary<string, object>? options,
+            string? outputDir,
+            IProgress<ConversionProgress>? progress = null,
+            IConversionInteraction? interaction = null,
+            IConversionExecutionObserver? observer = null)
+        {
             IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
             ConversionPlan plan = useCase.Plan(new ConversionRequest(
                 command,
@@ -404,16 +423,10 @@ namespace Clickra
                 (_, _, _, _) => Task.FromResult<string?>(null),
                 (_, _, _) => Task.FromResult<string?>(null),
                 (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            IProgress<ConversionProgress>? progress = reportProgress
-                ? new SynchronousProgress<ConversionProgress>(state =>
-                    Console.WriteLine($"[Progress] {state.Message}"))
-                : null;
 
-            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress, observer)
+            return useCase.ExecuteAsync(plan, interaction, progress, observer)
                 .GetAwaiter()
                 .GetResult();
-            if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc(ErrorProcessingFailedKey));
         }
 
         private sealed class QuietDecryptObserver(IReadOnlyList<string> files) : IConversionExecutionObserver
