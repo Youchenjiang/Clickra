@@ -25,6 +25,12 @@ public sealed record OfficeReadinessState(
     bool SelectedEngineReady,
     string PreferredReadyEngine);
 
+public sealed record LibreOfficeSettingsPackage(
+    string Version,
+    string Edition,
+    long DownloadBytes,
+    string Sha256);
+
 /// <summary>
 /// Application owner for LibreOffice lifecycle/readiness policy. Presentation surfaces consume
 /// typed state/actions without reaching into processor or infrastructure implementations.
@@ -47,7 +53,14 @@ public static class LibreOfficeSettingsController
             LibreOfficeEngineInstaller.IsRecommendedVersionInstalled());
     }
 
-    public static LibreOfficeEnginePackage RecommendedPackage => LibreOfficeEngineInstaller.RecommendedPackage;
+    public static LibreOfficeSettingsPackage RecommendedPackage
+    {
+        get
+        {
+            var package = LibreOfficeEngineInstaller.RecommendedPackage;
+            return new LibreOfficeSettingsPackage(package.Version, package.Edition, package.DownloadBytes, package.Sha256);
+        }
+    }
 
     public static string DefaultInstallRoot => LibreOfficeEngineInstaller.GetDefaultInstallRoot();
 
@@ -76,7 +89,7 @@ public static class LibreOfficeSettingsController
         IProgress<int>? progress,
         CancellationToken cancellationToken)
     {
-        LibreOfficeEnginePackage package = RecommendedPackage;
+        var package = LibreOfficeEngineInstaller.RecommendedPackage;
         string installerPath = await LibreOfficeEngineInstaller.DownloadAndVerifyAsync(
             package,
             downloadDirectory,

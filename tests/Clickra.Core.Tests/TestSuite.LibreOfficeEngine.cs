@@ -20,6 +20,15 @@ static partial class TestSuite
             Assert.Equal("f9877032fd908beb9c0ddf06df4af5c2e85f419c42e14876c4cce5aae5fb2660", package.Sha256);
         });
 
+        runner.Run("LibreOffice settings controller provides typed application package descriptor", () =>
+        {
+            var package = LibreOfficeSettingsController.RecommendedPackage;
+            Assert.True(!string.IsNullOrWhiteSpace(package.Version), "Expected non-empty package version.");
+            Assert.True(!string.IsNullOrWhiteSpace(package.Edition), "Expected non-empty package edition.");
+            Assert.True(package.DownloadBytes > 0, "Expected positive download byte count.");
+            Assert.True(!string.IsNullOrWhiteSpace(package.Sha256), "Expected non-empty package SHA256.");
+        });
+
         runner.Run("LibreOffice engine installer rejects non-ASCII paths", () =>
         {
             Assert.True(LibreOfficeEngineInstaller.IsAsciiPath(@"C:\ProgramData\Clickra\Engines\LibreOffice"), "Expected ASCII path to be accepted.");

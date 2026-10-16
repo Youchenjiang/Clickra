@@ -1228,7 +1228,7 @@ static partial class TestSuite
         var violations = new List<string>();
 
         var forbidden = new Regex(
-            @"\b(?:ClickraStorage|ClickraSettings|ConversionStatus)\b|using\s+Clickra\.Core\.(?:Storage|Processors|Infrastructure)\s*;|using\s+Clickra\.Core\.Modules\.[A-Za-z0-9_]+\.Processing\s*;",
+            @"\b(?:ClickraStorage|ClickraSettings|ConversionStatus)\b|using\s+Clickra\.Core\.(?:Storage|Processors|Infrastructure)\s*;|using\s+Clickra\.Core\.Modules\.[A-Za-z0-9_]+\.(?:Processing|Infrastructure)\s*;",
             RegexOptions.Compiled,
             ArchitectureRegexTimeout);
 
