@@ -30,7 +30,6 @@ public sealed partial class VisualSplitterControl : UserControl
     private const int PreviewWidth = 660;
     private const int ZoomWidth = 1500;
     private readonly string _pdfPath;
-    private readonly int _totalPages;
     private readonly VisualSplitModel _splitModel;
 
     // Split mode: 0 = custom segments, 1 = split every page, 2 = fixed pages per segment.
@@ -54,7 +53,6 @@ public sealed partial class VisualSplitterControl : UserControl
 
         _pdfPath = pdfPath;
         _splitModel = VisualSplitModel.FromFile(pdfPath);
-        _totalPages = _splitModel.TotalPages;
         SyncModelState();
 
         string L(string key) => Localization.T(key, SettingsPresentationController.Shared.Language);
