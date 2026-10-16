@@ -91,17 +91,9 @@ internal static class ClickraStartup
     {
         if (quiet)
         {
-            // 診斷錯誤路徑沒有正在執行的任務：建立一個失敗任務寫入歷史，暫留
-            // 1.5 秒供儀表板顯示後清除（每個任務有獨立的進度檔）。
             try
             {
-                ConversionTaskLifecycle lifecycle = ConversionTaskLifecycle.Start(
-                    command,
-                    Array.Empty<string>(),
-                    startTimeOverride: startTimeStr);
-                lifecycle.CompleteFailure(ex.Message, "");
-                System.Threading.Thread.Sleep(1500);
-                lifecycle.Delete();
+                ConversionTaskLifecycle.RecordDispatchFailure(command, ex.Message, startTimeStr);
             }
             catch (Exception recordEx) { Debug.WriteLine($"Failed to record the failed job: {recordEx.Message}"); }
         }
