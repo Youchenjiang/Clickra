@@ -14,8 +14,10 @@ ALLOWED_PREFIXES = (
     "perf",
     "style",
 )
-PR_SEQUENCE_PATTERN = re.compile(
-    r"(?:^|[-_/])(?:pr\d+|post-(?:[a-z]+|\d+)|phase-\d+)(?=$|[-_/])", re.IGNORECASE | re.ASCII
+PR_SEQUENCE_PATTERNS = (
+    re.compile(r"(?:^|[-_/])pr\d+(?=$|[-_/])", re.IGNORECASE | re.ASCII),
+    re.compile(r"(?:^|[-_/])post-[a-z0-9]+(?=$|[-_/])", re.IGNORECASE | re.ASCII),
+    re.compile(r"(?:^|[-_/])phase-\d+(?=$|[-_/])", re.IGNORECASE | re.ASCII),
 )
 VERSION_PATTERN = re.compile(r"\bv?\d+\.\d+", re.IGNORECASE | re.ASCII)
 
@@ -33,7 +35,7 @@ def validate_branch_name(branch):
             f"invalid branch prefix '{prefix}'; allowed prefixes: {', '.join(ALLOWED_PREFIXES)}"
         )
 
-    if PR_SEQUENCE_PATTERN.search(branch):
+    if any(pattern.search(branch) for pattern in PR_SEQUENCE_PATTERNS):
         errors.append(
             "branch name must describe the change; PR sequence suffixes or markers such as -pr2 or post-nine are prohibited"
         )
