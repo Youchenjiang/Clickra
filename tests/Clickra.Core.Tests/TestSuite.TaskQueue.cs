@@ -78,6 +78,8 @@ static partial class TestSuite
             TestCliDashboardParkedTaskResumeAndCancelEntryPoint);
         runner.Run("Conversion lifecycle preserves an explicit start time",
             TestConversionLifecyclePreservesExplicitStartTime);
+        runner.Run("Conversion lifecycle records dispatch failure to history and cleans up task tracking",
+            TestConversionLifecycleRecordsDispatchFailure);
         runner.Run("Conversion lifecycle owns per-file resume checkpoints",
             TestConversionLifecycleOwnsResumeCheckpoint);
         runner.Run("Conversion task cleanup removes completed presentation records",
@@ -154,6 +156,29 @@ static partial class TestSuite
         {
             lifecycle.Delete();
         }
+    }
+
+    private static void TestConversionLifecycleRecordsDispatchFailure()
+    {
+        const string expectedStartTime = "2026-10-10 03:00:00";
+        const string expectedError = "Invalid CLI dispatch argument";
+        ConversionTaskLifecycle.RecordDispatchFailure(
+            CmdMergePdf,
+            expectedError,
+            startTime: expectedStartTime);
+
+        var history = ClickraStorage.GetHistory(10);
+        Assert.True(
+            history.Any(h => h.Command == CmdMergePdf
+                             && !h.IsSuccess
+                             && h.Time == expectedStartTime
+                             && h.ErrorMessage == expectedError),
+            "RecordDispatchFailure must append a failed history entry.");
+
+        var activeTasks = ClickraStorage.GetActiveTasks();
+        Assert.False(
+            activeTasks.Any(t => t.Command == CmdMergePdf && t.Time == expectedStartTime),
+            "RecordDispatchFailure must not leave active task tracking records behind.");
     }
 
     private static void TestConversionOutputPlanningPreservesSourceDirectories()
