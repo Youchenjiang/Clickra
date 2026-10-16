@@ -18,7 +18,7 @@ public enum ConversionStatus
 /// </summary>
 public static partial class ClickraStorage
 {
-    public const string HistoryFileName = "history.log";
+    public const string HistoryFileName = StorageRuntime.HistoryFileName;
 
     public static event Action? SettingsReloaded
     {

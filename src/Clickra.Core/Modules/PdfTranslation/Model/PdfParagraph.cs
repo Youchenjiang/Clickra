@@ -1,4 +1,3 @@
-using Clickra.Core.Modules.PdfTranslation.Pipeline;
 using System.Text.RegularExpressions;
 using UglyToad.PdfPig.DocumentLayoutAnalysis;
 
@@ -74,56 +73,12 @@ public class PdfParagraph
     public double Width => X1 - X0;
     public double Height => Y1 - Y0;
 
-    public PdfParagraph(IReadOnlyList<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> lines)
+    public void SetOriginalBounds(double x0, double y0, double x1, double y1)
     {
-        if (lines == null || lines.Count == 0)
-        {
-            X0 = 0; Y0 = 0; X1 = 0; Y1 = 0;
-            return;
-        }
-
-        ApplyAnalysis(PdfParagraphAnalyzer.Analyze(lines));
-        ApplyLayout(PdfParagraphLayoutAnalyzer.Analyze(lines, TextWithPlaceholders));
-    }
-
-    private void ApplyLayout(PdfParagraphLayoutAnalysis layout)
-    {
-        X0 = layout.X0;
-        Y0 = layout.Y0;
-        X1 = layout.X1;
-        Y1 = layout.Y1;
-        OriginalX0 = X0;
-        OriginalY0 = Y0;
-        OriginalX1 = X1;
-        OriginalY1 = Y1;
-        TextDirection = layout.TextDirection;
-        Alignment = layout.Alignment;
-    }
-
-    private void ApplyAnalysis(PdfParagraphAnalysis analysis)
-    {
-        TextWithPlaceholders = analysis.TextWithPlaceholders;
-        TranslationTextWithStyles = analysis.TranslationTextWithStyles;
-        AverageFontSize = analysis.AverageFontSize;
-        IsBold = analysis.IsBold;
-        IsItalic = analysis.IsItalic;
-        IsOnlyMath = analysis.IsOnlyMath;
-        IsCode = analysis.IsCode;
-        brk = analysis.HasLineBreak;
-        Formulas = analysis.Formulas;
-        AllLetters = analysis.AllLetters;
-        SourceVisualFontSize = AllLetters.Count == 0 ? AverageFontSize : AllLetters.Max(l => l.FontSize);
-        SourceLineHeight = AllLetters.Count == 0 ? 0 : AllLetters.Max(l => l.Top - l.Bottom);
-    }
-
-    public static bool IsMathLine(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line)
-    {
-        return PdfParagraphMathClassifier.IsMathLine(line);
-    }
-
-    public static IReadOnlyList<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> MergeHorizontalLines(IReadOnlyList<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> initialLines)
-    {
-        return PdfTextLineMerger.MergeHorizontalLines(initialLines);
+        OriginalX0 = x0;
+        OriginalY0 = y0;
+        OriginalX1 = x1;
+        OriginalY1 = y1;
     }
 
     public void MergeWith(PdfParagraph other, string separator = " ")

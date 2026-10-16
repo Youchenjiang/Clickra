@@ -126,7 +126,7 @@ public partial class ProgressWindow
         string fontName = GetThumbnailFontName();
         try
         {
-            int maxP = Math.Min(PdfPageThumbnailRenderer.GetPageCount(filePath), VisualSplitThumbnailPolicy.PreloadedPages);
+            int maxP = Math.Min(_visualSplitModel.TotalPages, VisualSplitThumbnailPolicy.PreloadedPages);
             for (int p = 1; p <= maxP; p++)
             {
                 try

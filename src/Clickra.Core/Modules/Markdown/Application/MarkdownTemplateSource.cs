@@ -1,7 +1,9 @@
 using System;
 using System.IO;
 
-namespace Clickra.Core.Modules.Markdown.Processing;
+using Clickra.Core.Modules.Markdown.Processing;
+
+namespace Clickra.Core.Modules.Markdown.Application;
 
 /// <summary>Loads a user-supplied Markdown document template from a supported source format.</summary>
 public static class MarkdownTemplateSource

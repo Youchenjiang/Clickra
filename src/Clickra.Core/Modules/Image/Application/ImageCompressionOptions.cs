@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Clickra.Core.Modules.Image.Processing;
+namespace Clickra.Core.Modules.Image.Application;
 
 public static class ImageCompressionOptions
 {

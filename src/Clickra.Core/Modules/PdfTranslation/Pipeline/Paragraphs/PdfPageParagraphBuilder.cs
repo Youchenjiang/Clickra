@@ -354,7 +354,7 @@ internal static class PdfPageParagraphBuilder
         bool isTablePage,
         List<PdfParagraph> pageList)
     {
-        var blockLines = PdfParagraph.MergeHorizontalLines(block.TextLines);
+        var blockLines = PdfTextLineMerger.MergeHorizontalLines(block.TextLines);
         var currentGroup = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>();
         bool? currentIsMath = null;
 
@@ -372,7 +372,7 @@ internal static class PdfPageParagraphBuilder
 
         if (currentGroup.Count > 0)
         {
-            var paragraph = new PdfParagraph(currentGroup);
+            var paragraph = PdfParagraphFactory.Create(currentGroup);
             pageList.Add(paragraph);
         }
     }
@@ -447,7 +447,7 @@ internal static class PdfPageParagraphBuilder
         LineGroupContext ctx,
         List<PdfParagraph> pageList)
     {
-        bool isMath = PdfParagraph.IsMathLine(line);
+        bool isMath = PdfParagraphMathClassifier.IsMathLine(line);
         bool shouldSplit = ShouldSplitBlockLine(line, ctx.Block, ctx.PigPage, ctx.IsTablePage, ctx.HasTableBlock, currentGroup);
 
         if (currentGroup.Count == 0)
@@ -459,7 +459,7 @@ internal static class PdfPageParagraphBuilder
             return (currentGroup, currentIsMath);
         }
 
-        pageList.Add(new PdfParagraph(currentGroup));
+        pageList.Add(PdfParagraphFactory.Create(currentGroup));
         return (new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> { line }, isMath);
     }
 

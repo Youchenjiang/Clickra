@@ -10,6 +10,7 @@ internal static class StorageRuntime
 {
     internal const string DateTimeFormat = "yyyy-MM-dd HH:mm:ss";
     internal const string TaskFilePrefix = "task-";
+    internal const string HistoryFileName = "history.log";
 
     internal static readonly object FileLock = new();
 
@@ -21,7 +22,7 @@ internal static class StorageRuntime
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Clickra");
 
         SettingsFilePath = Path.Combine(DataDirectory, "settings.conf");
-        HistoryFilePath = Path.Combine(DataDirectory, ClickraStorage.HistoryFileName);
+        HistoryFilePath = Path.Combine(DataDirectory, HistoryFileName);
         TasksDirectory = Path.Combine(DataDirectory, "tasks");
 
         try

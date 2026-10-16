@@ -12,6 +12,7 @@ using Markdig.Syntax.Inlines;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 using Clickra.Core.Processors;
+using Clickra.Core.Modules.Markdown.Application;
 
 namespace Clickra.Core.Modules.Markdown.Processing;
 

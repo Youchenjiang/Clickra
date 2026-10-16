@@ -37,7 +37,7 @@ internal static class TaskQueueStore
     {
         StorageRuntime.RunWithMutex(() =>
         {
-            ClickraStorage.HistoryEntry? entry = TaskRecordStore.Read(taskId);
+            HistoryEntry? entry = TaskRecordStore.Read(taskId);
             if (entry.HasValue && entry.Value.Status is ConversionStatus.Pending or ConversionStatus.InProgress)
                 TaskRecordStore.Write(TaskRecordStore.FromEntry(entry.Value, ConversionStatus.InProgress, pidOverride: Environment.ProcessId));
         });
@@ -47,14 +47,14 @@ internal static class TaskQueueStore
     {
         StorageRuntime.RunWithMutex(() =>
         {
-            ClickraStorage.HistoryEntry? entry = TaskRecordStore.Read(taskId);
+            HistoryEntry? entry = TaskRecordStore.Read(taskId);
             if (!entry.HasValue) return;
             TaskFileData data = TaskRecordStore.FromEntry(entry.Value, entry.Value.Status) with { CurrentIndex = index };
             TaskRecordStore.Write(data);
         });
     }
 
-    internal static void Complete(string taskId, string command, ClickraStorage.CompleteTaskRequest request)
+    internal static void Complete(string taskId, string command, CompleteTaskRequest request)
     {
         StorageRuntime.RunWithMutex(() =>
         {
@@ -64,7 +64,7 @@ internal static class TaskQueueStore
                 {
                     string error = HistoryStore.Sanitize(request.ErrorMsg);
                     string endTime = request.EndTime ?? DateTime.UtcNow.ToString(StorageRuntime.DateTimeFormat);
-                    ClickraStorage.HistoryEntry? existing = TaskRecordStore.Read(taskId);
+                    HistoryEntry? existing = TaskRecordStore.Read(taskId);
                     string inputs = request.InputPaths is not null ? HistoryStore.Sanitize(request.InputPaths) : existing?.InputPaths ?? "";
                     string output = request.OutputPath is not null ? HistoryStore.Sanitize(request.OutputPath) : existing?.OutputPath ?? "";
                     string[] inputList = inputs.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
@@ -88,7 +88,7 @@ internal static class TaskQueueStore
                         Pid = Environment.ProcessId
                     });
 
-                    HistoryStore.AppendCompleted(new ClickraStorage.HistoryEntry
+                    HistoryStore.AppendCompleted(new HistoryEntry
                     {
                         Time = request.StartTime,
                         Command = command,
@@ -146,10 +146,10 @@ internal static class TaskQueueStore
         ClearThreadTask(taskId);
     }
 
-    internal static ClickraStorage.HistoryEntry? Get(string taskId) =>
+    internal static HistoryEntry? Get(string taskId) =>
         StorageRuntime.RunWithMutex(() => TaskRecordStore.Read(taskId));
 
-    internal static List<ClickraStorage.HistoryEntry> GetActive() =>
+    internal static List<HistoryEntry> GetActive() =>
         StorageRuntime.RunWithMutex(() =>
         {
             TaskPruningCoordinator.Prune();

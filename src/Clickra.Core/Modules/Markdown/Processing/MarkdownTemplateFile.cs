@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using Clickra.Core;
+using Clickra.Core.Modules.Markdown.Application;
 
 namespace Clickra.Core.Modules.Markdown.Processing;
 

@@ -13,6 +13,7 @@ using Markdig.Extensions.Tables;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using Clickra.Core.Processors;
+using Clickra.Core.Modules.Markdown.Application;
 
 namespace Clickra.Core.Modules.Markdown.Processing;
 

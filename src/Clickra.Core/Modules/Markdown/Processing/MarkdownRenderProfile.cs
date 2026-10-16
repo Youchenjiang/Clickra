@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Clickra.Core.Modules.Markdown.Application;
 
 namespace Clickra.Core.Modules.Markdown.Processing;
 

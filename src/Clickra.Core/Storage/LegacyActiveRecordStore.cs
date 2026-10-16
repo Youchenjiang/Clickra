@@ -28,7 +28,7 @@ internal static class LegacyActiveRecordStore
     {
         StorageRuntime.RunWithMutex(() =>
         {
-            ClickraStorage.HistoryEntry? entry = Read();
+            HistoryEntry? entry = Read();
             if (entry.HasValue)
             {
                 Write(
@@ -46,7 +46,7 @@ internal static class LegacyActiveRecordStore
     {
         StorageRuntime.RunWithMutex(() =>
         {
-            ClickraStorage.HistoryEntry? entry = Read();
+            HistoryEntry? entry = Read();
             if (entry.HasValue)
             {
                 Write(
@@ -78,7 +78,7 @@ internal static class LegacyActiveRecordStore
                     int currentIndex = 0;
                     try
                     {
-                        ClickraStorage.HistoryEntry? activeEntry = Read();
+                        HistoryEntry? activeEntry = Read();
                         if (activeEntry.HasValue) currentIndex = activeEntry.Value.CurrentIndex;
                     }
                     catch
@@ -97,7 +97,7 @@ internal static class LegacyActiveRecordStore
                         inputs,
                         currentIndex);
 
-                    HistoryStore.AppendCompleted(new ClickraStorage.HistoryEntry
+                    HistoryStore.AppendCompleted(new HistoryEntry
                     {
                         Time = completion.StartTime,
                         Command = completion.Command,
@@ -136,7 +136,7 @@ internal static class LegacyActiveRecordStore
         });
     }
 
-    internal static ClickraStorage.HistoryEntry? Get() => StorageRuntime.RunWithMutex(Read);
+    internal static HistoryEntry? Get() => StorageRuntime.RunWithMutex(Read);
 
     private static void Write(
         string command,
@@ -167,7 +167,7 @@ internal static class LegacyActiveRecordStore
         }
     }
 
-    private static ClickraStorage.HistoryEntry? Read()
+    private static HistoryEntry? Read()
     {
         lock (StorageRuntime.FileLock)
         {
@@ -179,7 +179,7 @@ internal static class LegacyActiveRecordStore
                 if (!Enum.TryParse(values.GetValueOrDefault("Status", "Pending"), out ConversionStatus status)) status = ConversionStatus.Pending;
                 if (!int.TryParse(values.GetValueOrDefault("CurrentIndex", "0"), out int currentIndex)) currentIndex = 0;
 
-                return new ClickraStorage.HistoryEntry
+                return new HistoryEntry
                 {
                     Time = values.GetValueOrDefault("Time", ""),
                     Command = values.GetValueOrDefault("Command", ""),

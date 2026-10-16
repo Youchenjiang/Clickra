@@ -9,6 +9,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Clickra.Core.Processors;
+using Clickra.Core.Modules.Image.Application;
 
 namespace Clickra.Core.Modules.Image.Processing;
 

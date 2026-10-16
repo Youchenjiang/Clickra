@@ -7,11 +7,11 @@ namespace Clickra.Core.Storage;
 /// <summary>Owns history.log parsing, append format, and deletion.</summary>
 internal static class HistoryStore
 {
-    internal static List<ClickraStorage.HistoryEntry> Read(int limit)
+    internal static List<HistoryEntry> Read(int limit)
     {
         return StorageRuntime.RunWithMutex(() =>
         {
-            var entries = new List<ClickraStorage.HistoryEntry>();
+            var entries = new List<HistoryEntry>();
             lock (StorageRuntime.FileLock)
             {
                 if (!File.Exists(StorageRuntime.HistoryFilePath)) return entries;
@@ -21,7 +21,7 @@ internal static class HistoryStore
                     int start = Math.Max(0, lines.Length - limit);
                     for (int index = lines.Length - 1; index >= start; index--)
                     {
-                        if (TryParseEntry(lines[index], out ClickraStorage.HistoryEntry entry))
+                        if (TryParseEntry(lines[index], out HistoryEntry entry))
                             entries.Add(entry);
                     }
                 }
@@ -34,7 +34,7 @@ internal static class HistoryStore
         });
     }
 
-    private static bool TryParseEntry(string line, out ClickraStorage.HistoryEntry entry)
+    private static bool TryParseEntry(string line, out HistoryEntry entry)
     {
         entry = default;
         if (string.IsNullOrWhiteSpace(line)) return false;
@@ -42,7 +42,7 @@ internal static class HistoryStore
         if (parts.Length < 4) return false;
         _ = int.TryParse(parts[2], out int count);
         bool success = parts[3].Equals("Success", StringComparison.OrdinalIgnoreCase);
-        entry = new ClickraStorage.HistoryEntry
+        entry = new HistoryEntry
         {
             Time = parts[0],
             Command = parts[1],
@@ -75,7 +75,7 @@ internal static class HistoryStore
         });
     }
 
-    internal static void AppendCompleted(ClickraStorage.HistoryEntry entry)
+    internal static void AppendCompleted(HistoryEntry entry)
     {
         lock (StorageRuntime.FileLock)
         {
@@ -84,7 +84,7 @@ internal static class HistoryStore
         }
     }
 
-    internal static void AppendCanceled(ClickraStorage.HistoryEntry entry, string reason, DateTime now)
+    internal static void AppendCanceled(HistoryEntry entry, string reason, DateTime now)
     {
         lock (StorageRuntime.FileLock)
         {

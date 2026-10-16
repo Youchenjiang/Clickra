@@ -5,26 +5,6 @@ namespace Clickra.Core.Storage;
 
 public static partial class ClickraStorage
 {
-    public record CompleteTaskRequest
-    {
-        public string StartTime { get; init; } = string.Empty;
-        public bool IsSuccess { get; init; }
-        public string ErrorMsg { get; init; } = string.Empty;
-        public string? EndTime { get; init; }
-        public long ElapsedMs { get; init; } = -1;
-        public string? InputPaths { get; init; }
-        public string? OutputPath { get; init; }
-    }
-
-    public record ResumedTaskInfo(string TaskId, string Command, List<string> Files, int StartIndex);
-
-    public readonly record struct ParkedRetentionInfo(
-        bool IsUnlimited,
-        int RemainingDays,
-        TimeSpan RemainingTime,
-        bool IsExpiringSoon,
-        bool HasExpired,
-        bool IsTaskOverride = false);
 
     public static string StartTask(string command, int fileCount, string? inputPaths = null) =>
         TaskQueueStore.Start(command, fileCount, inputPaths);

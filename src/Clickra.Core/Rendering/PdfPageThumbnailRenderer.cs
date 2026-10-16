@@ -102,25 +102,6 @@ public static class PdfPageThumbnailRenderer
         return null;
     }
 
-    /// <summary>Returns the page count of the PDF at <paramref name="filePath"/>, or 0
-    /// when the file cannot be read.</summary>
-    public static int GetPageCount(string filePath)
-    {
-        try
-        {
-            var file = Windows.Storage.StorageFile.GetFileFromPathAsync(filePath).AsTask().GetAwaiter().GetResult();
-            var doc = Windows.Data.Pdf.PdfDocument.LoadFromFileAsync(file).AsTask().GetAwaiter().GetResult();
-            return (int)doc.PageCount;
-        }
-        catch { /* Ignored: falls back to PdfPig. */ }
-        try
-        {
-            using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(filePath);
-            return pigDoc.NumberOfPages;
-        }
-        catch { /* Ignored: an unreadable PDF has no page count. */ }
-        return 0;
-    }
 
     /// <summary>Renders one 1-based page with the Windows built-in PDF engine at the
     /// given target width, or null when the engine cannot open or render the page.</summary>

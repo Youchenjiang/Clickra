@@ -13,7 +13,7 @@ internal static class ParkedTaskCoordinator
     {
         StorageRuntime.RunWithMutex(() =>
         {
-            ClickraStorage.HistoryEntry? entry = TaskRecordStore.Read(taskId);
+            HistoryEntry? entry = TaskRecordStore.Read(taskId);
             if (entry.HasValue && entry.Value.Status == ConversionStatus.InProgress)
             {
                 TaskFileData data = TaskRecordStore.FromEntry(entry.Value, ConversionStatus.Parked, errorMessage: reason) with
@@ -27,7 +27,7 @@ internal static class ParkedTaskCoordinator
         TaskQueueStore.ClearThreadTask(taskId);
     }
 
-    internal static List<ClickraStorage.HistoryEntry> GetAll() =>
+    internal static List<HistoryEntry> GetAll() =>
         StorageRuntime.RunWithMutex(() =>
         {
             TaskPruningCoordinator.Prune();
@@ -42,21 +42,21 @@ internal static class ParkedTaskCoordinator
     {
         StorageRuntime.RunWithMutex(() =>
         {
-            ClickraStorage.HistoryEntry? entry = TaskRecordStore.Read(taskId);
+            HistoryEntry? entry = TaskRecordStore.Read(taskId);
             if (entry is null || entry.Value.Status != ConversionStatus.Parked) return;
 
             string path = TaskRecordStore.PathFor(taskId);
             if (File.Exists(path)) File.Delete(path);
-            HistoryStore.AppendCanceled(entry.Value, ClickraStorage.CanceledReason, DateTime.UtcNow);
+            HistoryStore.AppendCanceled(entry.Value, StorageTaskReasons.Canceled, DateTime.UtcNow);
         });
     }
 
-    internal static ClickraStorage.ResumedTaskInfo? ClaimForResume(string taskId)
+    internal static ResumedTaskInfo? ClaimForResume(string taskId)
     {
         if (string.IsNullOrWhiteSpace(taskId)) return null;
         return StorageRuntime.RunWithMutex(() =>
         {
-            ClickraStorage.HistoryEntry? entry = TaskRecordStore.Read(taskId);
+            HistoryEntry? entry = TaskRecordStore.Read(taskId);
             if (entry is null || entry.Value.Status != ConversionStatus.Parked) return null;
 
             string path = TaskRecordStore.PathFor(taskId);
@@ -78,7 +78,7 @@ internal static class ParkedTaskCoordinator
                 ConversionStatus.InProgress,
                 pidOverride: Environment.ProcessId) with { ParkedSince = null };
             if (!TaskRecordStore.Write(claimed)) return null;
-            return new ClickraStorage.ResumedTaskInfo(taskId, entry.Value.Command, files, startIndex);
+            return new ResumedTaskInfo(taskId, entry.Value.Command, files, startIndex);
         });
     }
 
@@ -87,7 +87,7 @@ internal static class ParkedTaskCoordinator
             ClickraSettings.ParkedTaskRetention,
             SettingsStore.GetInt(ClickraSettings.ParkedTaskRetention));
 
-    internal static int GetEffectiveRetentionDays(ClickraStorage.HistoryEntry entry) =>
+    internal static int GetEffectiveRetentionDays(HistoryEntry entry) =>
         entry.ParkedRetentionDays.HasValue
             ? ClickraSettings.ClampNumericSetting(ClickraSettings.ParkedTaskRetention, entry.ParkedRetentionDays.Value)
             : GetRetentionDays();
@@ -96,7 +96,7 @@ internal static class ParkedTaskCoordinator
     {
         StorageRuntime.RunWithMutex(() =>
         {
-            ClickraStorage.HistoryEntry? entry = TaskRecordStore.Read(taskId);
+            HistoryEntry? entry = TaskRecordStore.Read(taskId);
             if (!entry.HasValue || entry.Value.Status != ConversionStatus.Parked) return;
 
             string path = TaskRecordStore.PathFor(taskId);
@@ -124,10 +124,10 @@ internal static class ParkedTaskCoordinator
         return StorageRuntime.RunWithMutex(() =>
         {
             string path = TaskRecordStore.PathFor(taskId);
-            ClickraStorage.HistoryEntry? maybe = TaskRecordStore.Read(taskId);
+            HistoryEntry? maybe = TaskRecordStore.Read(taskId);
             if (!maybe.HasValue || maybe.Value.Status != ConversionStatus.Parked) return (int?)null;
 
-            ClickraStorage.HistoryEntry entry = maybe.Value;
+            HistoryEntry entry = maybe.Value;
             DateTime now = DateTime.UtcNow;
             TimeSpan age = GetAge(entry, path, now);
             int current = GetEffectiveRetentionDays(entry);
@@ -146,17 +146,17 @@ internal static class ParkedTaskCoordinator
         });
     }
 
-    internal static (int Days, TimeSpan Age) GetWindow(ClickraStorage.HistoryEntry entry, string path, DateTime now) =>
+    internal static (int Days, TimeSpan Age) GetWindow(HistoryEntry entry, string path, DateTime now) =>
         (GetEffectiveRetentionDays(entry), GetAge(entry, path, now));
 
-    internal static ClickraStorage.ParkedRetentionInfo GetRetentionInfo(string taskId) =>
+    internal static ParkedRetentionInfo GetRetentionInfo(string taskId) =>
         StorageRuntime.RunWithMutex(() =>
         {
             string path = TaskRecordStore.PathFor(taskId);
-            ClickraStorage.HistoryEntry? entry = TaskRecordStore.Read(taskId);
+            HistoryEntry? entry = TaskRecordStore.Read(taskId);
             if (!entry.HasValue)
             {
-                return new ClickraStorage.ParkedRetentionInfo(
+                return new ParkedRetentionInfo(
                     IsUnlimited: false,
                     RemainingDays: 0,
                     RemainingTime: TimeSpan.Zero,
@@ -168,7 +168,7 @@ internal static class ParkedTaskCoordinator
             return TaskRetentionPolicy.CalculateInfo(days, age, entry.Value.ParkedRetentionDays.HasValue);
         });
 
-    private static TimeSpan GetAge(ClickraStorage.HistoryEntry entry, string path, DateTime now)
+    private static TimeSpan GetAge(HistoryEntry entry, string path, DateTime now)
     {
         if (DateTime.TryParse(
                 entry.ParkedSince,
