@@ -30,22 +30,31 @@ public sealed class CompressPdfUseCase : PerFileConversionUseCaseBase
         return ConversionValidationResult.Success();
     }
 
-    protected override IReadOnlyDictionary<string, object> NormalizeOptions(ConversionRequest request) =>
-        request.Options is null
-            ? SnapshotSavedOptions()
+    protected override IReadOnlyDictionary<string, object> NormalizeOptions(ConversionRequest request)
+    {
+        var options = request.Options is null
+            ? new Dictionary<string, object>(StringComparer.Ordinal)
             : new Dictionary<string, object>(request.Options, StringComparer.Ordinal);
 
-    private static IReadOnlyDictionary<string, object> SnapshotSavedOptions()
-    {
-        int sliderLevel = ClickraSettings.NormalizePdfCompressLevel(
-            SettingsController.PdfCompressionImageLevel);
-        PdfCompressionLevel level = PdfCompressionOptions.FromSliderLevel(sliderLevel);
-        return new Dictionary<string, object>(StringComparer.Ordinal)
+        if (!options.ContainsKey(LevelOptionKey))
         {
-            [LevelOptionKey] = PdfCompressionOptions.ToOptionName(level),
-            ["strip_fonts"] = SettingsController.PdfCompressionStripFonts,
-            ["minify_content"] = SettingsController.PdfCompressionMinifyContent
-        };
+            int sliderLevel = ClickraSettings.NormalizePdfCompressLevel(
+                SettingsController.PdfCompressionImageLevel);
+            PdfCompressionLevel level = PdfCompressionOptions.FromSliderLevel(sliderLevel);
+            options[LevelOptionKey] = PdfCompressionOptions.ToOptionName(level);
+        }
+
+        if (!options.ContainsKey("strip_fonts"))
+        {
+            options["strip_fonts"] = SettingsController.PdfCompressionStripFonts;
+        }
+
+        if (!options.ContainsKey("minify_content"))
+        {
+            options["minify_content"] = SettingsController.PdfCompressionMinifyContent;
+        }
+
+        return options;
     }
 
     protected override object CreateExecutionState(ConversionPlan plan) =>
