@@ -7,6 +7,7 @@ namespace Clickra.Core.Application;
 public abstract class ConversionUseCaseBase : IConversionUseCase
 {
     public abstract string Command { get; }
+    public virtual IReadOnlySet<ConversionCapability> Capabilities => new HashSet<ConversionCapability>();
 
     protected abstract string UseCaseName { get; }
 

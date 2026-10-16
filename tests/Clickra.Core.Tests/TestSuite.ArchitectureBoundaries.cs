@@ -1867,6 +1867,7 @@ static partial class TestSuite
     private sealed class StubConversionUseCase(string command) : IConversionUseCase
     {
         public string Command { get; } = command;
+        public IReadOnlySet<ConversionCapability> Capabilities => new HashSet<ConversionCapability>();
 
         public ConversionValidationResult Validate(ConversionRequest request) =>
             ConversionValidationResult.Success();

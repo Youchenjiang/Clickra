@@ -10,7 +10,9 @@ public enum ConversionExecutionPresentationStatus
     Failed
 }
 
-public sealed record ConversionExecutionPlanPresentation(IReadOnlyList<string> Outputs);
+public sealed record ConversionExecutionPlanPresentation(
+    IReadOnlyList<string> Outputs,
+    IReadOnlySet<ConversionCapability>? Capabilities = null);
 
 public sealed record ConversionExecutionPresentationResult(
     ConversionExecutionPresentationStatus Status,
@@ -56,7 +58,7 @@ public sealed class ConversionExecutionController
 
         _useCase = useCase;
         _plan = plan;
-        return new ConversionExecutionPlanPresentation(plan.Outputs);
+        return new ConversionExecutionPlanPresentation(plan.Outputs, plan.RequiredCapabilities);
     }
 
     public async Task<ConversionExecutionPresentationResult> ExecutePreparedAsync(

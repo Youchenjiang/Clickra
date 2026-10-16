@@ -34,6 +34,9 @@ public sealed class SplitPdfUseCase : PerFileConversionUseCaseBase
         };
     }
 
+    public override IReadOnlySet<ConversionCapability> Capabilities =>
+        new HashSet<ConversionCapability> { ConversionCapability.SplitPages };
+
     protected override IReadOnlySet<ConversionCapability> GetCapabilities(ConversionRequest request)
     {
         string pages = NormalizeOptions(request)[PagesOptionKey].ToString() ?? PromptPages;
