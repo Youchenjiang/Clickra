@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Collections.Generic;
+using Clickra.Core.Modules.PdfCompression.Application;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 

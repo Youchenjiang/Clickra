@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using Clickra.Core.Modules.Office.Application;
 using Clickra.Core.Modules.Office.Infrastructure;
 using Clickra.Core.Processors;
 

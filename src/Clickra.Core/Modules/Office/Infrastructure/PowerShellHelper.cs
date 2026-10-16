@@ -6,6 +6,7 @@ using System.Security;
 using System.Text;
 using System.Threading;
 using Clickra.Core;
+using Clickra.Core.Modules.Office.Application;
 using Clickra.Core.Processors;
 
 namespace Clickra.Core.Modules.Office.Infrastructure;

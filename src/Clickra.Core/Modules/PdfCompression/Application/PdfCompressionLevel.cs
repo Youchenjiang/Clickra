@@ -1,4 +1,4 @@
-namespace Clickra.Core.Modules.PdfCompression.Processing;
+namespace Clickra.Core.Modules.PdfCompression.Application;
 
 public enum PdfCompressionLevel
 {
