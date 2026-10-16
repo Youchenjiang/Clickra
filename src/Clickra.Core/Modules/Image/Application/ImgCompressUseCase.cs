@@ -67,9 +67,10 @@ public sealed class ImgCompressUseCase : PerFileConversionUseCaseBase
     {
         var options = (IReadOnlyDictionary<string, object>?)executionState
             ?? plan.NormalizedOptions;
+        var processor = new ImageCompressionProcessor();
         await Task.Run(
-            () => FileProcessor.CompressImage(
-                plan.Inputs[index],
+            () => processor.Process(
+                new List<string> { plan.Inputs[index] },
                 plan.Outputs[index],
                 new Dictionary<string, object>(options, StringComparer.Ordinal),
                 (current, total, message) =>

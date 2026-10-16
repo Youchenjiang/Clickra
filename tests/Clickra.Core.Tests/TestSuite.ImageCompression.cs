@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Application;
+using Clickra.Core.Modules.Image.Processing;
 using Clickra.Core.Processors;
 using Clickra.Shared;
 
@@ -155,7 +156,7 @@ static partial class TestSuite
                     image.Save(source, ImageFormat.Png);
                 }
 
-                FileProcessor.CompressImage(source, output, new Dictionary<string, object>
+                CompressImage(source, output, new Dictionary<string, object>
                 {
                     [ImageCompressionLevelKey] = ImageCompressionOptions.OptionSmall,
                     [ImageCompressionQualityKey] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small),
@@ -172,7 +173,7 @@ static partial class TestSuite
             {
                 string source = Path.Combine(tempDir, "source.png");
                 using (var image = new Bitmap(32, 32)) image.Save(source, ImageFormat.Png);
-                Assert.Throws<InvalidOperationException>(() => FileProcessor.CompressImage(source, source, new Dictionary<string, object>
+                Assert.Throws<InvalidOperationException>(() => CompressImage(source, source, new Dictionary<string, object>
                 {
                     [ImageCompressionLevelKey] = ImageCompressionOptions.OptionSmall,
                     [ImageCompressionQualityKey] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small),
@@ -375,13 +376,13 @@ static partial class TestSuite
             ["quality"] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Minimum),
             [ImageCompressionMaxDimensionKey] = 0
         };
-        FileProcessor.CompressImage(source, expected, highOptions);
+        CompressImage(source, expected, highOptions);
         long expectedLength = new FileInfo(expected).Length;
 
         using var oldStarted = new ManualResetEventSlim(false);
         using var releaseOld = new ManualResetEventSlim(false);
         bool held = false;
-        Task older = Task.Run(() => FileProcessor.CompressImage(
+        Task older = Task.Run(() => CompressImage(
             source,
             output,
             lowOptions,
@@ -394,7 +395,7 @@ static partial class TestSuite
             }));
 
         Assert.True(oldStarted.Wait(TimeSpan.FromSeconds(10)), "Older request did not reach the compression stage.");
-        Task newer = Task.Run(() => FileProcessor.CompressImage(source, output, highOptions));
+        Task newer = Task.Run(() => CompressImage(source, output, highOptions));
         Assert.True(newer.Wait(TimeSpan.FromSeconds(10)), "Newer request did not finish while the older request was paused.");
         releaseOld.Set();
         Assert.True(older.Wait(TimeSpan.FromSeconds(10)), "Older request did not finish after release.");
@@ -478,4 +479,15 @@ static partial class TestSuite
     {
         public void Report(T value) => report(value);
     }
+
+    private static void CompressImage(
+        string inputPath,
+        string outputPath,
+        Dictionary<string, object> options,
+        Action<int, int, string>? onProgress = null) =>
+        new ImageCompressionProcessor().Process(
+            new List<string> { inputPath },
+            outputPath,
+            options,
+            onProgress);
 }

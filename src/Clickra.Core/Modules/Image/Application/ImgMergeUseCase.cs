@@ -22,10 +22,12 @@ public sealed class ImgMergeUseCase : SingleOutputConversionUseCaseBase
         IProgress<ConversionProgress>? progress,
         CancellationToken cancellationToken)
     {
+        var processor = new ImageToPdfProcessor();
         await Task.Run(
-            () => FileProcessor.ConvertImagesToPdf(
+            () => processor.Process(
                 plan.Inputs.ToList(),
                 plan.Outputs[0],
+                null,
                 (current, total, message) => progress?.Report(
                     new ConversionProgress(current, total, message)),
                 cancellationToken),

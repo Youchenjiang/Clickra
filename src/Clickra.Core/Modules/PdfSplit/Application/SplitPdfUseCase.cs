@@ -64,11 +64,13 @@ public sealed class SplitPdfUseCase : PerFileConversionUseCaseBase
         if (string.IsNullOrWhiteSpace(targetPages))
             throw new OperationCanceledException(cancellationToken);
 
+        var processor = new PdfSplitProcessor();
+        var options = new Dictionary<string, object> { { "pages", targetPages } };
         await Task.Run(
-            () => FileProcessor.SplitPdf(
-                plan.Inputs[index],
+            () => processor.Process(
+                new List<string> { plan.Inputs[index] },
                 plan.Outputs[index],
-                targetPages,
+                options,
                 (current, total, message) =>
                     ReportFileProgress(plan, index, progress, current, message),
                 cancellationToken),

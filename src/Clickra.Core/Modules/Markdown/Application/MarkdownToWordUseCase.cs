@@ -1,4 +1,5 @@
 using Clickra.Core.Application;
+using Clickra.Core.Modules.Markdown.Processing;
 
 namespace Clickra.Core.Modules.Markdown.Application;
 
@@ -26,9 +27,10 @@ public sealed class MarkdownToWordUseCase : MarkdownConversionUseCaseBase
         CancellationToken cancellationToken)
     {
         var options = (Dictionary<string, object>)executionState!;
+        var processor = new MarkdownToWordProcessor();
         return Task.Run(
-            () => FileProcessor.ConvertMarkdownToWord(
-                plan.Inputs[index],
+            () => processor.Process(
+                new List<string> { plan.Inputs[index] },
                 plan.Outputs[index],
                 options,
                 (current, _, message) => ReportFileProgress(plan, index, progress, current, message),

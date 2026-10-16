@@ -1,4 +1,5 @@
 using Clickra.Core.Application;
+using Clickra.Core.Modules.Markdown.Processing;
 
 namespace Clickra.Core.Modules.Markdown.Application;
 
@@ -26,9 +27,10 @@ public sealed class MarkdownToPdfUseCase : MarkdownConversionUseCaseBase
         CancellationToken cancellationToken)
     {
         var options = (Dictionary<string, object>)executionState!;
+        var processor = new MarkdownToPdfProcessor();
         return Task.Run(
-            () => FileProcessor.ConvertMarkdownToPdf(
-                plan.Inputs[index],
+            () => processor.Process(
+                new List<string> { plan.Inputs[index] },
                 plan.Outputs[index],
                 options,
                 (current, _, message) => ReportFileProgress(plan, index, progress, current, message),

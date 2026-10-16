@@ -81,13 +81,18 @@ public sealed class TranslatePdfUseCase : PerFileConversionUseCaseBase
         CancellationToken cancellationToken)
     {
         var state = (TranslationExecutionState)executionState!;
+        var processor = new PdfTranslateProcessor();
+        var options = new Dictionary<string, object>
+        {
+            ["targetLang"] = state.TargetLanguage,
+            [ExecutionLocalizationOptions.LanguageKey] = state.UiLanguage,
+            [ProcessorExecutionOptions.DataDirectoryKey] = state.DataDirectory
+        };
         return Task.Run(
-            () => FileProcessor.TranslatePdf(
-                plan.Inputs[index],
+            () => processor.Process(
+                new List<string> { plan.Inputs[index] },
                 plan.Outputs[index],
-                state.TargetLanguage,
-                state.UiLanguage,
-                state.DataDirectory,
+                options,
                 (current, _, message) => ReportFileProgress(plan, index, progress, current, message),
                 cancellationToken),
             cancellationToken);

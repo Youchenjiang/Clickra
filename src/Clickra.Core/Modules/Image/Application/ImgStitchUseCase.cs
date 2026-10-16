@@ -27,10 +27,12 @@ public sealed class ImgStitchUseCase : SingleOutputConversionUseCaseBase
         IProgress<ConversionProgress>? progress,
         CancellationToken cancellationToken)
     {
+        var processor = new ImageStitchProcessor();
         await Task.Run(
-            () => FileProcessor.StitchImages(
+            () => processor.Process(
                 plan.Inputs.ToList(),
                 plan.Outputs[0],
+                null,
                 (current, total, message) => progress?.Report(
                     new ConversionProgress(current, total, message)),
                 cancellationToken),
