@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 
 from process_guard import executable, invoke
-from pr_preflight import validate_pr_body
+from pr_preflight import _valid_commit_subject, validate_pr_body
 from branch_policy import validate_branch_name
 from pr_publication import BRANCH, SHA, remote_head
 
@@ -73,8 +73,13 @@ MILESTONE_EXEMPT_LABELS = {"release", "hotfix", "deps", "dependencies", "docs"}
 
 
 def _validate_title(title):
-    if not title or len(title) > 120 or any(ord(c) < 32 for c in title):
+    if not title or any(ord(c) < 32 for c in title):
         raise ValueError("invalid PR title")
+    if not _valid_commit_subject(title.strip()):
+        raise ValueError(
+            "PR title must match <type>(<scope>): <description> or <type>: <description> "
+            "with an allowed type/scope and be 72 characters or less."
+        )
 
 
 def _validate_milestone_and_assignee(label, milestone, assignee):
