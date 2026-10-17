@@ -21,10 +21,14 @@ public sealed class ImgCompressUseCase : PerFileConversionUseCaseBase
 
     protected override void ValidateOutputs(
         IReadOnlyList<string> inputs,
-        IReadOnlyList<string> outputs)
+        IReadOnlyList<string> outputs,
+        ConversionRequest request)
     {
-        ImageOutputSafety.EnsureUniqueOutputs(outputs);
-        ImageOutputSafety.EnsureOutputsDoNotOverwriteInputs(inputs, outputs);
+        string? language = request.Options?.TryGetValue(ExecutionLocalizationOptions.LanguageKey, out object? lang) == true
+            ? lang?.ToString()
+            : null;
+        ImageOutputSafety.EnsureUniqueOutputs(outputs, language);
+        ImageOutputSafety.EnsureOutputsDoNotOverwriteInputs(inputs, outputs, language);
     }
 
     protected override IReadOnlyDictionary<string, object> NormalizeOptions(ConversionRequest request)
@@ -32,7 +36,37 @@ public sealed class ImgCompressUseCase : PerFileConversionUseCaseBase
         var options = request.Options is null
             ? new Dictionary<string, object>(SnapshotSavedOptions(), StringComparer.Ordinal)
             : new Dictionary<string, object>(request.Options, StringComparer.Ordinal);
-        options[ExecutionLocalizationOptions.LanguageKey] = SettingsController.Language;
+
+        bool hasValidLevel = options.TryGetValue("level", out object? rawLevel) &&
+            rawLevel is string levelStr &&
+            !string.IsNullOrWhiteSpace(levelStr) &&
+            ImageCompressionOptions.TryParseLevel(levelStr, out _);
+
+        if (!hasValidLevel)
+        {
+            int sliderLevel = ClickraSettings.ClampNumericSetting(
+                ClickraSettings.ImageCompressLevel,
+                SettingsController.ImageCompressionLevel);
+            ImageCompressionLevel level = ImageCompressionOptions.FromSliderLevel(sliderLevel);
+            options["level"] = ImageCompressionOptions.ToOptionName(level);
+            if (!options.ContainsKey("quality"))
+            {
+                options["quality"] = ImageCompressionOptions.GetQuality(level);
+            }
+        }
+
+        if (!options.ContainsKey("max_dimension"))
+        {
+            int maxDimension = ClickraSettings.ClampNumericSetting(
+                ClickraSettings.ImageCompressMaxDimension,
+                SettingsController.ImageCompressionMaxDimension);
+            options["max_dimension"] = maxDimension;
+        }
+
+        if (!options.ContainsKey(ExecutionLocalizationOptions.LanguageKey))
+        {
+            options[ExecutionLocalizationOptions.LanguageKey] = SettingsController.Language;
+        }
         return options;
     }
 

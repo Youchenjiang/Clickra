@@ -27,7 +27,10 @@ public sealed class DecryptPdfUseCase : PerFileConversionUseCaseBase
         var options = request.Options is null
             ? new Dictionary<string, object>(StringComparer.Ordinal)
             : new Dictionary<string, object>(request.Options, StringComparer.Ordinal);
-        options[ExecutionLocalizationOptions.LanguageKey] = SettingsController.Language;
+        if (!options.ContainsKey(ExecutionLocalizationOptions.LanguageKey) || options[ExecutionLocalizationOptions.LanguageKey] is null)
+        {
+            options[ExecutionLocalizationOptions.LanguageKey] = SettingsController.Language;
+        }
         return options;
     }
 

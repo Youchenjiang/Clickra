@@ -34,21 +34,32 @@ public abstract class OfficeToPdfUseCaseBase : ConversionUseCaseBase
             inputs,
             outputs,
             new HashSet<ConversionCapability>(),
-            SnapshotSavedOptions(),
+            SnapshotSavedOptions(request.Options),
             ExistingTaskId: request.ExistingTaskId,
             BestEffortTaskPersistence: request.BestEffortTaskPersistence,
             TrackTaskLifecycle: request.TrackTaskLifecycle);
     }
 
-    private static IReadOnlyDictionary<string, object> SnapshotSavedOptions() =>
-        new Dictionary<string, object>(StringComparer.Ordinal)
+    private static IReadOnlyDictionary<string, object> SnapshotSavedOptions(IReadOnlyDictionary<string, object>? requestOptions)
+    {
+        var options = requestOptions is null
+            ? new Dictionary<string, object>(StringComparer.Ordinal)
+            : new Dictionary<string, object>(requestOptions, StringComparer.Ordinal);
+
+        if (!options.ContainsKey(OfficeConversionOptions.EngineKey))
+            options[OfficeConversionOptions.EngineKey] = SettingsController.OfficeEngineValue;
+        if (!options.ContainsKey(OfficeConversionOptions.LanguageKey) || options[OfficeConversionOptions.LanguageKey] is null)
+            options[OfficeConversionOptions.LanguageKey] = SettingsController.Language;
+        // Security: only allow the trusted application-configured LibreOffice path; do not accept caller path overrides.
+        options[OfficeConversionOptions.LibreOfficePathKey] = SettingsController.LibreOfficePath;
+        if (!options.ContainsKey(OfficeConversionOptions.LibreOfficeRemovalPendingRestartKey))
         {
-            [OfficeConversionOptions.EngineKey] = SettingsController.OfficeEngineValue,
-            [OfficeConversionOptions.LanguageKey] = SettingsController.Language,
-            [OfficeConversionOptions.LibreOfficePathKey] = SettingsController.LibreOfficePath,
-            [OfficeConversionOptions.LibreOfficeRemovalPendingRestartKey] =
-                SettingsController.LibreOfficeRemovalPendingRestart
-        };
+            options[OfficeConversionOptions.LibreOfficeRemovalPendingRestartKey] =
+                SettingsController.LibreOfficeRemovalPendingRestart;
+        }
+
+        return options;
+    }
 
     public override async Task<ConversionResult> ExecuteAsync(
         ConversionPlan plan,

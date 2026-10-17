@@ -1,6 +1,6 @@
 using System;
 
-namespace Clickra.Core.Modules.PdfCompression.Processing;
+namespace Clickra.Core.Modules.PdfCompression.Application;
 
 public static class PdfCompressionOptions
 {

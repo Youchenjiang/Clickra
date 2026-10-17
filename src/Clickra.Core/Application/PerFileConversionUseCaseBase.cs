@@ -33,6 +33,12 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
     {
     }
 
+    protected virtual void ValidateOutputs(
+        IReadOnlyList<string> inputs,
+        IReadOnlyList<string> outputs,
+        ConversionRequest request) =>
+        ValidateOutputs(inputs, outputs);
+
     protected abstract Task ExecuteFileAsync(
         int index,
         ConversionPlan plan,
@@ -56,7 +62,7 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
                 outputOverride ?? StoragePathController.GetOutputDirectory(input),
                 GetOutputFileName(input)))
             .ToList();
-        ValidateOutputs(inputs, outputs);
+        ValidateOutputs(inputs, outputs, request);
 
         return new ConversionPlan(
             Command,

@@ -49,9 +49,15 @@ public sealed class TranslatePdfUseCase : PerFileConversionUseCaseBase
             options[TargetLanguageOptionKey] =
                 SettingsController.TranslationTargetLanguage;
         }
-        options[ExecutionLocalizationOptions.LanguageKey] =
-            SettingsController.Language;
-        options[ProcessorExecutionOptions.DataDirectoryKey] = StoragePathController.GetDataDirectory();
+        if (!options.ContainsKey(ExecutionLocalizationOptions.LanguageKey))
+        {
+            options[ExecutionLocalizationOptions.LanguageKey] =
+                SettingsController.Language;
+        }
+        if (!options.ContainsKey(ProcessorExecutionOptions.DataDirectoryKey))
+        {
+            options[ProcessorExecutionOptions.DataDirectoryKey] = StoragePathController.GetDataDirectory();
+        }
         return options;
     }
 

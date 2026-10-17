@@ -21,7 +21,10 @@ public abstract class MarkdownConversionUseCaseBase : PerFileConversionUseCaseBa
             MarkdownPdfOptions.GetTextSize(request.Options),
             MarkdownPdfOptions.GetCodeTheme(request.Options),
             MarkdownPdfOptions.GetTemplatePath(request.Options));
-        options[ExecutionLocalizationOptions.LanguageKey] = SettingsController.Language;
+        string language = request.Options?.TryGetValue(ExecutionLocalizationOptions.LanguageKey, out object? lang) == true && lang is not null
+            ? lang.ToString()!
+            : SettingsController.Language;
+        options[ExecutionLocalizationOptions.LanguageKey] = language;
         return options;
     }
 

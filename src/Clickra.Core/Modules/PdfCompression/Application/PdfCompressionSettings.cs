@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Clickra.Core.Modules.PdfCompression.Processing;
+namespace Clickra.Core.Modules.PdfCompression.Application;
 
 public class PdfCompressionSettings
 {
