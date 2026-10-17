@@ -19,8 +19,11 @@ public sealed class DecryptPdfUseCase : PerFileConversionUseCaseBase
     protected override string UnsupportedInputError(string path) => $"Unsupported decrypt input '{path}'.";
     protected override string GetOutputFileName(string input) =>
         Path.GetFileNameWithoutExtension(input) + "_decrypted.pdf";
-    protected override IReadOnlySet<ConversionCapability> GetCapabilities(ConversionRequest request) =>
+    public override IReadOnlySet<ConversionCapability> Capabilities =>
         new HashSet<ConversionCapability> { ConversionCapability.Password };
+
+    protected override IReadOnlySet<ConversionCapability> GetCapabilities(ConversionRequest request) =>
+        Capabilities;
 
     protected override IReadOnlyDictionary<string, object> NormalizeOptions(ConversionRequest request)
     {

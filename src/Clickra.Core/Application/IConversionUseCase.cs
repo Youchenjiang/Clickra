@@ -5,6 +5,8 @@ public interface IConversionUseCase
 {
     string Command { get; }
 
+    IReadOnlySet<ConversionCapability> Capabilities { get; }
+
     ConversionValidationResult Validate(ConversionRequest request);
 
     ConversionPlan Plan(ConversionRequest request);

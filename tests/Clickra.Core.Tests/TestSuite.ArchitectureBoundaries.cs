@@ -137,6 +137,9 @@ static partial class TestSuite
             "Architecture boundaries: Modules keep capability as the first directory axis",
             TestModuleFirstModulesKeepCapabilityAsFirstAxis);
         runner.RunGuard(
+            "Architecture boundaries: conversion modules conform to module architecture conventions",
+            TestModuleConventionsEnforced);
+        runner.RunGuard(
             "Architecture boundaries: conversion execution families share lifecycle result mapping",
             TestConversionExecutionFamiliesShareLifecycleResultMapping);
         runner.RunGuard(
@@ -370,6 +373,88 @@ static partial class TestSuite
             namespaceViolations.Count == 0,
             "Module files must declare the namespace of their owning capability:" +
             Environment.NewLine + string.Join(Environment.NewLine, namespaceViolations));
+    }
+
+    private static void TestModuleConventionsEnforced()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
+        string modulesRoot = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory);
+        if (!Directory.Exists(modulesRoot))
+            return;
+
+        string[] conversionModules = { "Image", "Markdown", "Office", "PdfCompression", "PdfDecrypt", "PdfMerge", "PdfSplit", "PdfTranslation" };
+
+        var violations = new List<string>();
+
+        foreach (string module in conversionModules)
+        {
+            string moduleDir = Path.Combine(modulesRoot, module);
+            Assert.True(Directory.Exists(moduleDir), $"Expected conversion module directory: {module}");
+
+            string appDir = Path.Combine(moduleDir, ArchitectureApplicationDirectory);
+            if (!Directory.Exists(appDir))
+            {
+                violations.Add($"{module}: missing mandatory {ArchitectureApplicationDirectory}/ directory.");
+            }
+            else
+            {
+                string[] appFiles = Directory.GetFiles(appDir, "*UseCase*.cs", SearchOption.TopDirectoryOnly);
+                if (appFiles.Length == 0)
+                {
+                    violations.Add($"{module}: Application directory must contain at least one UseCase file.");
+                }
+            }
+
+            string procDir = Path.Combine(moduleDir, "Processing");
+            string execDir = Path.Combine(moduleDir, "Execution");
+            if (!Directory.Exists(procDir) && !Directory.Exists(execDir))
+            {
+                violations.Add($"{module}: missing mandatory Processing/ (or Execution/) directory.");
+            }
+            else
+            {
+                string targetProcDir = Directory.Exists(procDir) ? procDir : execDir;
+                string[] procFiles = Directory.GetFiles(targetProcDir, "*Processor*.cs", SearchOption.TopDirectoryOnly);
+                if (procFiles.Length == 0)
+                {
+                    violations.Add($"{module}: Processing/Execution directory must contain at least one Processor file.");
+                }
+            }
+        }
+
+        string[] allOptionFiles = Directory.GetFiles(modulesRoot, "*Options.cs", SearchOption.AllDirectories);
+        foreach (string file in allOptionFiles)
+        {
+            string relative = NormalizeRepoPath(root, file);
+            if (!relative.Contains("/Application/", StringComparison.OrdinalIgnoreCase))
+            {
+                violations.Add($"Option file {relative} must reside under an Application/ directory.");
+            }
+        }
+
+        string[] authorizedPresentation = { "PdfSplit", "HistoryTasks", "Settings" };
+        string[] authorizedInfrastructure = { "Office" };
+
+        foreach (string moduleDir in Directory.GetDirectories(modulesRoot))
+        {
+            string moduleName = Path.GetFileName(moduleDir);
+            string presDir = Path.Combine(moduleDir, ArchitecturePresentationDirectory);
+            if (Directory.Exists(presDir) && !authorizedPresentation.Contains(moduleName, StringComparer.OrdinalIgnoreCase))
+            {
+                violations.Add($"Module {moduleName} contains unexpected Presentation/ directory.");
+            }
+
+            string infraDir = Path.Combine(moduleDir, "Infrastructure");
+            if (Directory.Exists(infraDir) && !authorizedInfrastructure.Contains(moduleName, StringComparer.OrdinalIgnoreCase))
+            {
+                violations.Add($"Module {moduleName} contains unexpected Infrastructure/ directory.");
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "Module architecture conventions violated:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
     }
 
     private static void TestParkedTaskOrchestrationHasSingleOwner()
@@ -1782,6 +1867,7 @@ static partial class TestSuite
     private sealed class StubConversionUseCase(string command) : IConversionUseCase
     {
         public string Command { get; } = command;
+        public IReadOnlySet<ConversionCapability> Capabilities => new HashSet<ConversionCapability>();
 
         public ConversionValidationResult Validate(ConversionRequest request) =>
             ConversionValidationResult.Success();
