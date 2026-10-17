@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
-using Clickra.Core.Modules.PdfCompression.Application;
 using Clickra.Core.Processors;
 
 namespace Clickra.Core.Modules.PdfCompression.Processing;
