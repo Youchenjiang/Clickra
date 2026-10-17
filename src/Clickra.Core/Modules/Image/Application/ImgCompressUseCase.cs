@@ -24,8 +24,7 @@ public sealed class ImgCompressUseCase : PerFileConversionUseCaseBase
         IReadOnlyList<string> outputs,
         ConversionRequest request)
     {
-        string? language = request.Options != null &&
-            request.Options.TryGetValue(ExecutionLocalizationOptions.LanguageKey, out object? lang)
+        string? language = request.Options?.TryGetValue(ExecutionLocalizationOptions.LanguageKey, out object? lang) == true
             ? lang?.ToString()
             : null;
         ImageOutputSafety.EnsureUniqueOutputs(outputs, language);
@@ -38,7 +37,12 @@ public sealed class ImgCompressUseCase : PerFileConversionUseCaseBase
             ? new Dictionary<string, object>(SnapshotSavedOptions(), StringComparer.Ordinal)
             : new Dictionary<string, object>(request.Options, StringComparer.Ordinal);
 
-        if (!options.ContainsKey("level"))
+        bool hasValidLevel = options.TryGetValue("level", out object? rawLevel) &&
+            rawLevel is string levelStr &&
+            !string.IsNullOrWhiteSpace(levelStr) &&
+            ImageCompressionOptions.TryParseLevel(levelStr, out _);
+
+        if (!hasValidLevel)
         {
             int sliderLevel = ClickraSettings.ClampNumericSetting(
                 ClickraSettings.ImageCompressLevel,

@@ -45,7 +45,7 @@ public sealed class ImageFormatConvertUseCase : PerFileConversionUseCaseBase
         var options = request.Options is null
             ? new Dictionary<string, object>(StringComparer.Ordinal)
             : new Dictionary<string, object>(request.Options, StringComparer.Ordinal);
-        if (!options.ContainsKey(ExecutionLocalizationOptions.LanguageKey))
+        if (!options.ContainsKey(ExecutionLocalizationOptions.LanguageKey) || options[ExecutionLocalizationOptions.LanguageKey] is null)
         {
             options[ExecutionLocalizationOptions.LanguageKey] = SettingsController.Language;
         }
@@ -57,8 +57,7 @@ public sealed class ImageFormatConvertUseCase : PerFileConversionUseCaseBase
         IReadOnlyList<string> outputs,
         ConversionRequest request)
     {
-        string? language = request.Options != null &&
-            request.Options.TryGetValue(ExecutionLocalizationOptions.LanguageKey, out object? lang)
+        string? language = request.Options?.TryGetValue(ExecutionLocalizationOptions.LanguageKey, out object? lang) == true
             ? lang?.ToString()
             : null;
         ImageOutputSafety.EnsureUniqueOutputs(outputs, language);

@@ -43,15 +43,16 @@ static partial class TestSuite
         runner.Run("Use case options injection: Markdown honors caller language override", () =>
         {
             var useCase = new MarkdownToPdfUseCase();
+            string testLang = SettingsController.Language == "fr" ? "de" : "fr";
             var requestWithLang = new ConversionRequest(
                 MarkdownToPdfUseCase.CommandName,
                 new[] { "notes.md" },
                 new Dictionary<string, object>
                 {
-                    [ExecutionLocalizationOptions.LanguageKey] = "en"
+                    [ExecutionLocalizationOptions.LanguageKey] = testLang
                 });
             ConversionPlan plan = useCase.Plan(requestWithLang);
-            Assert.Equal("en", (string)plan.NormalizedOptions[ExecutionLocalizationOptions.LanguageKey]);
+            Assert.Equal(testLang, (string)plan.NormalizedOptions[ExecutionLocalizationOptions.LanguageKey]);
 
             var requestWithoutLang = new ConversionRequest(
                 MarkdownToPdfUseCase.CommandName,
@@ -107,19 +108,21 @@ static partial class TestSuite
         runner.Run("Use case options injection: PdfCompression honors caller level, strip_fonts, and minify_content", () =>
         {
             var useCase = new CompressPdfUseCase();
+            bool targetStripFonts = !SettingsController.PdfCompressionStripFonts;
+            bool targetMinify = !SettingsController.PdfCompressionMinifyContent;
             var requestWithOptions = new ConversionRequest(
                 CompressPdfUseCase.CommandName,
                 new[] { "sample.pdf" },
                 new Dictionary<string, object>
                 {
                     [CompressPdfUseCase.LevelOptionKey] = "high",
-                    ["strip_fonts"] = false,
-                    ["minify_content"] = false
+                    ["strip_fonts"] = targetStripFonts,
+                    ["minify_content"] = targetMinify
                 });
             ConversionPlan plan = useCase.Plan(requestWithOptions);
             Assert.Equal("high", (string)plan.NormalizedOptions[CompressPdfUseCase.LevelOptionKey]);
-            Assert.False((bool)plan.NormalizedOptions["strip_fonts"], "strip_fonts should be false");
-            Assert.False((bool)plan.NormalizedOptions["minify_content"], "minify_content should be false");
+            Assert.True((bool)plan.NormalizedOptions["strip_fonts"] == targetStripFonts, $"strip_fonts should be {targetStripFonts}");
+            Assert.True((bool)plan.NormalizedOptions["minify_content"] == targetMinify, $"minify_content should be {targetMinify}");
 
             var requestWithoutOptions = new ConversionRequest(
                 CompressPdfUseCase.CommandName,
@@ -154,7 +157,7 @@ static partial class TestSuite
             Assert.Equal(SettingsController.Language, (string)defaultPlan.NormalizedOptions[ExecutionLocalizationOptions.LanguageKey]);
         });
 
-        runner.Run("Use case options injection: Office conversion honors caller engine, language, and path", () =>
+        runner.Run("Use case options injection: Office conversion honors caller engine, language, and preserves trusted path", () =>
         {
             var useCase = new WordToPdfUseCase();
             var requestWithOptions = new ConversionRequest(
@@ -164,13 +167,14 @@ static partial class TestSuite
                 {
                     [OfficeConversionOptions.EngineKey] = "custom-libreoffice",
                     [OfficeConversionOptions.LanguageKey] = "fr",
-                    [OfficeConversionOptions.LibreOfficePathKey] = "C:\\Tools\\soffice.exe",
+                    [OfficeConversionOptions.LibreOfficePathKey] = "C:\\Malicious\\soffice.exe",
                     [OfficeConversionOptions.LibreOfficeRemovalPendingRestartKey] = true
                 });
             ConversionPlan plan = useCase.Plan(requestWithOptions);
             Assert.Equal("custom-libreoffice", (string)plan.NormalizedOptions[OfficeConversionOptions.EngineKey]);
             Assert.Equal("fr", (string)plan.NormalizedOptions[OfficeConversionOptions.LanguageKey]);
-            Assert.Equal("C:\\Tools\\soffice.exe", (string)plan.NormalizedOptions[OfficeConversionOptions.LibreOfficePathKey]);
+            // Security: path must be strictly taken from SettingsController, ignoring caller override
+            Assert.Equal(SettingsController.LibreOfficePath, (string)plan.NormalizedOptions[OfficeConversionOptions.LibreOfficePathKey]);
             Assert.True((bool)plan.NormalizedOptions[OfficeConversionOptions.LibreOfficeRemovalPendingRestartKey], "removal pending restart should be true");
 
             var requestWithoutOptions = new ConversionRequest(

@@ -48,10 +48,10 @@ public abstract class OfficeToPdfUseCaseBase : ConversionUseCaseBase
 
         if (!options.ContainsKey(OfficeConversionOptions.EngineKey))
             options[OfficeConversionOptions.EngineKey] = SettingsController.OfficeEngineValue;
-        if (!options.ContainsKey(OfficeConversionOptions.LanguageKey))
+        if (!options.ContainsKey(OfficeConversionOptions.LanguageKey) || options[OfficeConversionOptions.LanguageKey] is null)
             options[OfficeConversionOptions.LanguageKey] = SettingsController.Language;
-        if (!options.ContainsKey(OfficeConversionOptions.LibreOfficePathKey))
-            options[OfficeConversionOptions.LibreOfficePathKey] = SettingsController.LibreOfficePath;
+        // Security: only allow the trusted application-configured LibreOffice path; do not accept caller path overrides.
+        options[OfficeConversionOptions.LibreOfficePathKey] = SettingsController.LibreOfficePath;
         if (!options.ContainsKey(OfficeConversionOptions.LibreOfficeRemovalPendingRestartKey))
         {
             options[OfficeConversionOptions.LibreOfficeRemovalPendingRestartKey] =

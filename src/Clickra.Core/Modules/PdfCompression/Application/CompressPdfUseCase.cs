@@ -36,22 +36,27 @@ public sealed class CompressPdfUseCase : PerFileConversionUseCaseBase
             ? new Dictionary<string, object>(StringComparer.Ordinal)
             : new Dictionary<string, object>(request.Options, StringComparer.Ordinal);
 
-        if (!options.ContainsKey(LevelOptionKey))
+        bool callerSuppliedLevel = options.TryGetValue(LevelOptionKey, out object? rawLevel) &&
+            rawLevel is string levelStr &&
+            !string.IsNullOrWhiteSpace(levelStr) &&
+            PdfCompressionOptions.TryParseLevel(levelStr, out _);
+
+        if (!callerSuppliedLevel)
         {
             int sliderLevel = ClickraSettings.NormalizePdfCompressLevel(
                 SettingsController.PdfCompressionImageLevel);
             PdfCompressionLevel level = PdfCompressionOptions.FromSliderLevel(sliderLevel);
             options[LevelOptionKey] = PdfCompressionOptions.ToOptionName(level);
-        }
 
-        if (!options.ContainsKey("strip_fonts"))
-        {
-            options["strip_fonts"] = SettingsController.PdfCompressionStripFonts;
-        }
+            if (!options.ContainsKey("strip_fonts"))
+            {
+                options["strip_fonts"] = SettingsController.PdfCompressionStripFonts;
+            }
 
-        if (!options.ContainsKey("minify_content"))
-        {
-            options["minify_content"] = SettingsController.PdfCompressionMinifyContent;
+            if (!options.ContainsKey("minify_content"))
+            {
+                options["minify_content"] = SettingsController.PdfCompressionMinifyContent;
+            }
         }
 
         return options;
