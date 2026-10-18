@@ -44,7 +44,6 @@ public sealed record ConversionExecutionCallbacks(
 /// </summary>
 public sealed class ConversionExecutionController
 {
-    private IConversionUseCase? _useCase;
     private ConversionPlan? _plan;
 
     public static Exception CreateParkSignal(string reason, int nextFileIndex) =>
@@ -72,7 +71,6 @@ public sealed class ConversionExecutionController
             existingTaskId: existingTaskId,
             resumeStartIndex: resumeStartIndex);
 
-        _useCase = useCase;
         _plan = plan;
         return new ConversionExecutionPlanPresentation(plan.Outputs, useCase.Capabilities);
     }
