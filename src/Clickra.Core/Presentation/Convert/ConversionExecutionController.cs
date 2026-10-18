@@ -12,10 +12,10 @@ public enum ConversionExecutionPresentationStatus
 
 public sealed record ConversionExecutionPlanPresentation(
     IReadOnlyList<string> Outputs,
-    IReadOnlySet<ConversionCapability>? Capabilities = null)
+    IReadOnlySet<ConversionCapability> Capabilities)
 {
     public ConversionExecutionPlanPresentation(IReadOnlyList<string> outputs)
-        : this(outputs, null)
+        : this(outputs, new HashSet<ConversionCapability>())
     {
     }
 
@@ -69,7 +69,7 @@ public sealed class ConversionExecutionController
 
         _useCase = useCase;
         _plan = plan;
-        return new ConversionExecutionPlanPresentation(plan.Outputs, plan.RequiredCapabilities);
+        return new ConversionExecutionPlanPresentation(plan.Outputs, useCase.Capabilities);
     }
 
     public async Task<ConversionExecutionPresentationResult> ExecutePreparedAsync(
