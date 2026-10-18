@@ -329,7 +329,7 @@ static partial class TestSuite
             "ProgressWindow must delegate application-use-case routing and execution to NativeConversionExecutionAdapter.");
         Assert.True(native.Contains("new NativeConversionExecutionAdapter(", StringComparison.Ordinal)
                     && nativeAdapter.Contains("ConversionUseCases.GetRequired", StringComparison.Ordinal)
-                    && nativeAdapter.Contains("ExecuteAsync(", StringComparison.Ordinal),
+                    && (nativeAdapter.Contains("ExecuteAsync(", StringComparison.Ordinal) || nativeAdapter.Contains("ConversionExecutionService.Execute(", StringComparison.Ordinal)),
             "NativeConversionExecutionAdapter must own the application-use-case routing moved out of ProgressWindow.");
         Assert.False(fluentMain.Contains("ConvertCommandRunner", StringComparison.Ordinal)
                      || fluentTask.Contains("ConvertCommandRunner", StringComparison.Ordinal)

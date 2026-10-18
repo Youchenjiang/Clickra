@@ -188,9 +188,16 @@ static partial class TestSuite
 
         runner.Run("Unified conversion execution: ConversionExecutionService plans and delegates properly", () =>
         {
+            var options = new Dictionary<string, object>
+            {
+                [MarkdownPdfOptions.ThemeKey] = MarkdownPdfOptions.ThemeAcademic,
+                [MarkdownPdfOptions.PaperKey] = MarkdownPdfOptions.PaperLetter,
+                [ExecutionLocalizationOptions.LanguageKey] = "ja"
+            };
             ConversionPlan plan = ConversionExecutionService.Plan(
                 MarkdownToPdfUseCase.CommandName,
                 new[] { "test.md" },
+                options: options,
                 outputOverride: "C:\\out",
                 TrackTaskLifecycle: false,
                 resumeStartIndex: 2);
@@ -198,7 +205,10 @@ static partial class TestSuite
             Assert.Equal(MarkdownToPdfUseCase.CommandName, plan.Command);
             Assert.False(plan.TrackTaskLifecycle, "TrackTaskLifecycle should be false");
             Assert.Equal(2, plan.ResumeStartIndex);
-            Assert.True(plan.RequiredCapabilities.Contains(ConversionCapability.MarkdownOptions), "Plan retains capabilities");
+            Assert.False(plan.RequiredCapabilities.Contains(ConversionCapability.MarkdownOptions), "Plan drops MarkdownOptions capability when options are already supplied");
+            Assert.Equal(MarkdownPdfOptions.ThemeAcademic, (string)plan.NormalizedOptions[MarkdownPdfOptions.ThemeKey]);
+            Assert.Equal(MarkdownPdfOptions.PaperLetter, (string)plan.NormalizedOptions[MarkdownPdfOptions.PaperKey]);
+            Assert.Equal("ja", (string)plan.NormalizedOptions[ExecutionLocalizationOptions.LanguageKey]);
 
             Assert.True(ConversionExecutionController.RequiresOptions(MarkdownToPdfUseCase.CommandName), "Controller detects md2pdf options");
             Assert.True(ConversionExecutionController.RequiresOptions(MarkdownToWordUseCase.CommandName), "Controller detects md2word options");
