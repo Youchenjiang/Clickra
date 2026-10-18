@@ -11,8 +11,20 @@ public abstract class MarkdownConversionUseCaseBase : PerFileConversionUseCaseBa
     public override IReadOnlySet<ConversionCapability> Capabilities =>
         new HashSet<ConversionCapability> { ConversionCapability.MarkdownOptions };
 
-    protected override IReadOnlySet<ConversionCapability> GetCapabilities(ConversionRequest request) =>
-        Capabilities;
+    protected override IReadOnlySet<ConversionCapability> GetCapabilities(ConversionRequest request)
+    {
+        if (request.Options is not null &&
+            (request.Options.ContainsKey(MarkdownPdfOptions.ThemeKey) ||
+             request.Options.ContainsKey(MarkdownPdfOptions.PaperKey) ||
+             request.Options.ContainsKey(MarkdownPdfOptions.TextSizeKey) ||
+             request.Options.ContainsKey(MarkdownPdfOptions.CodeThemeKey) ||
+             request.Options.ContainsKey(MarkdownPdfOptions.TemplatePathKey)))
+        {
+            return new HashSet<ConversionCapability>();
+        }
+
+        return Capabilities;
+    }
 
     protected override string InputRequirementError => "At least one Markdown file is required.";
 
