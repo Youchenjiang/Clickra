@@ -12,6 +12,7 @@ using Clickra.Core.Modules.PdfCompression.Processing;
 using Clickra.Core.Modules.PdfDecrypt.Application;
 using Clickra.Core.Modules.PdfTranslation.Application;
 using Clickra.Core.Modules.Settings.Application;
+using Clickra.Core.Presentation.Convert;
 using Clickra.Core.Processors;
 
 namespace Clickra.Core.Tests;
@@ -183,6 +184,27 @@ static partial class TestSuite
             ConversionPlan defaultPlan = useCase.Plan(requestWithoutOptions);
             Assert.Equal(SettingsController.OfficeEngineValue, (string)defaultPlan.NormalizedOptions[OfficeConversionOptions.EngineKey]);
             Assert.Equal(SettingsController.Language, (string)defaultPlan.NormalizedOptions[OfficeConversionOptions.LanguageKey]);
+        });
+
+        runner.Run("Unified conversion execution: ConversionExecutionService plans and delegates properly", () =>
+        {
+            ConversionPlan plan = ConversionExecutionService.Plan(
+                MarkdownToPdfUseCase.CommandName,
+                new[] { "test.md" },
+                outputOverride: "C:\\out",
+                trackTaskLifecycle: false,
+                resumeStartIndex: 2);
+
+            Assert.Equal(MarkdownToPdfUseCase.CommandName, plan.Command);
+            Assert.False(plan.TrackTaskLifecycle, "TrackTaskLifecycle should be false");
+            Assert.Equal(2, plan.ResumeStartIndex);
+            Assert.True(plan.RequiredCapabilities.Contains(ConversionCapability.MarkdownOptions), "Plan retains capabilities");
+
+            Assert.True(ConversionExecutionController.RequiresOptions(MarkdownToPdfUseCase.CommandName), "Controller detects md2pdf options");
+            Assert.True(ConversionExecutionController.RequiresOptions(MarkdownToWordUseCase.CommandName), "Controller detects md2word options");
+            Assert.False(ConversionExecutionController.RequiresOptions(WordToPdfUseCase.CommandName), "Controller rejects word2pdf options");
+            Assert.False(ConversionExecutionController.RequiresOptions(DecryptPdfUseCase.CommandName), "Controller rejects decrypt-pdf options");
+            Assert.True(ConversionExecutionController.HasCapability(DecryptPdfUseCase.CommandName, ConversionCapability.Password), "Controller has password capability for decrypt-pdf");
         });
     }
 }
