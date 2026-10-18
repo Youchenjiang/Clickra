@@ -1748,6 +1748,21 @@ static partial class TestSuite
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(WordToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one word2pdf owner.");
+
+        Assert.True(decrypt.Capabilities.Contains(ConversionCapability.Password),
+            "decrypt-pdf must declare the Password capability.");
+        Assert.True(split.Capabilities.Contains(ConversionCapability.SplitPages),
+            "split-pdf must declare the SplitPages capability.");
+        Assert.True(markdownPdf.Capabilities.Contains(ConversionCapability.MarkdownOptions),
+            "md2pdf must declare the MarkdownOptions capability.");
+        Assert.True(markdownWord.Capabilities.Contains(ConversionCapability.MarkdownOptions),
+            "md2word must declare the MarkdownOptions capability.");
+        Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.RequiresOptions(MarkdownToPdfUseCase.CommandName),
+            "ConversionExecutionController.RequiresOptions must return true for md2pdf.");
+        Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.RequiresOptions(MarkdownToWordUseCase.CommandName),
+            "ConversionExecutionController.RequiresOptions must return true for md2word.");
+        Assert.False(Clickra.Core.Presentation.Convert.ConversionExecutionController.RequiresOptions(WordToPdfUseCase.CommandName),
+            "ConversionExecutionController.RequiresOptions must return false for commands without option requirements.");
     }
 
     private static void TestDecryptWorkflowHasSingleExecutionOwner()
