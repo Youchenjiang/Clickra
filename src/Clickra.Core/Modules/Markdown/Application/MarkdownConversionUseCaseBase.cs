@@ -8,6 +8,24 @@ namespace Clickra.Core.Modules.Markdown.Application;
 /// <summary>Shared option and validation behavior for Markdown document conversions.</summary>
 public abstract class MarkdownConversionUseCaseBase : PerFileConversionUseCaseBase
 {
+    public override IReadOnlySet<ConversionCapability> Capabilities =>
+        new HashSet<ConversionCapability> { ConversionCapability.MarkdownOptions };
+
+    protected override IReadOnlySet<ConversionCapability> GetCapabilities(ConversionRequest request)
+    {
+        if (request.Options is not null &&
+            (request.Options.ContainsKey(MarkdownPdfOptions.ThemeKey) ||
+             request.Options.ContainsKey(MarkdownPdfOptions.PaperKey) ||
+             request.Options.ContainsKey(MarkdownPdfOptions.TextSizeKey) ||
+             request.Options.ContainsKey(MarkdownPdfOptions.CodeThemeKey) ||
+             request.Options.ContainsKey(MarkdownPdfOptions.TemplatePathKey)))
+        {
+            return new HashSet<ConversionCapability>();
+        }
+
+        return Capabilities;
+    }
+
     protected override string InputRequirementError => "At least one Markdown file is required.";
 
     protected override string UnsupportedInputError(string path) =>

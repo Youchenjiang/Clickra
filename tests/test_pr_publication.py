@@ -26,7 +26,7 @@ class PublicationTests(unittest.TestCase):
             body.write_text("draft", encoding="utf-8")
 
             def read(argv):
-                value = {("branch", "--show-current"): "feature/workflow",
+                value = {("branch", "--show-current"): "feature/valid-workflow",
                          ("rev-parse", "HEAD"): "a" * 40,
                          ("status", "--porcelain"): "",
                          ("remote", "get-url", "origin"): "https://github.com/a/b.git"}[tuple(argv[1:])]
@@ -35,7 +35,7 @@ class PublicationTests(unittest.TestCase):
             with patch.object(pr_publication, "invoke", side_effect=read), \
                  patch.object(pr_publication, "executable", return_value="/bin/git"), \
                  patch.object(pr_publication.subprocess, "run") as runner:
-                self.assertEqual({"preview": "feature/workflow:" + "a" * 40},
+                self.assertEqual({"preview": "feature/valid-workflow:" + "a" * 40},
                                  pr_publication.push(str(body), None))
                 with self.assertRaisesRegex(ValueError, "exact"):
                     pr_publication.push(str(body), "wrong", execute=True)
@@ -47,14 +47,14 @@ class PublicationTests(unittest.TestCase):
              patch.object(pr_publication.subprocess, "run",
                           return_value=SimpleNamespace(returncode=0,
                                                        stdout="a" * 40 + "\trefs/heads/other\n")):
-            pr_publication.remote_head("feature/workflow")
+            pr_publication.remote_head("feature/valid-workflow")
 
     def test_successful_push_runs_hook_without_force_and_verifies_remote(self):
         with TemporaryDirectory() as folder:
             body = Path(folder) / "body.md"
             body.write_text("draft", encoding="utf-8")
             sha = "a" * 40
-            lookup = {("branch", "--show-current"): "feature/workflow",
+            lookup = {("branch", "--show-current"): "feature/valid-workflow",
                       ("rev-parse", "HEAD"): sha, ("status", "--porcelain"): "",
                       ("remote", "get-url", "origin"): "https://github.com/a/b.git"}
             with patch.object(pr_publication, "invoke",
@@ -64,12 +64,12 @@ class PublicationTests(unittest.TestCase):
                  patch.object(pr_publication, "remote_head", return_value=sha), \
                  patch.object(pr_publication.subprocess, "run",
                               return_value=SimpleNamespace(returncode=0)) as runner:
-                self.assertEqual({"pushed": f"feature/workflow:{sha}"},
-                                 pr_publication.push(str(body), f"feature/workflow:{sha}", execute=True,
+                self.assertEqual({"pushed": f"feature/valid-workflow:{sha}"},
+                                 pr_publication.push(str(body), f"feature/valid-workflow:{sha}", execute=True,
                                                      runner=runner))
             argv = runner.call_args.args[0]
             self.assertEqual(["/bin/git", "-c", "core.hooksPath=scripts/hooks", "push", "origin",
-                              "refs/heads/feature/workflow:refs/heads/feature/workflow"], argv)
+                              "refs/heads/feature/valid-workflow:refs/heads/feature/valid-workflow"], argv)
             self.assertFalse(runner.call_args.kwargs["shell"])
             self.assertNotIn("--no-verify", argv)
             self.assertEqual(str(body.resolve()), runner.call_args.kwargs["env"]["CLICKRA_PR_BODY_FILE"])

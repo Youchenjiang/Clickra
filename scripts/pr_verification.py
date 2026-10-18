@@ -105,10 +105,15 @@ def summarize(pr, report, *, remote_sha):
     quality = report.get("sonar_quality")
     if quality is not None and quality["quality_gate"]["status"] != "OK":
         problems.append("SonarQube quality gate not passed")
+    unresolved_details = [
+        {"id": t["id"], "path": t["path"], "line": t["line"], "outdated": t["outdated"]}
+        for t in report.get("threads", []) if not t.get("resolved")
+    ]
     return {"ready": not problems, "state": pr.get("state"),
             "historical_checks_passed": (pr.get("state") == "MERGED" and
                                          not _finding_problems(report, groups, required)),
             "problems": problems, "passed": groups["passed"],
             "skipped": groups["skipped"], "head": head, "sonar_issues": sonar_count,
-            "unresolved_threads": count, "checks": _check_details(checks, required),
+            "unresolved_threads": count, "unresolved_thread_details": unresolved_details,
+            "checks": _check_details(checks, required),
             "sonar_quality": quality}

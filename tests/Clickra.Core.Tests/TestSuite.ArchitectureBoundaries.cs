@@ -22,6 +22,9 @@ static partial class TestSuite
     private const string GenericCatalogResolution = "ConversionUseCases.GetRequired(command)";
     private const string ArchitectureStorageDirectory = "Storage";
     private const string ArchitecturePresentationDirectory = "Presentation";
+    private const string ArchitectureInfrastructureDirectory = "Infrastructure";
+    private const string ArchitectureSettingsModuleName = "Settings";
+    private const string ArchitecturePdfTranslationModuleName = "PdfTranslation";
     private const string ArchitectureLocalizationCall = "Localization.T(";
     private const string ArchitectureConvertRegistryFile = "ConvertCommandRegistry.cs";
     private const string ArchitectureConversionExecutionName = "ConversionExecutionController";
@@ -136,6 +139,9 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: Modules keep capability as the first directory axis",
             TestModuleFirstModulesKeepCapabilityAsFirstAxis);
+        runner.RunGuard(
+            "Architecture boundaries: conversion modules conform to module architecture conventions",
+            TestModuleConventionsEnforced);
         runner.RunGuard(
             "Architecture boundaries: conversion execution families share lifecycle result mapping",
             TestConversionExecutionFamiliesShareLifecycleResultMapping);
@@ -329,7 +335,7 @@ static partial class TestSuite
             "Storage",
             "Processor",
             "Processors",
-            "Infrastructure",
+            ArchitectureInfrastructureDirectory,
             "Ports",
             "Adapters"
         };
@@ -370,6 +376,190 @@ static partial class TestSuite
             namespaceViolations.Count == 0,
             "Module files must declare the namespace of their owning capability:" +
             Environment.NewLine + string.Join(Environment.NewLine, namespaceViolations));
+    }
+
+    private static void TestModuleConventionsEnforced()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
+        string modulesRoot = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory);
+        if (!Directory.Exists(modulesRoot))
+            return;
+
+        var violations = new List<string>();
+        ValidateConversionModules(modulesRoot, violations);
+        ValidateModuleOptionFiles(root, modulesRoot, violations);
+        ValidateAuthorizedModuleDirectories(modulesRoot, violations);
+        ValidatePresentationReferences(root, modulesRoot, violations);
+
+        Assert.True(
+            violations.Count == 0,
+            "Module architecture conventions violated:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static void ValidateConversionModules(string modulesRoot, List<string> violations)
+    {
+        string[] conversionModules = { "Image", "Markdown", "Office", "PdfCompression", "PdfDecrypt", "PdfMerge", "PdfSplit", ArchitecturePdfTranslationModuleName };
+
+        foreach (string module in conversionModules)
+        {
+            string moduleDir = Path.Combine(modulesRoot, module);
+            Assert.True(Directory.Exists(moduleDir), $"Expected conversion module directory: {module}");
+
+            ValidateModuleApplicationLayer(module, moduleDir, violations);
+            ValidateModuleProcessingLayer(module, moduleDir, violations);
+        }
+    }
+
+    private static void ValidateModuleApplicationLayer(string module, string moduleDir, List<string> violations)
+    {
+        string appDir = Path.Combine(moduleDir, ArchitectureApplicationDirectory);
+        if (!Directory.Exists(appDir))
+        {
+            violations.Add($"{module}: missing mandatory {ArchitectureApplicationDirectory}/ directory.");
+            return;
+        }
+
+        string[] appFiles = Directory.GetFiles(appDir, "*UseCase*.cs", SearchOption.AllDirectories);
+        if (appFiles.Length == 0)
+        {
+            violations.Add($"{module}: Application directory must contain at least one UseCase file.");
+            return;
+        }
+
+        var allowedBases = new[]
+        {
+            "PerFileConversionUseCaseBase",
+            "SingleOutputConversionUseCaseBase",
+            "OfficeToPdfUseCaseBase",
+            "MarkdownConversionUseCaseBase",
+            "IConversionUseCase"
+        };
+
+        foreach (string file in appFiles)
+        {
+            string source = File.ReadAllText(file);
+            if (source.Contains("abstract class", StringComparison.Ordinal) || source.Contains("interface ", StringComparison.Ordinal))
+                continue;
+
+            bool inheritsRequiredBase = allowedBases.Any(b =>
+                Regex.IsMatch(source, $@":\s*([A-Za-z0-9_.,<>\s]*\b)?{b}\b", RegexOptions.CultureInvariant, ArchitectureRegexTimeout));
+
+            if (!inheritsRequiredBase)
+            {
+                violations.Add($"{Path.GetFileName(file)} in {module}: use case class must inherit from a required conversion use-case base class.");
+            }
+        }
+    }
+
+    private static void ValidateModuleProcessingLayer(string module, string moduleDir, List<string> violations)
+    {
+        string procDir = Path.Combine(moduleDir, "Processing");
+        string execDir = Path.Combine(moduleDir, "Execution");
+
+        if (Directory.Exists(execDir) && !module.Equals(ArchitecturePdfTranslationModuleName, StringComparison.OrdinalIgnoreCase))
+        {
+            violations.Add($"{module}: Execution/ directory is prohibited; only PdfTranslation may use Execution/.");
+        }
+
+        bool hasProc = Directory.Exists(procDir);
+        bool hasExec = module.Equals(ArchitecturePdfTranslationModuleName, StringComparison.OrdinalIgnoreCase) && Directory.Exists(execDir);
+
+        if (!hasProc && !hasExec)
+        {
+            violations.Add($"{module}: missing mandatory Processing/ directory.");
+            return;
+        }
+
+        string targetDir = hasProc ? procDir : execDir;
+        string[] procFiles = Directory.GetFiles(targetDir, "*Processor*.cs", SearchOption.AllDirectories);
+        if (procFiles.Length == 0)
+        {
+            violations.Add($"{module}: Processing directory must contain at least one Processor file.");
+            return;
+        }
+
+        var allowedProcessorBases = new[]
+        {
+            "SingleFileProcessorBase",
+            "MultiFileProcessorBase",
+            "MarkdownSingleFileProcessorBase",
+            "FileProcessor"
+        };
+
+        foreach (string file in procFiles)
+        {
+            string source = File.ReadAllText(file);
+            if (source.Contains("abstract class", StringComparison.Ordinal) || source.Contains("interface ", StringComparison.Ordinal))
+                continue;
+
+            bool inheritsRequiredBase = allowedProcessorBases.Any(b =>
+                Regex.IsMatch(source, $@":\s*([A-Za-z0-9_.,<>\s]*\b)?{b}\b", RegexOptions.CultureInvariant, ArchitectureRegexTimeout));
+
+            if (!inheritsRequiredBase)
+            {
+                violations.Add($"{Path.GetFileName(file)} in {module}: processor class must inherit from SingleFileProcessorBase or MultiFileProcessorBase.");
+            }
+        }
+    }
+
+    private static void ValidateModuleOptionFiles(string root, string modulesRoot, List<string> violations)
+    {
+        string[] allOptionFiles = Directory.GetFiles(modulesRoot, "*Options.cs", SearchOption.AllDirectories);
+        foreach (string file in allOptionFiles)
+        {
+            string relative = NormalizeRepoPath(root, file);
+            if (!relative.Contains("/Application/", StringComparison.OrdinalIgnoreCase))
+            {
+                violations.Add($"Option file {relative} must reside under an Application/ directory.");
+            }
+        }
+    }
+
+    private static void ValidateAuthorizedModuleDirectories(string modulesRoot, List<string> violations)
+    {
+        string[] authorizedPresentation = { "PdfSplit", "HistoryTasks", ArchitectureSettingsModuleName };
+        string[] authorizedInfrastructure = { "Office" };
+
+        foreach (string moduleDir in Directory.GetDirectories(modulesRoot))
+        {
+            string moduleName = Path.GetFileName(moduleDir);
+            string presDir = Path.Combine(moduleDir, ArchitecturePresentationDirectory);
+            if (Directory.Exists(presDir) && !authorizedPresentation.Contains(moduleName, StringComparer.OrdinalIgnoreCase))
+            {
+                violations.Add($"Module {moduleName} contains unexpected Presentation/ directory.");
+            }
+
+            string infraDir = Path.Combine(moduleDir, ArchitectureInfrastructureDirectory);
+            if (Directory.Exists(infraDir) && !authorizedInfrastructure.Contains(moduleName, StringComparer.OrdinalIgnoreCase))
+            {
+                violations.Add($"Module {moduleName} contains unexpected Infrastructure/ directory.");
+            }
+        }
+    }
+
+    private static void ValidatePresentationReferences(string root, string modulesRoot, List<string> violations)
+    {
+        var forbiddenPattern = new Regex(
+            @"\busing\s+Clickra\.Core\.Modules\.[A-Za-z0-9_]+\.(?:Processing|Infrastructure|Execution)\s*;|\bClickra\.Core\.Modules\.[A-Za-z0-9_]+\.(?:Processing|Infrastructure|Execution)\b",
+            RegexOptions.Compiled,
+            ArchitectureRegexTimeout);
+
+        foreach (string moduleDir in Directory.GetDirectories(modulesRoot))
+        {
+            string presDir = Path.Combine(moduleDir, ArchitecturePresentationDirectory);
+            if (!Directory.Exists(presDir))
+                continue;
+
+            foreach (string file in Directory.GetFiles(presDir, "*.cs", SearchOption.AllDirectories))
+            {
+                string source = File.ReadAllText(file);
+                if (forbiddenPattern.IsMatch(source))
+                {
+                    violations.Add($"{NormalizeRepoPath(root, file)}: Presentation layer must not reference Processing or Infrastructure.");
+                }
+            }
+        }
     }
 
     private static void TestParkedTaskOrchestrationHasSingleOwner()
@@ -787,7 +977,7 @@ static partial class TestSuite
             "src",
             ArchitectureCoreProjectDirectory,
             ArchitectureModulesDirectory,
-            "Settings",
+            ArchitectureSettingsModuleName,
             ArchitectureApplicationDirectory,
             "SettingsController.cs");
         Assert.True(File.Exists(settingsGatewayPath), "Application settings gateway must exist.");
@@ -811,7 +1001,7 @@ static partial class TestSuite
         {
             string member = match.Groups["member"].Value;
             if (!AllowedSettingsGatewayMembers.Contains(member))
-                violations.Add($"src/Clickra.Core/Modules/Settings/Application/SettingsController.cs: unexpected ClickraStorage.{member} access");
+                violations.Add($"src/Clickra.Core/Modules/{ArchitectureSettingsModuleName}/Application/SettingsController.cs: unexpected ClickraStorage.{member} access");
         }
 
         Assert.True(
@@ -858,7 +1048,7 @@ static partial class TestSuite
         var violations = PresentationSettingsViolations(root).ToList();
 
         string gateway = File.ReadAllText(Path.Combine(
-            root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, "Settings", ArchitectureApplicationDirectory, "SettingsController.cs"));
+            root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, ArchitectureSettingsModuleName, ArchitectureApplicationDirectory, "SettingsController.cs"));
         foreach (string typedContract in new[]
                  {
                      "public static string Language",
@@ -870,7 +1060,7 @@ static partial class TestSuite
             violations.Add($"SettingsController missing typed contract: {typedContract}");
 
         string presentationGateway = File.ReadAllText(Path.Combine(
-            root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, "Settings", ArchitecturePresentationDirectory, "SettingsPresentationController.cs"));
+            root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, ArchitectureSettingsModuleName, ArchitecturePresentationDirectory, "SettingsPresentationController.cs"));
 
         foreach (string typedContract in new[]
                  {
@@ -1782,6 +1972,7 @@ static partial class TestSuite
     private sealed class StubConversionUseCase(string command) : IConversionUseCase
     {
         public string Command { get; } = command;
+        public IReadOnlySet<ConversionCapability> Capabilities => new HashSet<ConversionCapability>();
 
         public ConversionValidationResult Validate(ConversionRequest request) =>
             ConversionValidationResult.Success();

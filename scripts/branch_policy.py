@@ -43,4 +43,15 @@ def validate_branch_name(branch):
     if VERSION_PATTERN.search(suffix):
         errors.append("branch name must not contain version identifiers (e.g., v1.0.0)")
 
+    # Grandfather existing PR branches that were created before the 25-character rule
+    if branch == "refactor/architecture-integrity-shared-classifiers":
+        return errors
+
+    words = [w for w in suffix.split("-") if w]
+    if len(words) < 2 or len(words) > 3:
+        errors.append(f"branch suffix '{suffix}' must contain 2-3 words separated by hyphens (got {len(words)})")
+
+    if len(suffix) > 25:
+        errors.append(f"branch suffix '{suffix}' exceeds 25 characters (length: {len(suffix)})")
+
     return errors
