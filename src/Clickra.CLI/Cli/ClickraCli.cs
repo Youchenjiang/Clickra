@@ -412,21 +412,19 @@ namespace Clickra
             IConversionInteraction? interaction = null,
             IConversionExecutionObserver? observer = null)
         {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+            _ = ConversionUseCases.GetRequired(command);
+            ConversionPlan plan = ConversionExecutionService.Plan(
                 command,
                 files,
                 options,
-                OutputOverride: outputDir,
-                TrackTaskLifecycle: false));
-            interaction ??= new DelegateConversionInteraction(
-                (_, _, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+                outputOverride: outputDir,
+                TrackTaskLifecycle: false);
 
-            return useCase.ExecuteAsync(plan, interaction, progress, observer)
-                .GetAwaiter()
-                .GetResult();
+            return ConversionExecutionService.Execute(
+                plan,
+                interaction,
+                progress,
+                observer);
         }
 
         private sealed class QuietDecryptObserver(IReadOnlyList<string> files) : IConversionExecutionObserver

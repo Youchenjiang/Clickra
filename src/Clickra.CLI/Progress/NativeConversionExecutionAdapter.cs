@@ -277,16 +277,16 @@ internal sealed class NativeConversionExecutionAdapter
         Action<int, int, string> progressCallback,
         SimpleApplicationRunOptions options)
     {
-        IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
-        ConversionPlan plan = useCase.Plan(new ConversionRequest(
+        _ = ConversionUseCases.GetRequired(command);
+        ConversionPlan plan = ConversionExecutionService.Plan(
             command,
             files,
             options.CommandOptions,
-            ExistingTaskId: _existingTaskId,
-            OutputOverride: options.OutputOverride,
-            BestEffortTaskPersistence: true));
-        if (options.Resume)
-            plan = plan with { ResumeStartIndex = _startIndex };
+            outputOverride: options.OutputOverride,
+            trackTaskLifecycle: true,
+            existingTaskId: _existingTaskId,
+            bestEffortTaskPersistence: true,
+            resumeStartIndex: options.Resume ? _startIndex : 0);
 
         var interaction = new DelegateConversionInteraction(
             (_, _, _, _) => Task.FromResult<string?>(null),
@@ -297,14 +297,12 @@ internal sealed class NativeConversionExecutionAdapter
             : new CallbackProgress<ConversionProgress>(state =>
                 progressCallback(state.Current, state.Total, state.Message));
 
-        ConversionResult result = useCase.ExecuteAsync(
-                plan,
-                interaction,
-                progress,
-                options.Observer,
-                _cancellationToken)
-            .GetAwaiter()
-            .GetResult();
+        ConversionResult result = ConversionExecutionService.Execute(
+            plan,
+            interaction,
+            progress,
+            options.Observer,
+            _cancellationToken);
 
         _completeResult(result, command, options.SuccessMessage, true);
     }
@@ -349,11 +347,11 @@ internal sealed class NativeConversionExecutionAdapter
         PrepareResumableExecution(string command, IReadOnlyList<string> files)
     {
         IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
-        ConversionPlan plan = useCase.Plan(new ConversionRequest(
+        ConversionPlan plan = ConversionExecutionService.Plan(
             command,
             files,
-            ExistingTaskId: _existingTaskId,
-            BestEffortTaskPersistence: true)) with
+            existingTaskId: _existingTaskId,
+            bestEffortTaskPersistence: true) with
         {
             ResumeStartIndex = _startIndex
         };
