@@ -283,7 +283,7 @@ internal sealed class NativeConversionExecutionAdapter
             files,
             options.CommandOptions,
             outputOverride: options.OutputOverride,
-            trackTaskLifecycle: true,
+            TrackTaskLifecycle: true,
             existingTaskId: _existingTaskId,
             bestEffortTaskPersistence: true,
             resumeStartIndex: options.Resume ? _startIndex : 0);
