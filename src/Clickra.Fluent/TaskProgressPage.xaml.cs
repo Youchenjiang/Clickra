@@ -206,9 +206,7 @@ public sealed partial class TaskProgressPage : Page
     }
 
     private static bool ShouldPromptMarkdownOptions(string command, string? existingTaskId) =>
-        existingTaskId is null &&
-        (command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
-         command.Equals("md2word", StringComparison.OrdinalIgnoreCase));
+        existingTaskId is null && ConversionExecutionController.RequiresOptions(command);
 
     private async Task RunPresentationExecutionAsync(
         string command,

@@ -50,6 +50,13 @@ public sealed class ConversionExecutionController
     public static Exception CreateParkSignal(string reason, int nextFileIndex) =>
         new ConversionParkedException(reason, nextFileIndex);
 
+    public static bool HasCapability(string command, ConversionCapability capability) =>
+        ConversionUseCases.TryGet(command, out IConversionUseCase? useCase) &&
+        useCase?.Capabilities.Contains(capability) == true;
+
+    public static bool RequiresOptions(string command) =>
+        HasCapability(command, ConversionCapability.MarkdownOptions);
+
     public ConversionExecutionPlanPresentation Prepare(
         string command,
         IReadOnlyList<string> files,
