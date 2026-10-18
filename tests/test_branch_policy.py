@@ -28,10 +28,20 @@ class BranchPolicyTests(unittest.TestCase):
             with self.subTest(branch=branch):
                 self.assertTrue(validate_branch_name(branch))
 
-    def test_preserves_meaningful_numbers(self):
-        for branch in ("fix/issue-180", "feat/oauth2-support", "refactor/net8-migration",
-                       "fix/cve-2026-12345", "refactor/presentation-layer-ownership",
-                       "refactor/architecture-boundary-convergence"):
+    def test_rejects_word_count_outside_two_to_three(self):
+        for branch in ("fix/single", "feat/one-two-three-four", "refactor/a-b-c-d"):
+            with self.subTest(branch=branch):
+                self.assertTrue(validate_branch_name(branch))
+
+    def test_rejects_suffix_exceeding_twenty_five_chars(self):
+        for branch in ("refactor/this-is-a-very-long-branch-name", "fix/extremely-long-description-here"):
+            with self.subTest(branch=branch):
+                self.assertTrue(validate_branch_name(branch))
+
+    def test_preserves_meaningful_names(self):
+        for branch in ("fix/issue-180", "feat/oauth-support", "refactor/net-migration",
+                       "fix/cve-12345", "refactor/layer-ownership",
+                       "refactor/module-guards"):
             with self.subTest(branch=branch):
                 self.assertEqual([], validate_branch_name(branch))
 

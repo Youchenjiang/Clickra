@@ -71,16 +71,16 @@ class CreateTests(unittest.TestCase):
         sha = "a" * 40
         values = {
             ("git", "rev-parse", "HEAD"): sha,
-            ("git", "branch", "--show-current"): "feature/workflow",
+            ("git", "branch", "--show-current"): "feature/valid-workflow",
             ("git", "status", "--porcelain"): "",
             ("git", "rev-parse", "origin/main"): "b" * 40,
             ("git", "ls-remote", "--heads", "origin", "main"): "b" * 40 + "\trefs/heads/main",
-            ("gh", "pr", "list", "--state", "all", "--head", "feature/workflow",
+            ("gh", "pr", "list", "--state", "all", "--head", "feature/valid-workflow",
              "--repo", "user/repo", "--json", "number"): '[{"number":123}]'}
         with self.assertRaisesRegex(RuntimeError, "existing"), \
              patch.object(pr_creation, "_read", side_effect=lambda argv: values[tuple(argv)]), \
              patch.object(pr_creation, "remote_head", return_value=sha):
-            pr_creation.current_branch("user/repo", "feature/workflow")
+            pr_creation.current_branch("user/repo", "feature/valid-workflow")
 
     def test_invalid_milestone_fails_during_preview(self):
         with TemporaryDirectory() as folder:
