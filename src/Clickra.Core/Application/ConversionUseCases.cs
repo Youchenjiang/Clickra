@@ -56,7 +56,7 @@ public static class ConversionExecutionService
         IReadOnlyList<string> files,
         IReadOnlyDictionary<string, object>? options = null,
         string? outputOverride = null,
-        bool trackTaskLifecycle = true,
+        bool TrackTaskLifecycle = true,
         string? existingTaskId = null,
         bool bestEffortTaskPersistence = false,
         int resumeStartIndex = 0)
@@ -67,7 +67,7 @@ public static class ConversionExecutionService
             files,
             options,
             OutputOverride: outputOverride,
-            TrackTaskLifecycle: trackTaskLifecycle,
+            TrackTaskLifecycle: TrackTaskLifecycle,
             ExistingTaskId: existingTaskId,
             BestEffortTaskPersistence: bestEffortTaskPersistence));
 
