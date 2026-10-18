@@ -198,7 +198,7 @@ internal sealed class NativeConversionExecutionAdapter
         ConversionPlan plan = ConversionExecutionService.Plan(
             SplitPdfUseCase.CommandName,
             files,
-            commandOptions: commandOptions,
+            options: commandOptions,
             outputOverride: _outputDirOverride,
             TrackTaskLifecycle: true,
             existingTaskId: _existingTaskId,
