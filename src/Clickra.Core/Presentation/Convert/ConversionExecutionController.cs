@@ -65,14 +65,12 @@ public sealed class ConversionExecutionController
         int resumeStartIndex = 0)
     {
         IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
-        ConversionPlan plan = useCase.Plan(new ConversionRequest(
+        ConversionPlan plan = ConversionExecutionService.Plan(
             command,
             files,
             options,
-            ExistingTaskId: existingTaskId)) with
-        {
-            ResumeStartIndex = resumeStartIndex
-        };
+            existingTaskId: existingTaskId,
+            resumeStartIndex: resumeStartIndex);
 
         _useCase = useCase;
         _plan = plan;
@@ -84,7 +82,6 @@ public sealed class ConversionExecutionController
         IProgress<TaskProgressReport>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        IConversionUseCase useCase = _useCase ?? throw new InvalidOperationException("Prepare must be called before execution.");
         ConversionPlan plan = _plan ?? throw new InvalidOperationException("Prepare must be called before execution.");
         callbacks ??= new ConversionExecutionCallbacks();
 
@@ -99,7 +96,7 @@ public sealed class ConversionExecutionController
             ? null
             : new PresentationExecutionObserver(callbacks);
 
-        ConversionResult result = await useCase.ExecuteAsync(
+        ConversionResult result = await ConversionExecutionService.ExecuteAsync(
             plan,
             interaction,
             applicationProgress,
