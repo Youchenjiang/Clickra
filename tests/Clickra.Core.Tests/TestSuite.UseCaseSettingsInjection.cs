@@ -192,7 +192,7 @@ static partial class TestSuite
                 MarkdownToPdfUseCase.CommandName,
                 new[] { "test.md" },
                 outputOverride: "C:\\out",
-                trackTaskLifecycle: false,
+                TrackTaskLifecycle: false,
                 resumeStartIndex: 2);
 
             Assert.Equal(MarkdownToPdfUseCase.CommandName, plan.Command);
