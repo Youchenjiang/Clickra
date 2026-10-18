@@ -12,7 +12,18 @@ public enum ConversionExecutionPresentationStatus
 
 public sealed record ConversionExecutionPlanPresentation(
     IReadOnlyList<string> Outputs,
-    IReadOnlySet<ConversionCapability>? Capabilities = null);
+    IReadOnlySet<ConversionCapability>? Capabilities = null)
+{
+    public ConversionExecutionPlanPresentation(IReadOnlyList<string> outputs)
+        : this(outputs, null)
+    {
+    }
+
+    public void Deconstruct(out IReadOnlyList<string> outputs)
+    {
+        outputs = Outputs;
+    }
+}
 
 public sealed record ConversionExecutionPresentationResult(
     ConversionExecutionPresentationStatus Status,

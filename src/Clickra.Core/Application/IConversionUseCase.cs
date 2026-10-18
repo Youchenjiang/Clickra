@@ -5,7 +5,7 @@ public interface IConversionUseCase
 {
     string Command { get; }
 
-    IReadOnlySet<ConversionCapability> Capabilities { get; }
+    IReadOnlySet<ConversionCapability> Capabilities => new HashSet<ConversionCapability>();
 
     ConversionValidationResult Validate(ConversionRequest request);
 
