@@ -24,6 +24,7 @@ static partial class TestSuite
     private const string ArchitecturePresentationDirectory = "Presentation";
     private const string ArchitectureInfrastructureDirectory = "Infrastructure";
     private const string ArchitectureSettingsModuleName = "Settings";
+    private const string ArchitecturePdfTranslationModuleName = "PdfTranslation";
     private const string ArchitectureLocalizationCall = "Localization.T(";
     private const string ArchitectureConvertRegistryFile = "ConvertCommandRegistry.cs";
     private const string ArchitectureConversionExecutionName = "ConversionExecutionController";
@@ -398,7 +399,7 @@ static partial class TestSuite
 
     private static void ValidateConversionModules(string modulesRoot, List<string> violations)
     {
-        string[] conversionModules = { "Image", "Markdown", "Office", "PdfCompression", "PdfDecrypt", "PdfMerge", "PdfSplit", "PdfTranslation" };
+        string[] conversionModules = { "Image", "Markdown", "Office", "PdfCompression", "PdfDecrypt", "PdfMerge", "PdfSplit", ArchitecturePdfTranslationModuleName };
 
         foreach (string module in conversionModules)
         {
@@ -456,13 +457,13 @@ static partial class TestSuite
         string procDir = Path.Combine(moduleDir, "Processing");
         string execDir = Path.Combine(moduleDir, "Execution");
 
-        if (Directory.Exists(execDir) && !module.Equals("PdfTranslation", StringComparison.OrdinalIgnoreCase))
+        if (Directory.Exists(execDir) && !module.Equals(ArchitecturePdfTranslationModuleName, StringComparison.OrdinalIgnoreCase))
         {
             violations.Add($"{module}: Execution/ directory is prohibited; only PdfTranslation may use Execution/.");
         }
 
         bool hasProc = Directory.Exists(procDir);
-        bool hasExec = module.Equals("PdfTranslation", StringComparison.OrdinalIgnoreCase) && Directory.Exists(execDir);
+        bool hasExec = module.Equals(ArchitecturePdfTranslationModuleName, StringComparison.OrdinalIgnoreCase) && Directory.Exists(execDir);
 
         if (!hasProc && !hasExec)
         {
@@ -976,7 +977,7 @@ static partial class TestSuite
             "src",
             ArchitectureCoreProjectDirectory,
             ArchitectureModulesDirectory,
-            "Settings",
+            ArchitectureSettingsModuleName,
             ArchitectureApplicationDirectory,
             "SettingsController.cs");
         Assert.True(File.Exists(settingsGatewayPath), "Application settings gateway must exist.");
@@ -1000,7 +1001,7 @@ static partial class TestSuite
         {
             string member = match.Groups["member"].Value;
             if (!AllowedSettingsGatewayMembers.Contains(member))
-                violations.Add($"src/Clickra.Core/Modules/Settings/Application/SettingsController.cs: unexpected ClickraStorage.{member} access");
+                violations.Add($"src/Clickra.Core/Modules/{ArchitectureSettingsModuleName}/Application/SettingsController.cs: unexpected ClickraStorage.{member} access");
         }
 
         Assert.True(
@@ -1047,7 +1048,7 @@ static partial class TestSuite
         var violations = PresentationSettingsViolations(root).ToList();
 
         string gateway = File.ReadAllText(Path.Combine(
-            root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, "Settings", ArchitectureApplicationDirectory, "SettingsController.cs"));
+            root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, ArchitectureSettingsModuleName, ArchitectureApplicationDirectory, "SettingsController.cs"));
         foreach (string typedContract in new[]
                  {
                      "public static string Language",
@@ -1059,7 +1060,7 @@ static partial class TestSuite
             violations.Add($"SettingsController missing typed contract: {typedContract}");
 
         string presentationGateway = File.ReadAllText(Path.Combine(
-            root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, "Settings", ArchitecturePresentationDirectory, "SettingsPresentationController.cs"));
+            root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, ArchitectureSettingsModuleName, ArchitecturePresentationDirectory, "SettingsPresentationController.cs"));
 
         foreach (string typedContract in new[]
                  {
