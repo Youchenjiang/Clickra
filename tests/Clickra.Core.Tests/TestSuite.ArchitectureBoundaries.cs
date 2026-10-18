@@ -1763,6 +1763,12 @@ static partial class TestSuite
             "ConversionExecutionController.RequiresOptions must return true for md2word.");
         Assert.False(Clickra.Core.Presentation.Convert.ConversionExecutionController.RequiresOptions(WordToPdfUseCase.CommandName),
             "ConversionExecutionController.RequiresOptions must return false for commands without option requirements.");
+        Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.HasCapability(DecryptPdfUseCase.CommandName, ConversionCapability.Password),
+            "ConversionExecutionController.HasCapability must recognize Password on decrypt-pdf.");
+        Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.HasCapability(SplitPdfUseCase.CommandName, ConversionCapability.SplitPages),
+            "ConversionExecutionController.HasCapability must recognize SplitPages on split-pdf.");
+        Assert.False(Clickra.Core.Presentation.Convert.ConversionExecutionController.HasCapability(WordToPdfUseCase.CommandName, ConversionCapability.Password),
+            "ConversionExecutionController.HasCapability must return false for undeclared capability.");
     }
 
     private static void TestDecryptWorkflowHasSingleExecutionOwner()
