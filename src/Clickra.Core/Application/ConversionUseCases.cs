@@ -57,10 +57,9 @@ public static class ConversionExecutionService
         IReadOnlyDictionary<string, object>? options = null,
         string? outputOverride = null,
         bool TrackTaskLifecycle = true,
-        string? existingTaskId = null,
-        bool bestEffortTaskPersistence = false,
-        int resumeStartIndex = 0)
+        ExecutionPlanOptions? planOptions = null)
     {
+        planOptions ??= new ExecutionPlanOptions();
         IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
         ConversionPlan plan = useCase.Plan(new ConversionRequest(
             command,
@@ -68,14 +67,26 @@ public static class ConversionExecutionService
             options,
             OutputOverride: outputOverride,
             TrackTaskLifecycle: TrackTaskLifecycle,
-            ExistingTaskId: existingTaskId,
-            BestEffortTaskPersistence: bestEffortTaskPersistence));
+            ExistingTaskId: planOptions.ExistingTaskId,
+            BestEffortTaskPersistence: planOptions.BestEffortTaskPersistence));
 
-        if (resumeStartIndex > 0)
-            plan = plan with { ResumeStartIndex = resumeStartIndex };
+        if (planOptions.ResumeStartIndex > 0)
+            plan = plan with { ResumeStartIndex = planOptions.ResumeStartIndex };
 
         return plan;
     }
+
+    public static ConversionPlan Plan(
+        string command,
+        IReadOnlyList<string> files,
+        IReadOnlyDictionary<string, object>? options = null,
+        string? outputOverride = null,
+        bool TrackTaskLifecycle = true,
+        string? existingTaskId = null,
+        bool bestEffortTaskPersistence = false,
+        int resumeStartIndex = 0) =>
+        Plan(command, files, options, outputOverride, TrackTaskLifecycle,
+            new ExecutionPlanOptions(existingTaskId, bestEffortTaskPersistence, resumeStartIndex));
 
     public static async Task<ConversionResult> ExecuteAsync(
         ConversionPlan plan,
@@ -108,3 +119,9 @@ public static class ConversionExecutionService
             .GetAwaiter()
             .GetResult();
 }
+
+/// <summary>Secondary planning options for task persistence and resume state.</summary>
+public sealed record ExecutionPlanOptions(
+    string? ExistingTaskId = null,
+    bool BestEffortTaskPersistence = false,
+    int ResumeStartIndex = 0);
