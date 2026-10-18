@@ -484,7 +484,7 @@ public sealed partial class MainPage : Page
         string command = selectedCommand;
         var files = _convertWorkspace.SelectedFiles.ToList();
         Dictionary<string, object>? commandOptions = await PromptCommandOptionsAsync(command);
-        if (IsMarkdownCommand(command) && commandOptions is null) return;
+        if (ConversionExecutionController.RequiresOptions(command) && commandOptions is null) return;
         var execution = new ConversionExecutionController();
         try
         {
@@ -528,13 +528,9 @@ public sealed partial class MainPage : Page
 
     private async Task<Dictionary<string, object>?> PromptCommandOptionsAsync(string command)
     {
-        if (!IsMarkdownCommand(command)) return null;
+        if (!ConversionExecutionController.RequiresOptions(command)) return null;
         return await FluentDialogs.PromptMarkdownPdfOptionsAsync(XamlRoot, L, App.MainWindow);
     }
-
-    private static bool IsMarkdownCommand(string command) =>
-        command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
-        command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
 
     private async Task HandleConversionResultAsync(
         string command,
