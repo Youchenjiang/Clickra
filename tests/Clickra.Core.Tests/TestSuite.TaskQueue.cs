@@ -197,6 +197,11 @@ static partial class TestSuite
             repository: repo);
 
         Assert.Equal(MockTaskId, lifecycle.TaskId);
+        Assert.True(repo.StartedTasks.Count == 1, "Must start task in repository.");
+        Assert.Equal(CmdDecryptPdf, repo.StartedTasks[0].Command);
+        Assert.Equal(2L, repo.StartedTasks[0].FileCount);
+        Assert.Equal("file1.pdf;file2.pdf", repo.StartedTasks[0].InputPaths ?? "");
+
         Assert.True(repo.InProgressTasks.Count == 1, "Must mark in progress exactly once.");
         Assert.Equal(MockTaskId, repo.InProgressTasks[0]);
 
@@ -232,13 +237,18 @@ static partial class TestSuite
 
     private sealed class RecordingTaskLifecycleRepository : ITaskLifecycleRepository
     {
+        public readonly List<(string Command, int FileCount, string? InputPaths)> StartedTasks = new();
         public readonly List<string> InProgressTasks = new();
         public readonly List<(string TaskId, int Index)> IndexUpdates = new();
         public readonly List<(string TaskId, string Command, TaskCompletionRequest Request)> CompletedTasks = new();
         public readonly List<(string TaskId, string Reason, int NextIndex)> ParkedTasks = new();
         public readonly List<string> DeletedTasks = new();
 
-        public string Start(string command, int fileCount, string? inputPaths = null) => MockTaskId;
+        public string Start(string command, int fileCount, string? inputPaths = null)
+        {
+            StartedTasks.Add((command, fileCount, inputPaths));
+            return MockTaskId;
+        }
 
         public void SetInProgress(string taskId) => InProgressTasks.Add(taskId);
 
