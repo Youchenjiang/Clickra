@@ -37,7 +37,8 @@ public abstract class OfficeToPdfUseCaseBase : ConversionUseCaseBase
             SnapshotSavedOptions(request.Options),
             ExistingTaskId: request.ExistingTaskId,
             BestEffortTaskPersistence: request.BestEffortTaskPersistence,
-            TrackTaskLifecycle: request.TrackTaskLifecycle);
+            TrackTaskLifecycle: request.TrackTaskLifecycle,
+            TaskLifecycleRepository: request.TaskLifecycleRepository);
     }
 
     private static IReadOnlyDictionary<string, object> SnapshotSavedOptions(IReadOnlyDictionary<string, object>? requestOptions)
