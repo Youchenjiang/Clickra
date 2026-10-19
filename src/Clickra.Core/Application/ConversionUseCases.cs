@@ -76,18 +76,6 @@ public static class ConversionExecutionService
         return plan;
     }
 
-    public static ConversionPlan Plan(
-        string command,
-        IReadOnlyList<string> files,
-        IReadOnlyDictionary<string, object>? options = null,
-        string? outputOverride = null,
-        bool TrackTaskLifecycle = true,
-        string? existingTaskId = null,
-        bool bestEffortTaskPersistence = false,
-        int resumeStartIndex = 0) =>
-        Plan(command, files, options, outputOverride, TrackTaskLifecycle,
-            new ExecutionPlanOptions(existingTaskId, bestEffortTaskPersistence, resumeStartIndex));
-
     public static async Task<ConversionResult> ExecuteAsync(
         ConversionPlan plan,
         IConversionInteraction? interaction = null,
