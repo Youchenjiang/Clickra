@@ -98,6 +98,8 @@ static partial class TestSuite
             TestConversionLifecycleDelegatesToCustomRepository);
         runner.Run("Conversion task cleanup delegates to custom task lifecycle repository",
             TestConversionTaskCleanupDelegatesToCustomRepository);
+        runner.Run("Conversion lifecycle rolls back created task when in-progress transition fails",
+            TestConversionLifecycleRollsBackTaskWhenInProgressFails);
         runner.RunGuard("Conversion lifecycle: Native and Fluent runners share task tracking",
             TestConversionLifecycleIsShared);
     }
@@ -235,6 +237,22 @@ static partial class TestSuite
         Assert.Equal(MockCleanupTaskId, repo.DeletedTasks[0]);
     }
 
+    private static void TestConversionLifecycleRollsBackTaskWhenInProgressFails()
+    {
+        var repo = new FailingInProgressLifecycleRepository();
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            ConversionTaskLifecycle.Start(
+                CmdDecryptPdf,
+                new[] { "file1.pdf" },
+                bestEffort: false,
+                repository: repo);
+        });
+
+        Assert.True(repo.StartCalled, "Start must be called.");
+        Assert.Equal(MockTaskId, repo.DeletedTaskId ?? "");
+    }
+
     private sealed class RecordingTaskLifecycleRepository : ITaskLifecycleRepository
     {
         public readonly List<(string Command, int FileCount, string? InputPaths)> StartedTasks = new();
@@ -261,6 +279,24 @@ static partial class TestSuite
             ParkedTasks.Add((taskId, reason, nextIndex));
 
         public void Delete(string taskId) => DeletedTasks.Add(taskId);
+    }
+
+    private sealed class FailingInProgressLifecycleRepository : ITaskLifecycleRepository
+    {
+        public bool StartCalled { get; private set; }
+        public string? DeletedTaskId { get; private set; }
+
+        public string Start(string command, int fileCount, string? inputPaths = null)
+        {
+            StartCalled = true;
+            return MockTaskId;
+        }
+
+        public void SetInProgress(string taskId) => throw new InvalidOperationException("Failed to set in progress");
+        public void SetIndex(string taskId, int index) { }
+        public void Complete(string taskId, string command, TaskCompletionRequest request) { }
+        public void Park(string taskId, string reason, int nextIndex) { }
+        public void Delete(string taskId) => DeletedTaskId = taskId;
     }
 
     private static void TestConversionOutputPlanningPreservesSourceDirectories()
