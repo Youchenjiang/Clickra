@@ -44,3 +44,72 @@ public static class ConversionUseCases
     public static IConversionUseCase GetRequired(string command) =>
         Registry.GetRequired(command);
 }
+
+/// <summary>
+/// Unified application execution service that plans and runs conversion workflows.
+/// Consolidates execution orchestration across headless CLI, Native adapters, and presentation controllers.
+/// </summary>
+public static class ConversionExecutionService
+{
+    public static ConversionPlan Plan(
+        string command,
+        IReadOnlyList<string> files,
+        IReadOnlyDictionary<string, object>? options = null,
+        string? outputOverride = null,
+        bool TrackTaskLifecycle = true,
+        ExecutionPlanOptions? planOptions = null)
+    {
+        planOptions ??= new ExecutionPlanOptions();
+        IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
+        ConversionPlan plan = useCase.Plan(new ConversionRequest(
+            command,
+            files,
+            options,
+            OutputOverride: outputOverride,
+            TrackTaskLifecycle: TrackTaskLifecycle,
+            ExistingTaskId: planOptions.ExistingTaskId,
+            BestEffortTaskPersistence: planOptions.BestEffortTaskPersistence));
+
+        if (planOptions.ResumeStartIndex > 0)
+            plan = plan with { ResumeStartIndex = planOptions.ResumeStartIndex };
+
+        return plan;
+    }
+
+    public static async Task<ConversionResult> ExecuteAsync(
+        ConversionPlan plan,
+        IConversionInteraction? interaction = null,
+        IProgress<ConversionProgress>? progress = null,
+        IConversionExecutionObserver? observer = null,
+        CancellationToken cancellationToken = default)
+    {
+        IConversionUseCase useCase = ConversionUseCases.GetRequired(plan.Command);
+        interaction ??= new DelegateConversionInteraction(
+            (_, _, _, _) => Task.FromResult<string?>(null),
+            (_, _, _) => Task.FromResult<string?>(null),
+            (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+
+        return await useCase.ExecuteAsync(
+            plan,
+            interaction,
+            progress,
+            observer,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public static ConversionResult Execute(
+        ConversionPlan plan,
+        IConversionInteraction? interaction = null,
+        IProgress<ConversionProgress>? progress = null,
+        IConversionExecutionObserver? observer = null,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync(plan, interaction, progress, observer, cancellationToken)
+            .GetAwaiter()
+            .GetResult();
+}
+
+/// <summary>Secondary planning options for task persistence and resume state.</summary>
+public sealed record ExecutionPlanOptions(
+    string? ExistingTaskId = null,
+    bool BestEffortTaskPersistence = false,
+    int ResumeStartIndex = 0);

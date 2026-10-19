@@ -153,35 +153,30 @@ internal sealed class NativeConversionExecutionAdapter
 
     private void RunDecrypt(List<string> files, Action<int, int, string> progressCallback)
     {
-        IConversionUseCase useCase = ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName);
-        ConversionPlan plan = useCase.Plan(new ConversionRequest(
+        _ = ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName);
+        ConversionPlan plan = ConversionExecutionService.Plan(
             DecryptPdfUseCase.CommandName,
             files,
-            ExistingTaskId: _existingTaskId,
-            OutputOverride: _outputDirOverride,
-            BestEffortTaskPersistence: true)) with
-        {
-            ResumeStartIndex = _startIndex
-        };
+            outputOverride: _outputDirOverride,
+            TrackTaskLifecycle: true,
+            planOptions: new ExecutionPlanOptions(_existingTaskId, true, _startIndex));
         var interaction = new DelegateConversionInteraction(
             (_, inputPath, isRetry, _) => Task.FromResult<string?>(_resolveDecryptPassword(inputPath, isRetry)),
             (_, _, _) => Task.FromResult<string?>(null),
             (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
         var progress = CreatePdfProgress(files, progressCallback, "cli_progress_decrypting_pdf_stage");
 
-        ConversionResult result = useCase.ExecuteAsync(
-                plan,
-                interaction,
-                progress,
-                new FileStageExecutionObserver(
-                    _taskStarted,
-                    files,
-                    progressCallback,
-                    10,
-                    "cli_progress_decrypting_pdf"),
-                _cancellationToken)
-            .GetAwaiter()
-            .GetResult();
+        ConversionResult result = ConversionExecutionService.Execute(
+            plan,
+            interaction,
+            progress,
+            new FileStageExecutionObserver(
+                _taskStarted,
+                files,
+                progressCallback,
+                10,
+                "cli_progress_decrypting_pdf"),
+            _cancellationToken);
 
         _completeResult(
             result,
@@ -193,39 +188,35 @@ internal sealed class NativeConversionExecutionAdapter
     private void RunSplit(List<string> files, Action<int, int, string> progressCallback)
     {
         string pagesOption = GetSplitPagesOptionFromCommandLine();
-        IConversionUseCase useCase = ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName);
-        ConversionPlan plan = useCase.Plan(new ConversionRequest(
+        _ = ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName);
+        var commandOptions = new Dictionary<string, object>
+        {
+            [SplitPdfUseCase.PagesOptionKey] = pagesOption
+        };
+        ConversionPlan plan = ConversionExecutionService.Plan(
             SplitPdfUseCase.CommandName,
             files,
-            new Dictionary<string, object>
-            {
-                [SplitPdfUseCase.PagesOptionKey] = pagesOption
-            },
-            ExistingTaskId: _existingTaskId,
-            OutputOverride: _outputDirOverride,
-            BestEffortTaskPersistence: true)) with
-        {
-            ResumeStartIndex = _startIndex
-        };
+            options: commandOptions,
+            outputOverride: _outputDirOverride,
+            TrackTaskLifecycle: true,
+            planOptions: new ExecutionPlanOptions(_existingTaskId, true, _startIndex));
         var interaction = new DelegateConversionInteraction(
             (_, _, _, _) => Task.FromResult<string?>(null),
             (_, inputPath, _) => Task.FromResult<string?>(_promptSplitPages(inputPath)),
             (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
         var progress = CreatePdfProgress(files, progressCallback, "cli_progress_splitting_pdf_stage");
 
-        ConversionResult result = useCase.ExecuteAsync(
-                plan,
-                interaction,
-                progress,
-                new FileStageExecutionObserver(
-                    _taskStarted,
-                    files,
-                    progressCallback,
-                    10,
-                    "cli_progress_splitting_pdf"),
-                _cancellationToken)
-            .GetAwaiter()
-            .GetResult();
+        ConversionResult result = ConversionExecutionService.Execute(
+            plan,
+            interaction,
+            progress,
+            new FileStageExecutionObserver(
+                _taskStarted,
+                files,
+                progressCallback,
+                10,
+                "cli_progress_splitting_pdf"),
+            _cancellationToken);
 
         _completeResult(
             result,
@@ -236,7 +227,7 @@ internal sealed class NativeConversionExecutionAdapter
 
     private void RunCompress(List<string> files, Action<int, int, string> progressCallback)
     {
-        var (useCase, plan, interaction) = PrepareResumableExecution(CompressPdfUseCase.CommandName, files);
+        var (plan, interaction) = PrepareResumableExecution(CompressPdfUseCase.CommandName, files);
         string compressionSummary = "";
         var progress = CreatePdfProgress(
             files,
@@ -248,19 +239,17 @@ internal sealed class NativeConversionExecutionAdapter
                     compressionSummary = message;
             });
 
-        ConversionResult result = useCase.ExecuteAsync(
-                plan,
-                interaction,
-                progress,
-                new FileStageExecutionObserver(
-                    _taskStarted,
-                    files,
-                    progressCallback,
-                    10,
-                    "cli_progress_compressing_pdf"),
-                _cancellationToken)
-            .GetAwaiter()
-            .GetResult();
+        ConversionResult result = ConversionExecutionService.Execute(
+            plan,
+            interaction,
+            progress,
+            new FileStageExecutionObserver(
+                _taskStarted,
+                files,
+                progressCallback,
+                10,
+                "cli_progress_compressing_pdf"),
+            _cancellationToken);
 
         _completeResult(
             result,
@@ -277,16 +266,14 @@ internal sealed class NativeConversionExecutionAdapter
         Action<int, int, string> progressCallback,
         SimpleApplicationRunOptions options)
     {
-        IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
-        ConversionPlan plan = useCase.Plan(new ConversionRequest(
+        _ = ConversionUseCases.GetRequired(command);
+        ConversionPlan plan = ConversionExecutionService.Plan(
             command,
             files,
             options.CommandOptions,
-            ExistingTaskId: _existingTaskId,
-            OutputOverride: options.OutputOverride,
-            BestEffortTaskPersistence: true));
-        if (options.Resume)
-            plan = plan with { ResumeStartIndex = _startIndex };
+            outputOverride: options.OutputOverride,
+            TrackTaskLifecycle: true,
+            planOptions: new ExecutionPlanOptions(_existingTaskId, true, options.Resume ? _startIndex : 0));
 
         var interaction = new DelegateConversionInteraction(
             (_, _, _, _) => Task.FromResult<string?>(null),
@@ -297,21 +284,19 @@ internal sealed class NativeConversionExecutionAdapter
             : new CallbackProgress<ConversionProgress>(state =>
                 progressCallback(state.Current, state.Total, state.Message));
 
-        ConversionResult result = useCase.ExecuteAsync(
-                plan,
-                interaction,
-                progress,
-                options.Observer,
-                _cancellationToken)
-            .GetAwaiter()
-            .GetResult();
+        ConversionResult result = ConversionExecutionService.Execute(
+            plan,
+            interaction,
+            progress,
+            options.Observer,
+            _cancellationToken);
 
         _completeResult(result, command, options.SuccessMessage, true);
     }
 
     private void RunTranslate(List<string> files, Action<int, int, string> progressCallback)
     {
-        var (useCase, plan, interaction) = PrepareResumableExecution(TranslatePdfUseCase.CommandName, files);
+        var (plan, interaction) = PrepareResumableExecution(TranslatePdfUseCase.CommandName, files);
         var observer = new TranslateExecutionObserver(_taskStarted, files, progressCallback);
         var progress = new CallbackProgress<ConversionProgress>(state =>
         {
@@ -324,14 +309,12 @@ internal sealed class NativeConversionExecutionAdapter
                 Localization.T("cli_progress_translating_pdf_stage", state.Message, fileIndex + 1, files.Count));
         });
 
-        ConversionResult result = useCase.ExecuteAsync(
-                plan,
-                interaction,
-                progress,
-                observer,
-                _cancellationToken)
-            .GetAwaiter()
-            .GetResult();
+        ConversionResult result = ConversionExecutionService.Execute(
+            plan,
+            interaction,
+            progress,
+            observer,
+            _cancellationToken);
 
         if (result.Status == ConversionResultStatus.Succeeded)
         {
@@ -345,15 +328,14 @@ internal sealed class NativeConversionExecutionAdapter
         _completeResult(result, TranslatePdfUseCase.CommandName, null, true);
     }
 
-    private (IConversionUseCase UseCase, ConversionPlan Plan, IConversionInteraction Interaction)
+    private (ConversionPlan Plan, IConversionInteraction Interaction)
         PrepareResumableExecution(string command, IReadOnlyList<string> files)
     {
-        IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
-        ConversionPlan plan = useCase.Plan(new ConversionRequest(
+        _ = ConversionUseCases.GetRequired(command);
+        ConversionPlan plan = ConversionExecutionService.Plan(
             command,
             files,
-            ExistingTaskId: _existingTaskId,
-            BestEffortTaskPersistence: true)) with
+            planOptions: new ExecutionPlanOptions(_existingTaskId, true)) with
         {
             ResumeStartIndex = _startIndex
         };
@@ -361,7 +343,7 @@ internal sealed class NativeConversionExecutionAdapter
             (_, _, _, _) => Task.FromResult<string?>(null),
             (_, _, _) => Task.FromResult<string?>(null),
             (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-        return (useCase, plan, interaction);
+        return (plan, interaction);
     }
 
     private static CallbackProgress<ConversionProgress> CreatePdfProgress(

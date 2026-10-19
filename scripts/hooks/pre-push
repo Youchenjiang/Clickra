@@ -149,10 +149,23 @@ echo "[pre-push] Running Store publishing unit tests..."
 python -m unittest discover -s tests -p 'test_*store*.py' -v
 
 # NativeAOT is a required release-path gate, not an optional follow-up.
-echo "[pre-push] Publishing all three NativeAOT products (warnings as errors)..."
-dotnet publish src/Clickra.CLI/Clickra.csproj -c Release -r win-x64 --self-contained true -o publish/pre-push/cli -warnaserror
-dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 --self-contained true -o publish/pre-push/shell -warnaserror
-dotnet publish src/ClickraLauncher/ClickraLauncher.csproj -c Release -r win-x64 --self-contained true -o publish/pre-push/launcher -warnaserror
+echo "[pre-push] Publishing all three NativeAOT products in parallel (warnings as errors)..."
+dotnet publish src/Clickra.CLI/Clickra.csproj -c Release -r win-x64 --self-contained true -o publish/pre-push/cli -warnaserror &
+pid_cli=$!
+dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 --self-contained true -o publish/pre-push/shell -warnaserror &
+pid_shell=$!
+dotnet publish src/ClickraLauncher/ClickraLauncher.csproj -c Release -r win-x64 --self-contained true -o publish/pre-push/launcher -warnaserror &
+pid_launcher=$!
+
+publish_status=0
+wait "$pid_cli" || publish_status=$?
+wait "$pid_shell" || publish_status=$?
+wait "$pid_launcher" || publish_status=$?
+
+if [ "$publish_status" -ne 0 ]; then
+  echo "[pre-push] ERROR: NativeAOT publish failed with exit code $publish_status." >&2
+  exit "$publish_status"
+fi
 
 if python scripts/pdf_fixture_scope.py --base origin/main; then
   echo "[pre-push] Running public PDF identity translation regression (three pinned sources)..."
