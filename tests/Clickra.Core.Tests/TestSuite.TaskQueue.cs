@@ -94,6 +94,10 @@ static partial class TestSuite
             TestConversionLifecycleRunnerPreservesCancellation);
         runner.Run("Conversion lifecycle runner preserves per-file failure classification",
             TestConversionLifecycleRunnerPreservesFailureClassification);
+        runner.Run("Conversion lifecycle delegates to custom task lifecycle repository",
+            TestConversionLifecycleDelegatesToCustomRepository);
+        runner.Run("Conversion task cleanup delegates to custom task lifecycle repository",
+            TestConversionTaskCleanupDelegatesToCustomRepository);
         runner.RunGuard("Conversion lifecycle: Native and Fluent runners share task tracking",
             TestConversionLifecycleIsShared);
     }
@@ -179,6 +183,71 @@ static partial class TestSuite
         Assert.False(
             activeTasks.Any(t => t.Command == CmdMergePdf && t.Time == expectedStartTime),
             "RecordDispatchFailure must not leave active task tracking records behind.");
+    }
+
+    private static void TestConversionLifecycleDelegatesToCustomRepository()
+    {
+        var repo = new RecordingTaskLifecycleRepository();
+        var lifecycle = ConversionTaskLifecycle.Start(
+            CmdDecryptPdf,
+            new[] { "file1.pdf", "file2.pdf" },
+            repository: repo);
+
+        Assert.Equal("mock-task-123", lifecycle.TaskId);
+        Assert.True(repo.InProgressTasks.Count == 1, "Must mark in progress exactly once.");
+        Assert.Equal("mock-task-123", repo.InProgressTasks[0]);
+
+        lifecycle.RecordFileStarting(1);
+        Assert.True(repo.IndexUpdates.Count == 1, "Must update index exactly once.");
+        Assert.Equal("mock-task-123", repo.IndexUpdates[0].TaskId);
+        Assert.Equal(1L, repo.IndexUpdates[0].Index);
+
+        lifecycle.CompleteSuccess("output.pdf");
+        Assert.True(repo.CompletedTasks.Count == 1, "Must complete task exactly once.");
+        Assert.Equal("mock-task-123", repo.CompletedTasks[0].TaskId);
+        Assert.True(repo.CompletedTasks[0].Request.IsSuccess, "Completion must be marked success.");
+        Assert.Equal("output.pdf", repo.CompletedTasks[0].Request.OutputPath ?? "");
+
+        lifecycle.Park("Need password", 2);
+        Assert.True(repo.ParkedTasks.Count == 1, "Must park task exactly once.");
+        Assert.Equal("mock-task-123", repo.ParkedTasks[0].TaskId);
+        Assert.Equal("Need password", repo.ParkedTasks[0].Reason);
+        Assert.Equal(2L, repo.ParkedTasks[0].NextIndex);
+
+        lifecycle.Delete();
+        Assert.True(repo.DeletedTasks.Count == 1, "Must delete task exactly once.");
+        Assert.Equal("mock-task-123", repo.DeletedTasks[0]);
+    }
+
+    private static void TestConversionTaskCleanupDelegatesToCustomRepository()
+    {
+        var repo = new RecordingTaskLifecycleRepository();
+        ConversionTaskCleanup.Delete("mock-task-456", repository: repo);
+        Assert.True(repo.DeletedTasks.Count == 1, "Must delete task via repository.");
+        Assert.Equal("mock-task-456", repo.DeletedTasks[0]);
+    }
+
+    private sealed class RecordingTaskLifecycleRepository : ITaskLifecycleRepository
+    {
+        public readonly List<string> InProgressTasks = new();
+        public readonly List<(string TaskId, int Index)> IndexUpdates = new();
+        public readonly List<(string TaskId, string Command, TaskCompletionRequest Request)> CompletedTasks = new();
+        public readonly List<(string TaskId, string Reason, int NextIndex)> ParkedTasks = new();
+        public readonly List<string> DeletedTasks = new();
+
+        public string Start(string command, int fileCount, string? inputPaths = null) => "mock-task-123";
+
+        public void SetInProgress(string taskId) => InProgressTasks.Add(taskId);
+
+        public void SetIndex(string taskId, int index) => IndexUpdates.Add((taskId, index));
+
+        public void Complete(string taskId, string command, TaskCompletionRequest request) =>
+            CompletedTasks.Add((taskId, command, request));
+
+        public void Park(string taskId, string reason, int nextIndex) =>
+            ParkedTasks.Add((taskId, reason, nextIndex));
+
+        public void Delete(string taskId) => DeletedTasks.Add(taskId);
     }
 
     private static void TestConversionOutputPlanningPreservesSourceDirectories()
