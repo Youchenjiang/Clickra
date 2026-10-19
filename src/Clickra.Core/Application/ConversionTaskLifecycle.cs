@@ -144,16 +144,16 @@ public sealed class ConversionTaskLifecycle
     {
         public static readonly DefaultStorageLifecycleRepository Instance = new();
 
-        public string Start(string command, int fileCount, string? inputPaths = null) =>
+        string ITaskLifecycleRepository.Start(string command, int fileCount, string? inputPaths) =>
             ClickraStorage.StartTask(command, fileCount, inputPaths);
 
-        public void SetInProgress(string taskId) =>
+        void ITaskLifecycleRepository.SetInProgress(string taskId) =>
             ClickraStorage.SetTaskInProgress(taskId);
 
-        public void SetIndex(string taskId, int index) =>
+        void ITaskLifecycleRepository.SetIndex(string taskId, int index) =>
             ClickraStorage.SetTaskIndex(taskId, index);
 
-        public void Complete(string taskId, string command, TaskCompletionRequest request) =>
+        void ITaskLifecycleRepository.Complete(string taskId, string command, TaskCompletionRequest request) =>
             ClickraStorage.CompleteTask(taskId, command, new CompleteTaskRequest
             {
                 StartTime = request.StartTime,
@@ -165,10 +165,10 @@ public sealed class ConversionTaskLifecycle
                 OutputPath = request.OutputPath
             });
 
-        public void Park(string taskId, string reason, int nextIndex) =>
+        void ITaskLifecycleRepository.Park(string taskId, string reason, int nextIndex) =>
             ClickraStorage.ParkTask(taskId, reason, nextIndex);
 
-        public void Delete(string taskId) =>
+        void ITaskLifecycleRepository.Delete(string taskId) =>
             ClickraStorage.DeleteTask(taskId);
     }
 }
