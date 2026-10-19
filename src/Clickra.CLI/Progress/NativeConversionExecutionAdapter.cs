@@ -159,9 +159,7 @@ internal sealed class NativeConversionExecutionAdapter
             files,
             outputOverride: _outputDirOverride,
             TrackTaskLifecycle: true,
-            existingTaskId: _existingTaskId,
-            bestEffortTaskPersistence: true,
-            resumeStartIndex: _startIndex);
+            planOptions: new ExecutionPlanOptions(_existingTaskId, true, _startIndex));
         var interaction = new DelegateConversionInteraction(
             (_, inputPath, isRetry, _) => Task.FromResult<string?>(_resolveDecryptPassword(inputPath, isRetry)),
             (_, _, _) => Task.FromResult<string?>(null),
@@ -201,9 +199,7 @@ internal sealed class NativeConversionExecutionAdapter
             options: commandOptions,
             outputOverride: _outputDirOverride,
             TrackTaskLifecycle: true,
-            existingTaskId: _existingTaskId,
-            bestEffortTaskPersistence: true,
-            resumeStartIndex: _startIndex);
+            planOptions: new ExecutionPlanOptions(_existingTaskId, true, _startIndex));
         var interaction = new DelegateConversionInteraction(
             (_, _, _, _) => Task.FromResult<string?>(null),
             (_, inputPath, _) => Task.FromResult<string?>(_promptSplitPages(inputPath)),
@@ -277,9 +273,7 @@ internal sealed class NativeConversionExecutionAdapter
             options.CommandOptions,
             outputOverride: options.OutputOverride,
             TrackTaskLifecycle: true,
-            existingTaskId: _existingTaskId,
-            bestEffortTaskPersistence: true,
-            resumeStartIndex: options.Resume ? _startIndex : 0);
+            planOptions: new ExecutionPlanOptions(_existingTaskId, true, options.Resume ? _startIndex : 0));
 
         var interaction = new DelegateConversionInteraction(
             (_, _, _, _) => Task.FromResult<string?>(null),
@@ -341,8 +335,7 @@ internal sealed class NativeConversionExecutionAdapter
         ConversionPlan plan = ConversionExecutionService.Plan(
             command,
             files,
-            existingTaskId: _existingTaskId,
-            bestEffortTaskPersistence: true) with
+            planOptions: new ExecutionPlanOptions(_existingTaskId, true)) with
         {
             ResumeStartIndex = _startIndex
         };
