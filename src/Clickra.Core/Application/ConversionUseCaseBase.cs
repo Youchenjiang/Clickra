@@ -57,8 +57,18 @@ public abstract class ConversionUseCaseBase : IConversionUseCase
                 plan.BestEffortTaskPersistence,
                 repository: plan.TaskLifecycleRepository)
             : null;
-        if (lifecycle is not null && !string.IsNullOrWhiteSpace(lifecycle.TaskId))
-            observer?.OnTaskStarted(lifecycle.TaskId);
+        if (lifecycle is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(lifecycle.TaskId))
+            {
+                observer?.OnTaskStarted(lifecycle.TaskId);
+            }
+            else
+            {
+                string reason = lifecycle.LastPersistenceError?.Message ?? "task identifier was not assigned";
+                Console.Error.WriteLine($"[ConversionUseCaseBase] Best-effort task start failed for '{Command}': {reason}.");
+            }
+        }
         return (stopwatch, lifecycle);
     }
 

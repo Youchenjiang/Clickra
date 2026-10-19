@@ -36,6 +36,7 @@ public sealed class ConversionTaskLifecycle
 
     public string TaskId { get; private set; }
     public string StartTime { get; }
+    public Exception? LastPersistenceError { get; private set; }
 
     public static ConversionTaskLifecycle Start(
         string command,
@@ -178,9 +179,10 @@ public sealed class ConversionTaskLifecycle
         {
             action();
         }
-        catch
+        catch (Exception ex)
         {
-            // Native progress UI treats task persistence as advisory; conversion output remains authoritative.
+            LastPersistenceError = ex;
+            Console.Error.WriteLine($"[ConversionTaskLifecycle] Task persistence failed: {ex.Message}");
         }
     }
 
