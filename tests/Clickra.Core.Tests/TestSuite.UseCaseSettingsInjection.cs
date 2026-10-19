@@ -200,7 +200,7 @@ static partial class TestSuite
                 options: options,
                 outputOverride: "C:\\out",
                 TrackTaskLifecycle: false,
-                resumeStartIndex: 2);
+                planOptions: new ExecutionPlanOptions(ResumeStartIndex: 2));
 
             Assert.Equal(MarkdownToPdfUseCase.CommandName, plan.Command);
             Assert.False(plan.TrackTaskLifecycle, "TrackTaskLifecycle should be false");
