@@ -67,8 +67,37 @@ public sealed class ConversionTaskLifecycle
 
         lifecycle.RunStorage(() =>
         {
-            lifecycle.TaskId = existingTaskId ?? repo.Start(command, files.Count, inputs);
-            repo.SetInProgress(lifecycle.TaskId);
+            string? newTaskId = null;
+            if (existingTaskId is not null)
+            {
+                lifecycle.TaskId = existingTaskId;
+            }
+            else
+            {
+                newTaskId = repo.Start(command, files.Count, inputs);
+                lifecycle.TaskId = newTaskId;
+            }
+
+            try
+            {
+                repo.SetInProgress(lifecycle.TaskId);
+            }
+            catch
+            {
+                if (newTaskId is not null)
+                {
+                    lifecycle.TaskId = string.Empty;
+                    try
+                    {
+                        repo.Delete(newTaskId);
+                    }
+                    catch
+                    {
+                        // best-effort rollback cleanup
+                    }
+                }
+                throw;
+            }
         });
         return lifecycle;
     }
