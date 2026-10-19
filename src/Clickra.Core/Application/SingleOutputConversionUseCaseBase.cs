@@ -48,7 +48,8 @@ public abstract class SingleOutputConversionUseCaseBase : ConversionUseCaseBase
             NormalizeOptions(request),
             ExistingTaskId: request.ExistingTaskId,
             BestEffortTaskPersistence: request.BestEffortTaskPersistence,
-            TrackTaskLifecycle: request.TrackTaskLifecycle);
+            TrackTaskLifecycle: request.TrackTaskLifecycle,
+            TaskLifecycleRepository: request.TaskLifecycleRepository);
     }
 
     public override async Task<ConversionResult> ExecuteAsync(

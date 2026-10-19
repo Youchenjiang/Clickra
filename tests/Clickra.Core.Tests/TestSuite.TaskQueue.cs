@@ -94,6 +94,12 @@ static partial class TestSuite
             TestConversionLifecycleRunnerPreservesCancellation);
         runner.Run("Conversion lifecycle runner preserves per-file failure classification",
             TestConversionLifecycleRunnerPreservesFailureClassification);
+        runner.Run("Conversion lifecycle delegates to custom task lifecycle repository",
+            TestConversionLifecycleDelegatesToCustomRepository);
+        runner.Run("Conversion task cleanup delegates to custom task lifecycle repository",
+            TestConversionTaskCleanupDelegatesToCustomRepository);
+        runner.Run("Conversion lifecycle rolls back created task when in-progress transition fails",
+            TestConversionLifecycleRollsBackTaskWhenInProgressFails);
         runner.RunGuard("Conversion lifecycle: Native and Fluent runners share task tracking",
             TestConversionLifecycleIsShared);
     }
@@ -179,6 +185,115 @@ static partial class TestSuite
         Assert.False(
             activeTasks.Any(t => t.Command == CmdMergePdf && t.Time == expectedStartTime),
             "RecordDispatchFailure must not leave active task tracking records behind.");
+    }
+
+    private const string MockTaskId = "mock-task-123";
+    private const string MockCleanupTaskId = "mock-task-456";
+
+    private static void TestConversionLifecycleDelegatesToCustomRepository()
+    {
+        var repo = new RecordingTaskLifecycleRepository();
+        var lifecycle = ConversionTaskLifecycle.Start(
+            CmdDecryptPdf,
+            new[] { "file1.pdf", "file2.pdf" },
+            repository: repo);
+
+        Assert.Equal(MockTaskId, lifecycle.TaskId);
+        Assert.True(repo.StartedTasks.Count == 1, "Must start task in repository.");
+        Assert.Equal(CmdDecryptPdf, repo.StartedTasks[0].Command);
+        Assert.Equal(2L, repo.StartedTasks[0].FileCount);
+        Assert.Equal("file1.pdf;file2.pdf", repo.StartedTasks[0].InputPaths ?? "");
+
+        Assert.True(repo.InProgressTasks.Count == 1, "Must mark in progress exactly once.");
+        Assert.Equal(MockTaskId, repo.InProgressTasks[0]);
+
+        lifecycle.RecordFileStarting(1);
+        Assert.True(repo.IndexUpdates.Count == 1, "Must update index exactly once.");
+        Assert.Equal(MockTaskId, repo.IndexUpdates[0].TaskId);
+        Assert.Equal(1L, repo.IndexUpdates[0].Index);
+
+        lifecycle.CompleteSuccess("output.pdf");
+        Assert.True(repo.CompletedTasks.Count == 1, "Must complete task exactly once.");
+        Assert.Equal(MockTaskId, repo.CompletedTasks[0].TaskId);
+        Assert.True(repo.CompletedTasks[0].Request.IsSuccess, "Completion must be marked success.");
+        Assert.Equal("output.pdf", repo.CompletedTasks[0].Request.OutputPath ?? "");
+
+        lifecycle.Park("Need password", 2);
+        Assert.True(repo.ParkedTasks.Count == 1, "Must park task exactly once.");
+        Assert.Equal(MockTaskId, repo.ParkedTasks[0].TaskId);
+        Assert.Equal("Need password", repo.ParkedTasks[0].Reason);
+        Assert.Equal(2L, repo.ParkedTasks[0].NextIndex);
+
+        lifecycle.Delete();
+        Assert.True(repo.DeletedTasks.Count == 1, "Must delete task exactly once.");
+        Assert.Equal(MockTaskId, repo.DeletedTasks[0]);
+    }
+
+    private static void TestConversionTaskCleanupDelegatesToCustomRepository()
+    {
+        var repo = new RecordingTaskLifecycleRepository();
+        ConversionTaskCleanup.Delete(MockCleanupTaskId, repository: repo);
+        Assert.True(repo.DeletedTasks.Count == 1, "Must delete task via repository.");
+        Assert.Equal(MockCleanupTaskId, repo.DeletedTasks[0]);
+    }
+
+    private static void TestConversionLifecycleRollsBackTaskWhenInProgressFails()
+    {
+        var repo = new FailingInProgressLifecycleRepository();
+        Assert.Throws<InvalidOperationException>(() => ConversionTaskLifecycle.Start(
+            CmdDecryptPdf,
+            new[] { "file1.pdf" },
+            bestEffort: false,
+            repository: repo));
+
+        Assert.True(repo.StartCalled, "Start must be called.");
+        Assert.Equal(MockTaskId, repo.DeletedTaskId ?? "");
+    }
+
+    private sealed class RecordingTaskLifecycleRepository : ITaskLifecycleRepository
+    {
+        public readonly List<(string Command, int FileCount, string? InputPaths)> StartedTasks = new();
+        public readonly List<string> InProgressTasks = new();
+        public readonly List<(string TaskId, int Index)> IndexUpdates = new();
+        public readonly List<(string TaskId, string Command, TaskCompletionRequest Request)> CompletedTasks = new();
+        public readonly List<(string TaskId, string Reason, int NextIndex)> ParkedTasks = new();
+        public readonly List<string> DeletedTasks = new();
+
+        public string Start(string command, int fileCount, string? inputPaths = null)
+        {
+            StartedTasks.Add((command, fileCount, inputPaths));
+            return MockTaskId;
+        }
+
+        public void SetInProgress(string taskId) => InProgressTasks.Add(taskId);
+
+        public void SetIndex(string taskId, int index) => IndexUpdates.Add((taskId, index));
+
+        public void Complete(string taskId, string command, TaskCompletionRequest request) =>
+            CompletedTasks.Add((taskId, command, request));
+
+        public void Park(string taskId, string reason, int nextIndex) =>
+            ParkedTasks.Add((taskId, reason, nextIndex));
+
+        public void Delete(string taskId) => DeletedTasks.Add(taskId);
+    }
+
+    private sealed class FailingInProgressLifecycleRepository : ITaskLifecycleRepository
+    {
+        public bool StartCalled { get; private set; }
+        public string? DeletedTaskId { get; private set; }
+
+        public string Start(string command, int fileCount, string? inputPaths = null)
+        {
+            StartCalled = true;
+            return MockTaskId;
+        }
+
+        public void SetInProgress(string taskId) => throw new InvalidOperationException("Failed to set in progress");
+        public void SetIndex(string taskId, int index) { }
+        public void Complete(string taskId, string command, TaskCompletionRequest request) { }
+        public void Park(string taskId, string reason, int nextIndex) { }
+        public void Delete(string taskId) => DeletedTaskId = taskId;
     }
 
     private static void TestConversionOutputPlanningPreservesSourceDirectories()

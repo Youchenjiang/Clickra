@@ -1,3 +1,4 @@
+using Clickra.Core.Modules.HistoryTasks.Application;
 using Clickra.Core.Modules.Image.Application;
 using Clickra.Core.Modules.Markdown.Application;
 using Clickra.Core.Modules.Office.Application;
@@ -68,7 +69,11 @@ public static class ConversionExecutionService
             OutputOverride: outputOverride,
             TrackTaskLifecycle: TrackTaskLifecycle,
             ExistingTaskId: planOptions.ExistingTaskId,
-            BestEffortTaskPersistence: planOptions.BestEffortTaskPersistence));
+            BestEffortTaskPersistence: planOptions.BestEffortTaskPersistence,
+            TaskLifecycleRepository: planOptions.TaskLifecycleRepository));
+
+        if (planOptions.TaskLifecycleRepository is not null && plan.TaskLifecycleRepository is null)
+            plan = plan with { TaskLifecycleRepository = planOptions.TaskLifecycleRepository };
 
         if (planOptions.ResumeStartIndex > 0)
             plan = plan with { ResumeStartIndex = planOptions.ResumeStartIndex };
@@ -112,4 +117,15 @@ public static class ConversionExecutionService
 public sealed record ExecutionPlanOptions(
     string? ExistingTaskId = null,
     bool BestEffortTaskPersistence = false,
-    int ResumeStartIndex = 0);
+    int ResumeStartIndex = 0,
+    ITaskLifecycleRepository? TaskLifecycleRepository = null)
+{
+    /// <summary>Backwards-compatible constructor for existing compiled binaries.</summary>
+    public ExecutionPlanOptions(
+        string? existingTaskId,
+        bool bestEffortTaskPersistence,
+        int resumeStartIndex)
+        : this(existingTaskId, bestEffortTaskPersistence, resumeStartIndex, null)
+    {
+    }
+}
