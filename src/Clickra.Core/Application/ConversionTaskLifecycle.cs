@@ -40,6 +40,14 @@ public sealed class ConversionTaskLifecycle
     public static ConversionTaskLifecycle Start(
         string command,
         IReadOnlyCollection<string> files,
+        string? existingTaskId,
+        bool bestEffort,
+        string? startTimeOverride) =>
+        Start(command, files, existingTaskId, bestEffort, startTimeOverride, (ITaskLifecycleRepository?)null);
+
+    public static ConversionTaskLifecycle Start(
+        string command,
+        IReadOnlyCollection<string> files,
         string? existingTaskId = null,
         bool bestEffort = false,
         string? startTimeOverride = null,
@@ -66,6 +74,13 @@ public sealed class ConversionTaskLifecycle
     }
 
     /// <summary>Records an early dispatch failure directly to task history and cleans up task tracking without timing delays.</summary>
+    public static void RecordDispatchFailure(
+        string command,
+        string error,
+        string? startTime,
+        IReadOnlyCollection<string>? files) =>
+        RecordDispatchFailure(command, error, startTime, files, null);
+
     public static void RecordDispatchFailure(
         string command,
         string error,

@@ -10,7 +10,10 @@ public static class ConversionTaskProgressController
     /// Records the current file index in both the legacy singleton record and, when present, the
     /// per-task record. Persistence failures remain advisory and never abort conversion output.
     /// </summary>
-    public static void RecordFileStarting(string? taskId, int index, ITaskLifecycleRepository? repository = null)
+    public static void RecordFileStarting(string? taskId, int index) =>
+        RecordFileStarting(taskId, index, null);
+
+    public static void RecordFileStarting(string? taskId, int index, ITaskLifecycleRepository? repository)
     {
         Try(() => ClickraStorage.SetActiveRecordIndex(index));
         if (!string.IsNullOrWhiteSpace(taskId))
