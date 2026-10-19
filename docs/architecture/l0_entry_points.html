@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Clickra Architecture — L0 入口</title>
+<style>
+body{margin:0;font-family:"Microsoft JhengHei UI","Microsoft JhengHei","Segoe UI",Arial,sans-serif;background:#f4f6f8;color:#111827}
+header{position:sticky;top:0;z-index:10;background:#fffffff0;border-bottom:1px solid #d4d9e0;padding:0}
+h1{font-size:20px;margin:0 10px 0 0}.meta{font-size:13px;color:#535c68}
+button,input{font:inherit;font-size:13px;padding:8px 10px;border:1px solid #bfc6d1;border-radius:7px;background:#fff}
+button{cursor:pointer}button.on{background:#101828;color:#fff;border-color:#101828}input{width:300px}
+#view{flex:1 1 auto;min-height:0;overflow:auto;background:#fff}#view svg{display:block;margin:0 auto;width:100%;height:auto;max-width:1556px}
+.note{font-size:12px;color:#68717e}
+.node{cursor:pointer}.node rect,.edge path,.edge text{transition:opacity .15s}
+.node.dim,.edge.dim{opacity:.12}.edge.off{display:none}
+.edge.hot path{stroke:#d94b5a!important;stroke-width:3!important}.edge.hot text{fill:#d94b5a!important;font-weight:700}
+.node.sel rect{stroke:#d94b5a!important;stroke-width:3!important}
+
+/* dark theme: page chrome via colors, diagram via invert + hue-rotate so semantic hues stay recognisable */
+html[data-theme="dark"] body{background:#0f1115;color:#e6e8eb}
+html[data-theme="dark"] header{background:#15181df0;border-bottom-color:#2a2f37}
+html[data-theme="dark"] .meta{color:#a3abb6}html[data-theme="dark"] .note{color:#8b939e}
+html[data-theme="dark"] button,html[data-theme="dark"] input{background:#1b1f26;color:#e6e8eb;border-color:#3a414c}
+html[data-theme="dark"] button.on{background:#e6e8eb;color:#101828;border-color:#e6e8eb}
+html[data-theme="dark"] #view{background:#121417}
+html[data-theme="dark"] #view svg{filter:invert(.9) hue-rotate(180deg) saturate(1.15)}
+#themeBtn{min-width:64px}
+/* one scroll area only: header keeps its natural height (it may wrap when zoomed), the diagram takes the rest */
+html,body{height:100%}body{display:flex;flex-direction:column;overflow:hidden}header{flex:none}
+/* toolbar stays one row (scrolls sideways when zoomed) so it never eats the diagram; stats/notes open on demand */
+.bar{display:flex;gap:12px;align-items:center;flex-wrap:nowrap;white-space:nowrap;overflow-x:auto;padding:10px 18px}
+.bar>*{flex:none}.infobox{padding:0 18px 10px;display:flex;gap:14px;flex-wrap:wrap}.infobox[hidden]{display:none}
+html[data-theme="dark"] .bar::-webkit-scrollbar{height:6px}
+</style></head><body>
+<header>
+<div class="bar">
+<h1>Clickra — L0 入口</h1>
+<nav style="display:inline-flex;gap:4px;align-items:center;">
+<a href="overview.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #bfc6d1;color:#111827;background:#fff;">總表</a>
+<a href="l0_entry_points.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #101828;color:#fff;background:#101828;font-weight:700;">L0 入口</a>
+<a href="l1_presentation.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #bfc6d1;color:#111827;background:#fff;">L1 畫面</a>
+<a href="l2_application.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #bfc6d1;color:#111827;background:#fff;">L2 應用</a>
+<a href="l3_infrastructure.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #bfc6d1;color:#111827;background:#fff;">L3 基礎</a>
+<a href="l4_modules_internal.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #bfc6d1;color:#111827;background:#fff;">L4 模組內部</a>
+</nav>
+<button class="var on" data-v="all">全部路徑</button>
+<button class="var" data-v="msix">MSIX 安裝版</button>
+<button class="var" data-v="deploy">--deploy 部署</button>
+<input id="q" placeholder="搜尋入口或執行檔…">
+<button id="themeBtn" title="切換深色／淺色">深色</button>
+<button id="resetBtn">Reset</button>
+<button id="infoBtn" title="顯示統計與說明">說明</button>
+</div>
+<div class="infobox" id="infoBox" hidden><span class="meta">4 種使用者動作 · 4 個執行檔 · 9 條轉交</span> <span class="note">由上往下：使用者從哪裡進來 → 第一個碰到的執行檔 → 執行檔之間怎麼轉交。點方塊可標出它的所有路徑。</span></div>
+</header>
+<div id="view"><svg xmlns="http://www.w3.org/2000/svg" width="1556" height="800" viewBox="0 70 1556 800" font-family="Microsoft JhengHei UI,Microsoft JhengHei,Noto Sans CJK TC,Segoe UI,Arial,sans-serif">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#344054"/></marker><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#98a2b3"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<g transform="translate(76,0)">
+<text x="40" y="108" font-size="12.5" font-weight="700" fill="#667085" letter-spacing=".5" paint-order="stroke" stroke="#fff" stroke-width="5">使用者動作</text>
+<line x1="40" y1="116" x2="1440" y2="116" stroke="#eaecf0"/>
+<g class="node " data-id="menu" data-search="① 檔案總管右鍵選單 win11 新選單＋傳統選單 對象：檔案／資料夾／資料夾背景 packaging/msix/appxmanifest.xml src/resources/appxmanifest.xml（--deploy）">
+<rect x="40" y="128" width="320" height="120" rx="10" fill="#f5faff" stroke="#2e90fa" stroke-width="1.8"/>
+<text x="54" y="154" font-size="15" font-weight="700" fill="#101828">① 檔案總管右鍵選單</text>
+<text x="54" y="175" font-size="12.5" fill="#475467">Win11 新選單＋傳統選單</text>
+<text x="54" y="193" font-size="12.5" fill="#475467">對象：檔案／資料夾／資料夾背景</text>
+<line x1="54" y1="201" x2="346" y2="201" stroke="#eaecf0"/>
+<text x="54" y="217" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">packaging/msix/AppxManifest.xml</text>
+<text x="54" y="231" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">src/resources/AppxManifest.xml（--deploy）</text>
+</g>
+<g class="node " data-id="tile" data-search="② 開始功能表「clickra」 msix 安裝版 → clickralauncher.exe --deploy 部署（sparse 身分）→ clickra.exe packaging/msix/appxmanifest.xml src/resources/appxmanifest.xml（--deploy）">
+<rect x="400" y="128" width="320" height="120" rx="10" fill="#f5faff" stroke="#2e90fa" stroke-width="1.8"/>
+<text x="414" y="154" font-size="15" font-weight="700" fill="#101828">② 開始功能表「Clickra」</text>
+<text x="414" y="175" font-size="12.5" fill="#475467">MSIX 安裝版 → ClickraLauncher.exe</text>
+<text x="414" y="193" font-size="12.5" fill="#475467">--deploy 部署（sparse 身分）→ Clickra.exe</text>
+<line x1="414" y1="201" x2="706" y2="201" stroke="#eaecf0"/>
+<text x="414" y="217" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">packaging/msix/AppxManifest.xml</text>
+<text x="414" y="231" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">src/resources/AppxManifest.xml（--deploy）</text>
+</g>
+<g class="node " data-id="open" data-search="③ 開啟檔案方式（檔案關聯） .pdf .docx .pptx .xlsx .md .png …14 種 僅 msix 安裝版 packaging/msix/appxmanifest.xml">
+<rect x="760" y="128" width="320" height="120" rx="10" fill="#f5faff" stroke="#2e90fa" stroke-width="1.8"/>
+<text x="774" y="154" font-size="15" font-weight="700" fill="#101828">③ 開啟檔案方式（檔案關聯）</text>
+<text x="774" y="175" font-size="12.5" fill="#475467">.pdf .docx .pptx .xlsx .md .png …14 種</text>
+<text x="774" y="193" font-size="12.5" fill="#475467">僅 MSIX 安裝版</text>
+<line x1="774" y1="201" x2="1066" y2="201" stroke="#eaecf0"/>
+<text x="774" y="217" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">packaging/msix/AppxManifest.xml</text>
+</g>
+<g class="node " data-id="term" data-search="④ 終端機／腳本 `clickra.exe &lt;command&gt; &lt;files&gt;` `  [--quiet] [--out-dir] [--level] …` src/clickra.cli/cli/clickrastartup.cs src/clickra.cli/cli/clickracli.arguments.cs">
+<rect x="1120" y="128" width="320" height="120" rx="10" fill="#f5faff" stroke="#2e90fa" stroke-width="1.8"/>
+<text x="1134" y="154" font-size="15" font-weight="700" fill="#101828">④ 終端機／腳本</text>
+<text x="1134" y="175" font-size="12.5" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Clickra.exe &lt;command&gt; &lt;files&gt;</text>
+<text x="1134" y="193" font-size="12.5" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">  [--quiet] [--out-dir] [--level] …</text>
+<line x1="1134" y1="201" x2="1426" y2="201" stroke="#eaecf0"/>
+<text x="1134" y="217" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">src/Clickra.CLI/Cli/ClickraStartup.cs</text>
+<text x="1134" y="231" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">src/Clickra.CLI/Cli/ClickraCli.Arguments.cs</text>
+</g>
+<text x="40" y="278" font-size="12.5" font-weight="700" fill="#667085" letter-spacing=".5" paint-order="stroke" stroke="#fff" stroke-width="5">門（執行檔）</text>
+<line x1="40" y1="286" x2="1440" y2="286" stroke="#eaecf0"/>
+<g class="node " data-id="shell" data-search="clickrashell.dll nativeaot com 擴充，跑在 dllhost.exe 讀 convertcommandmetadata 決定選單 無 launcher（未封裝）時直接開 fluent／clickra.exe src/clickrashell/ commethods.cs exporter.cs guids.cs kernel32.cs shellutils.cs src/shared/convertcommandmetadata.cs">
+<rect x="40" y="300" width="320" height="164" rx="10" fill="#fff" stroke="#2e90fa" stroke-width="1.8"/>
+<text x="54" y="326" font-size="15" font-weight="700" fill="#101828">ClickraShell.dll</text>
+<text x="54" y="347" font-size="12.5" fill="#475467">NativeAOT COM 擴充，跑在 dllhost.exe</text>
+<text x="54" y="365" font-size="12.5" fill="#475467">讀 ConvertCommandMetadata 決定選單</text>
+<text x="54" y="383" font-size="12.5" fill="#475467">無 Launcher（未封裝）時直接開 Fluent／Clickra.exe</text>
+<line x1="54" y1="391" x2="346" y2="391" stroke="#eaecf0"/>
+<text x="54" y="407" font-size="9.5" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">src/ClickraShell/</text>
+<text x="54.0" y="421" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">ComMethods.cs</text>
+<text x="54.0" y="435" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Exporter.cs</text>
+<text x="151.3" y="421" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Guids.cs</text>
+<text x="151.3" y="435" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Kernel32.cs</text>
+<text x="248.7" y="421" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">ShellUtils.cs</text>
+<text x="54" y="449" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">src/Shared/ConvertCommandMetadata.cs</text>
+</g>
+<g class="node " data-id="launcher" data-search="clickralauncher.exe nativeaot、零相依；把動詞＋檔案原封轉交 嘗試以 com 啟動 fluent；目前套件沒有 fluent → 立即轉給 clickra.exe src/clickralauncher/program.cs">
+<rect x="400" y="470" width="640" height="104" rx="10" fill="#fff" stroke="#2e90fa" stroke-width="1.8"/>
+<text x="414" y="496" font-size="15" font-weight="700" fill="#101828">ClickraLauncher.exe</text>
+<text x="414" y="517" font-size="12.5" fill="#475467">NativeAOT、零相依；把動詞＋檔案原封轉交</text>
+<text x="414" y="535" font-size="12.5" fill="#475467">嘗試以 COM 啟動 Fluent；目前套件沒有 Fluent → 立即轉給 Clickra.exe</text>
+<line x1="414" y1="543" x2="1026" y2="543" stroke="#eaecf0"/>
+<text x="414" y="559" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">src/ClickraLauncher/Program.cs</text>
+</g>
+<g class="node unshipped" data-id="fluent" data-search="clickra.fluent.exe（保留・目前未發佈） winui 3；選用套件方案自 2026-10-08 凍結 不在 clickra.msix 內，以下兩條路徑目前都不會成功 src/clickra.fluent/ app.xaml.cs mainwindow.xaml.cs trayicon.cs trayservice.cs toasthelper.cs packaging/msix/appxmanifest.fluent.xml">
+<rect x="40" y="640" width="480" height="152" rx="10" fill="#f9fafb" stroke="#98a2b3" stroke-width="1.4" stroke-dasharray="7 5"/>
+<text x="54" y="666" font-size="15" font-weight="700" fill="#475467">Clickra.Fluent.exe（保留・目前未發佈）</text>
+<text x="54" y="687" font-size="12.5" fill="#475467">WinUI 3；選用套件方案自 2026-10-08 凍結</text>
+<text x="54" y="705" font-size="12.5" fill="#475467">不在 Clickra.msix 內，以下兩條路徑目前都不會成功</text>
+<line x1="54" y1="713" x2="506" y2="713" stroke="#eaecf0"/>
+<text x="54" y="729" font-size="9.5" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">src/Clickra.Fluent/</text>
+<text x="54.0" y="743" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">App.xaml.cs</text>
+<text x="54.0" y="757" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">MainWindow.xaml.cs</text>
+<text x="204.7" y="743" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">TrayIcon.cs</text>
+<text x="204.7" y="757" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">TrayService.cs</text>
+<text x="355.3" y="743" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">ToastHelper.cs</text>
+<text x="54" y="771" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">packaging/msix/AppxManifest.Fluent.xml</text>
+</g>
+<g class="node " data-id="native" data-search="clickra.exe nativeaot；入口 clickrastartup.run 無參數 → 找 clickra.fluent.exe（目前找不到）→ native dashboard command＋檔案 → 進度視窗，或 --quiet 背景執行；另有 --version / --help / --deploy src/clickra.cli/cli/ clickrastartup.cs clickracli.cs clickracli.arguments.cs clickracli.deploy.cs src/clickra.cli/ globalusings.application.cs  globalusings.architecture.cs">
+<rect x="760" y="640" width="680" height="170" rx="10" fill="#fff" stroke="#2e90fa" stroke-width="1.8"/>
+<text x="774" y="666" font-size="15" font-weight="700" fill="#101828">Clickra.exe</text>
+<text x="774" y="687" font-size="12.5" fill="#475467">NativeAOT；入口 ClickraStartup.Run</text>
+<text x="774" y="705" font-size="12.5" fill="#475467">無參數 → 找 Clickra.Fluent.exe（目前找不到）→ Native Dashboard</text>
+<text x="774" y="723" font-size="12.5" fill="#475467">command＋檔案 → 進度視窗，或 --quiet 背景執行；另有 --version / --help / --deploy</text>
+<line x1="774" y1="731" x2="1426" y2="731" stroke="#eaecf0"/>
+<text x="774" y="747" font-size="9.5" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">src/Clickra.CLI/Cli/</text>
+<text x="774.0" y="761" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">ClickraStartup.cs</text>
+<text x="937.0" y="761" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">ClickraCli.cs</text>
+<text x="1100.0" y="761" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">ClickraCli.Arguments.cs</text>
+<text x="1263.0" y="761" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">ClickraCli.Deploy.cs</text>
+<text x="774" y="775" font-size="9.5" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">src/Clickra.CLI/</text>
+<text x="774.0" y="789" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">GlobalUsings.Application.cs</text>
+<text x="937.0" y="789" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace"></text>
+<text x="1100.0" y="789" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">GlobalUsings.Architecture.cs</text>
+</g>
+<g class="edge " data-src="menu" data-dst="shell" data-variant="both">
+<defs><marker id="c_2e90fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2e90fa"/></marker></defs>
+<path d="M200.0,248.0 L200.0,300.0" fill="none" stroke="#2e90fa" stroke-width="1.9" stroke-linejoin="round" marker-end="url(#c_2e90fa)"/>
+<text x="210" y="272" font-size="12" fill="#2e90fa" text-anchor="start" paint-order="stroke" stroke="#fff" stroke-width="5">點選指令</text>
+</g>
+<g class="edge " data-src="tile" data-dst="launcher" data-variant="msix">
+<path d="M512.0,248.0 L512.0,470.0" fill="none" stroke="#2e90fa" stroke-width="1.9" stroke-linejoin="round" marker-end="url(#c_2e90fa)"/>
+<text x="512" y="384" font-size="12" fill="#2e90fa" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="5">MSIX</text>
+</g>
+<g class="edge " data-src="open" data-dst="launcher" data-variant="msix">
+<path d="M920.0,248.0 L920.0,470.0" fill="none" stroke="#2e90fa" stroke-width="1.9" stroke-linejoin="round" marker-end="url(#c_2e90fa)"/>
+<text x="920" y="384" font-size="12" fill="#2e90fa" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="5">檔案路徑</text>
+</g>
+<g class="edge " data-src="term" data-dst="native" data-variant="both">
+<path d="M1280.0,248.0 L1280.0,640.0" fill="none" stroke="#2e90fa" stroke-width="1.9" stroke-linejoin="round" marker-end="url(#c_2e90fa)"/>
+<text x="1280" y="430" font-size="12" fill="#2e90fa" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="5">參數</text>
+</g>
+<g class="edge " data-src="tile" data-dst="native" data-variant="deploy">
+<path d="M662.4,248.0 L662.4,264.0 L1080.0,264.0 L1080.0,640.0" fill="none" stroke="#2e90fa" stroke-width="1.9" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#c_2e90fa)"/>
+<text x="1000" y="258" font-size="12" fill="#2e90fa" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="5">--deploy 部署</text>
+</g>
+<g class="edge " data-src="shell" data-dst="launcher" data-variant="both">
+<path d="M200.0,464.0 L200.0,522.0 L400.0,522.0" fill="none" stroke="#2e90fa" stroke-width="1.9" stroke-linejoin="round" marker-end="url(#c_2e90fa)"/>
+<text x="300" y="514" font-size="12" fill="#2e90fa" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="5">動詞＋檔案</text>
+</g>
+<g class="edge unshipped" data-src="launcher" data-dst="fluent" data-variant="both">
+<path d="M477.0,574.0 L477.0,640.0" fill="none" stroke="#98a2b3" stroke-width="1.4" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#m)"/>
+<text x="486" y="612" font-size="12" fill="#98a2b3" text-anchor="start" paint-order="stroke" stroke="#fff" stroke-width="5">嘗試 Fluent（目前必失敗）</text>
+</g>
+<g class="edge " data-src="launcher" data-dst="native" data-variant="both">
+<path d="M899.0,574.0 L899.0,640.0" fill="none" stroke="#2e90fa" stroke-width="1.9" stroke-linejoin="round" marker-end="url(#c_2e90fa)"/>
+<text x="908" y="612" font-size="12" fill="#2e90fa" text-anchor="start" paint-order="stroke" stroke="#fff" stroke-width="5">實際路徑：立即轉交</text>
+</g>
+<g class="edge unshipped" data-src="native" data-dst="fluent" data-variant="both">
+<path d="M760.0,712.0 L520.0,712.0" fill="none" stroke="#98a2b3" stroke-width="1.4" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#m)"/>
+<text x="640" y="705" font-size="12" fill="#98a2b3" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="5">無參數：找 Fluent（目前找不到）</text>
+</g>
+<rect x="20" y="90" width="1440" height="736" rx="12" fill="#2e90fa" fill-opacity=".035"/>
+<line x1="20" y1="96" x2="20" y2="820" stroke="#2e90fa" stroke-width="3" stroke-linecap="round"/>
+<text x="-52" y="124" font-size="30" font-weight="800" fill="#2e90fa">L0</text>
+<text x="-52" y="148" font-size="15" font-weight="700" fill="#101828">入口</text>
+<text x="-52" y="166" font-size="10.5" fill="#98a2b3">Entry</text>
+<text x="40" y="852" font-size="11.5" fill="#667085">來源：packaging/msix/AppxManifest.xml（Store／GitHub 同一份 MSIX）、src/resources/AppxManifest.xml（--deploy）、ClickraShell/ComMethods.cs、ClickraLauncher/Program.cs、Clickra.CLI/Cli/ClickraStartup.cs、Clickra.Fluent/App.xaml.cs</text>
+</g>
+</svg></div>
+<script>
+const nodes=[...document.querySelectorAll('.node')],edges=[...document.querySelectorAll('.edge')],q=document.getElementById('q');
+let variant='all';
+function reset(){document.querySelectorAll('.dim,.hot,.sel').forEach(x=>x.classList.remove('dim','hot','sel'))}
+function applyVariant(){edges.forEach(e=>{const v=e.dataset.variant;e.classList.toggle('off',variant!=='all'&&v!=='both'&&v!==variant)})}
+document.querySelectorAll('button.var').forEach(b=>b.onclick=()=>{variant=b.dataset.v;document.querySelectorAll('button.var').forEach(x=>x.classList.toggle('on',x===b));applyVariant();reset();q.value=''});
+function focus(id){reset();const keep=new Set([id]);
+ edges.forEach(e=>{if(e.classList.contains('off'))return;if(e.dataset.src===id||e.dataset.dst===id){e.classList.add('hot');keep.add(e.dataset.src);keep.add(e.dataset.dst)}else e.classList.add('dim')});
+ nodes.forEach(n=>{if(!keep.has(n.dataset.id))n.classList.add('dim');if(n.dataset.id===id)n.classList.add('sel')})}
+nodes.forEach(n=>n.addEventListener('click',ev=>{ev.stopPropagation();q.value='';focus(n.dataset.id)}));
+document.getElementById('view').addEventListener('click',()=>{reset()});
+q.addEventListener('input',()=>{reset();const s=q.value.trim().toLowerCase();if(!s)return;
+ nodes.forEach(n=>{if(!n.dataset.search.includes(s))n.classList.add('dim')});edges.forEach(e=>e.classList.add('dim'))});
+document.getElementById('resetBtn').onclick=()=>{q.value='';reset()};
+</script>
+<script>
+(function(){const root=document.documentElement,btn=document.getElementById('themeBtn');
+let t=null;try{t=localStorage.getItem('clickra-arch-theme')}catch(e){}
+if(!t)t=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
+function apply(){root.dataset.theme=t;btn.textContent=t==='dark'?'淺色':'深色'}
+apply();btn.onclick=()=>{t=t==='dark'?'light':'dark';apply();try{localStorage.setItem('clickra-arch-theme',t)}catch(e){}};})();
+</script><script>
+/* Fit the diagram to the window at 100% browser zoom; when the user zooms in, keep that width in CSS px so the
+   whole diagram (box text included) grows and scrolls, instead of shrinking back to fit the narrower viewport. */
+(function(){const v=document.getElementById('view'),s=v&&v.querySelector('svg');if(!s)return;
+const base=window.devicePixelRatio||1;  /* zoom level at load counts as 100%: always fits on open */
+function zoom(){const z=(window.devicePixelRatio||1)/base;return Math.abs(z-1)<0.02?1:z}
+const hdr=document.querySelector('header');
+function fit(){const z=zoom();hdr.style.zoom=z===1?'':String(1/z);  /* toolbar keeps its on-screen size; only the diagram zooms */
+ if(z===1){s.style.width='';s.style.maxWidth='';v.style.overflowX='hidden';return}  /* 100%: plain CSS fit, can never overflow */
+ v.style.overflowX='auto';s.style.maxWidth='none';s.style.width=Math.floor(Math.min(1556,v.clientWidth*z))+'px'}
+fit();window.addEventListener('resize',fit);})();
+</script>
+<script>document.getElementById('infoBtn').onclick=()=>{const b=document.getElementById('infoBox');b.hidden=!b.hidden;document.getElementById('infoBtn').classList.toggle('on',!b.hidden);window.dispatchEvent(new Event('resize'))};</script>
+</body></html>

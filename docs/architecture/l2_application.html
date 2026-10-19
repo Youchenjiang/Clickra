@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Clickra Architecture — L2 應用</title>
+<style>
+body{margin:0;font-family:"Microsoft JhengHei UI","Microsoft JhengHei","Segoe UI",Arial,sans-serif;background:#f4f6f8;color:#111827}
+header{position:sticky;top:0;z-index:10;background:#fffffff0;border-bottom:1px solid #d4d9e0;padding:0}
+h1{font-size:20px;margin:0 10px 0 0}.meta{font-size:13px;color:#535c68}
+button,input{font:inherit;font-size:13px;padding:8px 10px;border:1px solid #bfc6d1;border-radius:7px;background:#fff}
+button{cursor:pointer}button.on{background:#101828;color:#fff;border-color:#101828}input{width:300px}
+#view{flex:1 1 auto;min-height:0;overflow:auto;background:#fff}#view svg{display:block;margin:0 auto;width:100%;height:auto;max-width:1556px}
+.note{font-size:12px;color:#68717e}
+.node{cursor:pointer}.node rect,.edge path,.edge text{transition:opacity .15s}
+.node.dim,.edge.dim{opacity:.12}.edge.off{display:none}
+.edge.hot path{stroke:#d94b5a!important;stroke-width:3!important}.edge.hot text{fill:#d94b5a!important;font-weight:700}
+.hideUn .unshipped{display:none}
+.node.sel rect{stroke:#d94b5a!important;stroke-width:3!important}
+
+/* dark theme: page chrome via colors, diagram via invert + hue-rotate so semantic hues stay recognisable */
+html[data-theme="dark"] body{background:#0f1115;color:#e6e8eb}
+html[data-theme="dark"] header{background:#15181df0;border-bottom-color:#2a2f37}
+html[data-theme="dark"] .meta{color:#a3abb6}html[data-theme="dark"] .note{color:#8b939e}
+html[data-theme="dark"] button,html[data-theme="dark"] input{background:#1b1f26;color:#e6e8eb;border-color:#3a414c}
+html[data-theme="dark"] button.on{background:#e6e8eb;color:#101828;border-color:#e6e8eb}
+html[data-theme="dark"] #view{background:#121417}
+html[data-theme="dark"] #view svg{filter:invert(.9) hue-rotate(180deg) saturate(1.15)}
+#themeBtn{min-width:64px}
+/* one scroll area only: header keeps its natural height (it may wrap when zoomed), the diagram takes the rest */
+html,body{height:100%}body{display:flex;flex-direction:column;overflow:hidden}header{flex:none}
+/* toolbar stays one row (scrolls sideways when zoomed) so it never eats the diagram; stats/notes open on demand */
+.bar{display:flex;gap:12px;align-items:center;flex-wrap:nowrap;white-space:nowrap;overflow-x:auto;padding:10px 18px}
+.bar>*{flex:none}.infobox{padding:0 18px 10px;display:flex;gap:14px;flex-wrap:wrap}.infobox[hidden]{display:none}
+html[data-theme="dark"] .bar::-webkit-scrollbar{height:6px}
+</style></head><body>
+<header>
+<div class="bar">
+<h1>Clickra — L2 應用</h1>
+<nav style="display:inline-flex;gap:4px;align-items:center;">
+<a href="overview.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #bfc6d1;color:#111827;background:#fff;">總表</a>
+<a href="l0_entry_points.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #bfc6d1;color:#111827;background:#fff;">L0 入口</a>
+<a href="l1_presentation.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #101828;color:#fff;background:#101828;font-weight:700;">L2 應用</a>
+<a href="l2_application.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #bfc6d1;color:#111827;background:#fff;">L2 應用</a>
+<a href="l3_infrastructure.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #bfc6d1;color:#111827;background:#fff;">L3 基礎</a>
+<a href="l4_modules_internal.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #bfc6d1;color:#111827;background:#fff;">L4 模組內部</a>
+</nav>
+<button id="unBtn">隱藏未發佈（Fluent）</button>
+<input id="q" placeholder="搜尋畫面或模型…">
+<button id="themeBtn" title="切換深色／淺色">深色</button>
+<button id="resetBtn">Reset</button>
+<button id="infoBtn" title="顯示統計與說明">說明</button>
+</div>
+<div class="infobox" id="infoBox" hidden><span class="meta">6 組應用服務 · 8 個模組 · 19 個轉換指令 · 3 個往 L3 的出口</span> <span class="note">上排是應用服務（與 L1 共用畫面狀態同一欄），左下是各模組轉換用例，最底是往 L3 的出口。點方塊可標出它的所有連線。</span></div>
+</header>
+<div id="view"><svg xmlns="http://www.w3.org/2000/svg" width="1556" height="1008" viewBox="0 1568 1556 1008" font-family="Microsoft JhengHei UI,Microsoft JhengHei,Noto Sans CJK TC,Segoe UI,Arial,sans-serif">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#344054"/></marker><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#98a2b3"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<g transform="translate(76,0)">
+<g class="node" data-id="m_ws" data-search="轉換工作區"><rect x="217.8" y="1588" width="155.8" height="50" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.4"/><text x="227.8" y="1608" font-size="10.5" fill="#667085">來自 L1</text><text x="227.8" y="1626" font-size="12.5" font-weight="700" fill="#101828">轉換工作區</text></g>
+<g class="node" data-id="m_exec" data-search="轉換執行"><rect x="395.5" y="1588" width="155.8" height="50" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.4"/><text x="405.5" y="1608" font-size="10.5" fill="#667085">來自 L1</text><text x="405.5" y="1626" font-size="12.5" font-weight="700" fill="#101828">轉換執行</text></g>
+<g class="node" data-id="m_split" data-search="視覺分割"><rect x="729.0" y="1588" width="177.8" height="50" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.4"/><text x="739.0" y="1608" font-size="10.5" fill="#667085">來自 L1</text><text x="739.0" y="1626" font-size="12.5" font-weight="700" fill="#101828">視覺分割</text></g>
+<g class="node" data-id="m_hist" data-search="歷史・歷史清單"><rect x="928.8" y="1588" width="155.8" height="50" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.4"/><text x="938.8" y="1608" font-size="10.5" fill="#667085">來自 L1</text><text x="938.8" y="1626" font-size="12.5" font-weight="700" fill="#101828">歷史・歷史清單</text></g>
+<g class="node" data-id="m_set" data-search="設定・設定目錄"><rect x="1106.5" y="1588" width="155.8" height="50" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.4"/><text x="1116.5" y="1608" font-size="10.5" fill="#667085">來自 L1</text><text x="1116.5" y="1626" font-size="12.5" font-weight="700" fill="#101828">設定・設定目錄</text></g>
+<g class="node" data-id="m_off" data-search="office 引擎設定"><rect x="1284.2" y="1588" width="155.8" height="50" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.4"/><text x="1294.2" y="1608" font-size="10.5" fill="#667085">來自 L1</text><text x="1294.2" y="1626" font-size="12.5" font-weight="700" fill="#101828">Office 引擎設定</text></g>
+<g transform="translate(0,1652)">
+<rect x="20" y="0" width="1440" height="874" rx="12" fill="#dc6803" fill-opacity=".035"/>
+<line x1="20" y1="6" x2="20" y2="868" stroke="#dc6803" stroke-width="3" stroke-linecap="round"/>
+<text x="-52" y="34" font-size="30" font-weight="800" fill="#dc6803">L2</text>
+<text x="-52" y="58" font-size="15" font-weight="700" fill="#101828">應用</text>
+<text x="-52" y="76" font-size="10.5" fill="#98a2b3">Application</text>
+<text x="40" y="38" font-size="12.5" font-weight="700" fill="#667085" letter-spacing=".5" paint-order="stroke" stroke="#fff" stroke-width="5">應用服務（每一欄對應上方 L1 共用畫面狀態的同一欄）</text>
+<line x1="40" y1="46" x2="1440" y2="46" stroke="#eaecf0"/>
+<g class="edge " data-src="m_ws" data-dst="a_cmd" data-variant="both">
+<path d="M295.6,-6.0 L295.6,56.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
+</g>
+<g class="edge " data-src="m_exec" data-dst="a_uc" data-variant="both">
+<path d="M473.4,-6.0 L473.4,56.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
+</g>
+<g class="edge " data-src="m_hist" data-dst="a_hist" data-variant="both">
+<path d="M1062.5,-6.0 L1062.5,56.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
+</g>
+<g class="edge " data-src="d_feed" data-dst="a_hist" data-variant="both">
+<path d="M1006.6,-6.0 L1006.6,56.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
+</g>
+<g class="edge " data-src="m_set" data-dst="a_set" data-variant="both">
+<path d="M1240.2,-6.0 L1240.2,56.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
+</g>
+<g class="edge " data-src="d_set" data-dst="a_set" data-variant="both">
+<path d="M1184.4,-6.0 L1184.4,56.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
+</g>
+<g class="edge " data-src="m_off" data-dst="a_off" data-variant="both">
+<path d="M1362.1,-6.0 L1362.1,56.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
+</g>
+<g class="node" data-id="a_cmd" data-search="指令目錄 指令、可接受副檔名、 最少檔數、顯示名稱 core/application/ convertcommand-   registry.cs ↳ src/shared/   convertcommand-   metadata.cs 也被：shell、dashboard、 進度視窗、cli、fluent、 historyfeed 直接使用">
+<rect x="217.8" y="56" width="155.8" height="244" rx="9" fill="#fffaeb" stroke="#dc6803" stroke-width="1.6"/>
+<text x="227.8" y="76" font-size="13" font-weight="700" fill="#101828">指令目錄</text>
+<text x="227.8" y="94" font-size="10.5" fill="#475467">指令、可接受副檔名、</text>
+<text x="227.8" y="108" font-size="10.5" fill="#475467">最少檔數、顯示名稱</text>
+<line x1="227.8" y1="116" x2="363.5" y2="116" stroke="#eaecf0"/>
+<text x="227.8" y="128" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Core/Application/</text>
+<text x="227.8" y="141" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConvertCommand-</text>
+<text x="227.8" y="154" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Registry.cs</text>
+<text x="227.8" y="167" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">↳ src/Shared/</text>
+<text x="227.8" y="180" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  ConvertCommand-</text>
+<text x="227.8" y="193" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Metadata.cs</text>
+<text x="227.8" y="209" font-size="9.5" fill="#98a2b3">也被：Shell、Dashboard、</text>
+<text x="227.8" y="221" font-size="9.5" fill="#98a2b3">進度視窗、CLI、Fluent、</text>
+<text x="227.8" y="233" font-size="9.5" fill="#98a2b3">HistoryFeed 直接使用</text>
+</g>
+<g class="node" data-id="a_uc" data-search="轉換用例目錄 指令 → 唯一的用例 validate→plan→execute core/application/ conversionusecases.cs conversionusecase-   registry.cs iconversionusecase.cs conversionrequest.cs conversionplan.cs conversionresult.cs conversion-   interaction.cs 也被：cli 無畫面模式 需輸入時回呼 l1： 密碼／分割頁／md 選項">
+<rect x="395.5" y="56" width="155.8" height="244" rx="9" fill="#fffaeb" stroke="#dc6803" stroke-width="1.6"/>
+<text x="405.5" y="76" font-size="13" font-weight="700" fill="#101828">轉換用例目錄</text>
+<text x="405.5" y="94" font-size="10.5" fill="#475467">指令 → 唯一的用例</text>
+<text x="405.5" y="108" font-size="10.5" fill="#475467">Validate→Plan→Execute</text>
+<line x1="405.5" y1="116" x2="541.2" y2="116" stroke="#eaecf0"/>
+<text x="405.5" y="128" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Core/Application/</text>
+<text x="405.5" y="141" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionUseCases.cs</text>
+<text x="405.5" y="154" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionUseCase-</text>
+<text x="405.5" y="167" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Registry.cs</text>
+<text x="405.5" y="180" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">IConversionUseCase.cs</text>
+<text x="405.5" y="193" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionRequest.cs</text>
+<text x="405.5" y="206" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionPlan.cs</text>
+<text x="405.5" y="219" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionResult.cs</text>
+<text x="405.5" y="232" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">Conversion-</text>
+<text x="405.5" y="245" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Interaction.cs</text>
+<text x="405.5" y="261" font-size="9.5" fill="#98a2b3">也被：CLI 無畫面模式</text>
+<text x="405.5" y="273" font-size="9.5" fill="#98a2b3">需輸入時回呼 L1：</text>
+<text x="405.5" y="285" font-size="9.5" fill="#98a2b3">密碼／分割頁／MD 選項</text>
+</g>
+<g class="node" data-id="a_pages" data-search="頁數查詢 讀 pdf 頁數 modules/pdfsplit/app…/ pdfpagecountquery.cs 上游是 native 進度視窗與 fluent 視覺分割兩個畫面， 沒經過 l1 視覺分割狀態（d2）">
+<rect x="751.0" y="56" width="155.8" height="244" rx="9" fill="#fffaeb" stroke="#dc6803" stroke-width="1.6"/>
+<text x="761.0" y="76" font-size="13" font-weight="700" fill="#101828">頁數查詢</text>
+<text x="761.0" y="94" font-size="10.5" fill="#475467">讀 PDF 頁數</text>
+<line x1="761.0" y1="102" x2="896.8" y2="102" stroke="#eaecf0"/>
+<text x="761.0" y="114" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Modules/PdfSplit/App…/</text>
+<text x="761.0" y="127" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">PdfPageCountQuery.cs</text>
+<text x="761.0" y="143" font-size="9.5" fill="#98a2b3">上游是 Native 進度視窗與</text>
+<text x="761.0" y="155" font-size="9.5" fill="#98a2b3">Fluent 視覺分割兩個畫面，</text>
+<text x="761.0" y="167" font-size="9.5" fill="#98a2b3">沒經過 L1 視覺分割狀態（D2）</text>
+</g>
+<g class="node" data-id="a_hist" data-search="歷史與暫停任務 清除與刪除／讀清單／ 認領暫停任務續跑 modules/historytasks/app…/ historyservice.cs historyqueries.cs parkedtaskcommands.cs 也被：native 進度視窗 （parkedtaskcommands）">
+<rect x="928.8" y="56" width="155.8" height="244" rx="9" fill="#fffaeb" stroke="#dc6803" stroke-width="1.6"/>
+<text x="938.8" y="76" font-size="13" font-weight="700" fill="#101828">歷史與暫停任務</text>
+<text x="938.8" y="94" font-size="10.5" fill="#475467">清除與刪除／讀清單／</text>
+<text x="938.8" y="108" font-size="10.5" fill="#475467">認領暫停任務續跑</text>
+<line x1="938.8" y1="116" x2="1074.5" y2="116" stroke="#eaecf0"/>
+<text x="938.8" y="128" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Modules/HistoryTasks/App…/</text>
+<text x="938.8" y="141" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">HistoryService.cs</text>
+<text x="938.8" y="154" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">HistoryQueries.cs</text>
+<text x="938.8" y="167" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ParkedTaskCommands.cs</text>
+<text x="938.8" y="183" font-size="9.5" fill="#98a2b3">也被：Native 進度視窗</text>
+<text x="938.8" y="195" font-size="9.5" fill="#98a2b3">（ParkedTaskCommands）</text>
+</g>
+<g class="node" data-id="a_set" data-search="設定 讀寫偏好與儲存路徑 modules/settings/app…/ settingsservice.cs storagepathservice.cs settingscontract.cs 也被：cli、clickrastartup">
+<rect x="1106.5" y="56" width="155.8" height="244" rx="9" fill="#fffaeb" stroke="#dc6803" stroke-width="1.6"/>
+<text x="1116.5" y="76" font-size="13" font-weight="700" fill="#101828">設定</text>
+<text x="1116.5" y="94" font-size="10.5" fill="#475467">讀寫偏好與儲存路徑</text>
+<line x1="1116.5" y1="102" x2="1252.2" y2="102" stroke="#eaecf0"/>
+<text x="1116.5" y="114" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Modules/Settings/App…/</text>
+<text x="1116.5" y="127" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">SettingsService.cs</text>
+<text x="1116.5" y="140" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">StoragePathService.cs</text>
+<text x="1116.5" y="153" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">SettingsContract.cs</text>
+<text x="1116.5" y="169" font-size="9.5" fill="#98a2b3">也被：CLI、ClickraStartup</text>
+</g>
+<g class="node" data-id="a_off" data-search="office 引擎設定 安裝／移除 libreoffice、 回報引擎是否就緒 modules/office/app…/ libreofficesettings-   service.cs">
+<rect x="1284.2" y="56" width="155.8" height="244" rx="9" fill="#fffaeb" stroke="#dc6803" stroke-width="1.6"/>
+<text x="1294.2" y="76" font-size="13" font-weight="700" fill="#101828">Office 引擎設定</text>
+<text x="1294.2" y="94" font-size="10.5" fill="#475467">安裝／移除 LibreOffice、</text>
+<text x="1294.2" y="108" font-size="10.5" fill="#475467">回報引擎是否就緒</text>
+<line x1="1294.2" y1="116" x2="1430.0" y2="116" stroke="#eaecf0"/>
+<text x="1294.2" y="128" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Modules/Office/App…/</text>
+<text x="1294.2" y="141" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">LibreOfficeSettings-</text>
+<text x="1294.2" y="154" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Service.cs</text>
+</g>
+<text x="40.0" y="340" font-size="12.5" font-weight="700" fill="#667085" letter-spacing=".5">轉換用例（ConversionUseCases 登記的 19 個指令）</text>
+<g class="node" data-id="a_base" data-search="共用執行基底　core/application/  conversionusecasebase.cs（所有用例的父類別） ├ perfileconversionusecasebase.cs（逐檔處理） └ singleoutputconversionusecasebase.cs（多檔合成一個輸出）">
+<rect x="40.0" y="356" width="689.0" height="88" rx="9" fill="#fffaeb" stroke="#dc6803" stroke-width="1.6"/>
+<text x="50.0" y="376" font-size="13" font-weight="700" fill="#101828">共用執行基底　Core/Application/</text>
+<line x1="50.0" y1="388" x2="719.0" y2="388" stroke="#eaecf0"/>
+<text x="50.0" y="400" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionUseCaseBase.cs（所有用例的父類別）</text>
+<text x="50.0" y="413" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">├ PerFileConversionUseCaseBase.cs（逐檔處理）</text>
+<text x="50.0" y="426" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">└ SingleOutputConversionUseCaseBase.cs（多檔合成一個輸出）</text>
+</g>
+<g class="node" data-id="u_Image" data-search="image …/application/ imageformatconvert-   usecase.cs   （5 個指令） img2pdfusecase.cs imgcompressusecase.cs imgmergeusecase.cs（合一） imgstitchusecase.cs（合一） imageoutputsafety.cs">
+<rect x="40.0" y="456" width="163.2" height="163" rx="9" fill="#fff" stroke="#fdb022" stroke-width="1.6"/>
+<text x="50.0" y="476" font-size="13" font-weight="700" fill="#101828">Image</text>
+<line x1="50.0" y1="488" x2="193.2" y2="488" stroke="#eaecf0"/>
+<text x="50.0" y="500" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">…/Application/</text>
+<text x="50.0" y="513" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ImageFormatConvert-</text>
+<text x="50.0" y="526" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  UseCase.cs</text>
+<text x="50.0" y="539" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  （5 個指令）</text>
+<text x="50.0" y="552" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">Img2PdfUseCase.cs</text>
+<text x="50.0" y="565" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ImgCompressUseCase.cs</text>
+<text x="50.0" y="578" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ImgMergeUseCase.cs（合一）</text>
+<text x="50.0" y="591" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ImgStitchUseCase.cs（合一）</text>
+<text x="50.0" y="604" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ImageOutputSafety.cs</text>
+</g>
+<g class="node" data-id="u_Markdown" data-search="markdown …/application/ markdowntopdfusecase.cs markdowntowordusecase.cs markdownconversion-   usecasebase.cs">
+<rect x="215.2" y="456" width="163.2" height="163" rx="9" fill="#fff" stroke="#fdb022" stroke-width="1.6"/>
+<text x="225.2" y="476" font-size="13" font-weight="700" fill="#101828">Markdown</text>
+<line x1="225.2" y1="488" x2="368.5" y2="488" stroke="#eaecf0"/>
+<text x="225.2" y="500" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">…/Application/</text>
+<text x="225.2" y="513" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">MarkdownToPdfUseCase.cs</text>
+<text x="225.2" y="526" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">MarkdownToWordUseCase.cs</text>
+<text x="225.2" y="539" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">MarkdownConversion-</text>
+<text x="225.2" y="552" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  UseCaseBase.cs</text>
+</g>
+<g class="node" data-id="u_Office" data-search="office …/application/ wordtopdfusecase.cs ppttopdfusecase.cs exceltopdfusecase.cs officetopdfusecasebase.cs   （查 office 引擎）">
+<rect x="390.5" y="456" width="163.2" height="163" rx="9" fill="#fff" stroke="#fdb022" stroke-width="1.6"/>
+<text x="400.5" y="476" font-size="13" font-weight="700" fill="#101828">Office</text>
+<line x1="400.5" y1="488" x2="543.8" y2="488" stroke="#eaecf0"/>
+<text x="400.5" y="500" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">…/Application/</text>
+<text x="400.5" y="513" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">WordToPdfUseCase.cs</text>
+<text x="400.5" y="526" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">PptToPdfUseCase.cs</text>
+<text x="400.5" y="539" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ExcelToPdfUseCase.cs</text>
+<text x="400.5" y="552" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">OfficeToPdfUseCaseBase.cs</text>
+<text x="400.5" y="565" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  （查 Office 引擎）</text>
+</g>
+<g class="node" data-id="u_PdfCompression" data-search="pdfcompression …/application/ compresspdfusecase.cs">
+<rect x="565.8" y="456" width="163.2" height="163" rx="9" fill="#fff" stroke="#fdb022" stroke-width="1.6"/>
+<text x="575.8" y="476" font-size="13" font-weight="700" fill="#101828">PdfCompression</text>
+<line x1="575.8" y1="488" x2="719.0" y2="488" stroke="#eaecf0"/>
+<text x="575.8" y="500" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">…/Application/</text>
+<text x="575.8" y="513" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">CompressPdfUseCase.cs</text>
+</g>
+<g class="node" data-id="u_PdfDecrypt" data-search="pdfdecrypt …/application/ decryptpdfusecase.cs   （需密碼）">
+<rect x="40.0" y="631" width="163.2" height="85" rx="9" fill="#fff" stroke="#fdb022" stroke-width="1.6"/>
+<text x="50.0" y="651" font-size="13" font-weight="700" fill="#101828">PdfDecrypt</text>
+<line x1="50.0" y1="663" x2="193.2" y2="663" stroke="#eaecf0"/>
+<text x="50.0" y="675" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">…/Application/</text>
+<text x="50.0" y="688" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">DecryptPdfUseCase.cs</text>
+<text x="50.0" y="701" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  （需密碼）</text>
+</g>
+<g class="node" data-id="u_PdfMerge" data-search="pdfmerge …/application/ mergepdfusecase.cs   （合一）">
+<rect x="215.2" y="631" width="163.2" height="85" rx="9" fill="#fff" stroke="#fdb022" stroke-width="1.6"/>
+<text x="225.2" y="651" font-size="13" font-weight="700" fill="#101828">PdfMerge</text>
+<line x1="225.2" y1="663" x2="368.5" y2="663" stroke="#eaecf0"/>
+<text x="225.2" y="675" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">…/Application/</text>
+<text x="225.2" y="688" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">MergePdfUseCase.cs</text>
+<text x="225.2" y="701" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  （合一）</text>
+</g>
+<g class="node" data-id="u_PdfTranslation" data-search="pdftranslation …/application/ translatepdfusecase.cs">
+<rect x="390.5" y="631" width="163.2" height="85" rx="9" fill="#fff" stroke="#fdb022" stroke-width="1.6"/>
+<text x="400.5" y="651" font-size="13" font-weight="700" fill="#101828">PdfTranslation</text>
+<line x1="400.5" y1="663" x2="543.8" y2="663" stroke="#eaecf0"/>
+<text x="400.5" y="675" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">…/Application/</text>
+<text x="400.5" y="688" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">TranslatePdfUseCase.cs</text>
+</g>
+<g class="node" data-id="u_PdfSplit" data-search="pdfsplit …/application/ splitpdfusecase.cs   （需分割頁）">
+<rect x="565.8" y="631" width="163.2" height="85" rx="9" fill="#fff" stroke="#fdb022" stroke-width="1.6"/>
+<text x="575.8" y="651" font-size="13" font-weight="700" fill="#101828">PdfSplit</text>
+<line x1="575.8" y1="663" x2="719.0" y2="663" stroke="#eaecf0"/>
+<text x="575.8" y="675" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">…/Application/</text>
+<text x="575.8" y="688" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">SplitPdfUseCase.cs</text>
+<text x="575.8" y="701" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  （需分割頁）</text>
+</g>
+<g class="edge " data-src="a_uc" data-dst="a_base" data-variant="both">
+<defs><marker id="c_dc6803" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#dc6803"/></marker></defs>
+<path d="M473.4,300.0 L473.4,356.0" fill="none" stroke="#dc6803" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_dc6803)"/>
+<text x="481.375" y="324" font-size="12" fill="#dc6803" text-anchor="start" paint-order="stroke" stroke="#fff" stroke-width="5">依指令找到用例</text>
+</g>
+<g class="node" data-id="a_life" data-search="任務生命週期 開始 → 進行中 → 完成／失敗／暫停，寫入任務紀錄 core/application/ conversiontasklifecycle.cs conversiontaskprogressservice.cs conversiontaskcleanup.cs 也被：clickrastartup（記錄啟動錯誤）、native 進度視窗（cleanup）">
+<rect x="928.8" y="356" width="333.5" height="128" rx="9" fill="#fffaeb" stroke="#dc6803" stroke-width="1.6"/>
+<text x="938.8" y="376" font-size="13" font-weight="700" fill="#101828">任務生命週期</text>
+<text x="938.8" y="394" font-size="10.5" fill="#475467">開始 → 進行中 → 完成／失敗／暫停，寫入任務紀錄</text>
+<line x1="938.8" y1="402" x2="1252.2" y2="402" stroke="#eaecf0"/>
+<text x="938.8" y="414" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Core/Application/</text>
+<text x="938.8" y="427" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionTaskLifecycle.cs</text>
+<text x="938.8" y="440" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionTaskProgressService.cs</text>
+<text x="938.8" y="453" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionTaskCleanup.cs</text>
+<text x="938.8" y="469" font-size="9.5" fill="#98a2b3">也被：ClickraStartup（記錄啟動錯誤）、Native 進度視窗（Cleanup）</text>
+</g>
+<g class="edge " data-src="a_base" data-dst="a_life" data-variant="both">
+<path d="M729.0,381.0 L928.8,381.0" fill="none" stroke="#dc6803" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_dc6803)"/>
+<text x="828.875" y="374" font-size="12" fill="#dc6803" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="5">執行時建立與結束任務紀錄</text>
+</g>
+<g class="node" data-id="s_shared" data-search="共用指令表（src/shared） convertcommandmetadata.cs：指令、副檔名、 最少檔數、顯示名稱；同一份也編進 clickrashell  指令集合與轉換用例目錄一致（架構測試保證）">
+<rect x="40.0" y="774" width="333.5" height="78" rx="9" fill="#f9fafb" stroke="#98a2b3" stroke-width="1.6" stroke-dasharray="7 5"/>
+<text x="50.0" y="794" font-size="13" font-weight="700" fill="#475467">共用指令表（src/Shared）</text>
+<text x="50.0" y="812" font-size="10.5" fill="#475467">ConvertCommandMetadata.cs：指令、副檔名、</text>
+<text x="50.0" y="826" font-size="10.5" fill="#475467">最少檔數、顯示名稱；同一份也編進 ClickraShell</text>
+<text x="50.0" y="843" font-size="9.5" fill="#98a2b3">指令集合與轉換用例目錄一致（架構測試保證）</text>
+</g>
+<g class="edge " data-src="a_cmd" data-dst="s_shared" data-variant="both">
+<path d="M217.8,276.0 L28.0,276.0 L28.0,813.0 L40.0,813.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round" marker-end="url(#c_dc6803)"/>
+<text x="34" y="270" font-size="12" fill="#dc6803" text-anchor="start" paint-order="stroke" stroke="#fff" stroke-width="5">查表</text>
+</g>
+<g class="edge " data-src="a_base" data-dst="p_box" data-variant="both">
+<path d="M513.4,716.0 L513.4,774.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round"/>
+<text x="521.375" y="746" font-size="12" fill="#dc6803" text-anchor="start" paint-order="stroke" stroke="#fff" stroke-width="5">各用例呼叫自己模組的處理器</text>
+</g>
+<g class="edge " data-src="a_pages" data-dst="p_PdfSplit" data-variant="both">
+<path d="M828.9,300.0 L828.9,774.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+<g class="edge " data-src="m_split" data-dst="p_PdfSplit" data-variant="both">
+<path d="M740.0,-6.0 L740.0,774.0" fill="none" stroke="#d92d20" stroke-width="1.6" stroke-linejoin="round" stroke-dasharray="6 5"/>
+</g>
+<g class="edge " data-src="a_hist" data-dst="t_store" data-variant="both">
+<path d="M928.8,270.0 L917.8,270.0 L917.8,774.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+<g class="edge " data-src="a_set" data-dst="t_store" data-variant="both">
+<path d="M1262.2,270.0 L1273.2,270.0 L1273.2,774.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+<g class="edge " data-src="a_life" data-dst="t_store" data-variant="both">
+<path d="M1095.5,484.0 L1095.5,774.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+<g class="edge " data-src="a_off" data-dst="t_offinf" data-variant="both">
+<path d="M1362.1,300.0 L1362.1,774.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+<g class="node " data-id="nprog" data-search="native 進度視窗 progresswindow.visualsplitter.cs"><rect x="573.2" y="56.0" width="155.8" height="117.0" rx="9" fill="#f6fef9" stroke="#0e9384" stroke-width="1.4"/><text x="583.2" y="74.0" font-size="10" fill="#667085">來自 L1 畫面</text><text x="583.2" y="92.0" font-size="12.5" font-weight="700" fill="#101828">Native 進度視窗</text><text x="583.2" y="109.0" font-size="9" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">ProgressWindow</text><text x="583.2" y="121.0" font-size="9" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">.VisualSplitter.cs</text></g>
+<g class="edge " data-src="nprog" data-dst="a_pages" data-variant="both">
+<path d="M729.0,114.5 L751.0,114.5" fill="none" stroke="#0e9384" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_0e9384)"/>
+</g>
+<g class="node unshipped" data-id="fprog" data-search="fluent 視覺分割 visualsplittercontrol.xaml.cs"><rect x="573.2" y="183.0" width="155.8" height="117.0" rx="9" fill="#f6fef9" stroke="#98a2b3" stroke-width="1.4" stroke-dasharray="6 4"/><text x="583.2" y="201.0" font-size="10" fill="#667085">來自 L1 畫面（未發佈）</text><text x="583.2" y="219.0" font-size="12.5" font-weight="700" fill="#101828">Fluent 視覺分割</text><text x="583.2" y="236.0" font-size="9" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">VisualSplitterControl</text><text x="583.2" y="248.0" font-size="9" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">.xaml.cs</text></g>
+<g class="edge unshipped" data-src="fprog" data-dst="a_pages" data-variant="both">
+<path d="M729.0,241.5 L751.0,241.5" fill="none" stroke="#98a2b3" stroke-width="1.6" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#c_98a2b3)"/>
+</g>
+<text x="395.5" y="756" font-size="12.5" font-weight="700" fill="#667085" letter-spacing=".5">往下 → L3</text>
+<g class="node" data-id="s_proc" data-search="l3 處理器（processing） modules/*/processing、processors/fileprocessing  紅色虛線：l1 視覺分割狀態（visualsplitpresentationcontroller:187） 直接呼叫 pdfsplitprocessor.buildsegmentspec，跳過 l2">
+<rect x="395.5" y="774" width="511.2" height="78" rx="9" fill="#f9fafb" stroke="#98a2b3" stroke-width="1.6" stroke-dasharray="7 5"/>
+<text x="405.5" y="794" font-size="13" font-weight="700" fill="#475467">L3 處理器（Processing）</text>
+<text x="405.5" y="812" font-size="10.5" fill="#475467">Modules/*/Processing、Processors/FileProcessing</text>
+<text x="405.5" y="829" font-size="9.5" fill="#98a2b3">紅色虛線：L1 視覺分割狀態（VisualSplitPresentationController:187）</text>
+<text x="405.5" y="841" font-size="9.5" fill="#98a2b3">直接呼叫 PdfSplitProcessor.BuildSegmentSpec，跳過 L2</text>
+</g>
+<g class="node" data-id="s_store" data-search="l3 儲存（storage） clickrastorage／clickrasettings 等 15 檔 ">
+<rect x="906.8" y="774" width="373.5" height="78" rx="9" fill="#f9fafb" stroke="#98a2b3" stroke-width="1.6" stroke-dasharray="7 5"/>
+<text x="916.8" y="794" font-size="13" font-weight="700" fill="#475467">L3 儲存（Storage）</text>
+<text x="916.8" y="812" font-size="10.5" fill="#475467">ClickraStorage／ClickraSettings 等 15 檔</text>
+</g>
+<g class="node" data-id="s_office" data-search="l3 office 引擎 安裝／偵測 libreoffice、 modules/office/infra… ">
+<rect x="1284.2" y="774" width="155.8" height="78" rx="9" fill="#f9fafb" stroke="#98a2b3" stroke-width="1.6" stroke-dasharray="7 5"/>
+<text x="1294.2" y="794" font-size="13" font-weight="700" fill="#475467">L3 Office 引擎</text>
+<text x="1294.2" y="812" font-size="10.5" fill="#475467">安裝／偵測 LibreOffice、</text>
+<text x="1294.2" y="826" font-size="10.5" fill="#475467">Modules/Office/Infra…</text>
+</g>
+<g class="edge " data-src="a_base" data-dst="p_box" data-variant="both">
+<path d="M513.4,764.0 L513.4,774.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round" marker-end="url(#c_dc6803)"/>
+</g>
+<g class="edge " data-src="a_pages" data-dst="p_PdfSplit" data-variant="both">
+<path d="M828.9,764.0 L828.9,774.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round" marker-end="url(#c_dc6803)"/>
+</g>
+<g class="edge " data-src="m_split" data-dst="p_PdfSplit" data-variant="both">
+<path d="M740.0,764.0 L740.0,774.0" fill="none" stroke="#d92d20" stroke-width="1.6" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#c_d92d20)"/>
+</g>
+<g class="edge " data-src="a_hist" data-dst="t_store" data-variant="both">
+<path d="M917.8,764.0 L917.8,774.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round" marker-end="url(#c_dc6803)"/>
+</g>
+<g class="edge " data-src="a_life" data-dst="t_store" data-variant="both">
+<path d="M1095.5,764.0 L1095.5,774.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round" marker-end="url(#c_dc6803)"/>
+</g>
+<g class="edge " data-src="a_set" data-dst="t_store" data-variant="both">
+<path d="M1273.2,764.0 L1273.2,774.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round" marker-end="url(#c_dc6803)"/>
+</g>
+<g class="edge " data-src="a_off" data-dst="t_offinf" data-variant="both">
+<path d="M1362.1,764.0 L1362.1,774.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round" marker-end="url(#c_dc6803)"/>
+</g>
+</g>
+<text x="40" y="2556" font-size="11.5" fill="#667085">線色規則：線的顏色＝發出呼叫的那一方。L0 藍、L1 綠（畫面另分 深綠＝Native Dashboard、青綠＝Native 進度視窗）、L2 橘；紅虛線＝跳層、灰虛線＝未發佈（Fluent）。</text>
+</g>
+</svg></div>
+<script>
+const nodes=[...document.querySelectorAll('.node')],edges=[...document.querySelectorAll('.edge')],q=document.getElementById('q');
+let variant='all';
+function reset(){document.querySelectorAll('.dim,.hot,.sel').forEach(x=>x.classList.remove('dim','hot','sel'))}
+function applyVariant(){edges.forEach(e=>{const v=e.dataset.variant;e.classList.toggle('off',variant!=='all'&&v!=='both'&&v!==variant)})}
+document.querySelectorAll('button.var').forEach(b=>b.onclick=()=>{variant=b.dataset.v;document.querySelectorAll('button.var').forEach(x=>x.classList.toggle('on',x===b));applyVariant();reset();q.value=''});
+function focus(id){reset();const keep=new Set([id]);
+ edges.forEach(e=>{if(e.classList.contains('off'))return;if(e.dataset.src===id||e.dataset.dst===id){e.classList.add('hot');keep.add(e.dataset.src);keep.add(e.dataset.dst)}else e.classList.add('dim')});
+ nodes.forEach(n=>{if(!keep.has(n.dataset.id))n.classList.add('dim');if(n.dataset.id===id)n.classList.add('sel')})}
+nodes.forEach(n=>n.addEventListener('click',ev=>{ev.stopPropagation();q.value='';focus(n.dataset.id)}));
+document.getElementById('view').addEventListener('click',()=>{reset()});
+q.addEventListener('input',()=>{reset();const s=q.value.trim().toLowerCase();if(!s)return;
+ nodes.forEach(n=>{if(!n.dataset.search.includes(s))n.classList.add('dim')});edges.forEach(e=>e.classList.add('dim'))});
+let un=false;document.getElementById('unBtn').onclick=()=>{un=!un;document.body.classList.toggle('hideUn',un);document.getElementById('unBtn').textContent=un?'顯示未發佈（Fluent）':'隱藏未發佈（Fluent）';document.getElementById('unBtn').classList.toggle('on',un)};
+document.getElementById('resetBtn').onclick=()=>{q.value='';reset()};
+</script>
+<script>
+(function(){const root=document.documentElement,btn=document.getElementById('themeBtn');
+let t=null;try{t=localStorage.getItem('clickra-arch-theme')}catch(e){}
+if(!t)t=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
+function apply(){root.dataset.theme=t;btn.textContent=t==='dark'?'淺色':'深色'}
+apply();btn.onclick=()=>{t=t==='dark'?'light':'dark';apply();try{localStorage.setItem('clickra-arch-theme',t)}catch(e){}};})();
+</script><script>
+/* Fit the diagram to the window at 100% browser zoom; when the user zooms in, keep that width in CSS px so the
+   whole diagram (box text included) grows and scrolls, instead of shrinking back to fit the narrower viewport. */
+(function(){const v=document.getElementById('view'),s=v&&v.querySelector('svg');if(!s)return;
+const base=window.devicePixelRatio||1;  /* zoom level at load counts as 100%: always fits on open */
+function zoom(){const z=(window.devicePixelRatio||1)/base;return Math.abs(z-1)<0.02?1:z}
+const hdr=document.querySelector('header');
+function fit(){const z=zoom();hdr.style.zoom=z===1?'':String(1/z);  /* toolbar keeps its on-screen size; only the diagram zooms */
+ if(z===1){s.style.width='';s.style.maxWidth='';v.style.overflowX='hidden';return}  /* 100%: plain CSS fit, can never overflow */
+ v.style.overflowX='auto';s.style.maxWidth='none';s.style.width=Math.floor(Math.min(1556,v.clientWidth*z))+'px'}
+fit();window.addEventListener('resize',fit);})();
+</script>
+<script>document.getElementById('infoBtn').onclick=()=>{const b=document.getElementById('infoBox');b.hidden=!b.hidden;document.getElementById('infoBtn').classList.toggle('on',!b.hidden);window.dispatchEvent(new Event('resize'))};</script>
+</body></html>
