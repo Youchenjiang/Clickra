@@ -68,8 +68,7 @@ public sealed class ConversionExecutionController
             command,
             files,
             options,
-            existingTaskId: existingTaskId,
-            resumeStartIndex: resumeStartIndex);
+            planOptions: new ExecutionPlanOptions(existingTaskId, ResumeStartIndex: resumeStartIndex));
 
         _plan = plan;
         return new ConversionExecutionPlanPresentation(plan.Outputs, useCase.Capabilities);
