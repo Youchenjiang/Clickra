@@ -185,6 +185,9 @@ static partial class TestSuite
             "RecordDispatchFailure must not leave active task tracking records behind.");
     }
 
+    private const string MockTaskId = "mock-task-123";
+    private const string MockCleanupTaskId = "mock-task-456";
+
     private static void TestConversionLifecycleDelegatesToCustomRepository()
     {
         var repo = new RecordingTaskLifecycleRepository();
@@ -193,38 +196,38 @@ static partial class TestSuite
             new[] { "file1.pdf", "file2.pdf" },
             repository: repo);
 
-        Assert.Equal("mock-task-123", lifecycle.TaskId);
+        Assert.Equal(MockTaskId, lifecycle.TaskId);
         Assert.True(repo.InProgressTasks.Count == 1, "Must mark in progress exactly once.");
-        Assert.Equal("mock-task-123", repo.InProgressTasks[0]);
+        Assert.Equal(MockTaskId, repo.InProgressTasks[0]);
 
         lifecycle.RecordFileStarting(1);
         Assert.True(repo.IndexUpdates.Count == 1, "Must update index exactly once.");
-        Assert.Equal("mock-task-123", repo.IndexUpdates[0].TaskId);
+        Assert.Equal(MockTaskId, repo.IndexUpdates[0].TaskId);
         Assert.Equal(1L, repo.IndexUpdates[0].Index);
 
         lifecycle.CompleteSuccess("output.pdf");
         Assert.True(repo.CompletedTasks.Count == 1, "Must complete task exactly once.");
-        Assert.Equal("mock-task-123", repo.CompletedTasks[0].TaskId);
+        Assert.Equal(MockTaskId, repo.CompletedTasks[0].TaskId);
         Assert.True(repo.CompletedTasks[0].Request.IsSuccess, "Completion must be marked success.");
         Assert.Equal("output.pdf", repo.CompletedTasks[0].Request.OutputPath ?? "");
 
         lifecycle.Park("Need password", 2);
         Assert.True(repo.ParkedTasks.Count == 1, "Must park task exactly once.");
-        Assert.Equal("mock-task-123", repo.ParkedTasks[0].TaskId);
+        Assert.Equal(MockTaskId, repo.ParkedTasks[0].TaskId);
         Assert.Equal("Need password", repo.ParkedTasks[0].Reason);
         Assert.Equal(2L, repo.ParkedTasks[0].NextIndex);
 
         lifecycle.Delete();
         Assert.True(repo.DeletedTasks.Count == 1, "Must delete task exactly once.");
-        Assert.Equal("mock-task-123", repo.DeletedTasks[0]);
+        Assert.Equal(MockTaskId, repo.DeletedTasks[0]);
     }
 
     private static void TestConversionTaskCleanupDelegatesToCustomRepository()
     {
         var repo = new RecordingTaskLifecycleRepository();
-        ConversionTaskCleanup.Delete("mock-task-456", repository: repo);
+        ConversionTaskCleanup.Delete(MockCleanupTaskId, repository: repo);
         Assert.True(repo.DeletedTasks.Count == 1, "Must delete task via repository.");
-        Assert.Equal("mock-task-456", repo.DeletedTasks[0]);
+        Assert.Equal(MockCleanupTaskId, repo.DeletedTasks[0]);
     }
 
     private sealed class RecordingTaskLifecycleRepository : ITaskLifecycleRepository
@@ -235,7 +238,7 @@ static partial class TestSuite
         public readonly List<(string TaskId, string Reason, int NextIndex)> ParkedTasks = new();
         public readonly List<string> DeletedTasks = new();
 
-        public string Start(string command, int fileCount, string? inputPaths = null) => "mock-task-123";
+        public string Start(string command, int fileCount, string? inputPaths = null) => MockTaskId;
 
         public void SetInProgress(string taskId) => InProgressTasks.Add(taskId);
 
