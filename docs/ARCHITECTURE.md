@@ -72,6 +72,8 @@ Modules/
 
 Directories are created only when useful; symmetry is not a goal. The rule is **capability first, technical role second**. Architecture guards freeze the legacy top-level `Application/Presentation/Processors/Storage/Models` buckets so they can shrink but cannot gain new feature-private files.
 
+Interactive layer-by-layer HTML architecture maps (L0 through L4) and module dependency graphs are maintained under [`docs/architecture/`](architecture/README.md).
+
 Explorer commands prefer packaged activation through
 `IApplicationActivationManager`, passing the command and selected paths to
 `Clickra.Fluent`. Direct launch of `Clickra.Fluent.exe`, followed by
