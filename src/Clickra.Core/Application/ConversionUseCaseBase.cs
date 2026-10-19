@@ -54,7 +54,8 @@ public abstract class ConversionUseCaseBase : IConversionUseCase
                 Command,
                 plan.Inputs,
                 plan.ExistingTaskId,
-                plan.BestEffortTaskPersistence)
+                plan.BestEffortTaskPersistence,
+                repository: plan.TaskLifecycleRepository)
             : null;
         if (lifecycle is not null)
             observer?.OnTaskStarted(lifecycle.TaskId);

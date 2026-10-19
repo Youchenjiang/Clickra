@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Clickra.Core.Modules.HistoryTasks.Application;
+using Clickra.Core.Storage;
 
 namespace Clickra.Core.Application;
 
@@ -11,6 +13,7 @@ public sealed class ConversionTaskLifecycle
     private readonly string _inputs;
     private readonly bool _bestEffort;
     private readonly Stopwatch _stopwatch;
+    private readonly ITaskLifecycleRepository _repository;
     private bool _stopped;
 
     private ConversionTaskLifecycle(
@@ -19,7 +22,8 @@ public sealed class ConversionTaskLifecycle
         string taskId,
         string startTime,
         bool bestEffort,
-        Stopwatch stopwatch)
+        Stopwatch stopwatch,
+        ITaskLifecycleRepository repository)
     {
         _command = command;
         _inputs = inputs;
@@ -27,6 +31,7 @@ public sealed class ConversionTaskLifecycle
         StartTime = startTime;
         _bestEffort = bestEffort;
         _stopwatch = stopwatch;
+        _repository = repository;
     }
 
     public string TaskId { get; private set; }
@@ -37,22 +42,25 @@ public sealed class ConversionTaskLifecycle
         IReadOnlyCollection<string> files,
         string? existingTaskId = null,
         bool bestEffort = false,
-        string? startTimeOverride = null)
+        string? startTimeOverride = null,
+        ITaskLifecycleRepository? repository = null)
     {
         string inputs = string.Join(";", files);
         string startTime = startTimeOverride ?? DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+        var repo = repository ?? DefaultStorageLifecycleRepository.Instance;
         var lifecycle = new ConversionTaskLifecycle(
             command,
             inputs,
             existingTaskId ?? "",
             startTime,
             bestEffort,
-            Stopwatch.StartNew());
+            Stopwatch.StartNew(),
+            repo);
 
         lifecycle.RunStorage(() =>
         {
-            lifecycle.TaskId = existingTaskId ?? ClickraStorage.StartTask(command, files.Count, inputs);
-            ClickraStorage.SetTaskInProgress(lifecycle.TaskId);
+            lifecycle.TaskId = existingTaskId ?? repo.Start(command, files.Count, inputs);
+            repo.SetInProgress(lifecycle.TaskId);
         });
         return lifecycle;
     }
@@ -62,13 +70,15 @@ public sealed class ConversionTaskLifecycle
         string command,
         string error,
         string? startTime = null,
-        IReadOnlyCollection<string>? files = null)
+        IReadOnlyCollection<string>? files = null,
+        ITaskLifecycleRepository? repository = null)
     {
         var lifecycle = Start(
             command,
             files ?? Array.Empty<string>(),
             bestEffort: true,
-            startTimeOverride: startTime);
+            startTimeOverride: startTime,
+            repository: repository);
         lifecycle.CompleteFailure(error, outputPath: "");
         lifecycle.Delete();
     }
@@ -82,22 +92,22 @@ public sealed class ConversionTaskLifecycle
     public void Park(string reason, int nextFileIndex)
     {
         Stop();
-        RunStorage(() => ClickraStorage.ParkTask(TaskId, reason, nextFileIndex));
+        RunStorage(() => _repository.Park(TaskId, reason, nextFileIndex));
     }
 
     public void RecordFileStarting(int fileIndex) =>
-        RunStorage(() => ClickraStorage.SetTaskIndex(TaskId, fileIndex));
+        RunStorage(() => _repository.SetIndex(TaskId, fileIndex));
 
-    public void Delete() => RunStorage(() => ClickraStorage.DeleteTask(TaskId));
+    public void Delete() => RunStorage(() => _repository.Delete(TaskId));
 
     private void Complete(bool isSuccess, string error, string outputPath, string? endTime)
     {
         Stop();
-        RunStorage(() => ClickraStorage.CompleteTask(TaskId, _command, new CompleteTaskRequest
+        RunStorage(() => _repository.Complete(TaskId, _command, new TaskCompletionRequest
         {
             StartTime = StartTime,
             IsSuccess = isSuccess,
-            ErrorMsg = error,
+            ErrorMessage = error,
             EndTime = endTime,
             ElapsedMs = _stopwatch.ElapsedMilliseconds,
             InputPaths = _inputs,
@@ -128,6 +138,38 @@ public sealed class ConversionTaskLifecycle
         {
             // Native progress UI treats task persistence as advisory; conversion output remains authoritative.
         }
+    }
+
+    private sealed class DefaultStorageLifecycleRepository : ITaskLifecycleRepository
+    {
+        public static readonly DefaultStorageLifecycleRepository Instance = new();
+
+        public string Start(string command, int fileCount, string? inputPaths = null) =>
+            ClickraStorage.StartTask(command, fileCount, inputPaths);
+
+        public void SetInProgress(string taskId) =>
+            ClickraStorage.SetTaskInProgress(taskId);
+
+        public void SetIndex(string taskId, int index) =>
+            ClickraStorage.SetTaskIndex(taskId, index);
+
+        public void Complete(string taskId, string command, TaskCompletionRequest request) =>
+            ClickraStorage.CompleteTask(taskId, command, new CompleteTaskRequest
+            {
+                StartTime = request.StartTime,
+                IsSuccess = request.IsSuccess,
+                ErrorMsg = request.ErrorMessage,
+                EndTime = request.EndTime,
+                ElapsedMs = request.ElapsedMs,
+                InputPaths = request.InputPaths,
+                OutputPath = request.OutputPath
+            });
+
+        public void Park(string taskId, string reason, int nextIndex) =>
+            ClickraStorage.ParkTask(taskId, reason, nextIndex);
+
+        public void Delete(string taskId) =>
+            ClickraStorage.DeleteTask(taskId);
     }
 }
 
