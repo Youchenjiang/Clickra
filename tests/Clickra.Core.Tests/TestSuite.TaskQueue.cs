@@ -240,14 +240,11 @@ static partial class TestSuite
     private static void TestConversionLifecycleRollsBackTaskWhenInProgressFails()
     {
         var repo = new FailingInProgressLifecycleRepository();
-        Assert.Throws<InvalidOperationException>(() =>
-        {
-            ConversionTaskLifecycle.Start(
-                CmdDecryptPdf,
-                new[] { "file1.pdf" },
-                bestEffort: false,
-                repository: repo);
-        });
+        Assert.Throws<InvalidOperationException>(() => ConversionTaskLifecycle.Start(
+            CmdDecryptPdf,
+            new[] { "file1.pdf" },
+            bestEffort: false,
+            repository: repo));
 
         Assert.True(repo.StartCalled, "Start must be called.");
         Assert.Equal(MockTaskId, repo.DeletedTaskId ?? "");
