@@ -7,7 +7,13 @@ $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $arch = Join-Path $repo 'scripts\architecture'
 $dotnet = Join-Path $repo '..\.clickra-tools\dotnet\dotnet.exe'
-if (-not (Test-Path $dotnet)) { $dotnet = 'dotnet' }
+if (Test-Path $dotnet) {
+    $dotnetDir = Split-Path (Resolve-Path $dotnet).Path
+    $env:DOTNET_ROOT = $dotnetDir
+    $env:PATH = "$dotnetDir;$env:PATH"
+} else {
+    $dotnet = 'dotnet'
+}
 $python = if (Get-Command python -ErrorAction SilentlyContinue) { 'python' } else { 'py' }
 
 & $dotnet run --project (Join-Path $arch 'SemanticGraph\SemanticGraph.csproj') -c Release -- $repo (Join-Path $arch 'semantic-msbuild.json')
