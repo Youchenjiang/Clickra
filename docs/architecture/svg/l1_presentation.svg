@@ -68,36 +68,38 @@
 <text x="847.5" y="1039" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Paint.Dropdowns</text>
 <text x="847.5" y="1053" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Paint.About</text>
 </g>
-<g class="node " data-id="nprog" data-search="native 進度視窗 progresswindow 附屬：密碼、markdown 選項、 視覺分割、系統匣 src/clickra.cli/progress/ progresswindow.*.cs（8 檔）： （主檔） process paint controls passwordinput markdownoptions visualsplitter tray nativeconversionpresentationadapter.cs">
+<g class="node " data-id="nprog" data-search="native 進度視窗 progresswindow 附屬：密碼、markdown 選項、 視覺分割、系統匣 ⚠ 逐一辨認 8 個指令（c4） src/clickra.cli/progress/ progresswindow.*.cs（8 檔）： （主檔） process paint controls passwordinput markdownoptions visualsplitter tray nativeconversionexecutionadapter.cs">
 <rect x="1020" y="806" width="250" height="266" rx="10" fill="#fff" stroke="#0e9384" stroke-width="1.8"/>
 <text x="1034" y="832" font-size="14" font-weight="700" fill="#101828">Native 進度視窗</text>
 <text x="1034" y="853" font-size="12.5" fill="#475467">ProgressWindow</text>
 <text x="1034" y="871" font-size="12.5" fill="#475467">附屬：密碼、Markdown 選項、</text>
 <text x="1034" y="889" font-size="12.5" fill="#475467">視覺分割、系統匣</text>
-<line x1="1034" y1="897" x2="1256" y2="897" stroke="#eaecf0"/>
-<text x="1034" y="913" font-size="9.5" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">src/Clickra.CLI/Progress/</text>
-<text x="1034" y="927" font-size="9.5" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">ProgressWindow.*.cs（8 檔）：</text>
-<text x="1034.0" y="941" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">（主檔）</text>
-<text x="1034.0" y="955" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Process</text>
-<text x="1034.0" y="969" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Paint</text>
-<text x="1034.0" y="983" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Controls</text>
-<text x="1145.0" y="941" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">PasswordInput</text>
-<text x="1145.0" y="955" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">MarkdownOptions</text>
-<text x="1145.0" y="969" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">VisualSplitter</text>
-<text x="1145.0" y="983" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Tray</text>
-<text x="1034" y="997" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">NativeConversionPresentationAdapter.cs</text>
+<text x="1034" y="907" font-size="12.5" fill="#b42318">⚠ 逐一辨認 8 個指令（C4）</text>
+<line x1="1034" y1="915" x2="1256" y2="915" stroke="#eaecf0"/>
+<text x="1034" y="931" font-size="9.5" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">src/Clickra.CLI/Progress/</text>
+<text x="1034" y="945" font-size="9.5" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">ProgressWindow.*.cs（8 檔）：</text>
+<text x="1034.0" y="959" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">（主檔）</text>
+<text x="1034.0" y="973" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Process</text>
+<text x="1034.0" y="987" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Paint</text>
+<text x="1034.0" y="1001" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Controls</text>
+<text x="1145.0" y="959" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">PasswordInput</text>
+<text x="1145.0" y="973" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">MarkdownOptions</text>
+<text x="1145.0" y="987" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">VisualSplitter</text>
+<text x="1145.0" y="1001" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Tray</text>
+<text x="1034" y="1015" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">NativeConversionExecutionAdapter.cs</text>
 </g>
-<g class="node " data-id="nnone" data-search="無畫面 --quiet 背景轉換 --version / --help --deploy → 直接到 l2 src/clickra.cli/cli/ clickracli.cs clickracli.deploy.cs clickrastartup.cs">
+<g class="node " data-id="nnone" data-search="無畫面 --quiet 背景轉換 --version / --help --deploy → 直接到 l2 ⚠ 逐一辨認指令（c4） src/clickra.cli/cli/ clickracli.cs clickracli.deploy.cs clickrastartup.cs">
 <rect x="1290" y="806" width="150" height="266" rx="10" fill="#fff" stroke="#12b76a" stroke-width="1.8"/>
 <text x="1304" y="832" font-size="14" font-weight="700" fill="#101828">無畫面</text>
 <text x="1304" y="853" font-size="12.5" fill="#475467">--quiet 背景轉換</text>
 <text x="1304" y="871" font-size="12.5" fill="#475467">--version / --help</text>
 <text x="1304" y="889" font-size="12.5" fill="#475467">--deploy → 直接到 L2</text>
-<line x1="1304" y1="897" x2="1426" y2="897" stroke="#eaecf0"/>
-<text x="1304" y="913" font-size="9.5" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">src/Clickra.CLI/Cli/</text>
-<text x="1304" y="927" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">ClickraCli.cs</text>
-<text x="1304" y="941" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">ClickraCli.Deploy.cs</text>
-<text x="1304" y="955" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">ClickraStartup.cs</text>
+<text x="1304" y="907" font-size="12.5" fill="#b42318">⚠ 逐一辨認指令（C4）</text>
+<line x1="1304" y1="915" x2="1426" y2="915" stroke="#eaecf0"/>
+<text x="1304" y="931" font-size="9.5" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">src/Clickra.CLI/Cli/</text>
+<text x="1304" y="945" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">ClickraCli.cs</text>
+<text x="1304" y="959" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">ClickraCli.Deploy.cs</text>
+<text x="1304" y="973" font-size="10" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">ClickraStartup.cs</text>
 </g>
 <g class="edge unshipped" data-src="fluent" data-dst="fmain" data-variant="both">
 <path d="M137.0,672.0 L137.0,806.0" fill="none" stroke="#98a2b3" stroke-width="1.4" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#m)"/>
@@ -156,65 +158,56 @@
 <text x="40" y="1220" font-size="12.5" font-weight="700" fill="#667085" letter-spacing=".5" paint-order="stroke" stroke="#fff" stroke-width="5">共用畫面狀態（Clickra.Core，Native 與 Fluent 共用）</text>
 <line x1="40" y1="1228" x2="1440" y2="1228" stroke="#eaecf0"/>
 <g class="node" data-id="m_nav" data-search="dashboard 導覽 dashboardpresentation-  controller.cs presentation/dashboard">
-<rect x="40.0" y="1244" width="155.8" height="92" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.6"/>
+<rect x="40.0" y="1244" width="155.8" height="106" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.6"/>
 <text x="50.0" y="1264" font-size="13" font-weight="700" fill="#101828">Dashboard 導覽</text>
 <text x="50.0" y="1282" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">DashboardPresentation-</text>
 <text x="50.0" y="1296" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Controller.cs</text>
-<text x="50.0" y="1327" font-size="10" fill="#98a2b3">Presentation/Dashboard</text>
+<text x="50.0" y="1341" font-size="10" fill="#98a2b3">Presentation/Dashboard</text>
 </g>
-<g class="node" data-id="m_ws" data-search="轉換工作區 convertworkspace-  presentation-  controller.cs presentation/convert">
-<rect x="217.8" y="1244" width="155.8" height="92" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.6"/>
+<g class="node" data-id="m_ws" data-search="轉換工作區 convertworkspace-  controller.cs presentation/convert">
+<rect x="217.8" y="1244" width="155.8" height="106" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.6"/>
 <text x="227.8" y="1264" font-size="13" font-weight="700" fill="#101828">轉換工作區</text>
 <text x="227.8" y="1282" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConvertWorkspace-</text>
-<text x="227.8" y="1296" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Presentation-</text>
-<text x="227.8" y="1310" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Controller.cs</text>
-<text x="227.8" y="1327" font-size="10" fill="#98a2b3">Presentation/Convert</text>
+<text x="227.8" y="1296" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Controller.cs</text>
+<text x="227.8" y="1341" font-size="10" fill="#98a2b3">Presentation/Convert</text>
 </g>
-<g class="node" data-id="m_exec" data-search="轉換執行 conversionexecution-  presentation-  controller.cs presentation/convert">
-<rect x="395.5" y="1244" width="155.8" height="92" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.6"/>
+<g class="node" data-id="m_exec" data-search="轉換執行 conversionexecution-  controller.cs presentation/convert">
+<rect x="395.5" y="1244" width="155.8" height="106" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.6"/>
 <text x="405.5" y="1264" font-size="13" font-weight="700" fill="#101828">轉換執行</text>
 <text x="405.5" y="1282" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionExecution-</text>
-<text x="405.5" y="1296" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Presentation-</text>
-<text x="405.5" y="1310" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Controller.cs</text>
-<text x="405.5" y="1327" font-size="10" fill="#98a2b3">Presentation/Convert</text>
+<text x="405.5" y="1296" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Controller.cs</text>
+<text x="405.5" y="1341" font-size="10" fill="#98a2b3">Presentation/Convert</text>
 </g>
-<g class="node" data-id="m_prog" data-search="任務進度 taskprogress-  presentation-  controller.cs presentation/progress">
-<rect x="573.2" y="1244" width="155.8" height="92" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.6"/>
+<g class="node" data-id="m_prog" data-search="任務進度 taskprogress-  controller.cs presentation/progress">
+<rect x="573.2" y="1244" width="155.8" height="106" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.6"/>
 <text x="583.2" y="1264" font-size="13" font-weight="700" fill="#101828">任務進度</text>
 <text x="583.2" y="1282" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">TaskProgress-</text>
-<text x="583.2" y="1296" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Presentation-</text>
-<text x="583.2" y="1310" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Controller.cs</text>
-<text x="583.2" y="1327" font-size="10" fill="#98a2b3">Presentation/Progress</text>
+<text x="583.2" y="1296" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Controller.cs</text>
+<text x="583.2" y="1341" font-size="10" fill="#98a2b3">Presentation/Progress</text>
 </g>
-<g class="node" data-id="m_split" data-search="視覺分割 visualsplit-  presentation-  controller.cs modules/pdfsplit">
-<rect x="751.0" y="1244" width="155.8" height="92" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.6"/>
+<g class="node" data-id="m_split" data-search="視覺分割 visualsplitmodel.cs modules/pdfsplit">
+<rect x="751.0" y="1244" width="155.8" height="106" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.6"/>
 <text x="761.0" y="1264" font-size="13" font-weight="700" fill="#101828">視覺分割</text>
-<text x="761.0" y="1282" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">VisualSplit-</text>
-<text x="761.0" y="1296" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Presentation-</text>
-<text x="761.0" y="1310" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Controller.cs</text>
-<text x="761.0" y="1327" font-size="10" fill="#98a2b3">Modules/PdfSplit</text>
+<text x="761.0" y="1282" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">VisualSplitModel.cs</text>
+<text x="761.0" y="1341" font-size="10" fill="#98a2b3">Modules/PdfSplit</text>
 </g>
-<g class="node" data-id="m_hist" data-search="歷史／暫停任務 historypresentation-  controller.cs modules/historytasks">
-<rect x="928.8" y="1244" width="155.8" height="92" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.6"/>
+<g class="node" data-id="m_hist" data-search="歷史／暫停任務 historypresentation-  controller.csihistorypresentation-  controller.cs modules/historytasks">
+<rect x="928.8" y="1244" width="155.8" height="106" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.6"/>
 <text x="938.8" y="1264" font-size="13" font-weight="700" fill="#101828">歷史／暫停任務</text>
 <text x="938.8" y="1282" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">HistoryPresentation-</text>
 <text x="938.8" y="1296" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Controller.cs</text>
-<text x="938.8" y="1327" font-size="10" fill="#98a2b3">Modules/HistoryTasks</text>
+<text x="938.8" y="1310" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">IHistoryPresentation-</text>
+<text x="938.8" y="1324" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Controller.cs</text>
+<text x="938.8" y="1341" font-size="10" fill="#98a2b3">Modules/HistoryTasks</text>
 </g>
-<g class="node" data-id="m_set" data-search="設定 settingspresentation-  controller.cs modules/settings">
-<rect x="1106.5" y="1244" width="155.8" height="92" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.6"/>
-<text x="1116.5" y="1264" font-size="13" font-weight="700" fill="#101828">設定</text>
-<text x="1116.5" y="1282" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">SettingsPresentation-</text>
+<g class="node" data-id="m_set" data-search="設定（含 office 引擎） isettingspresentation-  controller.cssettingspresentation-  controller.cs modules/settings">
+<rect x="1106.5" y="1244" width="155.8" height="106" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.6"/>
+<text x="1116.5" y="1264" font-size="13" font-weight="700" fill="#101828">設定（含 Office 引擎）</text>
+<text x="1116.5" y="1282" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ISettingsPresentation-</text>
 <text x="1116.5" y="1296" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Controller.cs</text>
-<text x="1116.5" y="1327" font-size="10" fill="#98a2b3">Modules/Settings</text>
-</g>
-<g class="node" data-id="m_off" data-search="office 引擎設定 officesettings-  presentation-  controller.cs modules/office">
-<rect x="1284.2" y="1244" width="155.8" height="92" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.6"/>
-<text x="1294.2" y="1264" font-size="13" font-weight="700" fill="#101828">Office 引擎設定</text>
-<text x="1294.2" y="1282" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">OfficeSettings-</text>
-<text x="1294.2" y="1296" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Presentation-</text>
-<text x="1294.2" y="1310" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Controller.cs</text>
-<text x="1294.2" y="1327" font-size="10" fill="#98a2b3">Modules/Office</text>
+<text x="1116.5" y="1310" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">SettingsPresentation-</text>
+<text x="1116.5" y="1324" font-size="9.8" fill="#475467" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Controller.cs</text>
+<text x="1116.5" y="1341" font-size="10" fill="#98a2b3">Modules/Settings</text>
 </g>
 <text x="40" y="1372" font-size="12.5" font-weight="700" fill="#667085" letter-spacing=".5" paint-order="stroke" stroke="#fff" stroke-width="5">資料／目錄（不持有狀態，供畫面狀態與畫面直接取用）</text>
 <line x1="40" y1="1380" x2="1440" y2="1380" stroke="#eaecf0"/>
@@ -226,7 +219,7 @@
 </g>
 <g class="edge " data-src="m_hist" data-dst="d_feed" data-variant="both">
 <defs><marker id="c_12b76a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#12b76a"/></marker></defs>
-<path d="M1006.6,1336.0 L1006.6,1394.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
+<path d="M1006.6,1350.0 L1006.6,1394.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
 </g>
 <g class="node" data-id="d_set" data-search="設定目錄 settingdescriptor.cs modules/settings">
 <rect x="1106.5" y="1394" width="155.8" height="78" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.6"/>
@@ -235,7 +228,7 @@
 <text x="1116.5" y="1463" font-size="10" fill="#98a2b3">Modules/Settings</text>
 </g>
 <g class="edge " data-src="m_set" data-dst="d_set" data-variant="both">
-<path d="M1184.4,1336.0 L1184.4,1394.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
+<path d="M1184.4,1350.0 L1184.4,1394.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
 </g>
 <g class="edge unshipped" data-src="fmain" data-dst="m_nav" data-variant="both">
 <defs><marker id="c_98a2b3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#98a2b3"/></marker></defs>
@@ -253,29 +246,26 @@
 <g class="edge unshipped" data-src="fmain" data-dst="m_set" data-variant="both">
 <path d="M137.5,1072.0 L137.5,1108.0 L1166.4,1108.0 L1166.4,1244.0" fill="none" stroke="#98a2b3" stroke-width="1.6" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#c_98a2b3)"/>
 </g>
-<g class="edge unshipped" data-src="fmain" data-dst="m_off" data-variant="both">
-<path d="M137.5,1072.0 L137.5,1108.0 L1344.1,1108.0 L1344.1,1244.0" fill="none" stroke="#98a2b3" stroke-width="1.6" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#c_98a2b3)"/>
-</g>
 <g class="edge unshipped" data-src="fmain" data-dst="d_feed" data-variant="both">
 <path d="M137.5,1072.0 L137.5,1108.0 L911.8,1108.0 L911.8,1424.0 L928.8,1424.0" fill="none" stroke="#98a2b3" stroke-width="1.6" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#c_98a2b3)"/>
 </g>
 <g class="edge unshipped" data-src="fmain" data-dst="d_set" data-variant="both">
 <path d="M137.5,1072.0 L137.5,1108.0 L1089.5,1108.0 L1089.5,1424.0 L1106.5,1424.0" fill="none" stroke="#98a2b3" stroke-width="1.6" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#c_98a2b3)"/>
 </g>
-<g class="edge unshipped" data-src="fprog" data-dst="m_exec" data-variant="both">
-<path d="M355.0,1072.0 L355.0,1126.0 L467.4,1126.0 L467.4,1244.0" fill="none" stroke="#98a2b3" stroke-width="1.6" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#c_98a2b3)"/>
-</g>
 <g class="edge unshipped" data-src="fprog" data-dst="m_ws" data-variant="both">
 <path d="M355.0,1072.0 L355.0,1126.0 L289.6,1126.0 L289.6,1244.0" fill="none" stroke="#98a2b3" stroke-width="1.6" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#c_98a2b3)"/>
 </g>
-<g class="edge unshipped" data-src="fprog" data-dst="m_hist" data-variant="both">
-<path d="M355.0,1072.0 L355.0,1126.0 L1000.6,1126.0 L1000.6,1244.0" fill="none" stroke="#98a2b3" stroke-width="1.6" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#c_98a2b3)"/>
+<g class="edge unshipped" data-src="fprog" data-dst="m_exec" data-variant="both">
+<path d="M355.0,1072.0 L355.0,1126.0 L467.4,1126.0 L467.4,1244.0" fill="none" stroke="#98a2b3" stroke-width="1.6" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#c_98a2b3)"/>
 </g>
 <g class="edge unshipped" data-src="fprog" data-dst="m_prog" data-variant="both">
 <path d="M355.0,1072.0 L355.0,1126.0 L645.1,1126.0 L645.1,1244.0" fill="none" stroke="#98a2b3" stroke-width="1.6" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#c_98a2b3)"/>
 </g>
 <g class="edge unshipped" data-src="fprog" data-dst="m_split" data-variant="both">
 <path d="M355.0,1072.0 L355.0,1126.0 L822.9,1126.0 L822.9,1244.0" fill="none" stroke="#98a2b3" stroke-width="1.6" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#c_98a2b3)"/>
+</g>
+<g class="edge unshipped" data-src="fprog" data-dst="m_hist" data-variant="both">
+<path d="M355.0,1072.0 L355.0,1126.0 L1000.6,1126.0 L1000.6,1244.0" fill="none" stroke="#98a2b3" stroke-width="1.6" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#c_98a2b3)"/>
 </g>
 <g class="edge unshipped" data-src="fprog" data-dst="m_set" data-variant="both">
 <path d="M355.0,1072.0 L355.0,1126.0 L1178.4,1126.0 L1178.4,1244.0" fill="none" stroke="#98a2b3" stroke-width="1.6" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#c_98a2b3)"/>
@@ -292,17 +282,11 @@
 <g class="edge " data-src="ndash" data-dst="m_set" data-variant="both">
 <path d="M847.5,1072.0 L847.5,1144.0 L1190.4,1144.0 L1190.4,1244.0" fill="none" stroke="#05603a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_05603a)"/>
 </g>
-<g class="edge " data-src="ndash" data-dst="m_off" data-variant="both">
-<path d="M847.5,1072.0 L847.5,1144.0 L1368.1,1144.0 L1368.1,1244.0" fill="none" stroke="#05603a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_05603a)"/>
-</g>
 <g class="edge " data-src="ndash" data-dst="d_feed" data-variant="both">
 <path d="M847.5,1072.0 L847.5,1144.0 L923.8,1144.0 L923.8,1442.0 L928.8,1442.0" fill="none" stroke="#05603a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_05603a)"/>
 </g>
 <g class="edge " data-src="ndash" data-dst="d_set" data-variant="both">
 <path d="M847.5,1072.0 L847.5,1144.0 L1101.5,1144.0 L1101.5,1442.0 L1106.5,1442.0" fill="none" stroke="#05603a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_05603a)"/>
-</g>
-<g class="edge " data-src="nprog" data-dst="m_exec" data-variant="both">
-<path d="M1145.0,1072.0 L1145.0,1162.0 L491.4,1162.0 L491.4,1244.0" fill="none" stroke="#0e9384" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_0e9384)"/>
 </g>
 <g class="edge " data-src="nprog" data-dst="m_prog" data-variant="both">
 <path d="M1145.0,1072.0 L1145.0,1162.0 L669.1,1162.0 L669.1,1244.0" fill="none" stroke="#0e9384" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_0e9384)"/>
