@@ -3,9 +3,10 @@
 This document provides a high-level overview of Clickra's system boundaries and runtime hosts.
 
 All detailed architectural specifications, interactive maps, and technical debt tracking are centrally maintained in the [`docs/architecture/`](architecture/README.md) directory:
-- **Canonical As-Built Architecture Guide**: [`docs/architecture/clickra_architecture.md`](architecture/clickra_architecture.md) — Exhaustive system topology, module ownership invariants, and design records.
-- **Interactive Layered Architecture Maps (L0–L4)**: [`docs/architecture/`](architecture/README.md) — Visual layer-by-layer dependency maps (L0 Entry, L1 Presentation, L2 Application, L3 Infrastructure, L4 Module Internals).
-- **Architecture Technical Debt & Backlog**: [`docs/architecture/architecture_backlog.md`](architecture/architecture_backlog.md) — Tracked technical debt, layer boundary leaks, and audit status.
+- **Architecture Overview & Reading Guide**: [`docs/architecture/README.md`](architecture/README.md) — Single entry point and 3-minute quick navigation.
+- **Canonical As-Built Architecture Guide**: [`docs/architecture/spec/clickra_architecture.md`](architecture/spec/clickra_architecture.md) — Exhaustive system topology, module ownership invariants, and design records.
+- **Interactive Layered Architecture Maps (L0–L4)**: [`docs/architecture/diagrams/overview.html`](architecture/diagrams/overview.html) — Visual layer-by-layer dependency maps (L0 Entry, L1 Presentation, L2 Application, L3 Infrastructure, L4 Module Internals).
+- **Architecture Technical Debt & Backlog**: [`docs/architecture/spec/architecture_backlog.md`](architecture/spec/architecture_backlog.md) — Tracked technical debt, layer boundary leaks, and audit status.
 
 ---
 

@@ -1,55 +1,66 @@
-# Clickra Architecture Maps & Diagnostics
+# Clickra Architecture
 
-This directory contains Clickra's layered interactive architecture diagrams (L0 to L4) and the architecture backlog.
+Welcome to the Clickra architecture repository. This directory centralizes all architectural specifications, interactive layer diagrams, and technical debt records.
 
-## Interactive HTML Architecture Maps
+---
+
+## 🗺️ Reading Guide (新人閱讀路徑)
+
+- ⏱️ **3-Minute Quick Visual Overview**: Open [`diagrams/overview.html`](diagrams/overview.html) to explore the system's end-to-end layered structure (L0 through L4).
+- 🏛️ **System Specification & Boundaries**: Read [`spec/clickra_architecture.md`](spec/clickra_architecture.md) for canonical module ownership, Mermaid runtime topologies, and dependency rules.
+- 📋 **Technical Debt & Boundary Leaks**: Check [`spec/architecture_backlog.md`](spec/architecture_backlog.md) for audited layer violations, circular dependencies, and current migration status.
+- 🔄 **Regenerating Diagrams**: Run `powershell -ExecutionPolicy Bypass -File scripts\architecture\update_architecture_diagrams.ps1` from the repository root.
+
+---
+
+## 📂 Directory Structure
+
+```
+docs/architecture/
+├── README.md               # This document (Single entry point & reading guide)
+│
+├── spec/                   # 🏛️ Specifications & Reports
+│   ├── clickra_architecture.md       # Canonical system architecture & module invariants
+│   ├── architecture_backlog.md       # 10/20 Technical debt & layer violation audit
+│   └── evaluation_report_20261012.md # Initial baseline architecture evaluation
+│
+└── diagrams/               # 🗺️ Interactive Maps & Exports
+    ├── overview.html                 # All layers (L0 to L4) interactive map
+    ├── l0_entry_points.html          # L0: OS Entry points & process handoffs
+    ├── l1_presentation.html          # L1: UI renderers & Presentation controllers
+    ├── l2_application.html           # L2: Application use cases & task lifecycle
+    ├── l3_infrastructure.html        # L3: Processors, storage, Office engines
+    ├── l4_modules_internal.html      # L4: Module-internal file graphs & loop analysis
+    └── svg/                          # High-resolution SVG vectors
+```
+
+---
+
+## 📊 Interactive HTML Maps
 
 | Layer | Map | Description |
 |---|---|---|
-| **Overview** | [`overview.html`](overview.html) | All layers (L0 through L4) on one page |
-| **L0 Entry Points** | [`l0_entry_points.html`](l0_entry_points.html) | Context menu, CLI, Launcher, Fluent entry points and process handoffs |
-| **L1 Presentation** | [`l1_presentation.html`](l1_presentation.html) | Screen renderers and shared Presentation controllers/models |
-| **L2 Application** | [`l2_application.html`](l2_application.html) | Application services, conversion use cases, task lifecycle |
-| **L3 Infrastructure** | [`l3_infrastructure.html`](l3_infrastructure.html) | Processors, storage, Office engines, cross-cutting support, external dependencies |
-| **L4 Modules Internal** | [`l4_modules_internal.html`](l4_modules_internal.html) | Every file under `src/` with its references, reference loops (red), and translation folder analysis |
+| **Overview** | [`diagrams/overview.html`](diagrams/overview.html) | All layers (L0 through L4) on one interactive canvas |
+| **L0 Entry Points** | [`diagrams/l0_entry_points.html`](diagrams/l0_entry_points.html) | Shell context menu, CLI, Launcher, Fluent entry points and process handoffs |
+| **L1 Presentation** | [`diagrams/l1_presentation.html`](diagrams/l1_presentation.html) | Screen renderers and shared Presentation controllers/models |
+| **L2 Application** | [`diagrams/l2_application.html`](diagrams/l2_application.html) | Application services, 19 conversion use cases, and task lifecycle contracts |
+| **L3 Infrastructure** | [`diagrams/l3_infrastructure.html`](diagrams/l3_infrastructure.html) | Processors, storage, Office engines, cross-cutting support, external dependencies |
+| **L4 Modules Internal** | [`diagrams/l4_modules_internal.html`](diagrams/l4_modules_internal.html) | File-to-file type references under `src/`, circular groups (red), and translation folder analysis |
 
-Standalone SVG exports are in [`svg/`](svg/).
+Standalone SVG exports are located in [`diagrams/svg/`](diagrams/svg/).
 
-Line colour = colour of the calling layer. Red dashed = skips a layer or forms a loop. Grey dashed = Fluent (not shipped) or external.
+---
 
-## Regenerating
+## 🔄 Regenerating Architecture Diagrams
 
-Run from the repo root on Windows:
+Clickra diagrams are powered by Roslyn compiler semantic analysis (`scripts/architecture/SemanticGraph`). To regenerate:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\architecture\update_architecture_diagrams.ps1
 ```
 
-It does three things:
-
-1. `scripts/architecture/SemanticGraph` (Roslyn) compiles every project and writes `scripts/architecture/semantic-msbuild.json`. It uses `..\.clickra-tools\dotnet\dotnet.exe` when present, otherwise `dotnet`. The generator stops if any project has compile errors.
-2. `file_lines.py` writes `file_lines.json` (line count of each `.cs`).
-3. `generate_layers.py` redraws every HTML page and SVG here.
-
-### What is automatic and what is not
-
-| Part | Automatic | Manual |
-|---|---|---|
-| L4 | Everything: files, panels' contents, arrows, loops, layout | Panel list and placement (`PANEL_INFO` in `l4_block.py`) when a new top-level folder appears |
-| L1 / L2 | Which files sit on each card, whether each line is drawn, "also called by" notes | New cards: add the box to `cards.py` and place it in `generate_layers.py` / `l2_block.py` |
-| L3 | File lists per processor, Office and storage | Box placement |
-| L0 | — | Hand drawn; the name check below still covers it |
-| Known-problem lines (e.g. layer skips) | Disappear by themselves once the code no longer has them (`problem_link`) | — |
-
-Checks printed by `generate_layers.py`:
-
-- `names ok`, or a list of file/type names shown on L0–L3 that no longer exist in `src/`.
-- An error if any presentation or application file is not on any L1/L2 card (add it to `cards.py`).
-- Lines that are planned but no longer exist in code.
-
-## Architecture Specifications & Backlog
-
-- **Canonical Architecture Guide**: [`clickra_architecture.md`](clickra_architecture.md) — As-built system topology, module ownership invariants, and design records.
-- **Architecture Backlog**: [`architecture_backlog.md`](architecture_backlog.md) — Current technical debt and layer leaks ("10/20 現況" status).
-- **Baseline Evaluation Report**: [`evaluation_report_20261012.md`](evaluation_report_20261012.md) — Initial baseline evaluation report.
-- **Drawing Conventions**: `.agent/skills/layered-architecture-diagram/SKILL.md`.
+**Workflow:**
+1. Roslyn compiles the solution and produces `semantic-msbuild.json` containing exact symbol references.
+2. `file_lines.py` recalculates line counts.
+3. `generate_layers.py` renders all HTML viewers and SVGs under `diagrams/`.
+4. The generator validates that all types and files in L0–L3 match existing code (`names ok`).

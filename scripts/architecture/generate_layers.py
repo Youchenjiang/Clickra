@@ -3,7 +3,7 @@ import html, os, json
 script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
 repo_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
-docs_arch = os.path.join(repo_root, "docs", "architecture")
+docs_arch = os.path.join(repo_root, "docs", "architecture", "diagrams")
 svg_dir = os.path.join(docs_arch, "svg")
 os.makedirs(svg_dir, exist_ok=True)
 from files_map import FILES
