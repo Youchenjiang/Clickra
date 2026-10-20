@@ -6,7 +6,7 @@
 
 ## 1. 架構管線流程概述
 
-翻譯的進入點為 [PdfTranslateProcessor](../src/Clickra.Core/Modules/PdfTranslation/Execution/PdfTranslateProcessor.cs)（底層驅動 [PdfTranslationPipeline.TranslatePdf](../src/Clickra.Core/Modules/PdfTranslation/Pipeline/PdfTranslationPipeline.cs)）。整體工作流程遵循以下 6 個 distinct 階段：
+翻譯的進入點為 [PdfTranslateProcessor](../../../src/Clickra.Core/Modules/PdfTranslation/Execution/PdfTranslateProcessor.cs)（底層驅動 [PdfTranslationPipeline.TranslatePdf](../../../src/Clickra.Core/Modules/PdfTranslation/Pipeline/PdfTranslationPipeline.cs)）。整體工作流程遵循以下 6 個 distinct 階段：
 
 ```mermaid
 graph TD
@@ -19,7 +19,7 @@ graph TD
 
 | 階段 | 職責說明 | 關鍵類別 / 方法 |
 | :--- | :--- | :--- |
-| **1. 字型初始化** | 為 PDFsharp 在 Windows 上設定 CJK 字型對應（如微軟正黑體） | [ClickraFontResolver](../src/Clickra.Core/ClickraFontResolver.cs) |
+| **1. 字型初始化** | 為 PDFsharp 在 Windows 上設定 CJK 字型對應（如微軟正黑體） | [ClickraFontResolver](../../../src/Clickra.Core/Fonts/ClickraFontResolver.cs) |
 | **2. 文本提取** | 字詞提取與 Segmenter 區塊解析 | `NearestNeighbourWordExtractor`, `DocstrumBoundingBoxes` |
 | **3. 元素繞過** | 偵測不應翻譯的程式碼、數學公式、表格 | `IsCode`, `IsOnlyMath`, `IsEquationParagraph`, `MarkTableParagraphs` |
 | **4. 版面合併** | 合併被分割的參考文獻或清單項目之多行/區塊 | `MergeHorizontalLines`, `MergeVerticallyAdjacentParagraphs` |
