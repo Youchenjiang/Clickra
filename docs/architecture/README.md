@@ -47,9 +47,9 @@ Checks printed by `generate_layers.py`:
 - An error if any presentation or application file is not on any L1/L2 card (add it to `cards.py`).
 - Lines that are planned but no longer exist in code.
 
-## Architecture Records & Backlog
+## Architecture Specifications & Backlog
 
-- [`architecture_backlog.md`](architecture_backlog.md): architecture backlog; the "10/20 現況" table at the top is the current status.
-- [`evaluation_report_20261012.md`](evaluation_report_20261012.md): initial baseline evaluation report.
-- Canonical architecture specification: [`docs/development/clickra_architecture.md`](../development/clickra_architecture.md).
-- How the diagrams are drawn: `.agent/skills/layered-architecture-diagram/SKILL.md`.
+- **Canonical Architecture Guide**: [`clickra_architecture.md`](clickra_architecture.md) — As-built system topology, module ownership invariants, and design records.
+- **Architecture Backlog**: [`architecture_backlog.md`](architecture_backlog.md) — Current technical debt and layer leaks ("10/20 現況" status).
+- **Baseline Evaluation Report**: [`evaluation_report_20261012.md`](evaluation_report_20261012.md) — Initial baseline evaluation report.
+- **Drawing Conventions**: `.agent/skills/layered-architecture-diagram/SKILL.md`.

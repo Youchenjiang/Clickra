@@ -19,7 +19,7 @@ Related design records:
 
 ### Canonical as-built architecture
 
-This is both the current implementation map and the dependency contract the repository must preserve. The primary organization axis is capability/module ownership; technical roles are local to each capability rather than global repository layers. For interactive layer-by-layer dependency exploration and full file-level graphs, see the [Architecture Overview](../architecture/overview.html) and [L4 Module Internal Map](../architecture/l4_modules_internal.html).
+This is both the current implementation map and the dependency contract the repository must preserve. The primary organization axis is capability/module ownership; technical roles are local to each capability rather than global repository layers. For interactive layer-by-layer dependency exploration and full file-level graphs, see the [Architecture Overview](overview.html) and [L4 Module Internal Map](l4_modules_internal.html).
 
 ```mermaid
 flowchart TB

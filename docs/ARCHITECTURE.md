@@ -2,8 +2,8 @@
 
 This document provides a high-level overview of Clickra's system boundaries and runtime hosts.
 
-For comprehensive architectural specifications and live interactive diagrams, refer to the canonical guides:
-- **Canonical As-Built Architecture Guide**: [`docs/development/clickra_architecture.md`](development/clickra_architecture.md) — Exhaustive system topology, module ownership invariants, and design records.
+All detailed architectural specifications, interactive maps, and technical debt tracking are centrally maintained in the [`docs/architecture/`](architecture/README.md) directory:
+- **Canonical As-Built Architecture Guide**: [`docs/architecture/clickra_architecture.md`](architecture/clickra_architecture.md) — Exhaustive system topology, module ownership invariants, and design records.
 - **Interactive Layered Architecture Maps (L0–L4)**: [`docs/architecture/`](architecture/README.md) — Visual layer-by-layer dependency maps (L0 Entry, L1 Presentation, L2 Application, L3 Infrastructure, L4 Module Internals).
 - **Architecture Technical Debt & Backlog**: [`docs/architecture/architecture_backlog.md`](architecture/architecture_backlog.md) — Tracked technical debt, layer boundary leaks, and audit status.
 

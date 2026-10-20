@@ -42,9 +42,9 @@
 |---|---|---|---|
 | A1 | 🔴 | 分支有 40 個 commit 只存在本機，從未 push | 先 push 一個備份分支（如 `backup/architecture-refactor-1014`），不開 PR |
 | A2 | 🔴 | 40 個 commit 一次合併太大（259 檔，+7.5k／−4.3k） | 拆成疊加 PR：A `140cc5c6` Office 修復（直接接 main）→ B storage／settings／presentation → C module-first 遷移 → D Native 執行統一 → E 命名＋版面表 |
-| A3 | 🟡 | 幾個 docs commit 寫「最終驗證」「收尾完成」，後面又改了二十幾個 commit，內容已過時（`82c8a6f6`、`5199ed37`、`a0979834`、`d0c35daf`） | 在 PR E 統一更新一次 `docs/development/clickra_architecture.md` |
+| A3 | 🟡 | 幾個 docs commit 寫「最終驗證」「收尾完成」，後面又改了二十幾個 commit，內容已過時（`82c8a6f6`、`5199ed37`、`a0979834`、`d0c35daf`） | 在 PR E 統一更新一次 `docs/architecture/clickra_architecture.md` |
 | A4 | 🔴 | 版面表第三項（點擊範圍修正）尚未提交，還差：① 預覽框畫圖改讀 `VisualSplitterLayout.PreviewArea`（`ProgressWindow.VisualSplitter.cs` 約 593–600 行仍自己算）② `Inflate` 移到 `LayoutRect` ③ 刪除 `TestSuite.VisualSplitterLayout.cs` 重複的 `Assert.Equal(136, PagesButton(true).X)` ④ Windows 實機點「＋」「－」「上一頁」「下一頁」「切開」與預覽框 | 補完並實機驗證後以 `fix(cli):` 提交，放進 PR E |
-| A5 | 🟡 | GPT 未提交的架構圖原型仍在工作區：`.github/workflows/ci.yml`、`scripts/hooks/pre-push`、`docs/development/clickra_architecture.md`、`scripts/architecture/`、`clickra_architecture_map.svg`、`clickra_architecture_files.html`；已知問題是寫死的數量與一律放行的規則 | **保留並提交 `scripts/architecture/SemanticGraph/`**（Roslyn 引用圖工具，Claude 的 L4 架構圖已改用它的輸出）；其餘（`generate_architecture.py`、svg／html、CI／pre-push 改動）可丟棄或另議；無論如何不要混進上面的 PR |
+| A5 | 🟡 | GPT 未提交的架構圖原型仍在工作區：`.github/workflows/ci.yml`、`scripts/hooks/pre-push`、`docs/architecture/clickra_architecture.md`、`scripts/architecture/`、`clickra_architecture_map.svg`、`clickra_architecture_files.html`；已知問題是寫死的數量與一律放行的規則 | **保留並提交 `scripts/architecture/SemanticGraph/`**（Roslyn 引用圖工具，Claude 的 L4 架構圖已改用它的輸出）；其餘（`generate_architecture.py`、svg／html、CI／pre-push 改動）可丟棄或另議；無論如何不要混進上面的 PR |
 
 ## B. L0 入口
 
