@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1556" height="958" viewBox="0 730 1556 958" font-family="Microsoft JhengHei UI,Microsoft JhengHei,Noto Sans CJK TC,Segoe UI,Arial,sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Clickra 架構圖" width="1556" height="958" viewBox="0 730 1556 958" font-family="Microsoft JhengHei UI,Microsoft JhengHei,Noto Sans CJK TC,Segoe UI,Arial,sans-serif">
 <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#344054"/></marker><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#98a2b3"/></marker></defs>
 <rect x="0" y="730" width="1556" height="958" fill="#fff"/>
 <g transform="translate(76,0)">

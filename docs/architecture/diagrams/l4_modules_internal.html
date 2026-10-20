@@ -1,36 +1,12 @@
 <!doctype html>
-<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Clickra Architecture — L4 模組內部</title>
-<style>
-body{margin:0;font-family:"Microsoft JhengHei UI","Microsoft JhengHei","Segoe UI",Arial,sans-serif;background:#f4f6f8;color:#111827}
-header{position:sticky;top:0;z-index:10;background:#fffffff0;border-bottom:1px solid #d4d9e0;padding:0}
-h1{font-size:20px;margin:0 10px 0 0}.meta{font-size:13px;color:#535c68}
-button,input{font:inherit;font-size:13px;padding:8px 10px;border:1px solid #bfc6d1;border-radius:7px;background:#fff}
-button{cursor:pointer}button.on{background:#101828;color:#fff;border-color:#101828}input{width:300px}
-#view{flex:1 1 auto;min-height:0;overflow:auto;background:#fff}#view svg{display:block;margin:0 auto;width:100%;height:auto;max-width:1556px}
-.note{font-size:12px;color:#68717e}
-.node{cursor:pointer}.node rect,.edge path,.edge text{transition:opacity .15s}
-.node.dim,.edge.dim{opacity:.12}.edge.off{display:none}
-.edge.hot path{stroke:#d94b5a!important;stroke-width:3!important}.edge.hot text{fill:#d94b5a!important;font-weight:700}
-.hideUn .unshipped{display:none}
-.node.sel rect{stroke:#d94b5a!important;stroke-width:3!important}
-
-/* dark theme: page chrome via colors, diagram via invert + hue-rotate so semantic hues stay recognisable */
-html[data-theme="dark"] body{background:#0f1115;color:#e6e8eb}
-html[data-theme="dark"] header{background:#15181df0;border-bottom-color:#2a2f37}
-html[data-theme="dark"] .meta{color:#a3abb6}html[data-theme="dark"] .note{color:#8b939e}
-html[data-theme="dark"] button,html[data-theme="dark"] input{background:#1b1f26;color:#e6e8eb;border-color:#3a414c}
-html[data-theme="dark"] button.on{background:#e6e8eb;color:#101828;border-color:#e6e8eb}
-html[data-theme="dark"] #view{background:#121417}
-html[data-theme="dark"] #view svg{filter:invert(.9) hue-rotate(180deg) saturate(1.15)}
-#themeBtn{min-width:64px}
-/* one scroll area only: header keeps its natural height (it may wrap when zoomed), the diagram takes the rest */
-html,body{height:100%}body{display:flex;flex-direction:column;overflow:hidden}header{flex:none}
-/* toolbar stays one row (scrolls sideways when zoomed) so it never eats the diagram; stats/notes open on demand */
-.bar{display:flex;gap:12px;align-items:center;flex-wrap:nowrap;white-space:nowrap;overflow-x:auto;padding:10px 18px}
-.bar>*{flex:none}.infobox{padding:0 18px 10px;display:flex;gap:14px;flex-wrap:wrap}.infobox[hidden]{display:none}
-html[data-theme="dark"] .bar::-webkit-scrollbar{height:6px}
-</style></head><body>
+<link rel="stylesheet" href="viewer.css">
+</head>
+<body>
 <header>
 <div class="bar">
 <h1>Clickra — L4 模組內部</h1>
@@ -42,15 +18,16 @@ html[data-theme="dark"] .bar::-webkit-scrollbar{height:6px}
 <a href="l3_infrastructure.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #bfc6d1;color:#111827;background:#fff;">L3 基礎</a>
 <a href="l4_modules_internal.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #101828;color:#fff;background:#101828;font-weight:700;">L4 模組內部</a>
 </nav>
-<button id="unBtn">隱藏未發佈（Fluent）</button>
-<input id="q" placeholder="搜尋畫面或模型…">
+
+<input id="q" type="text" placeholder="搜尋類別、檔案或指令..." aria-label="搜尋類別、檔案或指令">
 <button id="themeBtn" title="切換深色／淺色">深色</button>
 <button id="resetBtn">Reset</button>
 <button id="infoBtn" title="顯示統計與說明">說明</button>
 </div>
-<div class="infobox" id="infoBox" hidden><span class="meta">src/ 全部 273 個 .cs 檔 · 27 張面板 · 334 條面板內引用 · 513 條跨面板引用（灰虛線替身）</span> <span class="note">src/ 底下每個檔案都在這裡：上方是呼叫者，下方是被用的檔案；灰虛線小方塊是引用到別的面板的檔案，點它會連同本尊一起亮；紅虛線框是互相引用的循環。點方塊可標出它的所有連線。</span></div>
+<div class="infobox" id="infoBox" hidden><span class="meta">src/ 全部 273 個 .cs 檔 · 27 張面板 · 334 條面板內引用 · 513 條跨面板引用（灰虛線替身）</span> <span class="note">src/ 底下每個檔案都在這裡：上方是呼叫者，下方是被用的檔案；灰虛線小方塊是引用到別的面板的檔案，點它會連同本尊一起亮；紅虛線框是互相引用的循環。</span></div>
 </header>
-<div id="view"><svg xmlns="http://www.w3.org/2000/svg" width="1556" height="18515" viewBox="0 3805 1556 18515" font-family="Microsoft JhengHei UI,Microsoft JhengHei,Noto Sans CJK TC,Segoe UI,Arial,sans-serif">
+<div id="view">
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Clickra 架構圖" width="1556" height="18515" viewBox="0 3805 1556 18515" font-family="Microsoft JhengHei UI,Microsoft JhengHei,Noto Sans CJK TC,Segoe UI,Arial,sans-serif">
 <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#344054"/></marker><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#98a2b3"/></marker></defs>
 <rect width="100%" height="100%" fill="#fff"/>
 <g transform="translate(76,0)">
@@ -4891,40 +4868,8 @@ html[data-theme="dark"] .bar::-webkit-scrollbar{height:6px}
 </g>
 <text x="40" y="22300" font-size="11.5" fill="#667085">線色規則：線的顏色＝發出呼叫的那一方。L0 藍、L1 綠（畫面另分 深綠＝Native Dashboard、青綠＝Native 進度視窗）、L2 橘、L3 紫、L4 粉紅；紅虛線＝跳層、灰虛線＝未發佈（Fluent）或外部依賴。</text>
 </g>
-</svg></div>
-<script>
-const nodes=[...document.querySelectorAll('.node')],edges=[...document.querySelectorAll('.edge')],q=document.getElementById('q');
-let variant='all';
-function reset(){document.querySelectorAll('.dim,.hot,.sel').forEach(x=>x.classList.remove('dim','hot','sel'))}
-function applyVariant(){edges.forEach(e=>{const v=e.dataset.variant;e.classList.toggle('off',variant!=='all'&&v!=='both'&&v!==variant)})}
-document.querySelectorAll('button.var').forEach(b=>b.onclick=()=>{variant=b.dataset.v;document.querySelectorAll('button.var').forEach(x=>x.classList.toggle('on',x===b));applyVariant();reset();q.value=''});
-function focus(id){reset();const keep=new Set([id]);
- edges.forEach(e=>{if(e.classList.contains('off'))return;if(e.dataset.src===id||e.dataset.dst===id){e.classList.add('hot');keep.add(e.dataset.src);keep.add(e.dataset.dst)}else e.classList.add('dim')});
- nodes.forEach(n=>{if(!keep.has(n.dataset.id))n.classList.add('dim');if(n.dataset.id===id)n.classList.add('sel')})}
-nodes.forEach(n=>n.addEventListener('click',ev=>{ev.stopPropagation();q.value='';focus(n.dataset.id)}));
-document.getElementById('view').addEventListener('click',()=>{reset()});
-q.addEventListener('input',()=>{reset();const s=q.value.trim().toLowerCase();if(!s)return;
- nodes.forEach(n=>{if(!n.dataset.search.includes(s))n.classList.add('dim')});edges.forEach(e=>e.classList.add('dim'))});
-let un=false;document.getElementById('unBtn').onclick=()=>{un=!un;document.body.classList.toggle('hideUn',un);document.getElementById('unBtn').textContent=un?'顯示未發佈（Fluent）':'隱藏未發佈（Fluent）';document.getElementById('unBtn').classList.toggle('on',un)};
-document.getElementById('resetBtn').onclick=()=>{q.value='';reset()};
-</script>
-<script>
-(function(){const root=document.documentElement,btn=document.getElementById('themeBtn');
-let t=null;try{t=localStorage.getItem('clickra-arch-theme')}catch(e){}
-if(!t)t=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
-function apply(){root.dataset.theme=t;btn.textContent=t==='dark'?'淺色':'深色'}
-apply();btn.onclick=()=>{t=t==='dark'?'light':'dark';apply();try{localStorage.setItem('clickra-arch-theme',t)}catch(e){}};})();
-</script><script>
-/* Fit the diagram to the window at 100% browser zoom; when the user zooms in, keep that width in CSS px so the
-   whole diagram (box text included) grows and scrolls, instead of shrinking back to fit the narrower viewport. */
-(function(){const v=document.getElementById('view'),s=v&&v.querySelector('svg');if(!s)return;
-const base=window.devicePixelRatio||1;  /* zoom level at load counts as 100%: always fits on open */
-function zoom(){const z=(window.devicePixelRatio||1)/base;return Math.abs(z-1)<0.02?1:z}
-const hdr=document.querySelector('header');
-function fit(){const z=zoom();hdr.style.zoom=z===1?'':String(1/z);  /* toolbar keeps its on-screen size; only the diagram zooms */
- if(z===1){s.style.width='';s.style.maxWidth='';v.style.overflowX='hidden';return}  /* 100%: plain CSS fit, can never overflow */
- v.style.overflowX='auto';s.style.maxWidth='none';s.style.width=Math.floor(Math.min(1556,v.clientWidth*z))+'px'}
-fit();window.addEventListener('resize',fit);})();
-</script>
-<script>document.getElementById('infoBtn').onclick=()=>{const b=document.getElementById('infoBox');b.hidden=!b.hidden;document.getElementById('infoBtn').classList.toggle('on',!b.hidden);window.dispatchEvent(new Event('resize'))};</script>
-</body></html>
+</svg>
+</div>
+<script src="viewer.js"></script>
+</body>
+</html>
