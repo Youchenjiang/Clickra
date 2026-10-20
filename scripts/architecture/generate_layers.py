@@ -1,12 +1,22 @@
-"""Layered architecture map (L0 entry + L1 presentation) for Clickra (hand-authored from manifests + startup code)."""
-import html, os, json
+"""Clickra Architecture layered diagram generator.
+
+Generates interactive HTML diagrams and SVG vector maps for Clickra layers
+(L0 to L4) using Roslyn semantic dependency analysis.
+"""
+import collections
+import fnmatch
+import html
+import json
+import os
+import posixpath
+import re
+
 script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
 repo_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
 docs_arch = os.path.join(repo_root, "docs", "architecture", "diagrams")
 svg_dir = os.path.join(docs_arch, "svg")
 os.makedirs(svg_dir, exist_ok=True)
-from files_map import FILES
 e = html.escape
 W, H = 1556, 3540
 F = 'font-family="Microsoft JhengHei UI,Microsoft JhengHei,Noto Sans CJK TC,Segoe UI,Arial,sans-serif"'
@@ -104,7 +114,6 @@ def render_page(target_name, title, h1, active_href, controls, meta, note, svg_c
     with open(os.path.join(docs_arch, target_name), "w", encoding="utf-8", newline="\n") as fh:
         fh.write(html_out)
 
-import re as _re
 
 
 def need_h(role=(), folder="", classes=(), also=()):
@@ -124,13 +133,13 @@ def wrap(names, maxch):
     """Break long identifiers at a camel-case boundary: 'MarkdownSingleFile-' / '  ProcessorBase'."""
     out = []
     for n in names:
-        if not _re.fullmatch(r"[A-Za-z0-9_./-]+", n.strip()):   # only wrap plain identifiers / paths
+        if not re.fullmatch(r"[A-Za-z0-9_./-]+", n.strip()):   # only wrap plain identifiers / paths
             out.append(n)
             continue
         while len(n) > maxch:
-            caps = [m.start() for m in _re.finditer(r"[A-Z]", n[:maxch]) if m.start() > 4]
+            caps = [m.start() for m in re.finditer(r"[A-Z]", n[:maxch]) if m.start() > 4]
             # prefer cutting before a whole suffix word (UseCase, Processor, Presentation…) over splitting inside one
-            nice = [p for p in caps if _re.match(r"(UseCase|Processor|Presentation|Controller|Service|Registry|Metadata|Options|Renderer|Installer|Detector|Optimizer|Template|Command)", n[p:])]
+            nice = [p for p in caps if re.match(r"(UseCase|Processor|Presentation|Controller|Service|Registry|Metadata|Options|Renderer|Installer|Detector|Optimizer|Template|Command)", n[p:])]
             cut = max(nice or caps or [maxch - 1])
             out.append(n[:cut] + "-")
             n = "  " + n[cut:]
@@ -259,8 +268,146 @@ path([(1060, 1072), (1060, 1088), (575, 1088), (575, 1072)], src="nprog", dst="m
 # ======================= L1: shared presentation controllers =======================
 band(1220, 0, "共用畫面狀態（Clickra.Core，Native 與 Fluent 共用）")
 # file lists of the shared-state cards come from cards.py + the code graph (L2/L4 use the same mapping)
-exec(open('l4_model.py', encoding='utf-8').read())
-exec(open('cards.py', encoding='utf-8').read())
+# semantic-msbuild.json comes from the repo's Roslyn tool (scripts/architecture/SemanticGraph): every project is
+# compiled with MSBuild, and an edge means a file uses a symbol (type or member) declared in another file.
+_GRAPH = os.environ.get("CLICKRA_ARCH_GRAPH", "semantic-msbuild.json")   # override only for tests
+_g = json.load(open(_GRAPH, encoding="utf-8"))
+assert not any(_g["diagnostics"]["projectErrors"].values()), _g["diagnostics"]   # only trust a graph that compiled cleanly
+_strip = lambda p: p[4:] if p.startswith("src/") else p
+_lines = json.load(open(os.environ.get("CLICKRA_ARCH_LINES", "file_lines.json"), encoding="utf-8"))
+AF = {_strip(p): _lines[_strip(p)] for p in _g["files"]}
+AE = sorted({(_strip(e["source"]), _strip(e["target"])) for e in _g["edges"] if e["source"] != e["target"]})
+ASYM = {(_strip(e["source"]), _strip(e["target"])): e["symbols"] for e in _g["edges"]}
+# partial classes: Name.cs (or Name.xaml.cs) plus Name.*.cs in the same folder, checked against the expected set below
+_by = collections.defaultdict(list)
+for p in AF:
+    _by[(posixpath.dirname(p), posixpath.basename(p).split(".")[0])].append(p)
+_grp = {}
+for (d, stem), fs in _by.items():
+    if len(fs) > 1 and any(posixpath.basename(f) in (stem + ".cs", stem + ".xaml.cs") for f in fs):
+        for f in fs:
+            _grp[f] = d + "/" + stem + ".*.cs"
+PARTIAL_GROUPS = sorted(set(_grp.values()))
+
+
+def anode(p):
+    return _grp.get(p, p)
+
+
+TR = "Clickra.Core/Modules/PdfTranslation/"
+TR_SMALL = {"Application", "Execution", "Pipeline/", "Pipeline/Layout", "Pipeline/Fonts"}
+
+
+def tr_folder(n):
+    r = n[len(TR):].split("/")
+    if r[0] == "Pipeline":
+        return "Pipeline/" + (r[1] if len(r) > 2 else "")
+    return r[0]
+
+
+def panel_of(n):
+    s = n.split("/")
+    if s[0] in ("ClickraShell", "ClickraLauncher", "Shared"):
+        return "entry"
+    if s[0] == "Clickra.CLI":
+        return "cli"
+    if s[0] == "Clickra.Fluent":
+        return "fluent"
+    if n.startswith(TR):
+        f = tr_folder(n)
+        if f in TR_SMALL:
+            return "tr_misc"
+        return "tr_" + f.split("/")[-1].lower()
+    if s[1] == "Modules":
+        return "m_" + s[2].lower()
+    if s[1] in ("Application", "Presentation"):
+        return "capp"
+    if s[1] == "Storage":
+        return "store"
+    if s[1] == "Processors":
+        return "proc"
+    return "cross"
+
+
+NODES = collections.defaultdict(lambda: {"files": [], "lines": 0})
+for p, n in AF.items():
+    nd = NODES[anode(p)]
+    nd["files"].append(posixpath.basename(p)); nd["lines"] += n
+NEDGES = sorted({(anode(a), anode(b)) for a, b in AE if anode(a) != anode(b)})
+PANEL = {n: panel_of(n) for n in NODES}
+INNER = [(a, b) for a, b in NEDGES if PANEL[a] == PANEL[b]]
+CROSS = [(a, b) for a, b in NEDGES if PANEL[a] != PANEL[b]]
+"""Which source files each diagram box stands for (paths under src/, fnmatch patterns; '**' = any depth).
+The generator fills the boxes' file lists from here and checks every drawn line against the Roslyn graph:
+a line is drawn only when the code really has that reference, and a reference with no line is reported."""
+
+CARDS = {
+    # ---- L1 screens (renderers)
+    "ndash": ["Clickra.CLI/Dashboard/*"],
+    "nprog": ["Clickra.CLI/Progress/*"],
+    "nnone": ["Clickra.CLI/Cli/*"],
+    "m_lay": ["Clickra.CLI/UI/**", "Clickra.CLI/Native/*"],
+    "fmain": ["Clickra.Fluent/MainPage*", "Clickra.Fluent/DynamicSettingsController.cs", "Clickra.Fluent/OfficeEnginePreflight.cs",
+              "Clickra.Fluent/Controls/FluentDialogs.cs"],
+    "fprog": ["Clickra.Fluent/TaskProgressPage.xaml.cs", "Clickra.Fluent/Controls/VisualSplitterControl.xaml.cs",
+              "Clickra.Fluent/Controls/SplitPagesOverlay.xaml.cs"],
+    # ---- L1 shared presentation state and data catalogs
+    "m_nav": ["Clickra.Core/Presentation/Dashboard/*"],
+    "m_ws": ["Clickra.Core/Presentation/Convert/ConvertWorkspaceController.cs"],
+    "m_exec": ["Clickra.Core/Presentation/Convert/ConversionExecutionController.cs"],
+    "m_prog": ["Clickra.Core/Presentation/Progress/*"],
+    "m_split": ["Clickra.Core/Modules/PdfSplit/Presentation/*"],
+    "m_hist": ["Clickra.Core/Modules/HistoryTasks/Presentation/*HistoryPresentationController.cs"],
+    "d_feed": ["Clickra.Core/Modules/HistoryTasks/Presentation/HistoryFeed.cs"],
+    "m_set": ["Clickra.Core/Modules/Settings/Presentation/*SettingsPresentationController.cs"],
+    "d_set": ["Clickra.Core/Modules/Settings/Presentation/SettingDescriptor.cs"],
+    # ---- L2 application services (row 1)
+    "a_cmd": ["Clickra.Core/Application/ConvertCommandRegistry.cs"],
+    "a_uc": ["Clickra.Core/Application/ConversionUseCases.cs", "Clickra.Core/Application/ConversionUseCaseRegistry.cs",
+             "Clickra.Core/Application/IConversionUseCase.cs", "Clickra.Core/Application/ConversionRequest.cs",
+             "Clickra.Core/Application/ConversionPlan.cs", "Clickra.Core/Application/ConversionResult.cs",
+             "Clickra.Core/Application/ConversionInteraction.cs"],
+    "a_pages": ["Clickra.Core/Modules/PdfSplit/Application/PdfPageCountQuery.cs"],
+    "a_hist": ["Clickra.Core/Modules/HistoryTasks/Application/*"],
+    "a_off": ["Clickra.Core/Modules/Settings/Application/LibreOfficeSettingsController.cs"],   # before a_set: first match wins
+    "a_set": ["Clickra.Core/Modules/Settings/Application/*"],
+    # ---- L2 use cases
+    "a_base": ["Clickra.Core/Application/*UseCaseBase.cs"],
+    "a_life": ["Clickra.Core/Application/ConversionTask*.cs"],
+    "u_Image": ["Clickra.Core/Modules/Image/Application/*"],
+    "u_Markdown": ["Clickra.Core/Modules/Markdown/Application/*"],
+    "u_Office": ["Clickra.Core/Modules/Office/Application/*"],
+    "u_PdfCompression": ["Clickra.Core/Modules/PdfCompression/Application/*"],
+    "u_PdfDecrypt": ["Clickra.Core/Modules/PdfDecrypt/Application/*"],
+    "u_PdfMerge": ["Clickra.Core/Modules/PdfMerge/Application/*"],
+    "u_PdfTranslation": ["Clickra.Core/Modules/PdfTranslation/Application/*"],
+    "u_PdfSplit": ["Clickra.Core/Modules/PdfSplit/Application/*"],
+    # ---- below L2 (exits)
+    "s_shared": ["Shared/*"],
+    "s_office": ["Clickra.Core/Modules/Office/Infrastructure/*"],
+    "s_store": ["Clickra.Core/Storage/*"],
+    "s_proc": ["Clickra.Core/Modules/*/Processing/**", "Clickra.Core/Processors/**", "Clickra.Core/Modules/PdfTranslation/**"],
+}
+# boxes later in this list do not take files an earlier box already took
+ORDER = list(CARDS)
+L2_CARDS = [k for k in CARDS if k.startswith(("a_", "u_"))]
+L2_SCOPE = ["Clickra.Core/Application/*", "Clickra.Core/Modules/*/Application/*"]   # every file here must sit in an L2 card
+
+
+def _match(path, pat):
+    if "**" in pat:
+        return fnmatch.fnmatch(path, pat.replace("/**", "/*")) or fnmatch.fnmatch(path, pat.replace("**", "*"))
+    return fnmatch.fnmatch(path, pat) and path.count("/") == pat.count("/")
+
+
+def assign(paths):
+    out = {}
+    for p in sorted(paths):
+        for k in ORDER:
+            if any(_match(p, pat) for pat in CARDS[k]):
+                out[p] = k
+                break
+    return out
 _L1BOX = assign(AF)
 _L1_SCOPE = ["Clickra.Core/Presentation/*/*", "Clickra.Core/Modules/*/Presentation/*"]
 _l1_orphans = [p for p in AF if any(_match(p, s) for s in _L1_SCOPE) and not _L1BOX.get(p, "").startswith(("m_", "d_"))]
@@ -350,19 +497,1214 @@ path([(1440 - 20, 1072), (1440 - 20, 1198)], src="nnone", dst="", label="不經 
 
 A('</g>')  # close L1 translate
 L1_END = len(o)
-exec(open('l2_block.py', encoding='utf-8').read())
+
+ORDER = list(CARDS)
+# ======================= L2 from the code graph (exec'd at the top of l2_block.py) =======================
+# Card file lists, "也被" lines and which lines may be drawn all come from semantic-msbuild.json + cards.py.
+# Layout (columns, rows, routes) stays hand-placed; a planned line whose reference no longer exists is not drawn.
+BOX = assign(AF)
+MEMBERS = collections.defaultdict(list)
+for _p, _b in BOX.items():
+    MEMBERS[_b].append(_p)
+GROUP = {"UC": ["a_base"] + [k for k in CARDS if k.startswith("u_")]}
+_BLINK = collections.Counter((BOX.get(a), BOX.get(b)) for a, b in AE if BOX.get(a) and BOX.get(b) and BOX[a] != BOX[b])
+
+
+def boxes(k):
+    return GROUP.get(k, [k])
+
+
+def linked(src, dst):
+    return any(_BLINK[(a, b)] for a in boxes(src) for b in boxes(dst))
+
+
+NAME = {"ndash": "Native Dashboard", "nprog": "Native 進度視窗", "nnone": "CLI／ClickraStartup", "m_lay": "Native 版面表",
+        "fmain": "Fluent 主頁", "fprog": "Fluent 進度頁", "a_cmd": "指令目錄", "a_uc": "用例目錄", "a_pages": "頁數查詢",
+        "a_hist": "歷史服務", "a_set": "設定服務", "a_off": "Office 引擎設定", "a_base": "用例基底", "a_life": "任務生命週期",
+        "UC": "各模組用例"}
+NAME.update({m[0]: m[1] + "（狀態）" for m in MODELS_DEF})
+NAME.update({"d_feed": "歷史顯示清單", "d_set": "設定目錄"})
+for _k in CARDS:
+    if _k.startswith("u_"):
+        NAME.setdefault(_k, _k[2:] + " 用例")
+
+# every line the L2 drawing plans (src, dst); a line is drawn only if linked(src, dst)
+PLANNED = [("m_ws", "a_cmd"), ("m_exec", "a_uc"), ("m_split", "a_pages"), ("m_hist", "a_hist"), ("d_feed", "a_hist"), ("m_set", "a_set"), ("d_set", "a_set"),
+           ("m_set", "a_off"), ("nprog", "a_pages"), ("fprog", "a_pages"), ("m_split", "s_proc"), ("a_uc", "UC"), ("UC", "a_life"),
+           ("a_cmd", "s_shared"), ("UC", "s_proc"), ("a_pages", "s_proc"), ("a_hist", "s_store"), ("a_life", "s_store"),
+           ("a_set", "s_store"), ("a_off", "s_office")]
+DRAWN, STALE = [], []
+
+
+def link(src, dst):
+    ok = linked(src, dst)
+    (DRAWN if ok else STALE).append((src, dst))
+    return ok
+
+
+def problem_link(src, dst):
+    ok = linked(src, dst)
+    if ok:
+        DRAWN.append((src, dst))
+    return ok
+
+
+def files_of(k, notes=None, maxch=22):
+    notes = notes or {}
+    names = sorted(posixpath.basename(p) for p in MEMBERS[k])
+    out = []
+    for n in names:
+        out += wrap([n], maxch)
+        if n in notes:
+            out.append("  " + notes[n])
+    return out
+
+
+def callers_of(target, exclude=()):
+    planned_src = {s for s, d in PLANNED if target in boxes(d)}
+    found = []
+    for k in ORDER:
+        kk = "UC" if k in GROUP["UC"] else k
+        if kk in found or kk in exclude or k in boxes(target) or k.startswith("s_"):
+            continue
+        if any(_BLINK[(k, t)] for t in boxes(target)) and kk not in planned_src and not any(k in boxes(s) for s in planned_src):
+            found.append(kk)
+    return [NAME.get(k, k) for k in found]
+
+
+def wrap_text(text, width_px, px=9.5):
+    cw = lambda c: px if ord(c) > 0x2e80 else px * 0.6
+    lines, cur, w = [], "", 0.0
+    toks = [t for t in text.replace("、", "、\0").replace("：", "：\0").split("\0") if t]
+    if len(toks) > 1 and len(toks[0]) <= 4 and toks[0].endswith("："):   # keep a short label such as 也被： with its first item
+        toks[:2] = [toks[0] + toks[1]]
+    for tok in toks:
+        tw = sum(cw(c) for c in tok)
+        if cur.strip() and w + tw > width_px:
+            lines.append(cur); cur, w = "  ", px * 1.2
+        for c in tok:            # a single token longer than the line: break inside it
+            if w + cw(c) > width_px and cur.strip():
+                lines.append(cur); cur, w = "  ", px * 1.2
+            cur += c; w += cw(c)
+    if cur.strip():
+        lines.append(cur)
+    return lines
+
+
+def also_lines(target, width, prefix="也被：", extra=()):
+    who = callers_of(target) + list(extra)
+    return wrap_text(prefix + "、".join(who), width - 20) if who else []
+
+
+L1_BOXES = {"ndash", "nprog", "nnone", "m_lay", "fmain", "fprog"} | {k for k in CARDS if k.startswith(("m_", "d_"))}
+SKIP_TODO = {"s_proc": "C1", "s_office": "C5", "s_store": "?"}
+
+
+def stub_lines(stub, width):
+    who = callers_of(stub)
+    l1 = [n for n in who if any(NAME.get(k) == n for k in L1_BOXES)]
+    l2 = [n for n in who if n not in l1]
+    out = []
+    if l1:
+        out += wrap_text("⚠ L1 直接用到、跳過 L2（" + SKIP_TODO.get(stub, "?") + "）：" + "、".join(l1), width - 20)
+    if l2:
+        out += wrap_text("也被：" + "、".join(l2), width - 20)
+    return out
+# ======================= L2: application (exec'd from layers.py) =======================
+# Columns line up with the L1 shared-state row so L1 -> L2 calls drop straight down.
+L1_OFF = 120                      # L1 group translate
+L1_BOTTOM = 1498 + L1_OFF         # abs bottom of the L1 section
+L2_TOP = L1_BOTTOM + 34           # abs top of the L2 section
+L2H = 756
+COL = lambda i: MX0 + i * (MW + MGAP)
+AMBER, AMBER_FILL = "#dc6803", "#fffaeb"
+MONO = 'font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace"'
+
+
+
+
+def l2card(nid, pos, title, role=(), folder="", classes=(), also=(), stroke=AMBER, fill="#fff", dashed=False, tcol="#101828"):
+    x, y, w, h = pos
+    srch = " ".join([title, *role, folder, *classes, *also]).lower()
+    A(f'<g class="node" data-id="{nid}" data-search="{e(srch)}">')
+    da = ' stroke-dasharray="7 5"' if dashed else ""
+    A(f'<rect x="{x:.1f}" y="{y}" width="{w:.1f}" height="{h}" rx="9" fill="{fill}" stroke="{stroke}" stroke-width="1.6"{da}/>')
+    A(f'<text x="{x + 10:.1f}" y="{y + 20}" font-size="13" font-weight="700" fill="{tcol}">{e(title)}</text>')
+    cy = y + 38
+    for l in role:
+        A(f'<text x="{x + 10:.1f}" y="{cy}" font-size="10.5" fill="#475467">{e(l)}</text>')
+        cy += 14
+    if folder or classes:
+        A(f'<line x1="{x + 10:.1f}" y1="{cy - 6}" x2="{x + w - 10:.1f}" y2="{cy - 6}" stroke="#eaecf0"/>')
+        cy += 6
+    if folder:
+        A(f'<text x="{x + 10:.1f}" y="{cy}" font-size="9" fill="#98a2b3" {MONO}>{e(folder)}</text>')
+        cy += 13
+    for c in classes:
+        A(f'<text x="{x + 10:.1f}" y="{cy}" font-size="9.8" fill="#344054" {MONO} xml:space="preserve">{e(c)}</text>')
+        cy += 13
+    if also:
+        cy += 3
+        red = False
+        for l in also:
+            red = l.startswith("⚠") or (red and l.startswith("  "))   # a ⚠ note and its continuation lines are red
+            A(f'<text x="{x + 10:.1f}" y="{cy}" font-size="9.5" fill="{"#b42318" if red else "#98a2b3"}">{e(l)}</text>')
+            cy += 12
+    A('</g>')
+    assert cy - y <= h + 4, (nid, cy - y, h)
+    return (x, y, w, h)
+
+
+# ---- part A (combined view only): L1 sources -> top edge of L2, drawn in absolute coords
+CTRL_BOTTOM = MY + MH + L1_OFF
+DATA_BOTTOM = DY + DH + L1_OFF
+ENTRY = L2_TOP - 6                # where every L1 -> L2 line enters the L2 section
+R1Y = 56                          # row-1 top (L2 local)
+
+
+def c_mid(i):
+    return COL(i) + MW / 2
+
+
+# (src, dst, x at L1 source, x where it enters L2)
+CALLS = [
+    ("m_ws", "a_cmd", c_mid(1), c_mid(1)),
+    ("m_exec", "a_uc", c_mid(2), c_mid(2)),
+    ("m_split", "a_pages", c_mid(4), c_mid(4)),   # page count through the visual-split state (was D2: screens called it directly)
+    ("m_hist", "a_hist", COL(5) + MW - 22, COL(5) + MW - 22),
+    ("d_feed", "a_hist", c_mid(5), c_mid(5)),
+    ("m_set", "a_set", COL(6) + MW - 22, COL(6) + MW - 22),
+    ("d_set", "a_set", c_mid(6), c_mid(6)),
+    ("m_set", "a_off", c_mid(7), c_mid(7)),    # settings state -> Office engine settings (the empty 8th L1 slot)
+]
+for src, dst, sx, ex in CALLS:
+    if not link(src, dst):
+        continue
+    if dst == "a_off":
+        # leave the settings card on its right side, cross the empty slot, drop into column 7
+        my = MY + MH / 2 + L1_OFF
+        pts = [(COL(6) + MW, my), (ex, my), (ex, ENTRY)]
+    elif src in ("m_hist", "m_set"):
+        # controller sits above its data card: go round it through the gap on its right
+        gx = sx + 22 + MGAP / 2
+        pts = [(sx, CTRL_BOTTOM), (sx, CTRL_BOTTOM + 10), (gx, CTRL_BOTTOM + 10), (gx, ENTRY - 10), (ex, ENTRY - 10), (ex, ENTRY)]
+    elif src.startswith("d_"):
+        pts = [(sx, DATA_BOTTOM), (ex, ENTRY)]
+    else:
+        pts = [(sx, CTRL_BOTTOM), (ex, ENTRY)]
+    path(pts, src=src, dst=dst, color="#12b76a", width=1.6, arrow=False)
+# visual-split bypass (L1 -> L3), red
+BYX = COL(4) - MGAP / 2
+SPLIT_BYPASS = problem_link("m_split", "s_proc")      # C1
+if SPLIT_BYPASS:
+    path([(COL(4) + 16, CTRL_BOTTOM), (COL(4) + 16, CTRL_BOTTOM + 10), (BYX, CTRL_BOTTOM + 10), (BYX, ENTRY)], src="m_split", dst="s_proc", color="#d92d20", width=1.6, dashed=True, arrow=False)
+# renderers that call the page-count query directly (they skip L1 shared state)
+SCR_BOTTOM = 806 + 266 + L1_OFF            # bottom of the L1 screen row (abs)
+JOG = 1098 + L1_OFF                        # between the screen row and the L1 lanes
+NPX, FPX = COL(5) - MGAP / 2, COL(3) - MGAP / 2   # gaps used to pass the shared-state row
+NPROG_PAGES, FPROG_PAGES = problem_link("nprog", "a_pages"), problem_link("fprog", "a_pages")   # D2
+if NPROG_PAGES:
+    path([(1040, SCR_BOTTOM), (1040, JOG), (NPX, JOG), (NPX, ENTRY)], src="nprog", dst="a_pages", color="#0e9384", width=1.6, arrow=False)
+if FPROG_PAGES:
+    path([(440, SCR_BOTTOM), (440, JOG + 6), (FPX, JOG + 6), (FPX, ENTRY)], src="fprog", dst="a_pages", color="#98a2b3", width=1.6, dashed=True, arrow=False, cls="unshipped")
+
+# ---- L2 section (local coords)
+L2_AT = len(o)
+A(f'<g transform="translate(0,{L2_TOP})">')
+_sec2_at = len(o)
+band(38, 0, "應用服務（每一欄對應上方 L1 共用畫面狀態的同一欄）")
+
+# part B: vertical entries into row-1 cards
+for src, dst, sx, ex in CALLS:
+    if (src, dst) not in DRAWN:
+        continue
+    path([(ex, -6), (ex, R1Y)], src=src, dst=dst, color="#12b76a", width=1.6)
+
+# row-1 cards: titles and roles are hand-written; file lists and 也被 come from the code graph
+ROW1 = {  # id: (x, title, role lines, folder, extra lines under the files)
+    "a_cmd": (COL(1), "指令目錄", ["指令、可接受副檔名、", "最少檔數、顯示名稱"], "Core/Application/", ["↳ src/Shared/"] + wrap(["  ConvertCommandMetadata.cs"], 22)),
+    "a_uc": (COL(2), "轉換用例目錄", ["指令 → 唯一的用例", "Validate→Plan→Execute"], "Core/Application/", []),
+    "a_pages": (COL(4), "頁數查詢", ["讀 PDF 頁數"], "Modules/PdfSplit/App…/", []),
+    "a_hist": (COL(5), "歷史與暫停任務", ["清除與刪除／讀清單／", "認領暫停任務續跑"], "Modules/HistoryTasks/App…/", []),
+    "a_set": (COL(6), "設定", ["讀寫偏好與儲存路徑"], "Modules/Settings/App…/", []),
+    "a_off": (COL(7), "Office 引擎設定", ["安裝／移除 LibreOffice、", "回報引擎是否就緒"], "Modules/Settings/App…/", []),
+}
+ROW1_NOTES = {"a_uc": ["需輸入時回呼 L1：", "密碼／分割頁／MD 選項"]}
+ROW1_CONTENT = {}
+for k, (x, title, role, folder, extra) in ROW1.items():
+    cls_ = files_of(k) + extra
+    also = also_lines(k, MW) + ROW1_NOTES.get(k, [])
+    ROW1_CONTENT[k] = (cls_, also)
+H1 = max(need_h(ROW1[k][2], ROW1[k][3], c, a) for k, (c, a) in ROW1_CONTENT.items()) + 8
+
+
+def row1_card(k):
+    x, title, role, folder, _ = ROW1[k]
+    cls_, also = ROW1_CONTENT[k]
+    return l2card(k, (x, R1Y, MW, H1), title, role, folder, cls_, also, stroke=AMBER, fill=AMBER_FILL)
+
+
+cmd, uc, pq = row1_card("a_cmd"), row1_card("a_uc"), row1_card("a_pages")
+# upstream of the page-count query: two renderers (they skip L1 shared state)
+# combined view: continue the lines that come down from the real L1 screen boxes
+_c = len(o)
+if NPROG_PAGES:
+    path([(NPX, -6), (NPX, R1Y + 40), (COL(4) + MW, R1Y + 40)], src="nprog", dst="a_pages", color="#0e9384", width=1.6)
+if FPROG_PAGES:
+    path([(FPX, -6), (FPX, R1Y + 120), (COL(4), R1Y + 120)], src="fprog", dst="a_pages", color="#98a2b3", width=1.6, dashed=True, cls="unshipped")
+COMBINED_ONLY = (_c, len(o))
+# standalone L2: those screens are not on the page, so stand them in with chips in the free col-3 slot
+_mark = len(o)
+CH = (H1 - 10) / 2
+for k, (nid, l1, l2, file, cls_) in enumerate([
+        ("nprog", "來自 L1 畫面", "Native 進度視窗", "ProgressWindow.VisualSplitter.cs", ""),
+        ("fprog", "來自 L1 畫面（未發佈）", "Fluent 視覺分割", "VisualSplitterControl.xaml.cs", "unshipped")]):
+    if (nid, "a_pages") not in DRAWN:
+        continue
+    cy0 = R1Y + k * (CH + 10)
+    stroke, dash = ("#98a2b3", ' stroke-dasharray="6 4"') if cls_ else ("#0e9384", "")
+    A(f'<g class="node {cls_}" data-id="{nid}" data-search="{e((l2 + " " + file).lower())}"><rect x="{COL(3):.1f}" y="{cy0:.1f}" width="{MW:.1f}" height="{CH:.1f}" rx="9" fill="#f6fef9" stroke="{stroke}" stroke-width="1.4"{dash}/>'
+      f'<text x="{COL(3) + 10:.1f}" y="{cy0 + 18:.1f}" font-size="10" fill="#667085">{e(l1)}</text>'
+      f'<text x="{COL(3) + 10:.1f}" y="{cy0 + 36:.1f}" font-size="12.5" font-weight="700" fill="#101828">{e(l2)}</text>'
+      f'<text x="{COL(3) + 10:.1f}" y="{cy0 + 53:.1f}" font-size="9" fill="#344054" {MONO}>{e(file.split(".", 1)[0])}</text>'
+      f'<text x="{COL(3) + 10:.1f}" y="{cy0 + 65:.1f}" font-size="9" fill="#344054" {MONO}>{e("." + file.split(".", 1)[1])}</text></g>')
+    path([(COL(3) + MW, cy0 + CH / 2), (COL(4), cy0 + CH / 2)], src=nid, dst="a_pages", color="#98a2b3" if cls_ else "#0e9384", width=1.6, dashed=bool(cls_), cls=cls_)
+STANDALONE_ONLY = o[_mark:]
+del o[_mark:]
+hist, sett, off = row1_card("a_hist"), row1_card("a_set"), row1_card("a_off")
+L2_SERVICES = 6
+
+# ---- conversion use cases (cols 0-3)
+UCX0, UCX1 = COL(0), COL(3) + MW
+R2 = R1Y + H1 + 40
+A(f'<text x="{UCX0}" y="{R2}" font-size="12.5" font-weight="700" fill="#667085" letter-spacing=".5">轉換用例（ConversionUseCases 登記的 19 個指令）</text>')
+BASEY = R2 + 16
+base = l2card("a_base", (UCX0, BASEY, UCX1 - UCX0, 88), "共用執行基底　Core/Application/",
+              [], "", ["ConversionUseCaseBase.cs（所有用例的父類別）",
+                       "├ PerFileConversionUseCaseBase.cs（逐檔處理）",
+                       "└ SingleOutputConversionUseCaseBase.cs（多檔合成一個輸出）"], stroke=AMBER, fill=AMBER_FILL)
+assert sorted(posixpath.basename(p) for p in MEMBERS["a_base"]) == ["ConversionUseCaseBase.cs", "PerFileConversionUseCaseBase.cs", "SingleOutputConversionUseCaseBase.cs"], MEMBERS["a_base"]
+MOD_ORDER = ["Image", "Markdown", "Office", "PdfCompression", "PdfDecrypt", "PdfMerge", "PdfTranslation", "PdfSplit"]
+assert sorted(MOD_ORDER) == sorted(k[2:] for k in CARDS if k.startswith("u_")), "a module was added or removed: place it in MOD_ORDER"
+MOD_NOTES = {"ImageFormatConvertUseCase.cs": "（5 個指令）", "ImgMergeUseCase.cs": "（合一）", "ImgStitchUseCase.cs": "（合一）",
+             "OfficeToPdfUseCaseBase.cs": "（查 Office 引擎）", "DecryptPdfUseCase.cs": "（需密碼）", "MergePdfUseCase.cs": "（合一）",
+             "SplitPdfUseCase.cs": "（需分割頁）"}
+SHORT = {"Native 進度視窗": "Native", "CLI／ClickraStartup": "CLI"}
+
+
+def mod_also(k):
+    who = [SHORT.get(n, n) for n in callers_of(k)]
+    if not who:
+        return []
+    c4 = "（C4）" if {"Native", "CLI"} & set(who) else ""
+    return wrap_text("也被：" + "、".join(who) + c4, MWID - 20)
+
+
+MG = 12
+MWID = (UCX1 - UCX0 - 3 * MG) / 4
+MODS = [(n, files_of("u_" + n, MOD_NOTES, 25), mod_also("u_" + n)) for n in MOD_ORDER]
+MOD_RH = [max(need_h(folder="x", classes=f, also=a) for _, f, a in MODS[:4]) + 6, max(need_h(folder="x", classes=f, also=a) for _, f, a in MODS[4:]) + 6]
+MOD_Y = [BASEY + 100, BASEY + 100 + MOD_RH[0] + 12]
+for k, (name, items, also) in enumerate(MODS):
+    r, c = divmod(k, 4)
+    mh = MOD_RH[r]
+    l2card(f"u_{name}", (UCX0 + c * (MWID + MG), MOD_Y[r], MWID, mh), name, [], "…/Application/", items, also, stroke="#fdb022")
+MOD_BOTTOM = MOD_Y[1] + MOD_RH[1]
+if link("a_uc", "UC"):
+    path([(c_mid(2), R1Y + H1), (c_mid(2), BASEY)], "依指令找到用例", lpos=(c_mid(2) + 8, R1Y + H1 + 24), anchor="start", src="a_uc", dst="a_base", color=AMBER, width=1.6)
+
+# ---- task lifecycle (cols 5-6)
+LCX, LCW = COL(5), COL(6) + MW - COL(5)
+LIFE_FILES = files_of("a_life", maxch=60)
+LIFE_ALSO = also_lines("a_life", LCW)
+LIFE_H = need_h(["x"], "Core/Application/", LIFE_FILES, LIFE_ALSO) + 8
+lc = l2card("a_life", (LCX, BASEY, LCW, LIFE_H), "任務生命週期", ["開始 → 進行中 → 完成／失敗／暫停，寫入任務紀錄"], "Core/Application/",
+            LIFE_FILES, LIFE_ALSO, stroke=AMBER, fill=AMBER_FILL)
+if link("UC", "a_life"):
+    path([(UCX1, BASEY + 25), (LCX, BASEY + 25)], "執行時建立與結束任務紀錄", lpos=((UCX1 + LCX) / 2, BASEY + 18), src="a_base", dst="a_life", color=AMBER, width=1.6)
+
+# ---- exits to L3
+S3Y = MOD_BOTTOM + 58
+STUB_W = {"s_proc": COL(4) + MW - COL(2), "s_store": COL(7) - 4 - (COL(5) - MGAP), "s_office": MW}
+STUB_NOTE = {"s_proc": ["紅色虛線：L1 視覺分割狀態（VisualSplitPresentationController:187）", "直接呼叫 PdfSplitProcessor.BuildSegmentSpec，跳過 L2（C1）"] if SPLIT_BYPASS else []}
+STUB_ALSO = {k: STUB_NOTE.get(k, []) + stub_lines(k, w) for k, w in STUB_W.items()}
+STUB_ROLE = {"s_proc": ["Modules/*/Processing、Processors/FileProcessing"], "s_store": ["ClickraStorage／ClickraSettings 等 15 檔"],
+             "s_office": ["安裝／偵測 LibreOffice、", "Modules/Office/Infra…"]}
+S3H = max(78, max(need_h(STUB_ROLE[k], "", [], STUB_ALSO[k]) + 8 for k in STUB_W))
+GREY = AMBER  # L2 -> L3 lines take the caller (L2) colour
+# shared-definition node: stays in both views (it is not an L3 node)
+shared = l2card("s_shared", (COL(0), S3Y, COL(1) + MW - COL(0), S3H), "共用指令表（src/Shared）", ["ConvertCommandMetadata.cs：指令、副檔名、", "最少檔數、顯示名稱；同一份也編進 ClickraShell"], "",
+                [], ["指令集合與轉換用例目錄一致（架構測試保證）"], stroke="#98a2b3", fill="#f9fafb", dashed=True, tcol="#475467")
+if link("a_cmd", "s_shared"):
+    path([(COL(1), R1Y + H1 - 24), (28, R1Y + H1 - 24), (28, S3Y + S3H / 2), (COL(0), S3Y + S3H / 2)], "查表", lpos=(34, R1Y + H1 - 30), anchor="start",
+         src="a_cmd", dst="s_shared", color=GREY, width=1.4)
+X_MOD, X_PAGES, X_HIST, X_LIFE, X_SET, X_OFF = c_mid(2) + 40, c_mid(4), COL(5) - MGAP / 2, LCX + LCW / 2, COL(7) - MGAP / 2, c_mid(7)
+# (src, x, colour, dashed, stub id, real L3 id) — every L2 -> L3 exit; the L2 part ends at S3Y without an arrowhead
+assert BASEY + LIFE_H < S3Y - 30, "task lifecycle card runs into the L3 exits"
+# (src, planned link, x, colour, dashed, stub id, real L3 id) — every L2 -> L3 exit; drawn only if the code has it
+EXITS = [("a_base", ("UC", "s_proc"), X_MOD, GREY, False, "s_proc", "p_box"),
+         ("a_pages", ("a_pages", "s_proc"), X_PAGES, GREY, False, "s_proc", "p_PdfSplit"),
+         ("m_split", ("m_split", "s_proc"), BYX, "#d92d20", True, "s_proc", "p_PdfSplit"),
+         ("a_hist", ("a_hist", "s_store"), X_HIST, GREY, False, "s_store", "t_store"),
+         ("a_life", ("a_life", "s_store"), X_LIFE, GREY, False, "s_store", "t_store"),
+         ("a_set", ("a_set", "s_store"), X_SET, GREY, False, "s_store", "t_store"),
+         ("a_off", ("a_off", "s_office"), X_OFF, GREY, False, "s_office", "t_offinf")]
+EXITS = [x for x in EXITS if (x[1] in DRAWN) if x[1] == ("m_split", "s_proc")] + [x for x in EXITS if x[1] != ("m_split", "s_proc") and link(*x[1])]
+_live = {x[0] for x in EXITS}
+if "a_base" in _live:
+    path([(X_MOD, MOD_BOTTOM), (X_MOD, S3Y)], "各用例呼叫自己模組的處理器", lpos=(X_MOD + 8, MOD_BOTTOM + 30), anchor="start", src="a_base", dst="p_box", color=GREY, width=1.4, arrow=False)
+if "a_pages" in _live:
+    path([(X_PAGES, R1Y + H1), (X_PAGES, S3Y)], src="a_pages", dst="p_PdfSplit", color=GREY, width=1.4, arrow=False)
+if "m_split" in _live:
+    path([(BYX, -6), (BYX, S3Y)], src="m_split", dst="p_PdfSplit", color="#d92d20", width=1.6, dashed=True, arrow=False)
+if "a_hist" in _live:
+    path([(COL(5), R1Y + H1 - 30), (X_HIST, R1Y + H1 - 30), (X_HIST, S3Y)], src="a_hist", dst="t_store", color=GREY, width=1.4, arrow=False)
+if "a_set" in _live:
+    path([(COL(6) + MW, R1Y + H1 - 30), (X_SET, R1Y + H1 - 30), (X_SET, S3Y)], src="a_set", dst="t_store", color=GREY, width=1.4, arrow=False)
+if "a_life" in _live:
+    path([(X_LIFE, BASEY + LIFE_H), (X_LIFE, S3Y)], src="a_life", dst="t_store", color=GREY, width=1.4, arrow=False)
+if "a_off" in _live:
+    path([(X_OFF, R1Y + H1), (X_OFF, S3Y)], src="a_off", dst="t_offinf", color=GREY, width=1.4, arrow=False)
+# standalone L2 only: the L3 stubs and the arrow tips that land on them
+_mark = len(o)
+A(f'<text x="{COL(2)}" y="{S3Y - 18}" font-size="12.5" font-weight="700" fill="#667085" letter-spacing=".5">往下 → L3</text>')
+l2card("s_proc", (COL(2), S3Y, STUB_W["s_proc"], S3H), "L3 處理器（Processing）", STUB_ROLE["s_proc"], "", [], STUB_ALSO["s_proc"],
+       stroke="#98a2b3", fill="#f9fafb", dashed=True, tcol="#475467")
+l2card("s_store", (COL(5) - MGAP, S3Y, STUB_W["s_store"], S3H), "L3 儲存（Storage）", STUB_ROLE["s_store"], "", [], STUB_ALSO["s_store"],
+       stroke="#98a2b3", fill="#f9fafb", dashed=True, tcol="#475467")
+l2card("s_office", (COL(7), S3Y, MW, S3H), "L3 Office 引擎", STUB_ROLE["s_office"], "", [], STUB_ALSO["s_office"],
+       stroke="#98a2b3", fill="#f9fafb", dashed=True, tcol="#475467")
+for src, _, x, col, dsh, stub, real in EXITS:
+    path([(x, S3Y - 10), (x, S3Y)], src=src, dst=real, color=col, width=1.6 if dsh else 1.4, dashed=dsh)
+STANDALONE_ONLY += o[_mark:]
+del o[_mark:]
+if STALE:
+    print("⚠ L2：這些線在程式碼裡已不存在，沒有畫：", STALE)
+L2H = S3Y + S3H + 22
+_m = len(o)
+section(0, L2H, "L2・應用", "Application", AMBER)
+_sec = o[_m:]
+del o[_m:]
+o[_sec2_at:_sec2_at] = _sec
+COMBINED_ONLY = (COMBINED_ONLY[0] + len(_sec), COMBINED_ONLY[1] + len(_sec))   # indices moved by the inserted frame
+A('</g>')
+L2_END = len(o)
+
+FOOT_L1 = (f'<text x="40" y="{L1_BOTTOM + 30}" font-size="11.5" fill="#667085">線色規則：線的顏色＝發出呼叫的那一方。L1 畫面：深綠＝Native Dashboard、青綠＝Native 進度視窗、灰虛線＝Fluent（未發佈）；L1 共用狀態綠。</text>')
+FOOT_L2 = (f'<text x="40" y="{L2_TOP + L2H + 30}" font-size="11.5" fill="#667085">線色規則：線的顏色＝發出呼叫的那一方。L0 藍、L1 綠（畫面另分 深綠＝Native Dashboard、青綠＝Native 進度視窗）、L2 橘；紅虛線＝跳層、灰虛線＝未發佈（Fluent）。</text>')
+# ======================= L3: processing / storage / infrastructure (exec'd from l2_block.py) =======================
+
+PURPLE, PURPLE_FILL, PURPLE_SOFT = "#7a5af8", "#f9f5ff", "#bdb4fe"
+L3_TOP = L2_TOP + L2H + 34
+
+
+# ---- part A (combined only): continue every L2 exit from where L2 stopped down to the L3 section
+ENTRY3 = L3_TOP - 6
+for src, _, x, col, dsh, stub, real in EXITS:
+    path([(x, L2_TOP + S3Y), (x, ENTRY3)], src=src, dst=real, color=col, width=1.6 if dsh else 1.4, dashed=dsh, arrow=False)
+
+L3_AT = len(o)
+A(f'<g transform="translate(0,{L3_TOP})">')
+_sec_at = len(o)
+band(38, 0, "處理器與儲存（每一欄對應上方 L2 的出口；處理器卡片與 L2 用例卡片同位置、一對一）")
+R1Y3 = 56
+
+# ---- module processors: a container whose cards sit exactly under the matching L2 use-case cards
+CX0, CX1 = UCX0 - 8, UCX1 + 8
+MAXCH = 25
+# processor cards: hand-written notes, file lists straight from src/ (Modules/<X>/Processing/**)
+def _proc_files(mod):
+    pre = f"Clickra.Core/Modules/{mod}/Processing/"
+    return sorted(posixpath.relpath(p, pre) for p in AF if p.startswith(pre))
+
+
+def _tr_summary():
+    pre = "Clickra.Core/Modules/PdfTranslation/"
+    cnt = collections.Counter()
+    for p in AF:
+        if p.startswith(pre):
+            r = p[len(pre):].split("/")
+            cnt[r[0] + ("/" + r[1] if r[0] == "Pipeline" and len(r) > 2 else "")] += 1
+    pipe = sorted(((k.split("/", 1)[1], v) for k, v in cnt.items() if k.startswith("Pipeline/")), key=lambda t: -t[1])
+    out = [f"Execution/（{cnt['Execution']}）", f"Pipeline/（{sum(v for k, v in cnt.items() if k.startswith('Pipeline'))} 檔）", "  PdfTranslationPipeline.cs"]
+    out += [f"  {k}/（{v}）" for k, v in pipe]
+    return out + [f"Model/（{cnt['Model']} 檔）", f"Translation/（{cnt['Translation']} 檔）"]
+
+
+PROC = [
+    ("Image", _proc_files("Image"), ["外部：Imazen.WebP、WIC、", "System.Drawing、PDFsharp"]),
+    ("Markdown", _proc_files("Markdown"), ["外部：Markdig、PDFsharp"]),
+    ("Office", _proc_files("Office"), ["經 PowerShellHelper 叫 Office"]),
+    ("PdfCompression", _proc_files("PdfCompression"), ["外部：PDFsharp"]),
+    ("PdfDecrypt", _proc_files("PdfDecrypt"), ["外部：PDFsharp"]),
+    ("PdfMerge", _proc_files("PdfMerge"), ["外部：PDFsharp"]),
+    ("PdfTranslation", _tr_summary(), ["外部：PdfPig、PDFsharp、", "網路翻譯（Google、MyMemory）"]),
+    ("PdfSplit", _proc_files("PdfSplit"), ["外部：PDFsharp"] + (["⚠ 也被 L1 視覺分割直接呼叫", "  （紅虛線，待辦 C1）"] if SPLIT_BYPASS else [])),
+]
+BASE3_Y = R1Y3 + 34
+BASE3_H = 86
+rows = [PROC[:4], PROC[4:]]
+row_h = [max(need_h(folder="x", classes=wrap(f, MAXCH), also=x) for _, f, x in r) for r in rows]
+P_Y = [BASE3_Y + BASE3_H + 12, BASE3_Y + BASE3_H + 12 + row_h[0] + 12]
+CBOT = P_Y[1] + row_h[1] + 10
+A(f'<g class="node" data-id="p_box" data-search="各模組處理器 processing"><rect x="{CX0:.1f}" y="{R1Y3}" width="{CX1 - CX0:.1f}" height="{CBOT - R1Y3:.1f}" rx="12" fill="{PURPLE_FILL}" stroke="{PURPLE}" stroke-width="1.6"/>'
+  f'<text x="{CX0 + 12:.1f}" y="{R1Y3 + 22}" font-size="13" font-weight="700" fill="#101828">各模組處理器（Modules/*/Processing）</text></g>')
+l2card("p_base", (UCX0, BASE3_Y, UCX1 - UCX0, BASE3_H), "共用處理基底　Processors/", [], "",
+       ["FileProcessing/：IFileProcessor.cs ─ SingleFileProcessorBase.cs／MultiFileProcessorBase.cs",
+        "                FileBackupScope.cs・ProgressCalculator.cs",
+        "ProcessorExecutionOptions.cs・ExecutionLocalizationOptions.cs"], stroke=PURPLE, fill="#fff")
+P_POS = {}
+for r, row in enumerate(rows):
+    for c, (name, files, ext) in enumerate(row):
+        x = UCX0 + c * (MWID + MG)
+        P_POS[name] = (x, P_Y[r], MWID, row_h[r])
+        l2card(f"p_{name}", (x, P_Y[r], MWID, row_h[r]), name, [], "…/Processing/", wrap(files, MAXCH), ext, stroke=PURPLE_SOFT, fill="#fff")
+
+# part B entries into the processors
+path([(X_MOD, -6), (X_MOD, R1Y3)], src="a_base", dst="p_box", color=GREY, width=1.4)
+sx, sy, sw, sh = P_POS["PdfSplit"]
+path([(X_PAGES, -6), (X_PAGES, sy + sh / 2 - 10), (sx + sw, sy + sh / 2 - 10)], src="a_pages", dst="p_PdfSplit", color=GREY, width=1.4)
+if SPLIT_BYPASS:
+    path([(BYX, -6), (BYX, sy + sh / 2 + 10), (sx + sw, sy + sh / 2 + 10)], src="m_split", dst="p_PdfSplit", color="#d92d20", width=1.6, dashed=True)
+
+# ---- storage (cols 5-6) and Office engine (col 7)
+STX0, STX1 = COL(5) - MGAP, COL(7) - 4
+_st = sorted(posixpath.basename(p) for p in AF if p.startswith("Clickra.Core/Storage/"))
+_facade = [f for f in _st if f.startswith("ClickraStorage")]
+ST_FILES = [f"ClickraStorage.*.cs（門面，{len(_facade)} 檔）"] + [f for f in _st if f not in _facade]
+store_h = max(need_h(["a", "b"], "x", ST_FILES, ["a", "b", "c"]), need_h(["a", "b"], "x", ["a"] * 6, ["a"] * 4)) + 8
+l2card("t_store", (STX0, R1Y3, STX1 - STX0, store_h), "儲存（Storage）", ["對外只有靜態門面 ClickraStorage，其餘是各 Store；", "資料寫在使用者資料夾（設定、任務紀錄、歷史）"],
+       f"Core/Storage/（{len(_st)} 檔）", ST_FILES,
+       ["被：L2 歷史／設定／任務生命週期（上方三條線）", "另被：處理器取 ClickraSettings 預設值常數"], stroke=PURPLE, fill=PURPLE_FILL)
+for x in (X_HIST, X_LIFE, X_SET):
+    src = {X_HIST: "a_hist", X_LIFE: "a_life", X_SET: "a_set"}[x]
+    path([(x, -6), (x, R1Y3)], src=src, dst="t_store", color=GREY, width=1.4)
+l2card("t_offinf", (COL(7), R1Y3, MW, store_h), "Office 引擎", ["偵測、安裝、呼叫", "LibreOffice／Office"], "Modules/Office/Infra…/",
+       wrap(sorted(posixpath.basename(p) for p in AF if p.startswith("Clickra.Core/Modules/Office/Infrastructure/")), 22),
+       ["外部：LibreOffice 下載（HTTP）、", "soffice、PowerShell／Office"], stroke=PURPLE, fill=PURPLE_FILL)
+path([(X_OFF, -6), (X_OFF, R1Y3)], src="a_off", dst="t_offinf", color=GREY, width=1.4)
+
+# ---- external dependencies: right under the L3 nodes that use them, so the lines stay short and straight
+EY = CBOT + 46
+EH = 78
+band(EY - 10, 0, "外部依賴（Clickra.Core.csproj 的套件、Windows 元件、外部程式與網路）")
+EXT_DEF = [  # (id, x0, x1, name, lines)
+    ("ext_pdfsharp", "PDFsharp 6.2.4", ["壓縮・解密・合併", "分割・翻譯・圖片", "Markdown"]),
+    ("ext_pdfpig", "PdfPig 0.1.14", ["翻譯（版面解析）", "縮圖（橫切）"]),
+    ("ext_markdig", "Markdig 1.4.0", ["Markdown 解析"]),
+    ("ext_webp", "Imazen.WebP 11", ["WebP 編碼（Image）"]),
+    ("ext_drawing", "System.Drawing 8", ["Image・Markdown", "縮圖（橫切）"]),
+    ("ext_wic", "Windows WIC", ["HEIC 等解碼（Image）"]),
+]
+EXW = (CX1 - CX0 - 5 * 8) / 6
+EXT_POS = {}
+
+
+def ext_chip(nid, x0, x1, name, lines):
+    EXT_POS[nid] = (x0, x1)
+    A(f'<g class="node" data-id="{nid}" data-search="{e((name + " " + " ".join(lines)).lower())}"><rect x="{x0:.1f}" y="{EY}" width="{x1 - x0:.1f}" height="{EH}" rx="9" fill="#f9fafb" stroke="#98a2b3" stroke-width="1.4" stroke-dasharray="6 4"/>'
+      f'<text x="{x0 + 9:.1f}" y="{EY + 19}" font-size="11" font-weight="700" fill="#344054">{e(name)}</text>')
+    for j, l in enumerate(lines):
+        A(f'<text x="{x0 + 9:.1f}" y="{EY + 36 + j * 13}" font-size="9.5" fill="#667085">{e(l)}</text>')
+    A('</g>')
+
+
+for k, (nid, name, lines) in enumerate(EXT_DEF):
+    x0 = CX0 + k * (EXW + 8)
+    ext_chip(nid, x0, x0 + EXW, name, lines)
+    path([(x0 + EXW / 2, CBOT), (x0 + EXW / 2, EY)], src="p_box", dst=nid, color=PURPLE, width=1.4)
+ext_chip("ext_net", COL(4), COL(4) + MW, "網路", ["翻譯服務（Google、", "MyMemory）", "LibreOffice 下載"])
+ext_chip("ext_data", STX0, STX1, "%LocalAppData%\\Clickra（本機）", ["設定、任務紀錄、歷史、暫停任務"])
+ext_chip("ext_office", COL(7), COL(7) + MW, "LibreOffice／Office", ["soffice（LibreOffice）", "PowerShell＋Office COM"])
+NETC = COL(4) + MW / 2
+path([(CX1 - 6, CBOT), (CX1 - 6, EY - 16), (NETC - 24, EY - 16), (NETC - 24, EY)], src="p_box", dst="ext_net", color=PURPLE, width=1.4)
+ST_BOTTOM = R1Y3 + store_h
+path([((STX0 + STX1) / 2, ST_BOTTOM), ((STX0 + STX1) / 2, EY)], src="t_store", dst="ext_data", color=PURPLE, width=1.4)
+path([(X_OFF, ST_BOTTOM), (X_OFF, EY)], src="t_offinf", dst="ext_office", color=PURPLE, width=1.4)
+path([(COL(7) + 16, ST_BOTTOM), (COL(7) + 16, EY - 26), (NETC + 24, EY - 26), (NETC + 24, EY)], "下載 LibreOffice", lpos=(COL(6), EY - 30), src="t_offinf", dst="ext_net", color=PURPLE, width=1.4)
+
+# ---- cross-cutting support (no lines: used almost everywhere; callers listed as text)
+XY = EY + EH + 46
+band(XY - 10, 0, "橫切支援（到處都在用，不畫線；呼叫者寫在「被：」）")
+L3_CROSS = [
+    ("x_loc", 0, 1, "在地化", "Core/Localization/", ["Localization.*.cs（5 檔）", "  （主檔）・.General・.Cli", "  .Fluent", "  .DocumentProcessing", "ChineseTextConverter", "  .*.cs（主檔・.Pairs）"],
+     ["被：CLI、Fluent、處理器、用例"]),
+    ("x_font", 1, 1, "字型", "Core/Fonts/", wrap(["ClickraFontResolver.cs"], 22), ["被：ClickraStartup、", "Markdown／壓縮／翻譯處理器", "外部：PDFsharp.Fonts"]),
+    ("x_diag", 2, 1, "診斷與外部程序", "Core/Diagnostics/", ["ClickraDebug.cs", "ClickraShellProcess.cs"], ["被：Native 畫面、Fluent App、", "翻譯管線（除錯紀錄）"]),
+    ("x_render", 3, 1, "PDF 縮圖", "Core/Rendering/", wrap(["PdfPageThumbnailRenderer.cs"], 22), ["⚠ 被 Native 進度視窗、", "Fluent 視覺分割直接呼叫", "（跳過 L1/L2，待辦 E3）", "外部：PdfPig、System.Drawing"]),
+    ("x_root", 4, 1, "Core 根目錄", "Clickra.Core/", wrap(sorted(posixpath.basename(p) for p in AF if p.count("/") == 1 and p.startswith("Clickra.Core/")), 22), ["SystemPaths 被 Fluent 用"]),
+    ("x_model", 5, 1, "設定數值範圍", "Modules/Settings/Model/", ["NumericSettingRange.cs"], ["被：L1 Dashboard／Fluent、", "L2 設定、Storage"]),
+]
+XH = max(need_h(folder=f, classes=c, also=a) for _, _, _, _, f, c, a in L3_CROSS)
+for nid, col, span, title, folder, cls, also in L3_CROSS:
+    w = COL(col + span - 1) + MW - COL(col)
+    l2card(nid, (COL(col), XY, w, XH), title, [], folder, cls, also, stroke=PURPLE, fill=PURPLE_FILL)
+
+L3H = XY + XH + 28
+_mark = len(o)
+section(0, L3H, "L3・基礎", "Infrastructure", PURPLE)
+_sec = o[_mark:]
+del o[_mark:]
+o[_sec_at:_sec_at] = _sec                 # draw the section frame behind everything in L3
+A('</g>')
+L3_END = len(o)
+
+# ---- standalone L3: stand-ins for the L2 / L1 sources above
+L3_CHIPS = []
+
+
+def chip3(nid, x0, x1, l1, l2, col="#dc6803", fill="#fffaeb"):
+    L3_CHIPS.append(f'<g class="node" data-id="{nid}" data-search="{e(l2.lower())}"><rect x="{x0:.1f}" y="{L3_TOP - 64}" width="{x1 - x0:.1f}" height="50" rx="9" fill="{fill}" stroke="{col}" stroke-width="1.4"/>'
+                    f'<text x="{x0 + 10:.1f}" y="{L3_TOP - 44}" font-size="10.5" fill="#667085">{e(l1)}</text>'
+                    f'<text x="{x0 + 10:.1f}" y="{L3_TOP - 26}" font-size="12.5" font-weight="700" fill="#101828">{e(l2)}</text></g>')
+
+
+chip3("a_base", COL(0), COL(2) + MW, "來自 L2", "各模組轉換用例")
+if SPLIT_BYPASS:
+    chip3("m_split", COL(3), COL(4) - 6, "來自 L1（跳層）", "視覺分割狀態", col="#d92d20", fill="#fef3f2")
+chip3("a_pages", COL(4), COL(4) + MW, "來自 L2", "頁數查詢")
+chip3("a_life", STX0, STX1, "來自 L2", "歷史・任務生命週期・設定")
+chip3("a_off", COL(7), COL(7) + MW, "來自 L2", "Office 引擎設定")
+
+RULE = ("線色規則：線的顏色＝發出呼叫的那一方。L0 藍、L1 綠（畫面另分 深綠＝Native Dashboard、青綠＝Native 進度視窗）、L2 橘、L3 紫；"
+        "紅虛線＝跳層、灰虛線＝未發佈（Fluent）或外部依賴。")
+FOOT_L3 = f'<text x="40" y="{L3_TOP + L3H + 30}" font-size="11.5" fill="#667085">{e(RULE)}</text>'
+
+def draw_translation_section(yy):
+    # ======================= L4 part 2: PDF translation, file level (exec'd from l4_block.py, inside the L4 group) =======================
+    # Data: the whole-repo model (l4_model.py); the translation engines are one node here (they have their own panel).
+    #   1. a dependency matrix of the translation folders, rows ordered to need the fewest "back" references
+    #      (exact order via DP over subsets); a back reference (lower-left, red) is a file using a file in a folder that
+    #      should sit below it — any back reference means the folders form a cycle again (E8 regression);
+    #   2. the back references, if any, and the file-level loops (strongly connected components);
+    #   3. after this block, each folder's files are drawn by the normal L4 panels.
+    CY, RED = MAG, "#d92d20"
+    # translation subset of the whole-repo model (l4_model.py); the 11 engine files are one node here
+    def _tr_key(n):
+        return "Translation/" if tr_folder(n) == "Translation" else posixpath.basename(n)
+    
+    
+    N5 = {}
+    for _n in NODES:
+        if _n.startswith(TR):
+            _k = _tr_key(_n)
+            _f = tr_folder(_n)
+            N5.setdefault(_k, {"folder": (_f if _f.endswith("/") else _f + "/"), "lines": 0})["lines"] += NODES[_n]["lines"]
+    E5 = sorted({(_tr_key(a), _tr_key(b)) for a, b in NEDGES if a.startswith(TR) and b.startswith(TR) and _tr_key(a) != _tr_key(b)})
+    def fold_now(n):
+        return N5[n]["folder"]
+    
+    
+    def best_order(fo):
+        cnt = collections.Counter((fo(a), fo(b)) for a, b in E5 if fo(a) != fo(b))
+        fs = sorted({fo(n) for n in N5}); k = len(fs)
+        w = [[cnt.get((fs[i], fs[j]), 0) for j in range(k)] for i in range(k)]
+        inf = 10 ** 9; dp = [inf] * (1 << k); par = [None] * (1 << k); dp[0] = 0
+        for m in range(1 << k):
+            if dp[m] == inf:
+                continue
+            for j in range(k):
+                if not m >> j & 1:
+                    c = dp[m] + sum(w[j][s] for s in range(k) if m >> s & 1)
+                    if c < dp[m | 1 << j]:
+                        dp[m | 1 << j] = c; par[m | 1 << j] = j
+        m, order = (1 << k) - 1, []
+        while m:
+            j = par[m]; order.append(fs[j]); m ^= 1 << j
+        order = order[::-1]
+        pos = {f: i for i, f in enumerate(order)}
+        back = [(a, b) for a, b in E5 if fo(a) != fo(b) and pos[fo(b)] < pos[fo(a)]]
+        return order, cnt, back
+    
+    
+    ORDER_NOW, CNT_NOW, BACK_NOW = best_order(fold_now)
+    _LOOPS = [sorted(c) for c in scc(list(N5), E5) if len(c) > 1]
+    
+    
+    PIPELINE_ROOT = "Pipeline/"
+    
+    
+    def short(f):
+        return f.replace(PIPELINE_ROOT, "") if f != PIPELINE_ROOT else "Pipeline/（根）"
+    
+    
+    def label_of(f):
+        return {"Translation/": "Translation/（引擎）", PIPELINE_ROOT: "Pipeline/（根目錄）"}.get(f, f)
+    
+    
+    # ---- drawing helpers
+    def dsm(x, y, order, cnt, back, title, sub, fo=None):
+        cell, lw, top = 22, 166, 64
+        k = len(order)
+        w, h = lw + k * cell + 16, top + k * cell + 40
+        fo = fo or fold_now
+        backset = {(fo(a), fo(b)) for a, b in back}
+        A(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="12" fill="#fff" stroke="{CY}" stroke-width="1.6"/>'
+          f'<text x="{x + 14}" y="{y + 22}" font-size="13.5" font-weight="700" fill="#101828">{e(title)}</text>'
+          f'<text x="{x + 14}" y="{y + 39}" font-size="10" fill="{RED if back else "#067647"}">{e(sub)}</text>')
+        gx, gy = x + lw, y + top
+        for j in range(k):
+            A(f'<text x="{gx + j * cell + cell / 2}" y="{gy - 6}" font-size="9.5" fill="#667085" text-anchor="middle">{j + 1}</text>')
+        for i, fa in enumerate(order):
+            A(f'<text x="{gx - 8}" y="{gy + i * cell + 15}" font-size="10" fill="#344054" text-anchor="end" {MONO4}>{i + 1:>2} {e(label_of(fa).replace("Pipeline/", "") if fa not in ("Pipeline/",) else "Pipeline/（根目錄）")}</text>')
+            for j, fb in enumerate(order):
+                cx, cy_ = gx + j * cell, gy + i * cell
+                if i == j:
+                    A(f'<rect x="{cx}" y="{cy_}" width="{cell}" height="{cell}" fill="#eaecf0" stroke="#fff"/>'); continue
+                c = cnt.get((fa, fb), 0)
+                if not c:
+                    A(f'<rect x="{cx}" y="{cy_}" width="{cell}" height="{cell}" fill="#fcfcfd" stroke="#f2f4f7"/>'); continue
+                bad = (fa, fb) in backset
+                A(f'<rect x="{cx}" y="{cy_}" width="{cell}" height="{cell}" fill="{"#fee4e2" if bad else "#fce7f6"}" stroke="#fff"/>'
+                  f'<text x="{cx + cell / 2}" y="{cy_ + 15}" font-size="10" font-weight="{700 if bad else 400}" fill="{"#b42318" if bad else "#c11574"}" text-anchor="middle">{c}</text>')
+        A(f'<text x="{x + 14}" y="{y + h - 12}" font-size="9.5" fill="#667085">列＝引用方、欄＝被引用方；數字＝檔案引用數。右上＝往下引用，左下紅＝回頭引用</text>')
+        return w, h
+    
+    
+    def tcard(x, y, w, lines, stroke=CY):
+        hh = {"h": 20, "t": 16, "m": 14, "r": 16, "s": 8}
+        h = 18 + sum(hh[k] for _, k in lines) + 6
+        A(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="12" fill="#fff" stroke="{stroke}" stroke-width="1.6"/>')
+        yy_ = y + 14
+        for t, k in lines:
+            yy_ += hh[k]
+            if k == "h":
+                A(f'<text x="{x + 14}" y="{yy_ - 4}" font-size="12.5" font-weight="700" fill="#101828">{e(t)}</text>')
+            elif k == "t":
+                A(f'<text x="{x + 14}" y="{yy_ - 4}" font-size="11" fill="#475467">{e(t)}</text>')
+            elif k == "r":
+                A(f'<text x="{x + 14}" y="{yy_ - 4}" font-size="11" fill="#b42318">{e(t)}</text>')
+            elif k == "m":
+                A(f'<text x="{x + 22}" y="{yy_ - 3}" font-size="9.8" fill="#344054" {MONO4} xml:space="preserve">{e(t)}</text>')
+        return h
+    
+    
+    # ---- translation part of L4 (starts at the current yy)
+    band(yy + 20, 0, f"翻譯模組（{len(N5) - 1} 個檔＋引擎，檔案多，分資料夾畫）：{len(E5)} 條檔案引用中，{len(BACK_NOW)} 條在回頭（待辦 E6、E8）")
+    yy += 40
+    _ok = not BACK_NOW
+    w1, h1 = dsm(40, yy, ORDER_NOW, CNT_NOW, BACK_NOW, "資料夾之間的引用",
+                 "✓ 沒有回頭引用：資料夾之間沒有循環" if _ok else f"⚠ {len(BACK_NOW)} 條回頭引用 → 資料夾又形成循環（待辦 E8）")
+    _lx = 40 + w1 + 12
+    _info = [("怎麼讀", "h"),
+             ("資料夾依「回頭引用最少」的順序排列（精確解）。", "t"),
+             ("右上＝往下引用（正常），左下紅格＝回頭引用。", "t"),
+             ("", "s"),
+             ("歷史", "h"),
+             ("10/16：23 條回頭引用，10 個資料夾全部互相引用。", "t"),
+             ("PR #194 把 9 個共用分類器／幾何型別搬進 Pipeline/Shared/、", "t"),
+             ("PdfTranslationLayoutPlanner.cs 搬進 Rendering/，並修掉 E6。", "t"),
+             ("", "s"),
+             ("檔案層級的循環", "h")]
+    _info += [("無", "t")] if not _LOOPS else [("、".join(c), "r") for c in _LOOPS]
+    if BACK_NOW:
+        _info += [("", "s"), ("現在的回頭引用", "h")] + [(f"{short(fold_now(a))}{a} → {short(fold_now(b))}{b}", "m")
+                                                     for a, b in sorted(BACK_NOW, key=lambda t: (fold_now(t[0]), t[0], t[1]))]
+    _h2 = tcard(_lx, yy, 1440 - _lx, _info, stroke=RED if BACK_NOW else CY)
+    yy += max(h1, _h2) + 14
+    return yy
+
+# ======================= L4: inside each L3 module (exec'd from l3_block.py) =======================
+# Data: semantic-msbuild.json (Roslyn, scripts/architecture/SemanticGraph) + file_lines.json, read by l4_model.py.
+# Layout: layered (Sugiyama-style) graph per module —
+#   1. files that reference each other in a loop are merged into one red dashed group (strongly connected component);
+#   2. rank = longest path from a caller, so callers sit on top and helpers at the bottom;
+#   3. an edge that skips ranks gets an invisible waypoint in every rank it crosses, so it runs in its own lane;
+#   4. order inside a rank is improved by barycentre sweeps (down / up / down) to cut crossings;
+#   5. lines leave and enter boxes at spread-out ports and turn only inside the gaps between ranks.
+
+MAG, MAG_FILL, MAG_SOFT = "#c11574", "#fdf2fa", "#f670c7"
+L4_TOP = L3_TOP + L3H + 34
+MONO4 = 'font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace"'
+CH_W, NODE_H, GAP_X, PAD = 6.0, 36, 18, 18
+PORT, LANE, GAP_PAD = 16, 8, 14
+GROUP_MAX_W = 1000
+PCOL, PFILL, PSOFT = MAG, MAG_FILL, MAG_SOFT   # panel colours
+PUN = False   # True while drawing an unshipped panel (Fluent): grey, dashed, hidden by the "隱藏未發佈" toggle
+
+
+def _un(extra=""):
+    return (extra + " unshipped").strip() if PUN else extra
+
+
+def _dash(d="6 4"):
+    return f' stroke-dasharray="{d}"' if PUN else ""
+
+
+def sub_w(t):   # rough width of a 9px mixed CJK/latin string
+    return sum(9.2 if ord(c) > 0x2e80 else 5.3 for c in t)
+
+
+def scc(nodes, edges):
+    adj = {n: [] for n in nodes}
+    for a, b in edges:
+        adj[a].append(b)
+    idx, low, st, on, out, k = {}, {}, [], set(), [], [0]
+
+    def go(v):
+        idx[v] = low[v] = k[0]; k[0] += 1; st.append(v); on.add(v)
+        for w in adj[v]:
+            if w not in idx:
+                go(w); low[v] = min(low[v], low[w])
+            elif w in on:
+                low[v] = min(low[v], idx[w])
+        if low[v] == idx[v]:
+            comp = []
+            while True:
+                w = st.pop(); on.discard(w); comp.append(w)
+                if w == v:
+                    break
+            out.append(sorted(comp))
+    for n in nodes:
+        if n not in idx:
+            go(n)
+    return out
+
+
+def mono_w(t, px=9.5):   # width of a monospace line that may contain CJK
+    return sum(px if ord(c) > 0x2e80 else px * 0.6 for c in t)
+
+
+STACK_ROW = 20
+
+
+def node_box(label, info):
+    if info.get("stack"):                          # cross-panel stand-ins: one chip per referenced file
+        return max(mono_w(t) for _, t in info["stack"]) + 34, len(info["stack"]) * STACK_ROW + 6
+    if label.endswith("/") or info.get("card"):    # folder / partial-class card: title + every file name
+        return 236, 30 + 13 * len(wrap(sorted(info["files"]), 34)) + 8
+    return max(len(label) * CH_W + 22, sub_w(info.get("sub", "")) + 22, 96), NODE_H
+
+
+def layout(data, maxw=1340):
+    minr = {}
+    for _ in range(60):
+        lo = _layout_once(data, minr)
+        wide = [r for r in range(lo["nr"]) if _rank_w(lo, r) > maxw - 2 * PAD]
+        if not wide:
+            return lo
+        r = wide[0]
+        size, order = lo["size"], lo["order"]
+        has_out = {p for p, q in lo["links"]}
+        cand = sorted([i for i in order[r] if not isinstance(i, tuple)], key=lambda i, ho=has_out, sz=size: (i in ho, -sz[i][0]))
+        excess = _rank_w(lo, r) - (maxw - 2 * PAD)
+        moved, left = False, len(cand)
+        for i in cand:
+            if excess <= 0 or left <= 1:
+                break
+            minr[i] = r + 1; excess -= size[i][0] + GAP_X; moved = True; left -= 1
+        assert moved, ("rank too wide and nothing to move", r, [(lo["comps"][i] if not isinstance(i, tuple) else "dummy", size[i][0]) for i in order[r]])
+    raise AssertionError("layout did not converge")
+
+
+def _rank_w(lo, r):
+    return sum(lo["size"][i][0] for i in lo["order"][r]) + GAP_X * (len(lo["order"][r]) - 1)
+
+
+def _layout_once(data, minr):
+    nodes = list(data["nodes"])
+    edges = [tuple(x) for x in data["edges"]]
+    comps = scc(nodes, edges)
+    comp_of = {n: i for i, c in enumerate(comps) for n in c}
+    cedges = sorted({(comp_of[a], comp_of[b]) for a, b in edges if comp_of[a] != comp_of[b]})
+    rank = {i: minr.get(i, 0) for i in range(len(comps))}
+    for _ in range(len(comps) + 1):
+        for a, b in cedges:
+            rank[b] = max(rank[b], rank[a] + 1)
+    size, grid = {}, {}
+    for i, c in enumerate(comps):
+        if len(c) == 1:
+            size[i] = node_box(c[0], data["nodes"][c[0]])
+        else:
+            boxes = [node_box(n, data["nodes"][n]) for n in c]
+            cw = max(b[0] for b in boxes)
+            cols = max(1, min(len(c), int((GROUP_MAX_W - 24 + 12) // (cw + 12))))
+            rows_ = [boxes[r:r + cols] for r in range(0, len(boxes), cols)]
+            gh = sum(max(b[1] for b in r) for r in rows_) + 10 * (len(rows_) - 1)
+            size[i] = (cols * cw + (cols - 1) * 12 + 24, gh + 40)
+            grid[i] = (cols, cw)
+    chains = {}
+    for a, b in cedges:
+        ch = [a]
+        for r in range(rank[a] + 1, rank[b]):
+            d = ("d", a, b, r)
+            rank[d] = r; size[d] = (10, 0); ch.append(d)
+        ch.append(b)
+        chains[(a, b)] = ch
+    links = [(ch[k], ch[k + 1]) for ch in chains.values() for k in range(len(ch) - 1)]
+    for i in list(size.keys()):                           # wide enough that every port gets its own slot
+        if isinstance(i, tuple):
+            continue
+        deg = max(sum(1 for p, q in links if p == i), sum(1 for p, q in links if q == i))
+        size[i] = (max(size[i][0], (deg - 1) * PORT + 24), size[i][1])
+    nr = max(rank.values()) + 1
+    order = {r: [i for i in rank if rank[i] == r] for r in range(nr)}
+    preds = {i: [p for p, q in links if q == i] for i in rank}
+    succs = {i: [q for p, q in links if p == i] for i in rank}
+    for sweep in ("down", "up", "down", "up", "down"):
+        rs = range(1, nr) if sweep == "down" else range(nr - 2, -1, -1)
+        for r in rs:
+            nb = preds if sweep == "down" else succs
+            ref = {i: k for rr in order for k, i in enumerate(order[rr])}
+
+            def key(i, nb=nb, ref=ref):
+                ps = [ref[j] for j in nb[i]]
+                return sum(ps) / len(ps) if ps else ref[i]
+            order[r].sort(key=key)
+    nat_w = max(sum(size[i][0] for i in order[r]) + GAP_X * (len(order[r]) - 1) for r in range(nr)) + 2 * PAD
+    rowh = {r: max([size[i][1] for i in order[r]] + [0]) for r in range(nr)}
+    nlinks = {r: sum(1 for p, q in links if rank[p] == r) for r in range(nr)}
+    return {
+        "comps": comps, "rank": rank, "size": size, "grid": grid, "chains": chains,
+        "links": links, "order": order, "nr": nr, "nat_w": nat_w, "rowh": rowh,
+        "nlinks": nlinks, "data": data,
+    }
+
+
+def draw_panel(pid, lo, x, y, w, title, sub, foot):
+    comps, rank, size, order, nr = lo["comps"], lo["rank"], lo["size"], lo["order"], lo["nr"]
+    data = lo["data"]
+    xs = {}
+    for r in range(nr):
+        tw = sum(size[i][0] for i in order[r]) + GAP_X * (len(order[r]) - 1)
+        cx = x + (w - tw) / 2
+        for i in order[r]:
+            xs[i] = cx
+            cx += size[i][0] + GAP_X
+    out_l, in_l = {}, {}
+    for p, q in lo["links"]:
+        out_l.setdefault(p, []).append(q); in_l.setdefault(q, []).append(p)
+
+    def ports(i, others):
+        px, pw = xs[i], size[i][0]
+        if isinstance(i, tuple):
+            return {o: px + pw / 2 for o in others}
+        if data["nodes"][comps[i][0]].get("stack"):
+            return {o: px + 8 for o in others}
+        others = sorted(others, key=lambda o: xs[o] + size[o][0] / 2)
+        n = len(others)
+        span = PORT * (n - 1)
+        return {o: px + pw / 2 - span / 2 + PORT * k for k, o in enumerate(others)}
+    outp = {i: ports(i, v) for i, v in out_l.items()}
+    inp = {i: ports(i, v) for i, v in in_l.items()}
+    # a waypoint's vertical must not run on top of a real box's port in the same gap: nudge it sideways
+    real_ports = collections.defaultdict(list)          # rank -> x of every port on its boxes
+    for i, d in list(outp.items()) + list(inp.items()):
+        if not isinstance(i, tuple):
+            real_ports[rank[i]] += list(d.values())
+    for d in [i for i in xs if isinstance(i, tuple)]:
+        near = real_ports[rank[d] - 1] + real_ports[rank[d] + 1] + real_ports[rank[d]]
+        row = order[rank[d]]
+        k = row.index(d)
+        low_bound = xs[row[k - 1]] + size[row[k - 1]][0] + 4 if k > 0 else -1e9          # stay clear of the neighbours
+        hi = xs[row[k + 1]] - 4 - size[d][0] if k + 1 < len(row) else 1e9
+        for off in (0, 6, -6, 9, -9):
+            nx = xs[d] + off
+            if low_bound <= nx <= hi and all(abs(nx + size[d][0] / 2 - p) >= 6 for p in near):
+                xs[d] = nx
+                break
+    outp = {i: ports(i, v) for i, v in out_l.items()}
+    inp = {i: ports(i, v) for i, v in in_l.items()}
+    # one private lane per bent link in each gap; ordered so same-direction links never cross
+    lane_of, nlane = {}, {}
+    for r in range(nr):
+        bent = [(p, q) for p, q in lo["links"] if rank[p] == r and abs(outp[p][q] - inp[q][p]) > 0.5]
+        right = sorted([l for l in bent if inp[l[1]][l[0]] > outp[l[0]][l[1]]], key=lambda l: -outp[l[0]][l[1]])
+        left = sorted([l for l in bent if inp[l[1]][l[0]] < outp[l[0]][l[1]]], key=lambda l: outp[l[0]][l[1]])
+        for k, l in enumerate(right + left):
+            lane_of[l] = k
+        nlane[r] = len(bent)
+    pos, row_top, cy = {}, {}, y + 50
+    for r in range(nr):
+        for i in order[r]:
+            pos[i] = (xs[i], cy, size[i][0], size[i][1])
+        row_top[r] = cy
+        cy += lo["rowh"][r] + 2 * GAP_PAD + LANE * max(nlane[r] - 1, 0)
+    ph = cy - y - 10 + 15 * len(foot) + 8
+    A(f'<g class="{_un("node")}" data-id="{pid}" data-search="{e((title + " " + sub).lower())}"><rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{ph:.1f}" rx="12" fill="{PFILL}" stroke="{PCOL}" stroke-width="1.6"{_dash("8 5")}/>'
+      f'<text x="{x + 14:.1f}" y="{y + 22:.1f}" font-size="13.5" font-weight="700" fill="#101828">{e(title)}</text>'
+      f'<text x="{x + 14:.1f}" y="{y + 37:.1f}" font-size="9.5" fill="#98a2b3" {MONO4}>{e(sub)}</text>')
+    for j, l in enumerate(foot):
+        A(f'<text x="{x + 14:.1f}" y="{y + ph - 12 - 15 * (len(foot) - 1 - j):.1f}" font-size="10" fill="{"#b42318" if l.startswith("⚠") else "#667085"}">{e(l)}</text>')
+    A('</g>')
+    for (a, b), ch in lo["chains"].items():
+        pts = [(outp[ch[0]][ch[1]], pos[ch[0]][1] + pos[ch[0]][3])]
+        for k in range(len(ch) - 1):
+            p, q = ch[k], ch[k + 1]
+            x1, x2 = outp[p][q], inp[q][p]
+            r = rank[p]
+            ym = row_top[r] + lo["rowh"][r] + GAP_PAD + LANE * lane_of.get((p, q), 0)
+            pts += [(x1, ym), (x2, ym), (x2, row_top[rank[q]] + (lo["rowh"][rank[q]] if isinstance(q, tuple) else 0))]
+        clean = [pts[0]]
+        for pt in pts[1:]:
+            if abs(pt[0] - clean[-1][0]) > 0.1 or abs(pt[1] - clean[-1][1]) > 0.1:
+                clean.append(pt)
+        src = comps[a][0] if len(comps[a]) == 1 else f"{pid}_loop{a}"
+        dst = comps[b][0] if len(comps[b]) == 1 else f"{pid}_loop{b}"
+        path(clean, src=f"{pid}:{src}", dst=f"{pid}:{dst}", color=PSOFT, width=1.2, dashed=PUN, cls=_un())
+    for i, c in enumerate(comps):
+        px, py, pw, ph_ = pos[i]
+        if len(c) == 1:
+            if data["nodes"][c[0]].get("stack"):
+                srcs = [a for a, b in data["edges"] if b == c[0]]
+                draw_stack(pid, c[0], data["nodes"][c[0]], px, py, pw, ph_, f"{pid}:{srcs[0]}")
+            else:
+                draw_node(pid, c[0], data["nodes"][c[0]], px, py, pw, ph_)
+            continue
+        A(f'<g class="{_un("node")}" data-id="{pid}:{pid}_loop{i}" data-search="互相引用 {e(" ".join(c).lower())}"><rect x="{px:.1f}" y="{py:.1f}" width="{pw:.1f}" height="{ph_:.1f}" rx="10" fill="#fef3f2" stroke="#d92d20" stroke-width="1.4" stroke-dasharray="6 4"/>'
+          f'<text x="{px + 12:.1f}" y="{py + 21:.1f}" font-size="11" font-weight="700" fill="#b42318">⚠ 互相引用（{len(c)} 個，彼此有循環）</text></g>')
+        cols, cw = lo["grid"][i]
+        boxes = [(n, node_box(n, data["nodes"][n])) for n in c]
+        yy_ = py + 32
+        for r0 in range(0, len(boxes), cols):
+            row = boxes[r0:r0 + cols]
+            rh = max(b[1][1] for b in row)
+            for j, (n, _) in enumerate(row):
+                draw_node(pid, n, data["nodes"][n], px + 12 + j * (cw + 12), yy_, cw, rh)
+            yy_ += rh + 10
+    return ph
+
+
+def draw_stack(pid, label, info, x, y, w, h, src_id):
+    """Stand-ins for files in other panels: a bus down the left edge, one arrow per referenced file.
+    Each chip carries the real file's data-id, so clicking either one lights up both."""
+    A(f'<rect class="{_un()}" x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="6" fill="none" stroke="#d0d5dd" stroke-dasharray="3 3"/>')
+    last = y + 3 + (len(info["stack"]) - 1) * STACK_ROW + 9
+    path([(x + 8, y), (x + 8, last)], src=src_id, dst=f"{pid}:{label}", color=PSOFT, width=1.2, arrow=False, dashed=PUN, cls=_un())
+    for k, (tid, text) in enumerate(info["stack"]):
+        cy_ = y + 3 + k * STACK_ROW
+        path([(x + 8, cy_ + 9), (x + 18, cy_ + 9)], src=src_id, dst=tid, color=PSOFT, width=1.2, cls=_un())
+        A(f'<g class="{_un("node stub")}" data-id="{e(tid)}" data-search="{e(text.lower())}"><rect x="{x + 18:.1f}" y="{cy_:.1f}" width="{w - 22:.1f}" height="{STACK_ROW - 2}" rx="4" fill="#f9fafb" stroke="#98a2b3" stroke-dasharray="4 3"/>'
+          f'<text x="{x + 24:.1f}" y="{cy_ + 12.5:.1f}" font-size="9.5" fill="#475467" {MONO4}>{e(text)}</text></g>')
+
+
+def draw_node(pid, label, info, x, y, w, h):
+    lines = info["lines"]
+    A(f'<g class="{_un("node")}" data-id="{pid}:{label}" data-search="{e((label + " " + " ".join(info["files"])).lower())}"><rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="7" fill="#fff" stroke="{PCOL}" stroke-width="1.3"{_dash()}/>')
+    if label.endswith("/") or info.get("card"):
+        A(f'<text x="{x + 10:.1f}" y="{y + 17:.1f}" font-size="11" font-weight="700" fill="#101828" {MONO4}>{e(label)}</text>'
+          f'<text x="{x + w - 8:.1f}" y="{y + 17:.1f}" font-size="9" fill="#98a2b3" text-anchor="end">{len(info["files"])} 檔・{lines} 行</text>')
+        for j, f in enumerate(wrap(sorted(info["files"]), 34)):
+            A(f'<text x="{x + 10:.1f}" y="{y + 32 + j * 13:.1f}" font-size="9.5" fill="#344054" {MONO4} xml:space="preserve">{e(f)}</text>')
+    else:
+        more = f"・{len(info['files'])} 檔" if len(info["files"]) > 1 else ""
+        A(f'<text x="{x + 10:.1f}" y="{y + 15:.1f}" font-size="10" fill="#101828" {MONO4}>{e(label)}</text>'
+          f'<text x="{x + 10:.1f}" y="{y + 29:.1f}" font-size="9" fill="{"#b42318" if info.get("warn") else "#98a2b3"}">{e(info.get("sub", f"{lines} 行{more}"))}</text>')
+    A('</g>')
+
+
+# ---- L4 section: every .cs file under src/, grouped into panels
+L4_AT = len(o)
+A(f'<g transform="translate(0,{L4_TOP})">')
+_sec4_at = len(o)
+PANEL_INFO = {  # key: (title, folder line, short name used on stand-ins)
+    "entry": ("入口：ClickraShell・ClickraLauncher・Shared", "src/ClickraShell/、src/ClickraLauncher/、src/Shared/", "入口"),
+    "cli": ("Clickra.CLI（Native 畫面＋CLI）", "src/Clickra.CLI/", "CLI"),
+    "fluent": ("Clickra.Fluent（保留・目前未發佈；灰虛線）", "src/Clickra.Fluent/", "Fluent"),
+    "capp": ("Core 應用層與共用畫面狀態", "Core/Application/、Core/Presentation/", "Core 應用"),
+    "m_image": ("模組 Image", "Core/Modules/Image/", "Image"),
+    "m_markdown": ("模組 Markdown", "Core/Modules/Markdown/", "Markdown"),
+    "m_office": ("模組 Office", "Core/Modules/Office/", "Office"),
+    "m_pdfcompression": ("模組 PdfCompression", "Core/Modules/PdfCompression/", "PdfCompression"),
+    "m_pdfdecrypt": ("模組 PdfDecrypt", "Core/Modules/PdfDecrypt/", "PdfDecrypt"),
+    "m_pdfmerge": ("模組 PdfMerge", "Core/Modules/PdfMerge/", "PdfMerge"),
+    "m_pdfsplit": ("模組 PdfSplit", "Core/Modules/PdfSplit/", "PdfSplit"),
+    "m_settings": ("模組 Settings", "Core/Modules/Settings/", "Settings"),
+    "m_historytasks": ("模組 HistoryTasks", "Core/Modules/HistoryTasks/", "HistoryTasks"),
+    "tr_misc": ("翻譯・入口與小資料夾", "PdfTranslation/Application/、Execution/、Pipeline/（根）、Pipeline/Layout/、Pipeline/Fonts/", "翻譯"),
+    "tr_translation": ("翻譯・引擎", "PdfTranslation/Translation/", "翻譯引擎"),
+    "tr_rendering": ("翻譯・Rendering", "PdfTranslation/Pipeline/Rendering/", "翻譯 Rendering"),
+    "tr_annotations": ("翻譯・Annotations", "PdfTranslation/Pipeline/Annotations/", "翻譯 Annotations"),
+    "tr_textprocessing": ("翻譯・TextProcessing", "PdfTranslation/Pipeline/TextProcessing/", "翻譯 TextProcessing"),
+    "tr_grayprompts": ("翻譯・GrayPrompts", "PdfTranslation/Pipeline/GrayPrompts/", "翻譯 GrayPrompts"),
+    "tr_paragraphs": ("翻譯・Paragraphs", "PdfTranslation/Pipeline/Paragraphs/", "翻譯 Paragraphs"),
+    "tr_diagrams": ("翻譯・Diagrams", "PdfTranslation/Pipeline/Diagrams/", "翻譯 Diagrams"),
+    "tr_tables": ("翻譯・Tables", "PdfTranslation/Pipeline/Tables/", "翻譯 Tables"),
+    "tr_shared": ("翻譯・Shared（共用分類器與幾何）", "PdfTranslation/Pipeline/Shared/", "翻譯 Shared"),
+    "tr_model": ("翻譯・Model", "PdfTranslation/Model/", "翻譯 Model"),
+    "proc": ("共用處理基底", "Core/Processors/", "處理基底"),
+    "store": ("儲存", "Core/Storage/", "儲存"),
+    "cross": ("橫切支援", "Core/Localization/、Diagnostics/、Fonts/、Rendering/、Properties/、Core 根目錄", "橫切"),
+}
+assert set(PANEL.values()) <= set(PANEL_INFO), set(PANEL.values()) - set(PANEL_INFO)
+PANEL_NOTES = {
+    "store": ["⚠ 門面 ClickraStorage 與大部分 Store 互相引用（待辦 E7）"],
+}
+GROUPS = [
+    ("入口與畫面：Shell、Launcher、Native（Clickra.CLI）、Fluent", ["entry", "cli", "fluent"]),
+    ("Core 應用層：共用畫面狀態（L1）＋應用服務與用例（L2）", ["capp"]),
+    ("各功能模組：每個模組含自己的 Application／Presentation／Processing", ["m_image", "m_markdown", "m_office", "m_pdfcompression", "m_pdfdecrypt", "m_pdfmerge", "m_pdfsplit", "m_settings", "m_historytasks"]),
+    ("TRANSLATION", ["tr_misc", "tr_translation", "tr_rendering", "tr_annotations", "tr_textprocessing", "tr_grayprompts", "tr_paragraphs", "tr_diagrams", "tr_tables", "tr_model", "tr_shared"]),
+    ("共用基礎：處理基底、儲存、橫切支援", ["proc", "store", "cross"]),
+]
+assert sorted(k for _, ks in GROUPS for k in ks) == sorted(PANEL_INFO)
+
+
+def _label(n):
+    return posixpath.basename(n)
+
+
+def _root(key):
+    ns = [n for n in NODES if PANEL[n] == key]
+    return posixpath.commonpath([posixpath.dirname(n) for n in ns]) if len(ns) > 1 else posixpath.dirname(ns[0])
+
+
+def panel_data(key):
+    root = _root(key)
+    ns = sorted(n for n in NODES if PANEL[n] == key)
+    labels = [_label(n) for n in ns]
+    assert len(set(labels)) == len(labels), (key, labels)
+    nodes = {}
+    for n in ns:
+        nd = NODES[n]
+        rel = posixpath.relpath(posixpath.dirname(n), root)
+        sub = f"{nd['lines']} 行" + ("" if rel == "." else f"・{rel}/")
+        warn = False
+        nodes[_label(n)] = {"files": nd["files"], "lines": nd["lines"], "sub": sub, "warn": warn, "card": len(nd["files"]) > 1}
+    edges = [(_label(a), _label(b)) for a, b in INNER if PANEL[a] == key]
+    out = collections.defaultdict(list)
+    for a, b in CROSS:
+        if PANEL[a] == key:
+            out[_label(a)].append(b)
+    for src, tgts in out.items():
+        tgts = sorted(tgts, key=lambda b: (list(PANEL_INFO).index(PANEL[b]), _label(b)))
+        sl = f"⇢{src}"
+        nodes[sl] = {"files": [], "lines": 0, "stack": [(f"q_{PANEL[b]}:{_label(b)}", f"{PANEL_INFO[PANEL[b]][2]} › {_label(b)}") for b in tgts]}
+        edges.append((src, sl))
+    return {"nodes": nodes, "edges": edges}
+
+
+def _make_panel_item(key):
+    lo = layout(panel_data(key))
+    title, sub, _ = PANEL_INFO[key]
+    nf = sum(len(NODES[n]["files"]) for n in NODES if PANEL[n] == key)
+    foot = list(PANEL_NOTES.get(key, []))
+    if key.startswith("tr_") and "BACK_NOW" in globals():
+        labels = {_label(n) for n in NODES if PANEL[n] == key}
+        nb = sum(1 for a, b in globals().get("BACK_NOW", []) if a in labels)
+        if nb:
+            foot.append(f"⚠ 這裡發出 {nb} 條回頭引用（見上方清單）")
+    return (f"q_{key}", lo, max(320, lo["nat_w"]), f"{title}（{nf} 檔）", sub, foot)
+
+
+def draw_group(keys, yy):
+    items = [_make_panel_item(k) for k in keys]
+    rows = []
+    for it in sorted(items, key=lambda t: -t[2]):
+        for row in rows:
+            if sum(r[2] for r in row) + 10 * len(row) + it[2] <= 1400:
+                row.append(it)
+                break
+        else:
+            rows.append([it])
+    ix = [t[0] for t in items]
+    for row in rows:
+        row.sort(key=lambda t: ix.index(t[0]))
+    rows.sort(key=lambda row: ix.index(row[0][0]))
+    for row in rows:
+        spare = 1400 - sum(it[2] for it in row) - 10 * (len(row) - 1)
+        tot = sum(it[2] for it in row)
+        xx, hs = 40, []
+        for (pid, lo, nw, title, sub, foot) in row:
+            w = nw + spare * nw / tot
+            global PCOL, PFILL, PSOFT, PUN
+            if pid == "q_fluent":     # unshipped: grey dashed like Fluent on every other layer
+                PCOL, PFILL, PSOFT, PUN = "#98a2b3", "#f9fafb", "#98a2b3", True
+            hs.append(draw_panel(pid, lo, xx, yy, w, title, sub, foot))
+            PCOL, PFILL, PSOFT, PUN = MAG, MAG_FILL, MAG_SOFT, False
+            xx += w + 10
+        yy += max(hs) + 18
+    return yy
+
+
+band(38, 0, f"src/ 底下全部 {len(AF)} 個 .cs 檔（partial class 合成一個方塊）：箭頭＝檔案引用另一個檔案的型別；灰虛線小方塊＝引用到別的面板的檔案（點它會連同本尊一起亮）")
+yy = 58
+for gtitle, keys in GROUPS:
+    if gtitle == "TRANSLATION":
+        yy = draw_translation_section(yy)
+        band(yy + 18, 0, "翻譯模組各資料夾的檔案（第二行紅字＝建議搬走的檔）")
+        yy += 38
+    else:
+        band(yy + 18, 0, gtitle)
+        yy += 38
+    yy = draw_group(keys, yy)
+L4H = yy + 12
+_m = len(o)
+section(0, L4H, "L4・模組內部", "Inside", MAG)
+_sec = o[_m:]
+del o[_m:]
+o[_sec4_at:_sec4_at] = _sec
+A('</g>')
+L4_END = len(o)
+
+RULE = RULE.replace("L3 紫；", "L3 紫、L4 粉紅；")
+FOOT_L3 = f'<text x="40" y="{L3_TOP + L3H + 30}" font-size="11.5" fill="#667085">{e(RULE)}</text>'
+FOOT_L4 = f'<text x="40" y="{L4_TOP + L4H + 30}" font-size="11.5" fill="#667085">{e(RULE)}</text>'
+A(FOOT_L4)
+A('</g>')
+A('</svg>')
+_H2 = L4_TOP + L4H + 60
+o[0] = o[0].replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{_H2}" viewBox="0 0 {W} {_H2}"', 1)
+H = _H2
+
 
 svg_full = "\n".join(o)
 with open(os.path.join(svg_dir, "clickra_layers.svg"), "w", encoding="utf-8", newline="\n") as fh:
     fh.write(svg_full)
-body = o[:TITLE_AT] + o[TITLE_AT + 2:]
-svg_html = "\n".join(body).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{H - 70}" viewBox="0 70 {W} {H - 70}"', 1)
-ctrl_overview = (
-    '<button class="var on" data-v="all">全部路徑</button>\n'
-    '<button class="var" data-v="msix">MSIX 安裝版</button>\n'
-    '<button class="var" data-v="deploy">--deploy 部署</button>\n'
-    '<button id="unBtn">隱藏未發佈（Fluent）</button>'
-)
+# ---- Generate Overview Dashboard (High-level system topology) ----
+def make_overview_svg():
+    ov = []
+    ov.append(f'<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Clickra 架構總表" width="{W}" height="980" viewBox="0 0 {W} 980" {F}>')
+    ov.append('<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#475467"/></marker></defs>')
+    ov.append(WHITE_BG)
+    ov.append('<text x="40" y="44" font-size="24" font-weight="700" fill="#101828">Clickra 架構總表（Architecture Overview）</text>')
+    ov.append('<text x="40" y="70" font-size="13" fill="#475467">五層架構全景與分層導覽：由上往下單向依賴。點擊各層方塊可開啟專屬互動式架構地圖。</text>')
+    
+    # Layer cards specification: (title, sub, href, color, fill, border, y, h, details)
+    layers = [
+        ("L0・入口（OS Entry Points & Handoffs）", "4 種使用者觸發方式 · 4 個進入點執行檔 · Win11 整合", "l0_entry_points.html",
+         "#2e90fa", "#f5faff", "#2e90fa", 100, 130,
+         ["Win11 檔案總管右鍵選單、開始功能表「Clickra」捷徑、檔案類型關聯（.pdf .docx 等 14 種）、CLI 終端機指令",
+          "進入點：ClickraShell（COM 選單）、ClickraLauncher（MSIX 啟動）、Clickra.CLI（NativeAOT 主程式）、Clickra.Fluent（WinUI 3）"]),
+        ("L1・畫面（Presentation & Shared State Controllers）", f"{SCREENS} 個畫面 · {MODELS} 個共用畫面狀態 · 9 個 Native 版面表", "l1_presentation.html",
+         "#12b76a", "#f6fef9", "#12b76a", 270, 130,
+         ["畫面 Renderer：Native Dashboard（Win32 自繪）、Progress Window、Fluent UI（保留中，未隨套件發佈）",
+          "共用控制器：ConvertWorkspace、ConversionExecution、TaskProgress、VisualSplit、History、Settings"]),
+        ("L2・應用（Application Services & 19 Use Cases）", f"{L2_SERVICES} 組應用服務 · 8 個功能模組 · 19 個轉換用例目錄", "l2_application.html",
+         "#dc6803", "#fffaeb", "#dc6803", 440, 130,
+         ["核心服務：ConvertCommandRegistry（指令清單）、ConversionUseCases（用例目錄）、Task Lifecycle（任務生命週期）",
+          "19 個轉換用例：PDF 壓縮／解密／合併／分割／翻譯、圖片轉換與拼貼、Word／PPT／Excel 轉換、Markdown 文件"]),
+        ("L3・基礎（Infrastructure, Storage & Engines）", "8 個模組處理器 · 儲存門面 · Office 引擎 · 6 組橫切支援", "l3_infrastructure.html",
+         "#7a5af8", "#f9f5ff", "#7a5af8", 610, 130,
+         ["處理器與引擎：SingleFileProcessorBase、MultiFileProcessorBase、ClickraStorage 門面、LibreOffice/Office 偵測與叫用",
+          "外部依賴：PDFsharp 6.2.4、PdfPig 0.1.14、Imazen.WebP、System.Drawing、Markdig、PowerShellHelper"]),
+        ("L4・模組內部（Modules Internal File Graphs & Cycles）", f"全部 {len(AF)} 個 C# 原始碼檔案 · {len(PANEL_INFO)} 個面板 · 循環依賴分析", "l4_modules_internal.html",
+         "#d444cf", "#fdf2fa", "#d444cf", 780, 130,
+         ["模組內部結構：src/ 所有 .cs 檔的語意引用圖（Roslyn MSBuild 分析）、強連通分量（SCC）循環偵測",
+          "翻譯管線 DSM 矩陣：9 個資料夾引用關係、回頭引用分析與架構邊界修復追蹤（E6/E8）"])
+    ]
+    
+    for title, sub, href, col, fill, border, y, h, details in layers:
+        ov.append(f'<g class="node" data-id="{href}" onclick="location.href=\'{href}\'" style="cursor:pointer;">')
+        ov.append(f'<rect x="40" y="{y}" width="1476" height="{h}" rx="10" fill="{fill}" stroke="{border}" stroke-width="1.8"/>')
+        ov.append(f'<text x="64" y="{y + 32}" font-size="16" font-weight="700" fill="#101828">{e(title)}</text>')
+        ov.append(f'<text x="64" y="{y + 54}" font-size="12" font-weight="600" fill="{col}">{e(sub)}</text>')
+        ov.append(f'<line x1="64" y1="{y + 66}" x2="1492" y2="{y + 66}" stroke="#eaecf0"/>')
+        for idx, dt in enumerate(details):
+            ov.append(f'<text x="64" y="{y + 86 + idx * 20}" font-size="11.5" fill="#475467">{e(dt)}</text>')
+        ov.append(f'<rect x="1380" y="{y + 20}" width="112" height="32" rx="6" fill="#101828"/>')
+        ov.append(f'<text x="1436" y="{y + 41}" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">開啟專屬圖 ➔</text>')
+        ov.append('</g>')
+        
+        # Draw connector arrow to next layer
+        if y < 780:
+            arrow_y = y + h
+            ov.append(f'<line x1="778" y1="{arrow_y}" x2="778" y2="{arrow_y + 40}" stroke="#475467" stroke-width="2" marker-end="url(#arr)"/>')
+
+    ov.append('<text x="40" y="945" font-size="12" fill="#667085">💡 提示：點擊上方各層方塊可進入該層專屬詳細架構圖；若需檢視包含所有細節的完整長條總圖（1556×22330），請開啟 <a href="svg/clickra_layers.svg" target="_blank" style="fill:#2e90fa;font-weight:700;">🖼️ clickra_layers.svg</a>。</text>')
+    ov.append('</svg>')
+    return "\n".join(ov)
+
 meta_overview = (
     f"L0：4 種使用者動作 · 4 個執行檔　"
     f"L1：{SCREENS} 個畫面 · {MODELS} 個共用畫面狀態 · 9 個 Native 版面表　"
@@ -370,8 +1712,8 @@ meta_overview = (
     f"L3：8 個模組處理器 · 儲存 · Office 引擎 · 6 組橫切支援　"
     f"L4：全部 {len(AF)} 個檔的引用（{len(INNER) + len(CROSS)} 條）"
 )
-note_overview = "L0 入口 → L1 畫面 → L2 應用 → L3 基礎 → L4 模組內部，由上往下讀。點方塊可標出它的所有連線。"
-render_page("overview.html", "Clickra Architecture — 總表", "Clickra — 架構總表", "overview.html", ctrl_overview, meta_overview, note_overview, svg_html)
+note_overview = "L0 入口 → L1 畫面 → L2 應用 → L3 基礎 → L4 模組內部。點擊方塊進入該層專屬詳細地圖。"
+render_page("overview.html", "Clickra Architecture — 總表", "Clickra — 架構總表", "overview.html", "", meta_overview, note_overview, make_overview_svg())
 print("overview ok")
 
 
@@ -468,13 +1810,12 @@ print("l4 ok")
 
 # ---------------- check hand-written names against the code ----------------
 # L0-L3 boxes are laid out by hand; every *.cs name they mention must still exist under src/.
-import html as _html
 _known = {posixpath.basename(p) for p in AF}
 _stems = {b.split(".")[0] for b in _known}
-_l03 = _html.unescape("\n".join(o[:L4_AT]))
-_l03 = _re.sub(r"-</text>\s*<text[^>]*>\s*", "", _l03)          # join names wrapped at a suffix word
-_texts = " ".join(_re.findall(r"<text[^>]*>([^<]*)</text>", _l03))    # visible text only (not data-search attributes)
-_named = set(_re.findall(r"[A-Za-z_][\w.*]*\.cs\b", _texts))
+_l03 = html.unescape("\n".join(o[:L4_AT]))
+_l03 = re.sub(r"-</text>\s*<text[^>]*>\s*", "", _l03)          # join names wrapped at a suffix word
+_texts = " ".join(re.findall(r"<text[^>]*>([^<]*)</text>", _l03))    # visible text only (not data-search attributes)
+_named = set(re.findall(r"[A-Za-z_][\w.*]*\.cs\b", _texts))
 _missing = sorted(n for n in _named if n not in _known and not (".*." in n and n.split(".")[0] in _stems)
                   and not n.startswith(("Modules", "Clickra", "src")))
 if _missing:

@@ -1,5 +1,11 @@
-"""Line count of every .cs under src/ (the Roslyn graph has no line counts); writes file_lines.json next to this script."""
-import os, json
+"""Line count of every .cs under src/.
+
+The Roslyn graph has no line counts; writes file_lines.json next to this
+script.
+"""
+import json
+import os
+
 here = os.path.dirname(os.path.abspath(__file__))
 src = os.path.join(here, "..", "..", "src")
 out = {}
@@ -10,8 +16,11 @@ for dp, _, fs in os.walk(src):
     for f in fs:
         if f.endswith(".cs"):
             p = os.path.join(dp, f)
+            rel_path = os.path.relpath(p, src).replace("\\", "/")
             with open(p, "rb") as pf:
-                out[os.path.relpath(p, src).replace("\\", "/")] = pf.read().count(b"\n") + 1
-with open(os.path.join(here, "file_lines.json"), "w", encoding="utf-8", newline="\n") as fh:
+                out[rel_path] = pf.read().count(b"\n") + 1
+
+output_file = os.path.join(here, "file_lines.json")
+with open(output_file, "w", encoding="utf-8", newline="\n") as fh:
     json.dump(out, fh, indent=0, sort_keys=True)
 print(len(out), "files")
