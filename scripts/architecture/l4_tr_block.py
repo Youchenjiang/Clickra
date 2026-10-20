@@ -1,16 +1,16 @@
 # ======================= L4 part 2: PDF translation, file level (exec'd from l4_block.py, inside the L4 group) =======================
-# Data: l5.json, produced on the repo machine by intra.py + l5data.py (translation engines are one node; L4 draws them).
-# Folder level the translation module is one big loop (E8). Here:
-#   1. a dependency matrix of the folders, rows ordered to need the fewest "back" references (exact order via DP over subsets);
-#      every back reference (lower-left, red) is one file referencing a file in a folder that should sit below it;
-#   2. the list of those references and the file moves that remove them (checked by recomputing the matrix);
-#   3. each folder's files as a layered graph (same engine as L4), with shared helpers marked.
+# Data: the whole-repo model (l4_model.py); the translation engines are one node here (they have their own panel).
+#   1. a dependency matrix of the translation folders, rows ordered to need the fewest "back" references
+#      (exact order via DP over subsets); a back reference (lower-left, red) is a file using a file in a folder that
+#      should sit below it — any back reference means the folders form a cycle again (E8 regression);
+#   2. the back references, if any, and the file-level loops (strongly connected components);
+#   3. after this block, each folder's files are drawn by the normal L4 panels.
 import collections as _co
 
 CY, CY_FILL, CY_SOFT, RED = MAG, MAG_FILL, MAG_SOFT, "#d92d20"
 # translation subset of the whole-repo model (l4_model.py); the 11 engine files are one node here
 def _tr_key(n):
-    return "Translation/" if tr_folder(n) == "Translation" else os.path.basename(n)
+    return "Translation/" if tr_folder(n) == "Translation" else posixpath.basename(n)
 
 
 N5 = {}
@@ -20,19 +20,8 @@ for _n in NODES:
         _f = tr_folder(_n)
         N5.setdefault(_k, {"folder": (_f if _f.endswith("/") else _f + "/"), "lines": 0})["lines"] += NODES[_n]["lines"]
 E5 = sorted({(_tr_key(a), _tr_key(b)) for a, b in NEDGES if a.startswith(TR) and b.startswith(TR) and _tr_key(a) != _tr_key(b)})
-SHARED = "Pipeline/Shared/"
-MOVES = {f: SHARED for f in ["PdfParagraphRoleClassifier.cs", "PdfParagraphSemanticClassifier.cs", "PdfChartLabelClassifier.cs",
-                             "PdfGrayPromptClassifier.cs", "ReferenceSectionDetector.cs",
-                             "PdfMaskGeometry.cs", "TableMaskRegion.cs", "PdfLayoutElement.cs", "PdfLayoutRow.cs"]}
-MOVES["PdfTranslationLayoutPlanner.cs"] = "Pipeline/Rendering/"
-
-
 def fold_now(n):
     return N5[n]["folder"]
-
-
-def fold_after(n):
-    return MOVES.get(n, N5[n]["folder"])
 
 
 def best_order(fo):
@@ -59,9 +48,7 @@ def best_order(fo):
 
 
 ORDER_NOW, CNT_NOW, BACK_NOW = best_order(fold_now)
-ORDER_AFT, CNT_AFT, BACK_AFT = best_order(fold_after)
-E6_REFS = [(a, b) for a, b in BACK_AFT if a == "PdfParagraph.cs"]
-assert len(BACK_AFT) == len(E6_REFS), BACK_AFT       # after the moves only the Model → Pipeline loop (E6) is left
+_LOOPS = [sorted(c) for c in scc(list(N5), E5) if len(c) > 1]
 
 
 def short(f):
@@ -73,12 +60,13 @@ def label_of(f):
 
 
 # ---- drawing helpers
-def dsm(x, y, order, cnt, back, title, sub):
+def dsm(x, y, order, cnt, back, title, sub, fo=None):
     """Dependency matrix: row folder references column folder; upper right = downward (fine), lower left = back (red)."""
     cell, lw, top = 22, 166, 64
     k = len(order)
     w, h = lw + k * cell + 16, top + k * cell + 40
-    backset = {(fold_after(a) if order is ORDER_AFT else fold_now(a), fold_after(b) if order is ORDER_AFT else fold_now(b)) for a, b in back}
+    fo = fo or fold_now
+    backset = {(fo(a), fo(b)) for a, b in back}
     A(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="12" fill="#fff" stroke="{CY}" stroke-width="1.6"/>'
       f'<text x="{x + 14}" y="{y + 22}" font-size="13.5" font-weight="700" fill="#101828">{e(title)}</text>'
       f'<text x="{x + 14}" y="{y + 39}" font-size="10" fill="{RED if back else "#067647"}">{e(sub)}</text>')
@@ -121,51 +109,25 @@ def tcard(x, y, w, lines, stroke=CY):
 
 
 # ---- translation part of L4 (starts at the current yy)
-band(yy + 20, 0, f"翻譯模組（{len(N5) - 1} 個檔＋引擎，檔案太多，分資料夾畫）：資料夾層級看起來 10 個資料夾全部互相引用，檔案層級其實只有 {len(E5)} 條引用中的 {len(BACK_NOW)} 條在回頭（待辦 E6、E8）")
+band(yy + 20, 0, f"翻譯模組（{len(N5) - 1} 個檔＋引擎，檔案多，分資料夾畫）：{len(E5)} 條檔案引用中，{len(BACK_NOW)} 條在回頭（待辦 E6、E8）")
 yy += 40
-w1, h1 = dsm(40, yy, ORDER_NOW, CNT_NOW, BACK_NOW, "資料夾之間：現況", f"⚠ {len(BACK_NOW)} 條回頭引用 → 資料夾形成循環（待辦 E8）")
-w2, h2 = dsm(40 + w1 + 12, yy, ORDER_AFT, CNT_AFT, BACK_AFT, "資料夾之間：照建議搬移後", f"只剩 {len(BACK_AFT)} 條（PdfParagraph.cs → 分析器，要改程式，待辦 E6）")
-_lx = 40 + w1 + w2 + 24
-_files_loops = ["檔案層級的循環只有兩組：",
-                "① PdfParagraph.cs（Model/）與 4 個 Paragraphs/ 分析器",
-                "   ——資料型別呼叫分析邏輯（待辦 E6，要改程式）",
-                "② GrayPrompts/ 裡 Geometry ↔ RegionBuilder 兩個檔",
-                "   ——同一資料夾內，可接受"]
-tcard(_lx, yy, 1440 - _lx, [("怎麼讀", "h"),
-                            ("資料夾依「回頭引用最少」的順序排列（精確解）。", "t"),
-                            ("紅格不是整個資料夾錯，而是少數檔案放錯資料夾：", "t"),
-                            ("共用的分類器、幾何型別放在高層資料夾裡，", "t"),
-                            ("低層資料夾為了用它們只好回頭引用。", "t"),
-                            ("", "s")] + [(t, "r" if i == 0 else "t") for i, t in enumerate(_files_loops)])
-yy += max(h1, h2) + 14
-
-# ---- fixes: which references each move removes (recomputed, not hand-counted)
-def _back_with(moves):
-    fo = lambda n: moves.get(n, N5[n]["folder"])
-    return best_order(fo)[2]
-
-
-_m1 = {f: d for f, d in MOVES.items() if d == SHARED}
-_b0, _b1, _b3 = len(BACK_NOW), len(_back_with(_m1)), len(BACK_AFT)
-_users = _co.defaultdict(set)
-for a, b in E5:
-    if fold_now(a) != fold_now(b):
-        _users[b].add(fold_now(a))
-fix = [(f"已完成搬移（PR #194，共 {len(MOVES)} 個檔）", "h"),
-       (f"① 新資料夾 Pipeline/Shared/：被多個資料夾共用的分類器與幾何型別（已生效）", "t")]
-for f in [x for x, d in MOVES.items() if d == SHARED]:
-    fix.append((f"{f:<36}目前 {short(fold_now(f)):<17}被 {len(_users[f])} 個資料夾用", "m"))
-fix += [("", "s"),
-        (f"② PdfTranslationLayoutPlanner.cs 搬到 Rendering/：與 PdfTranslatedPdfRebuilder 互相需要（已生效）", "t"),
-        ("回頭引用已由 23 條成功降至 4 條", "t"),
-        ("", "s"),
-        (f"③ 剩下 {_b3} 條要改程式（待辦 E6）：Model/PdfParagraph.cs 直接呼叫分析器", "r"),
-        ("   建議把分析結果放進 Model（純資料），分析邏輯留在 Pipeline", "t")]
-refs = [("現在的回頭引用（全部列出）", "h")]
-for a, b in sorted(BACK_NOW, key=lambda t: (fold_now(t[0]), t[0], t[1])):
-    refs.append((f"{short(fold_now(a))}{a} → {short(fold_now(b))}{b}", "m"))
-_fw = 700
-_h3 = tcard(40, yy, _fw, fix)
-_h4 = tcard(40 + _fw + 12, yy, 1440 - 40 - _fw - 12, refs, stroke=RED)
-yy += max(_h3, _h4) + 14
-
+_ok = not BACK_NOW
+w1, h1 = dsm(40, yy, ORDER_NOW, CNT_NOW, BACK_NOW, "資料夾之間的引用",
+             "✓ 沒有回頭引用：資料夾之間沒有循環" if _ok else f"⚠ {len(BACK_NOW)} 條回頭引用 → 資料夾又形成循環（待辦 E8）")
+_lx = 40 + w1 + 12
+_info = [("怎麼讀", "h"),
+         ("資料夾依「回頭引用最少」的順序排列（精確解）。", "t"),
+         ("右上＝往下引用（正常），左下紅格＝回頭引用。", "t"),
+         ("", "s"),
+         ("歷史", "h"),
+         ("10/16：23 條回頭引用，10 個資料夾全部互相引用。", "t"),
+         ("PR #194 把 9 個共用分類器／幾何型別搬進 Pipeline/Shared/、", "t"),
+         ("PdfTranslationLayoutPlanner.cs 搬進 Rendering/，並修掉 E6。", "t"),
+         ("", "s"),
+         ("檔案層級的循環", "h")]
+_info += [("無", "t")] if not _LOOPS else [("、".join(c), "r") for c in _LOOPS]
+if BACK_NOW:
+    _info += [("", "s"), ("現在的回頭引用", "h")] + [(f"{short(fold_now(a))}{a} → {short(fold_now(b))}{b}", "m")
+                                                 for a, b in sorted(BACK_NOW, key=lambda t: (fold_now(t[0]), t[0], t[1]))]
+_h2 = tcard(_lx, yy, 1440 - _lx, _info, stroke=RED if BACK_NOW else CY)
+yy += max(h1, _h2) + 14

@@ -1,5 +1,5 @@
 # ======================= L4: inside each L3 module (exec'd from l3_block.py) =======================
-# Data: l4.json, produced on the repo machine by intra.py + l4data.py (file-to-file type references inside each module).
+# Data: semantic-msbuild.json (Roslyn, scripts/architecture/SemanticGraph) + file_lines.json, read by l4_model.py.
 # Layout: layered (Sugiyama-style) graph per module —
 #   1. files that reference each other in a loop are merged into one red dashed group (strongly connected component);
 #   2. rank = longest path from a caller, so callers sit on top and helpers at the bottom;
@@ -10,7 +10,6 @@ import json as _json
 
 MAG, MAG_FILL, MAG_SOFT = "#c11574", "#fdf2fa", "#f670c7"
 L4_TOP = L3_TOP + L3H + 34
-D4 = _json.load(open("l4.json", encoding="utf-8"))
 MONO4 = 'font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace"'
 CH_W, NODE_H, GAP_X, PAD = 6.0, 36, 18, 18
 PORT, LANE, GAP_PAD = 16, 8, 14
@@ -181,6 +180,24 @@ def draw_panel(pid, Lo, x, y, w, title, sub, foot):
         return {o: px + pw / 2 - span / 2 + PORT * k for k, o in enumerate(others)}
     outp = {i: ports(i, v) for i, v in out_l.items()}
     inp = {i: ports(i, v) for i, v in in_l.items()}
+    # a waypoint's vertical must not run on top of a real box's port in the same gap: nudge it sideways
+    real_ports = collections.defaultdict(list)          # rank -> x of every port on its boxes
+    for i, d in list(outp.items()) + list(inp.items()):
+        if not isinstance(i, tuple):
+            real_ports[rank[i]] += list(d.values())
+    for d in [i for i in xs if isinstance(i, tuple)]:
+        near = real_ports[rank[d] - 1] + real_ports[rank[d] + 1] + real_ports[rank[d]]
+        row = order[rank[d]]
+        k = row.index(d)
+        lo = xs[row[k - 1]] + size[row[k - 1]][0] + 4 if k > 0 else -1e9          # stay clear of the neighbours
+        hi = xs[row[k + 1]] - 4 - size[d][0] if k + 1 < len(row) else 1e9
+        for off in (0, 6, -6, 9, -9):
+            nx = xs[d] + off
+            if lo <= nx <= hi and all(abs(nx + size[d][0] / 2 - p) >= 6 for p in near):
+                xs[d] = nx
+                break
+    outp = {i: ports(i, v) for i, v in out_l.items()}
+    inp = {i: ports(i, v) for i, v in in_l.items()}
     # one private lane per bent link in each gap; ordered so same-direction links never cross
     lane_of, nlane = {}, {}
     for r in range(nr):
@@ -297,17 +314,15 @@ PANEL_INFO = {  # key: (title, folder line, short name used on stand-ins)
     "tr_paragraphs": ("翻譯・Paragraphs", "PdfTranslation/Pipeline/Paragraphs/", "翻譯 Paragraphs"),
     "tr_diagrams": ("翻譯・Diagrams", "PdfTranslation/Pipeline/Diagrams/", "翻譯 Diagrams"),
     "tr_tables": ("翻譯・Tables", "PdfTranslation/Pipeline/Tables/", "翻譯 Tables"),
-    "tr_model": ("翻譯・Model", "PdfTranslation/Model/", "翻譯 Model"),
     "tr_shared": ("翻譯・Shared（共用分類器與幾何）", "PdfTranslation/Pipeline/Shared/", "翻譯 Shared"),
+    "tr_model": ("翻譯・Model", "PdfTranslation/Model/", "翻譯 Model"),
     "proc": ("共用處理基底", "Core/Processors/", "處理基底"),
     "store": ("儲存", "Core/Storage/", "儲存"),
     "cross": ("橫切支援", "Core/Localization/、Diagnostics/、Fonts/、Rendering/、Properties/、Core 根目錄", "橫切"),
 }
 assert set(PANEL.values()) <= set(PANEL_INFO), set(PANEL.values()) - set(PANEL_INFO)
 PANEL_NOTES = {
-    "m_office": ["⚠ Processing 與 Infrastructure 互相引用（待辦 E5）"],
     "store": ["⚠ 門面 ClickraStorage 與大部分 Store 互相引用（待辦 E7）"],
-    "tr_model": ["⚠ PdfParagraph.cs 回頭呼叫 Paragraphs 的分析器（待辦 E6）"],
 }
 GROUPS = [
     ("入口與畫面：Shell、Launcher、Native（Clickra.CLI）、Fluent", ["entry", "cli", "fluent"]),
@@ -320,12 +335,12 @@ assert sorted(k for _, ks in GROUPS for k in ks) == sorted(PANEL_INFO)
 
 
 def _label(n):
-    return os.path.basename(n)
+    return posixpath.basename(n)
 
 
 def _root(key):
     ns = [n for n in NODES if PANEL[n] == key]
-    return os.path.commonpath([os.path.dirname(n) for n in ns]) if len(ns) > 1 else os.path.dirname(ns[0])
+    return posixpath.commonpath([posixpath.dirname(n) for n in ns]) if len(ns) > 1 else posixpath.dirname(ns[0])
 
 
 def panel_data(key):
@@ -336,12 +351,9 @@ def panel_data(key):
     nodes = {}
     for n in ns:
         nd = NODES[n]
-        rel = os.path.relpath(os.path.dirname(n), root)
+        rel = posixpath.relpath(posixpath.dirname(n), root)
         sub = f"{nd['lines']} 行" + ("" if rel == "." else f"・{rel}/")
         warn = False
-        if key.startswith("tr_") and "MOVES" in globals() and _label(n) in MOVES:
-            sub += "・→ " + ("Shared/" if MOVES[_label(n)] == SHARED else short(MOVES[_label(n)]))
-            warn = True
         nodes[_label(n)] = {"files": nd["files"], "lines": nd["lines"], "sub": sub, "warn": warn, "card": len(nd["files"]) > 1}
     edges = [(_label(a), _label(b)) for a, b in INNER if PANEL[a] == key]
     out = collections.defaultdict(list)

@@ -7,7 +7,7 @@ L3_TOP = L2_TOP + L2H + 34
 
 # ---- part A (combined only): continue every L2 exit from where L2 stopped down to the L3 section
 ENTRY3 = L3_TOP - 6
-for src, x, col, dsh, stub, real in EXITS:
+for src, _, x, col, dsh, stub, real in EXITS:
     path([(x, L2_TOP + S3Y), (x, ENTRY3)], src=src, dst=real, color=col, width=1.6 if dsh else 1.4, dashed=dsh, arrow=False)
 
 L3_AT = len(o)
@@ -19,22 +19,34 @@ R1Y3 = 56
 # ---- module processors: a container whose cards sit exactly under the matching L2 use-case cards
 CX0, CX1 = UCX0 - 8, UCX1 + 8
 MAXCH = 25
+# processor cards: hand-written notes, file lists straight from src/ (Modules/<X>/Processing/**)
+def _proc_files(mod):
+    pre = f"Clickra.Core/Modules/{mod}/Processing/"
+    return sorted(posixpath.relpath(p, pre) for p in AF if p.startswith(pre))
+
+
+def _tr_summary():
+    pre = "Clickra.Core/Modules/PdfTranslation/"
+    cnt = collections.Counter()
+    for p in AF:
+        if p.startswith(pre):
+            r = p[len(pre):].split("/")
+            cnt[r[0] + ("/" + r[1] if r[0] == "Pipeline" and len(r) > 2 else "")] += 1
+    pipe = sorted(((k.split("/", 1)[1], v) for k, v in cnt.items() if k.startswith("Pipeline/")), key=lambda t: -t[1])
+    out = [f"Execution/（{cnt['Execution']}）", f"Pipeline/（{sum(v for k, v in cnt.items() if k.startswith('Pipeline'))} 檔）", "  PdfTranslationPipeline.cs"]
+    out += [f"  {k}/（{v}）" for k, v in pipe]
+    return out + [f"Model/（{cnt['Model']} 檔）", f"Translation/（{cnt['Translation']} 檔）"]
+
+
 PROC = [
-    ("Image", ["ImageCompressionProcessor.cs", "ImageFormatConvertProcessor.cs", "ImageStitchProcessor.cs", "ImageToPdfProcessor.cs",
-               "ImageCompressionLevel.cs", "ImageCompressionOptions.cs", "WicImageHelper.cs"], ["外部：Imazen.WebP、WIC、", "System.Drawing、PDFsharp"]),
-    ("Markdown", ["MarkdownToPdfProcessor.cs", "MarkdownToWordProcessor.cs", "MarkdownSingleFileProcessorBase.cs", "MarkdownRenderProfile.cs",
-                  "MarkdownPdfOptions.cs", "MarkdownTableColumnSizer.cs", "MarkdownDocumentTemplate.cs", "MarkdownTemplateFile.cs",
-                  "MarkdownDocxTemplateFile.cs", "MarkdownTemplateSource.cs"], ["外部：Markdig、PDFsharp"]),
-    ("Office", ["WordToPdfProcessor.cs", "PptToPdfProcessor.cs", "ExcelToPdfProcessor.cs", "OfficeConversionOptions.cs"],
-     ["經 PowerShellHelper 叫 Office", "⚠ 與右邊 Office 引擎", "  互相引用（待辦 E5）"]),
-    ("PdfCompression", ["PdfCompressionProcessor.cs", "PdfCompressionEngine.cs", "PdfStructuralCompressionOptimizer.cs", "PdfCompressionSettings.cs",
-                        "PdfCompressionOptions.cs", "PdfCompressionLevel.cs"], ["外部：PDFsharp"]),
-    ("PdfDecrypt", ["PdfDecryptProcessor.cs"], ["外部：PDFsharp"]),
-    ("PdfMerge", ["PdfMergeProcessor.cs"], ["外部：PDFsharp"]),
-    ("PdfTranslation", ["Execution/PdfTranslateProcessor.cs", "Pipeline/（58 檔）", "  PdfTranslationPipeline.cs", "  Paragraphs/（13）", "  Tables/（9）", "  Rendering/（9）", "  TextProcessing/（9）",
-                        "  Annotations/（5）", "  Diagrams/（5）", "  GrayPrompts/（4）", "  Layout/（2）・Fonts/（1）", "Model/（9 檔）", "Translation/（11 檔）"],
-     ["外部：PdfPig、PDFsharp、", "網路翻譯（Google、MyMemory）"]),
-    ("PdfSplit", ["PdfSplitProcessor.cs"], ["外部：PDFsharp", "⚠ 也被 L1 視覺分割直接呼叫", "  （紅虛線，待辦 C1）"]),
+    ("Image", _proc_files("Image"), ["外部：Imazen.WebP、WIC、", "System.Drawing、PDFsharp"]),
+    ("Markdown", _proc_files("Markdown"), ["外部：Markdig、PDFsharp"]),
+    ("Office", _proc_files("Office"), ["經 PowerShellHelper 叫 Office"]),
+    ("PdfCompression", _proc_files("PdfCompression"), ["外部：PDFsharp"]),
+    ("PdfDecrypt", _proc_files("PdfDecrypt"), ["外部：PDFsharp"]),
+    ("PdfMerge", _proc_files("PdfMerge"), ["外部：PDFsharp"]),
+    ("PdfTranslation", _tr_summary(), ["外部：PdfPig、PDFsharp、", "網路翻譯（Google、MyMemory）"]),
+    ("PdfSplit", _proc_files("PdfSplit"), ["外部：PDFsharp"] + (["⚠ 也被 L1 視覺分割直接呼叫", "  （紅虛線，待辦 C1）"] if SPLIT_BYPASS else [])),
 ]
 BASE3_Y = R1Y3 + 34
 BASE3_H = 86
@@ -59,23 +71,24 @@ for r, row in enumerate(rows):
 path([(X_MOD, -6), (X_MOD, R1Y3)], src="a_base", dst="p_box", color=GREY, width=1.4)
 sx, sy, sw, sh = P_POS["PdfSplit"]
 path([(X_PAGES, -6), (X_PAGES, sy + sh / 2 - 10), (sx + sw, sy + sh / 2 - 10)], src="a_pages", dst="p_PdfSplit", color=GREY, width=1.4)
-path([(BYX, -6), (BYX, sy + sh / 2 + 10), (sx + sw, sy + sh / 2 + 10)], src="m_split", dst="p_PdfSplit", color="#d92d20", width=1.6, dashed=True)
+if SPLIT_BYPASS:
+    path([(BYX, -6), (BYX, sy + sh / 2 + 10), (sx + sw, sy + sh / 2 + 10)], src="m_split", dst="p_PdfSplit", color="#d92d20", width=1.6, dashed=True)
 
 # ---- storage (cols 5-6) and Office engine (col 7)
 STX0, STX1 = COL(5) - MGAP, COL(7) - 4
-ST_FILES = ["ClickraStorage.*.cs（門面，4 檔）", "  （主檔）・.History", "  .ActiveRecord・.LegacyActiveRecord", "ClickraSettings.cs（設定鍵表）", "SettingsStore.cs",
-            "StoragePathResolver.cs", "StorageRuntime.cs", "HistoryStore.cs", "TaskRecordStore.cs", "TaskQueueStore.cs", "TaskPruningCoordinator.cs",
-            "TaskRetentionPolicy.cs", "ParkedTaskCoordinator.cs", "LegacyActiveRecordStore.cs"]
+_st = sorted(posixpath.basename(p) for p in AF if p.startswith("Clickra.Core/Storage/"))
+_facade = [f for f in _st if f.startswith("ClickraStorage")]
+ST_FILES = [f"ClickraStorage.*.cs（門面，{len(_facade)} 檔）"] + [f for f in _st if f not in _facade]
 store_h = max(need_h(["a", "b"], "x", ST_FILES, ["a", "b", "c"]), need_h(["a", "b"], "x", ["a"] * 6, ["a"] * 4)) + 8
 l2card("t_store", STX0, R1Y3, STX1 - STX0, store_h, "儲存（Storage）", ["對外只有靜態門面 ClickraStorage，其餘是各 Store；", "資料寫在使用者資料夾（設定、任務紀錄、歷史）"],
-       "Core/Storage/（15 檔）", ST_FILES,
-       ["被：L2 歷史／設定／任務生命週期（上方三條線）", "另被：處理器取 ClickraSettings 預設值常數；", "⚠ 在地化直接讀設定（待辦 E1）"], stroke=PURPLE, fill=PURPLE_FILL)
+       f"Core/Storage/（{len(_st)} 檔）", ST_FILES,
+       ["被：L2 歷史／設定／任務生命週期（上方三條線）", "另被：處理器取 ClickraSettings 預設值常數"], stroke=PURPLE, fill=PURPLE_FILL)
 for x in (X_HIST, X_LIFE, X_SET):
     src = {X_HIST: "a_hist", X_LIFE: "a_life", X_SET: "a_set"}[x]
     path([(x, -6), (x, R1Y3)], src=src, dst="t_store", color=GREY, width=1.4)
 l2card("t_offinf", COL(7), R1Y3, MW, store_h, "Office 引擎", ["偵測、安裝、呼叫", "LibreOffice／Office"], "Modules/Office/Infra…/",
-       wrap(["LibreOfficeEngineInstaller.cs", "LibreOfficeHelper.cs", "OfficeEngineDetector.cs", "PowerShellHelper.cs"], 22),
-       ["外部：LibreOffice 下載（HTTP）、", "soffice、PowerShell／Office", "⚠ 用到 Office/Processing 的", "  型別，雙向引用（E5）"], stroke=PURPLE, fill=PURPLE_FILL)
+       wrap(sorted(posixpath.basename(p) for p in AF if p.startswith("Clickra.Core/Modules/Office/Infrastructure/")), 22),
+       ["外部：LibreOffice 下載（HTTP）、", "soffice、PowerShell／Office"], stroke=PURPLE, fill=PURPLE_FILL)
 path([(X_OFF, -6), (X_OFF, R1Y3)], src="a_off", dst="t_offinf", color=GREY, width=1.4)
 
 # ---- external dependencies: right under the L3 nodes that use them, so the lines stay short and straight
@@ -122,19 +135,12 @@ XY = EY + EH + 46
 band(XY - 10, 0, "橫切支援（到處都在用，不畫線；呼叫者寫在「被：」）")
 CROSS = [
     ("x_loc", 0, 1, "在地化", "Core/Localization/", ["Localization.*.cs（5 檔）", "  （主檔）・.General・.Cli", "  .Fluent", "  .DocumentProcessing", "ChineseTextConverter", "  .*.cs（主檔・.Pairs）"],
-     ["被：CLI、Fluent、處理器、用例", "⚠ 直接讀 ClickraStorage（E1）"]),
+     ["被：CLI、Fluent、處理器、用例"]),
     ("x_font", 1, 1, "字型", "Core/Fonts/", wrap(["ClickraFontResolver.cs"], 22), ["被：ClickraStartup、", "Markdown／壓縮／翻譯處理器", "外部：PDFsharp.Fonts"]),
     ("x_diag", 2, 1, "診斷與外部程序", "Core/Diagnostics/", ["ClickraDebug.cs", "ClickraShellProcess.cs"], ["被：Native 畫面、Fluent App、", "翻譯管線（除錯紀錄）"]),
     ("x_render", 3, 1, "PDF 縮圖", "Core/Rendering/", wrap(["PdfPageThumbnailRenderer.cs"], 22), ["⚠ 被 Native 進度視窗、", "Fluent 視覺分割直接呼叫", "（跳過 L1/L2，待辦 E3）", "外部：PdfPig、System.Drawing"]),
-    ("x_root", 4, 1, "Core 根目錄", "Clickra.Core/", ["SystemPaths.cs", "FileProcessor.cs"], ["SystemPaths 被 Fluent 用", "⚠ FileProcessor 正式程式", "  無呼叫者（待辦 E2）"]),
+    ("x_root", 4, 1, "Core 根目錄", "Clickra.Core/", wrap(sorted(posixpath.basename(p) for p in AF if p.count("/") == 1 and p.startswith("Clickra.Core/")), 22), ["SystemPaths 被 Fluent 用"]),
     ("x_model", 5, 1, "設定數值範圍", "Modules/Settings/Model/", ["NumericSettingRange.cs"], ["被：L1 Dashboard／Fluent、", "L2 設定、Storage"]),
-    ("x_leak", 6, 2, "⚠ 上層直接引用的 L3 型別（待辦 E4）", "", ["MarkdownPdfOptions.cs、MarkdownTemplateSource.cs",
-                                                           "  ← ClickraCli.cs、FluentDialogs.cs、",
-                                                           "    ProgressWindow.MarkdownOptions.cs",
-                                                           "ImageCompressionLevel.cs",
-                                                           "  ← SettingsService.cs、SettingsContract.cs、",
-                                                           "    SettingDescriptor.cs、",
-                                                           "    SettingsPresentationController.cs"], []),
 ]
 XH = max(need_h(folder=f, classes=c, also=a) for _, _, _, _, f, c, a in CROSS)
 for nid, col, span, title, folder, cls, also in CROSS:
@@ -161,7 +167,8 @@ def chip3(nid, x0, x1, l1, l2, col="#dc6803", fill="#fffaeb"):
 
 
 chip3("a_base", COL(0), COL(2) + MW, "來自 L2", "各模組轉換用例")
-chip3("m_split", COL(3), COL(4) - 6, "來自 L1（跳層）", "視覺分割狀態", col="#d92d20", fill="#fef3f2")
+if SPLIT_BYPASS:
+    chip3("m_split", COL(3), COL(4) - 6, "來自 L1（跳層）", "視覺分割狀態", col="#d92d20", fill="#fef3f2")
 chip3("a_pages", COL(4), COL(4) + MW, "來自 L2", "頁數查詢")
 chip3("a_life", STX0, STX1, "來自 L2", "歷史・任務生命週期・設定")
 chip3("a_off", COL(7), COL(7) + MW, "來自 L2", "Office 引擎設定")

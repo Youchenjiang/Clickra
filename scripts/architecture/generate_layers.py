@@ -5,7 +5,6 @@ os.chdir(script_dir)
 repo_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
 docs_arch = os.path.join(repo_root, "docs", "architecture")
 svg_dir = os.path.join(docs_arch, "svg")
-os.makedirs(docs_arch, exist_ok=True)
 os.makedirs(svg_dir, exist_ok=True)
 from files_map import FILES
 e = html.escape
@@ -45,7 +44,8 @@ def box(x, y, w, h, title, lines=(), kind="door", tfs=15, nid=None, cls="", file
     for i, l in enumerate(lines):
         mono = l.startswith("`")
         fam = ' font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace"' if mono else ""
-        A(f'<text x="{x + 14}" y="{y + 47 + i * 18}" font-size="12.5" fill="#475467"{fam}>{e(l.strip("`"))}</text>')
+        col = "#b42318" if l.startswith("⚠") else "#475467"   # a warning line links the box to a todo item
+        A(f'<text x="{x + 14}" y="{y + 47 + i * 18}" font-size="12.5" fill="{col}"{fam}>{e(l.strip("`"))}</text>')
     if files:
         fy = y + 47 + len(lines) * 18 - 6
         A(f'<line x1="{x + 14}" y1="{fy - 4}" x2="{x + w - 14}" y2="{fy - 4}" stroke="#eaecf0"/>')
@@ -70,6 +70,19 @@ def box(x, y, w, h, title, lines=(), kind="door", tfs=15, nid=None, cls="", file
     A('</g>')
     return (x, y, w, h)
 
+
+
+_NAV_ON = 'border:1px solid #101828;color:#fff;background:#101828;font-weight:700;'
+_NAV_OFF = 'border:1px solid #bfc6d1;color:#111827;background:#fff;'
+
+
+def from_l1_template(title, href):
+    """The L2-L4 pages reuse the L1 template: swap the page title and move the nav highlight (not the nav labels)."""
+    page = open("l1_template.html", encoding="utf-8").read().replace("— L1 畫面", "— " + title)
+    page = page.replace('href="l1_presentation.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;' + _NAV_ON,
+                        'href="l1_presentation.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;' + _NAV_OFF)
+    return page.replace(f'href="{href}" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;' + _NAV_OFF,
+                        f'href="{href}" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;' + _NAV_ON)
 
 import re as _re
 
@@ -199,10 +212,10 @@ ndash = box(695, 806, 305, 266, "Native Dashboard", ["DashboardWindow（Win32 �
             files=["src/Clickra.CLI/Dashboard/", "DashboardWindow.*.cs（18 檔）：", (2, ["（主檔）", "State", "Lifecycle", "Convert", "ConvertRegistry", "HitTesting",
                    "Events", "Events.Click", "Events.History", "Events.LibreOffice", "Events.Settings", "Paint", "Paint.Overview", "Paint.History",
                    "Paint.Settings", "Paint.Settings.Dynamic", "Paint.Dropdowns", "Paint.About"])])
-nprog = box(1020, 806, 250, 266, "Native 進度視窗", ["ProgressWindow", "附屬：密碼、Markdown 選項、", "視覺分割、系統匣"], "door", 14, nid="nprog", edge="#0e9384",
+nprog = box(1020, 806, 250, 266, "Native 進度視窗", ["ProgressWindow", "附屬：密碼、Markdown 選項、", "視覺分割、系統匣", "⚠ 逐一辨認 8 個指令（C4）"], "door", 14, nid="nprog", edge="#0e9384",
             files=["src/Clickra.CLI/Progress/", "ProgressWindow.*.cs（8 檔）：", (2, ["（主檔）", "Process", "Paint", "Controls", "PasswordInput", "MarkdownOptions", "VisualSplitter", "Tray"]),
-                   "NativeConversionPresentationAdapter.cs"])
-nnone = box(1290, 806, 150, 266, "無畫面", ["--quiet 背景轉換", "--version / --help", "--deploy → 直接到 L2"], "door", 14, nid="nnone", edge="#12b76a",
+                   "NativeConversionExecutionAdapter.cs"])
+nnone = box(1290, 806, 150, 266, "無畫面", ["--quiet 背景轉換", "--version / --help", "--deploy → 直接到 L2", "⚠ 逐一辨認指令（C4）"], "door", 14, nid="nnone", edge="#12b76a",
             files=["src/Clickra.CLI/Cli/", "ClickraCli.cs", "ClickraCli.Deploy.cs", "ClickraStartup.cs"])
 SCREENS = 4
 
@@ -225,20 +238,37 @@ path([(1060, 1072), (1060, 1088), (575, 1088), (575, 1072)], src="nprog", dst="m
 
 # ======================= L1: shared presentation controllers =======================
 band(1220, 0, "共用畫面狀態（Clickra.Core，Native 與 Fluent 共用）")
+# file lists of the shared-state cards come from cards.py + the code graph (L2/L4 use the same mapping)
+exec(open('l4_model.py', encoding='utf-8').read())
+exec(open('cards.py', encoding='utf-8').read())
+_L1BOX = assign(AF)
+_L1_SCOPE = ["Clickra.Core/Presentation/*/*", "Clickra.Core/Modules/*/Presentation/*"]
+_l1_orphans = [p for p in AF if any(_match(p, s) for s in _L1_SCOPE) and not _L1BOX.get(p, "").startswith(("m_", "d_"))]
+assert not _l1_orphans, ("L1 presentation files not on any card — add them to cards.py", _l1_orphans)
+
+
+def l1_files(k):
+    return wrap(sorted(posixpath.basename(p) for p, b in _L1BOX.items() if b == k), 22)
+
+
+def l1_link(a, b):
+    return any(_L1BOX.get(x) == a and _L1BOX.get(y) == b for x, y in AE)
+
+
 MODELS_DEF = [
-    ("m_nav", "Dashboard 導覽", wrap(["DashboardPresentationController.cs"], 22), "Presentation/Dashboard"),
-    ("m_ws", "轉換工作區", wrap(["ConvertWorkspacePresentationController.cs"], 22), "Presentation/Convert"),
-    ("m_exec", "轉換執行", wrap(["ConversionExecutionPresentationController.cs"], 22), "Presentation/Convert"),
-    ("m_prog", "任務進度", wrap(["TaskProgressPresentationController.cs"], 22), "Presentation/Progress"),
-    ("m_split", "視覺分割", wrap(["VisualSplitPresentationController.cs"], 22), "Modules/PdfSplit"),
-    ("m_hist", "歷史／暫停任務", wrap(["HistoryPresentationController.cs"], 22), "Modules/HistoryTasks"),
-    ("m_set", "設定", wrap(["SettingsPresentationController.cs"], 22), "Modules/Settings"),
-    ("m_off", "Office 引擎設定", wrap(["OfficeSettingsPresentationController.cs"], 22), "Modules/Office"),
+    ("m_nav", "Dashboard 導覽", l1_files("m_nav"), "Presentation/Dashboard"),
+    ("m_ws", "轉換工作區", l1_files("m_ws"), "Presentation/Convert"),
+    ("m_exec", "轉換執行", l1_files("m_exec"), "Presentation/Convert"),
+    ("m_prog", "任務進度", l1_files("m_prog"), "Presentation/Progress"),
+    ("m_split", "視覺分割", l1_files("m_split"), "Modules/PdfSplit"),
+    ("m_hist", "歷史／暫停任務", l1_files("m_hist"), "Modules/HistoryTasks"),
+    ("m_set", "設定（含 Office 引擎）", l1_files("m_set"), "Modules/Settings"),
 ]
 MODELS = len(MODELS_DEF)
 MX0, MGAP = 40, 22
-MW = (1480 - 80 - MGAP * (len(MODELS_DEF) - 1)) / len(MODELS_DEF)
-MY, MH = 1244, 92
+NSLOT = 8   # column grid shared with L2/L3; the 8th L1 slot is empty since Office settings moved into Settings
+MW = (1480 - 80 - MGAP * (NSLOT - 1)) / NSLOT
+MY, MH = 1244, 106
 M = {}
 
 
@@ -271,13 +301,8 @@ for did, under, title, lines, where in [
     # controller uses its data helper
     path([(x + w / 2, MY + MH), (x + w / 2, DY)], src=under, dst=did, color="#12b76a", width=1.6)
 
-# screen -> controller / data wiring (verified by grep of renderer files)
-USES = {
-    "ndash": ["m_nav", "m_ws", "m_hist", "m_set", "m_off", "d_feed", "d_set"],
-    "nprog": ["m_exec", "m_prog", "m_split", "m_set"],
-    "fmain": ["m_nav", "m_ws", "m_exec", "m_hist", "m_set", "m_off", "d_feed", "d_set"],
-    "fprog": ["m_exec", "m_ws", "m_hist", "m_prog", "m_split", "m_set"],
-}
+# screen -> controller / data wiring, straight from the code graph
+USES = {s: [t for t in [m[0] for m in MODELS_DEF] + ["d_feed", "d_set"] if l1_link(s, t)] for s in ("ndash", "nprog", "fmain", "fprog")}
 SCREEN_BOX = {"ndash": ndash, "nprog": nprog, "fmain": fmain, "fprog": fprog}
 LANE = {"fmain": 1108, "fprog": 1126, "ndash": 1144, "nprog": 1162}
 COLOR = {"ndash": "#05603a", "nprog": "#0e9384", "fmain": "#98a2b3", "fprog": "#98a2b3"}
@@ -308,12 +333,12 @@ L1_END = len(o)
 exec(open('l2_block.py', encoding='utf-8').read())
 
 svg_full = "\n".join(o)
-open(os.path.join(svg_dir, "clickra_layers.svg"), "w", encoding="utf-8").write(svg_full)
+open(os.path.join(svg_dir, "clickra_layers.svg"), "w", encoding="utf-8", newline="\n").write(svg_full)
 body = o[:TITLE_AT] + o[TITLE_AT + 2:]
 svg_html = "\n".join(body).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{H - 70}" viewBox="0 70 {W} {H - 70}"', 1)
 page = open("layers_template.html", encoding="utf-8").read()
 page = page.replace("__SVG__", svg_html).replace("__FILES__", json.dumps(FILES, ensure_ascii=False)).replace("__META__", f"L0：4 種使用者動作 · 4 個執行檔　L1：{SCREENS} 個畫面 · {MODELS} 個共用畫面狀態 · 9 個 Native 版面表　L2：{L2_SERVICES} 組應用服務 · 19 個轉換指令　L3：8 個模組處理器 · 儲存 · Office 引擎 · 6 組橫切支援　L4：全部 {len(AF)} 個檔的引用（{len(INNER) + len(CROSS)} 條）")
-open(os.path.join(docs_arch, "overview.html"), "w", encoding="utf-8").write(page)
+open(os.path.join(docs_arch, "overview.html"), "w", encoding="utf-8", newline="\n").write(page)
 print("overview ok")
 
 
@@ -331,21 +356,21 @@ Y0 = 730
 l1_parts = o[:TITLE_AT] + [G_OPEN] + STUB + o[L1_AT:L1_END] + [FOOT_L1, "</g>", "</svg>"]
 L1H = L1_BOTTOM + 70
 l1_svg = "\n".join(l1_parts).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{L1H - Y0}" viewBox="0 {Y0} {W} {L1H - Y0}"', 1)
-open(os.path.join(svg_dir, "l1_presentation.svg"), "w", encoding="utf-8").write(l1_svg.replace(f'<rect width="100%" height="100%" fill="#fff"/>', f'<rect x="0" y="{Y0}" width="{W}" height="{L1H - Y0}" fill="#fff"/>'))
+open(os.path.join(svg_dir, "l1_presentation.svg"), "w", encoding="utf-8", newline="\n").write(l1_svg.replace(f'<rect width="100%" height="100%" fill="#fff"/>', f'<rect x="0" y="{Y0}" width="{W}" height="{L1H - Y0}" fill="#fff"/>'))
 page = open("l1_template.html", encoding="utf-8").read()
 page = page.replace("__SVG__", l1_svg).replace("__FILES__", json.dumps(FILES, ensure_ascii=False)).replace("__META__", f"{SCREENS} 個畫面 · {MODELS} 個共用畫面狀態 · 2 個資料目錄 · 9 個 Native 版面表（Clickra.CLI）")
-open(os.path.join(docs_arch, "l1_presentation.html"), "w", encoding="utf-8").write(page)
+open(os.path.join(docs_arch, "l1_presentation.html"), "w", encoding="utf-8", newline="\n").write(page)
 print("l1 ok")
 
 # ---------------- standalone L0 export ----------------
 L0H = 870
 l0_parts = o[:TITLE_AT] + o[TITLE_AT + 2:L1_AT] + ['<text x="40" y="852" font-size="11.5" fill="#667085">來源：packaging/msix/AppxManifest.xml（Store／GitHub 同一份 MSIX）、src/resources/AppxManifest.xml（--deploy）、ClickraShell/ComMethods.cs、ClickraLauncher/Program.cs、Clickra.CLI/Cli/ClickraStartup.cs、Clickra.Fluent/App.xaml.cs</text>', '</g>', '</svg>']
 l0_svg = "\n".join(l0_parts).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{L0H - 70}" viewBox="0 70 {W} {L0H - 70}"', 1)
-open(os.path.join(svg_dir, "l0_entry_points.svg"), "w", encoding="utf-8").write(l0_svg)
+open(os.path.join(svg_dir, "l0_entry_points.svg"), "w", encoding="utf-8", newline="\n").write(l0_svg)
 page = open("l0_template.html", encoding="utf-8").read()
 L0_EDGES = sum(1 for x in o[:L1_AT] if x.startswith('<g class="edge'))
 page = page.replace("__SVG__", l0_svg).replace("__FILES__", json.dumps(FILES, ensure_ascii=False)).replace("__META__", f"4 種使用者動作 · 4 個執行檔 · {L0_EDGES} 條轉交")
-open(os.path.join(docs_arch, "l0_entry_points.html"), "w", encoding="utf-8").write(page)
+open(os.path.join(docs_arch, "l0_entry_points.html"), "w", encoding="utf-8", newline="\n").write(page)
 print("l0 ok")
 
 # ---------------- standalone L2 export ----------------
@@ -359,7 +384,7 @@ chip("m_exec", COL(2), MW, "轉換執行")
 chip("m_split", COL(4) - MGAP, MW + MGAP, "視覺分割")
 chip("m_hist", COL(5), MW, "歷史・歷史清單")
 chip("m_set", COL(6), MW, "設定・設定目錄")
-chip("m_off", COL(7), MW, "Office 引擎設定")
+chip("m_set", COL(7), MW, "設定（Office 引擎）")
 L2V0 = L2_TOP - 84
 _l2 = o[L2_AT:L2_END]
 _c0, _c1 = COMBINED_ONLY[0] - L2_AT, COMBINED_ONLY[1] - L2_AT
@@ -368,10 +393,10 @@ _l2 = _l2[:-1] + STANDALONE_ONLY + _l2[-1:]          # chips go inside the L2 gr
 l2_parts = o[:TITLE_AT] + [G_OPEN] + chips + _l2 + [FOOT_L2, "</g>", "</svg>"]
 L2V1 = L2_TOP + L2H + 50
 l2_svg = "\n".join(l2_parts).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{L2V1 - L2V0}" viewBox="0 {L2V0} {W} {L2V1 - L2V0}"', 1)
-open(os.path.join(svg_dir, "l2_application.svg"), "w", encoding="utf-8").write(l2_svg.replace('<rect width="100%" height="100%" fill="#fff"/>', f'<rect x="0" y="{L2V0}" width="{W}" height="{L2V1 - L2V0}" fill="#fff"/>'))
-page = open("l1_template.html", encoding="utf-8").read().replace("L1 畫面", "L2 應用").replace("上排是畫面（Renderer），下排是 Native 與 Fluent 共用的畫面模型。", "上排是應用服務（與 L1 共用畫面狀態同一欄），左下是各模組轉換用例，最底是往 L3 的出口。")
+open(os.path.join(svg_dir, "l2_application.svg"), "w", encoding="utf-8", newline="\n").write(l2_svg.replace('<rect width="100%" height="100%" fill="#fff"/>', f'<rect x="0" y="{L2V0}" width="{W}" height="{L2V1 - L2V0}" fill="#fff"/>'))
+page = from_l1_template("L2 應用", "l2_application.html").replace("上排是畫面（Renderer），下排是 Native 與 Fluent 共用的畫面模型。", "上排是應用服務（與 L1 共用畫面狀態同一欄），左下是各模組轉換用例，最底是往 L3 的出口。")
 page = page.replace("__SVG__", l2_svg).replace("__META__", f"{L2_SERVICES} 組應用服務 · 8 個模組 · 19 個轉換指令 · 3 個往 L3 的出口")
-open(os.path.join(docs_arch, "l2_application.html"), "w", encoding="utf-8").write(page)
+open(os.path.join(docs_arch, "l2_application.html"), "w", encoding="utf-8", newline="\n").write(page)
 print("l2 ok")
 
 # ---------------- standalone L3 export ----------------
@@ -379,10 +404,10 @@ L3V0 = L3_TOP - 84
 L3V1 = L3_TOP + L3H + 50
 l3_parts = o[:TITLE_AT] + [G_OPEN] + L3_CHIPS + o[L3_AT:L3_END] + [FOOT_L3, "</g>", "</svg>"]
 l3_svg = "\n".join(l3_parts).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{L3V1 - L3V0}" viewBox="0 {L3V0} {W} {L3V1 - L3V0}"', 1)
-open(os.path.join(svg_dir, "l3_infrastructure.svg"), "w", encoding="utf-8").write(l3_svg.replace('<rect width="100%" height="100%" fill="#fff"/>', f'<rect x="0" y="{L3V0}" width="{W}" height="{L3V1 - L3V0}" fill="#fff"/>'))
-page = open("l1_template.html", encoding="utf-8").read().replace("L1 畫面", "L3 基礎").replace("上排是畫面（Renderer），下排是 Native 與 Fluent 共用的畫面模型。", "上排是處理器、儲存與 Office 引擎（與 L2 出口同一欄），中排是橫切支援，最底是外部依賴。")
+open(os.path.join(svg_dir, "l3_infrastructure.svg"), "w", encoding="utf-8", newline="\n").write(l3_svg.replace('<rect width="100%" height="100%" fill="#fff"/>', f'<rect x="0" y="{L3V0}" width="{W}" height="{L3V1 - L3V0}" fill="#fff"/>'))
+page = from_l1_template("L3 基礎", "l3_infrastructure.html").replace("上排是畫面（Renderer），下排是 Native 與 Fluent 共用的畫面模型。", "上排是處理器、儲存與 Office 引擎（與 L2 出口同一欄），中排是橫切支援，最底是外部依賴。")
 page = page.replace("__SVG__", l3_svg).replace("__META__", "8 個模組處理器 · 儲存 15 檔 · Office 引擎 4 檔 · 6 組橫切支援 · 8 項外部依賴")
-open(os.path.join(docs_arch, "l3_infrastructure.html"), "w", encoding="utf-8").write(page)
+open(os.path.join(docs_arch, "l3_infrastructure.html"), "w", encoding="utf-8", newline="\n").write(page)
 print("l3 ok")
 
 # ---------------- standalone L4 export ----------------
@@ -390,9 +415,25 @@ L4V0 = L4_TOP - 20
 L4V1 = L4_TOP + L4H + 50
 l4_parts = o[:TITLE_AT] + [G_OPEN] + o[L4_AT:L4_END] + [FOOT_L4, "</g>", "</svg>"]
 l4_svg = "\n".join(l4_parts).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{L4V1 - L4V0}" viewBox="0 {L4V0} {W} {L4V1 - L4V0}"', 1)
-open(os.path.join(svg_dir, "l4_inside.svg"), "w", encoding="utf-8").write(l4_svg.replace('<rect width="100%" height="100%" fill="#fff"/>', f'<rect x="0" y="{L4V0}" width="{W}" height="{L4V1 - L4V0}" fill="#fff"/>'))
-page = open("l1_template.html", encoding="utf-8").read().replace("L1 畫面", "L4 模組內部").replace("上排是畫面（Renderer），下排是 Native 與 Fluent 共用的畫面模型。", "src/ 底下每個檔案都在這裡：上方是呼叫者，下方是被用的檔案；灰虛線小方塊是引用到別的面板的檔案，點它會連同本尊一起亮；紅虛線框是互相引用的循環。")
+open(os.path.join(svg_dir, "l4_inside.svg"), "w", encoding="utf-8", newline="\n").write(l4_svg.replace('<rect width="100%" height="100%" fill="#fff"/>', f'<rect x="0" y="{L4V0}" width="{W}" height="{L4V1 - L4V0}" fill="#fff"/>'))
+page = from_l1_template("L4 模組內部", "l4_modules_internal.html").replace("上排是畫面（Renderer），下排是 Native 與 Fluent 共用的畫面模型。", "src/ 底下每個檔案都在這裡：上方是呼叫者，下方是被用的檔案；灰虛線小方塊是引用到別的面板的檔案，點它會連同本尊一起亮；紅虛線框是互相引用的循環。")
 page = page.replace("__SVG__", l4_svg).replace("__META__", f"src/ 全部 {len(AF)} 個 .cs 檔 · {len(PANEL_INFO)} 張面板 · {len(INNER)} 條面板內引用 · {len(CROSS)} 條跨面板引用（灰虛線替身）")
-open(os.path.join(docs_arch, "l4_modules_internal.html"), "w", encoding="utf-8").write(page)
+open(os.path.join(docs_arch, "l4_modules_internal.html"), "w", encoding="utf-8", newline="\n").write(page)
 print("l4 ok")
 
+
+# ---------------- check hand-written names against the code ----------------
+# L0-L3 boxes are laid out by hand; every *.cs name they mention must still exist under src/.
+import html as _html
+_known = {posixpath.basename(p) for p in AF}
+_stems = {b.split(".")[0] for b in _known}
+_l03 = _html.unescape("\n".join(o[:L4_AT]))
+_l03 = _re.sub(r"-</text>\s*<text[^>]*>\s*", "", _l03)          # join names wrapped at a suffix word
+_texts = " ".join(_re.findall(r"<text[^>]*>([^<]*)</text>", _l03))    # visible text only (not data-search attributes)
+_named = set(_re.findall(r"[A-Za-z_][\w.*]*\.cs\b", _texts))
+_missing = sorted(n for n in _named if n not in _known and not (".*." in n and n.split(".")[0] in _stems)
+                  and not n.startswith(("Modules", "Clickra", "src")))
+if _missing:
+    print("⚠ L0～L3 圖上寫的檔名在 src/ 找不到（改名或刪除了，請更新手寫內容）：", ", ".join(_missing))
+else:
+    print("names ok")
