@@ -12,7 +12,8 @@ MONO = 'font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace"'
 exec(open('l2_auto.py', encoding='utf-8').read())
 
 
-def l2card(nid, x, y, w, h, title, role=(), folder="", classes=(), also=(), stroke=AMBER, fill="#fff", dashed=False, tcol="#101828"):
+def l2card(nid, pos, title, role=(), folder="", classes=(), also=(), stroke=AMBER, fill="#fff", dashed=False, tcol="#101828"):
+    x, y, w, h = pos
     srch = " ".join([title, *role, folder, *classes, *also]).lower()
     A(f'<g class="node" data-id="{nid}" data-search="{e(srch)}">')
     da = ' stroke-dasharray="7 5"' if dashed else ""
@@ -129,7 +130,7 @@ H1 = max(need_h(ROW1[k][2], ROW1[k][3], c, a) for k, (c, a) in ROW1_CONTENT.item
 def row1_card(k):
     x, title, role, folder, _ = ROW1[k]
     cls_, also = ROW1_CONTENT[k]
-    return l2card(k, x, R1Y, MW, H1, title, role, folder, cls_, also, stroke=AMBER, fill=AMBER_FILL)
+    return l2card(k, (x, R1Y, MW, H1), title, role, folder, cls_, also, stroke=AMBER, fill=AMBER_FILL)
 
 
 cmd, uc, pq = row1_card("a_cmd"), row1_card("a_uc"), row1_card("a_pages")
@@ -167,7 +168,7 @@ UCX0, UCX1 = COL(0), COL(3) + MW
 R2 = R1Y + H1 + 40
 A(f'<text x="{UCX0}" y="{R2}" font-size="12.5" font-weight="700" fill="#667085" letter-spacing=".5">轉換用例（ConversionUseCases 登記的 19 個指令）</text>')
 BASEY = R2 + 16
-base = l2card("a_base", UCX0, BASEY, UCX1 - UCX0, 88, "共用執行基底　Core/Application/",
+base = l2card("a_base", (UCX0, BASEY, UCX1 - UCX0, 88), "共用執行基底　Core/Application/",
               [], "", ["ConversionUseCaseBase.cs（所有用例的父類別）",
                        "├ PerFileConversionUseCaseBase.cs（逐檔處理）",
                        "└ SingleOutputConversionUseCaseBase.cs（多檔合成一個輸出）"], stroke=AMBER, fill=AMBER_FILL)
@@ -182,7 +183,10 @@ SHORT = {"Native 進度視窗": "Native", "CLI／ClickraStartup": "CLI"}
 
 def mod_also(k):
     who = [SHORT.get(n, n) for n in callers_of(k)]
-    return wrap_text("也被：" + "、".join(who) + ("（C4）" if {"Native", "CLI"} & set(who) else ""), MWID - 20) if who else []
+    if not who:
+        return []
+    c4 = "（C4）" if {"Native", "CLI"} & set(who) else ""
+    return wrap_text("也被：" + "、".join(who) + c4, MWID - 20)
 
 
 MG = 12
@@ -193,7 +197,7 @@ MOD_Y = [BASEY + 100, BASEY + 100 + MOD_RH[0] + 12]
 for k, (name, items, also) in enumerate(MODS):
     r, c = divmod(k, 4)
     mh = MOD_RH[r]
-    l2card(f"u_{name}", UCX0 + c * (MWID + MG), MOD_Y[r], MWID, mh, name, [], "…/Application/", items, also, stroke="#fdb022")
+    l2card(f"u_{name}", (UCX0 + c * (MWID + MG), MOD_Y[r], MWID, mh), name, [], "…/Application/", items, also, stroke="#fdb022")
 MOD_BOTTOM = MOD_Y[1] + MOD_RH[1]
 if link("a_uc", "UC"):
     path([(c_mid(2), R1Y + H1), (c_mid(2), BASEY)], "依指令找到用例", lpos=(c_mid(2) + 8, R1Y + H1 + 24), anchor="start", src="a_uc", dst="a_base", color=AMBER, width=1.6)
@@ -203,7 +207,7 @@ LCX, LCW = COL(5), COL(6) + MW - COL(5)
 LIFE_FILES = files_of("a_life", maxch=60)
 LIFE_ALSO = also_lines("a_life", LCW)
 LIFE_H = need_h(["x"], "Core/Application/", LIFE_FILES, LIFE_ALSO) + 8
-lc = l2card("a_life", LCX, BASEY, LCW, LIFE_H, "任務生命週期", ["開始 → 進行中 → 完成／失敗／暫停，寫入任務紀錄"], "Core/Application/",
+lc = l2card("a_life", (LCX, BASEY, LCW, LIFE_H), "任務生命週期", ["開始 → 進行中 → 完成／失敗／暫停，寫入任務紀錄"], "Core/Application/",
             LIFE_FILES, LIFE_ALSO, stroke=AMBER, fill=AMBER_FILL)
 if link("UC", "a_life"):
     path([(UCX1, BASEY + 25), (LCX, BASEY + 25)], "執行時建立與結束任務紀錄", lpos=((UCX1 + LCX) / 2, BASEY + 18), src="a_base", dst="a_life", color=AMBER, width=1.6)
@@ -218,7 +222,7 @@ STUB_ROLE = {"s_proc": ["Modules/*/Processing、Processors/FileProcessing"], "s_
 S3H = max(78, max(need_h(STUB_ROLE[k], "", [], STUB_ALSO[k]) + 8 for k in STUB_W))
 GREY = AMBER  # L2 -> L3 lines take the caller (L2) colour
 # shared-definition node: stays in both views (it is not an L3 node)
-shared = l2card("s_shared", COL(0), S3Y, COL(1) + MW - COL(0), S3H, "共用指令表（src/Shared）", ["ConvertCommandMetadata.cs：指令、副檔名、", "最少檔數、顯示名稱；同一份也編進 ClickraShell"], "",
+shared = l2card("s_shared", (COL(0), S3Y, COL(1) + MW - COL(0), S3H), "共用指令表（src/Shared）", ["ConvertCommandMetadata.cs：指令、副檔名、", "最少檔數、顯示名稱；同一份也編進 ClickraShell"], "",
                 [], ["指令集合與轉換用例目錄一致（架構測試保證）"], stroke="#98a2b3", fill="#f9fafb", dashed=True, tcol="#475467")
 if link("a_cmd", "s_shared"):
     path([(COL(1), R1Y + H1 - 24), (28, R1Y + H1 - 24), (28, S3Y + S3H / 2), (COL(0), S3Y + S3H / 2)], "查表", lpos=(34, R1Y + H1 - 30), anchor="start",
@@ -253,11 +257,11 @@ if "a_off" in _live:
 # standalone L2 only: the L3 stubs and the arrow tips that land on them
 _mark = len(o)
 A(f'<text x="{COL(2)}" y="{S3Y - 18}" font-size="12.5" font-weight="700" fill="#667085" letter-spacing=".5">往下 → L3</text>')
-l2card("s_proc", COL(2), S3Y, STUB_W["s_proc"], S3H, "L3 處理器（Processing）", STUB_ROLE["s_proc"], "", [], STUB_ALSO["s_proc"],
+l2card("s_proc", (COL(2), S3Y, STUB_W["s_proc"], S3H), "L3 處理器（Processing）", STUB_ROLE["s_proc"], "", [], STUB_ALSO["s_proc"],
        stroke="#98a2b3", fill="#f9fafb", dashed=True, tcol="#475467")
-l2card("s_store", COL(5) - MGAP, S3Y, STUB_W["s_store"], S3H, "L3 儲存（Storage）", STUB_ROLE["s_store"], "", [], STUB_ALSO["s_store"],
+l2card("s_store", (COL(5) - MGAP, S3Y, STUB_W["s_store"], S3H), "L3 儲存（Storage）", STUB_ROLE["s_store"], "", [], STUB_ALSO["s_store"],
        stroke="#98a2b3", fill="#f9fafb", dashed=True, tcol="#475467")
-l2card("s_office", COL(7), S3Y, MW, S3H, "L3 Office 引擎", STUB_ROLE["s_office"], "", [], STUB_ALSO["s_office"],
+l2card("s_office", (COL(7), S3Y, MW, S3H), "L3 Office 引擎", STUB_ROLE["s_office"], "", [], STUB_ALSO["s_office"],
        stroke="#98a2b3", fill="#f9fafb", dashed=True, tcol="#475467")
 for src, _, x, col, dsh, stub, real in EXITS:
     path([(x, S3Y - 10), (x, S3Y)], src=src, dst=real, color=col, width=1.6 if dsh else 1.4, dashed=dsh)

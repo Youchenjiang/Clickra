@@ -75,26 +75,26 @@ def layout(data, maxw=1340):
     """Layered layout; a rank wider than maxw pushes some of its nodes (sinks first) one rank down and retries."""
     minr = {}
     for _ in range(60):
-        Lo = _layout_once(data, minr)
-        wide = [r for r in range(Lo["nr"]) if _rank_w(Lo, r) > maxw - 2 * PAD]
+        lo = _layout_once(data, minr)
+        wide = [r for r in range(lo["nr"]) if _rank_w(lo, r) > maxw - 2 * PAD]
         if not wide:
-            return Lo
+            return lo
         r = wide[0]
-        size, order = Lo["size"], Lo["order"]
-        has_out = {p for p, q in Lo["links"]}
-        cand = sorted([i for i in order[r] if not isinstance(i, tuple)], key=lambda i: (i in has_out, -size[i][0]))
-        excess = _rank_w(Lo, r) - (maxw - 2 * PAD)
+        size, order = lo["size"], lo["order"]
+        has_out = {p for p, q in lo["links"]}
+        cand = sorted([i for i in order[r] if not isinstance(i, tuple)], key=lambda i, ho=has_out, sz=size: (i in ho, -sz[i][0]))
+        excess = _rank_w(lo, r) - (maxw - 2 * PAD)
         moved, left = False, len(cand)
         for i in cand:
             if excess <= 0 or left <= 1:
                 break
             minr[i] = r + 1; excess -= size[i][0] + GAP_X; moved = True; left -= 1
-        assert moved, ("rank too wide and nothing to move", r, [(Lo["comps"][i] if not isinstance(i, tuple) else "dummy", size[i][0]) for i in order[r]])
+        assert moved, ("rank too wide and nothing to move", r, [(lo["comps"][i] if not isinstance(i, tuple) else "dummy", size[i][0]) for i in order[r]])
     raise AssertionError("layout did not converge")
 
 
-def _rank_w(Lo, r):
-    return sum(Lo["size"][i][0] for i in Lo["order"][r]) + GAP_X * (len(Lo["order"][r]) - 1)
+def _rank_w(lo, r):
+    return sum(lo["size"][i][0] for i in lo["order"][r]) + GAP_X * (len(lo["order"][r]) - 1)
 
 
 def _layout_once(data, minr):
@@ -128,7 +128,7 @@ def _layout_once(data, minr):
         ch.append(b)
         chains[(a, b)] = ch
     links = [(ch[k], ch[k + 1]) for ch in chains.values() for k in range(len(ch) - 1)]
-    for i in list(size):                           # wide enough that every port gets its own slot
+    for i in list(size.keys()):                           # wide enough that every port gets its own slot
         if isinstance(i, tuple):
             continue
         deg = max(sum(1 for p, q in links if p == i), sum(1 for p, q in links if q == i))
@@ -150,13 +150,16 @@ def _layout_once(data, minr):
     nat_w = max(sum(size[i][0] for i in order[r]) + GAP_X * (len(order[r]) - 1) for r in range(nr)) + 2 * PAD
     rowh = {r: max([size[i][1] for i in order[r]] + [0]) for r in range(nr)}
     nlinks = {r: sum(1 for p, q in links if rank[p] == r) for r in range(nr)}
-    return dict(comps=comps, rank=rank, size=size, grid=grid, chains=chains, links=links, order=order, nr=nr,
-                nat_w=nat_w, rowh=rowh, nlinks=nlinks, data=data)
+    return {
+        "comps": comps, "rank": rank, "size": size, "grid": grid, "chains": chains,
+        "links": links, "order": order, "nr": nr, "nat_w": nat_w, "rowh": rowh,
+        "nlinks": nlinks, "data": data,
+    }
 
 
-def draw_panel(pid, Lo, x, y, w, title, sub, foot):
-    comps, rank, size, order, nr = Lo["comps"], Lo["rank"], Lo["size"], Lo["order"], Lo["nr"]
-    data = Lo["data"]
+def draw_panel(pid, lo, x, y, w, title, sub, foot):
+    comps, rank, size, order, nr = lo["comps"], lo["rank"], lo["size"], lo["order"], lo["nr"]
+    data = lo["data"]
     xs = {}
     for r in range(nr):
         tw = sum(size[i][0] for i in order[r]) + GAP_X * (len(order[r]) - 1)
@@ -165,7 +168,7 @@ def draw_panel(pid, Lo, x, y, w, title, sub, foot):
             xs[i] = cx
             cx += size[i][0] + GAP_X
     out_l, in_l = {}, {}
-    for p, q in Lo["links"]:
+    for p, q in lo["links"]:
         out_l.setdefault(p, []).append(q); in_l.setdefault(q, []).append(p)
 
     def ports(i, others):
@@ -189,11 +192,11 @@ def draw_panel(pid, Lo, x, y, w, title, sub, foot):
         near = real_ports[rank[d] - 1] + real_ports[rank[d] + 1] + real_ports[rank[d]]
         row = order[rank[d]]
         k = row.index(d)
-        lo = xs[row[k - 1]] + size[row[k - 1]][0] + 4 if k > 0 else -1e9          # stay clear of the neighbours
+        low_bound = xs[row[k - 1]] + size[row[k - 1]][0] + 4 if k > 0 else -1e9          # stay clear of the neighbours
         hi = xs[row[k + 1]] - 4 - size[d][0] if k + 1 < len(row) else 1e9
         for off in (0, 6, -6, 9, -9):
             nx = xs[d] + off
-            if lo <= nx <= hi and all(abs(nx + size[d][0] / 2 - p) >= 6 for p in near):
+            if low_bound <= nx <= hi and all(abs(nx + size[d][0] / 2 - p) >= 6 for p in near):
                 xs[d] = nx
                 break
     outp = {i: ports(i, v) for i, v in out_l.items()}
@@ -201,7 +204,7 @@ def draw_panel(pid, Lo, x, y, w, title, sub, foot):
     # one private lane per bent link in each gap; ordered so same-direction links never cross
     lane_of, nlane = {}, {}
     for r in range(nr):
-        bent = [(p, q) for p, q in Lo["links"] if rank[p] == r and abs(outp[p][q] - inp[q][p]) > 0.5]
+        bent = [(p, q) for p, q in lo["links"] if rank[p] == r and abs(outp[p][q] - inp[q][p]) > 0.5]
         right = sorted([l for l in bent if inp[l[1]][l[0]] > outp[l[0]][l[1]]], key=lambda l: -outp[l[0]][l[1]])
         left = sorted([l for l in bent if inp[l[1]][l[0]] < outp[l[0]][l[1]]], key=lambda l: outp[l[0]][l[1]])
         for k, l in enumerate(right + left):
@@ -212,7 +215,7 @@ def draw_panel(pid, Lo, x, y, w, title, sub, foot):
         for i in order[r]:
             pos[i] = (xs[i], cy, size[i][0], size[i][1])
         row_top[r] = cy
-        cy += Lo["rowh"][r] + 2 * GAP_PAD + LANE * max(nlane[r] - 1, 0)
+        cy += lo["rowh"][r] + 2 * GAP_PAD + LANE * max(nlane[r] - 1, 0)
     ph = cy - y - 10 + 15 * len(foot) + 8
     A(f'<g class="{_un("node")}" data-id="{pid}" data-search="{e((title + " " + sub).lower())}"><rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{ph:.1f}" rx="12" fill="{PFILL}" stroke="{PCOL}" stroke-width="1.6"{_dash("8 5")}/>'
       f'<text x="{x + 14:.1f}" y="{y + 22:.1f}" font-size="13.5" font-weight="700" fill="#101828">{e(title)}</text>'
@@ -220,14 +223,14 @@ def draw_panel(pid, Lo, x, y, w, title, sub, foot):
     for j, l in enumerate(foot):
         A(f'<text x="{x + 14:.1f}" y="{y + ph - 12 - 15 * (len(foot) - 1 - j):.1f}" font-size="10" fill="{"#b42318" if l.startswith("⚠") else "#667085"}">{e(l)}</text>')
     A('</g>')
-    for (a, b), ch in Lo["chains"].items():
+    for (a, b), ch in lo["chains"].items():
         pts = [(outp[ch[0]][ch[1]], pos[ch[0]][1] + pos[ch[0]][3])]
         for k in range(len(ch) - 1):
             p, q = ch[k], ch[k + 1]
             x1, x2 = outp[p][q], inp[q][p]
             r = rank[p]
-            ym = row_top[r] + Lo["rowh"][r] + GAP_PAD + LANE * lane_of.get((p, q), 0)
-            pts += [(x1, ym), (x2, ym), (x2, row_top[rank[q]] + (Lo["rowh"][rank[q]] if isinstance(q, tuple) else 0))]
+            ym = row_top[r] + lo["rowh"][r] + GAP_PAD + LANE * lane_of.get((p, q), 0)
+            pts += [(x1, ym), (x2, ym), (x2, row_top[rank[q]] + (lo["rowh"][rank[q]] if isinstance(q, tuple) else 0))]
         clean = [pts[0]]
         for pt in pts[1:]:
             if abs(pt[0] - clean[-1][0]) > 0.1 or abs(pt[1] - clean[-1][1]) > 0.1:
@@ -246,7 +249,7 @@ def draw_panel(pid, Lo, x, y, w, title, sub, foot):
             continue
         A(f'<g class="{_un("node")}" data-id="{pid}:{pid}_loop{i}" data-search="互相引用 {e(" ".join(c).lower())}"><rect x="{px:.1f}" y="{py:.1f}" width="{pw:.1f}" height="{ph_:.1f}" rx="10" fill="#fef3f2" stroke="#d92d20" stroke-width="1.4" stroke-dasharray="6 4"/>'
           f'<text x="{px + 12:.1f}" y="{py + 21:.1f}" font-size="11" font-weight="700" fill="#b42318">⚠ 互相引用（{len(c)} 個，彼此有循環）</text></g>')
-        cols, cw = Lo["grid"][i]
+        cols, cw = lo["grid"][i]
         boxes = [(n, node_box(n, data["nodes"][n])) for n in c]
         yy_ = py + 32
         for r0 in range(0, len(boxes), cols):
@@ -368,24 +371,27 @@ def panel_data(key):
     return {"nodes": nodes, "edges": edges}
 
 
+def _make_panel_item(key):
+    lo = layout(panel_data(key))
+    title, sub, _ = PANEL_INFO[key]
+    nf = sum(len(NODES[n]["files"]) for n in NODES if PANEL[n] == key)
+    foot = list(PANEL_NOTES.get(key, []))
+    if key.startswith("tr_") and "BACK_NOW" in globals():
+        labels = {_label(n) for n in NODES if PANEL[n] == key}
+        nb = sum(1 for a, b in BACK_NOW if a in labels)
+        if nb:
+            foot.append(f"⚠ 這裡發出 {nb} 條回頭引用（見上方清單）")
+    return (f"q_{key}", lo, max(320, lo["nat_w"]), f"{title}（{nf} 檔）", sub, foot)
+
+
 def draw_group(keys, yy):
-    items = []
-    for key in keys:
-        Lo = layout(panel_data(key))
-        title, sub, _ = PANEL_INFO[key]
-        nf = sum(len(NODES[n]["files"]) for n in NODES if PANEL[n] == key)
-        foot = PANEL_NOTES.get(key, [])
-        if key.startswith("tr_") and "BACK_NOW" in globals():
-            labels = {_label(n) for n in NODES if PANEL[n] == key}
-            nb = sum(1 for a, b in BACK_NOW if a in labels)
-            if nb:
-                foot = foot + [f"⚠ 這裡發出 {nb} 條回頭引用（見上方清單）"]
-        items.append((f"q_{key}", Lo, max(320, Lo["nat_w"]), f"{title}（{nf} 檔）", sub, foot))
+    items = [_make_panel_item(k) for k in keys]
     rows = []
     for it in sorted(items, key=lambda t: -t[2]):
         for row in rows:
             if sum(r[2] for r in row) + 10 * len(row) + it[2] <= 1400:
-                row.append(it); break
+                row.append(it)
+                break
         else:
             rows.append([it])
     ix = [t[0] for t in items]
@@ -396,12 +402,12 @@ def draw_group(keys, yy):
         spare = 1400 - sum(it[2] for it in row) - 10 * (len(row) - 1)
         tot = sum(it[2] for it in row)
         xx, hs = 40, []
-        for (pid, Lo, nw, title, sub, foot) in row:
+        for (pid, lo, nw, title, sub, foot) in row:
             w = nw + spare * nw / tot
             global PCOL, PFILL, PSOFT, PUN
             if pid == "q_fluent":     # unshipped: grey dashed like Fluent on every other layer
                 PCOL, PFILL, PSOFT, PUN = "#98a2b3", "#f9fafb", "#98a2b3", True
-            hs.append(draw_panel(pid, Lo, xx, yy, w, title, sub, foot))
+            hs.append(draw_panel(pid, lo, xx, yy, w, title, sub, foot))
             PCOL, PFILL, PSOFT, PUN = MAG, MAG_FILL, MAG_SOFT, False
             xx += w + 10
         yy += max(hs) + 18

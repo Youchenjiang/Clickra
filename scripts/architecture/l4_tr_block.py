@@ -51,12 +51,15 @@ ORDER_NOW, CNT_NOW, BACK_NOW = best_order(fold_now)
 _LOOPS = [sorted(c) for c in scc(list(N5), E5) if len(c) > 1]
 
 
+PIPELINE_ROOT = "Pipeline/"
+
+
 def short(f):
-    return f.replace("Pipeline/", "") if f != "Pipeline/" else "Pipeline/（根）"
+    return f.replace(PIPELINE_ROOT, "") if f != PIPELINE_ROOT else "Pipeline/（根）"
 
 
 def label_of(f):
-    return {"Translation/": "Translation/（引擎）", "Pipeline/": "Pipeline/（根目錄）"}.get(f, f)
+    return {"Translation/": "Translation/（引擎）", PIPELINE_ROOT: "Pipeline/（根目錄）"}.get(f, f)
 
 
 # ---- drawing helpers

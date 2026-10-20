@@ -56,7 +56,7 @@ P_Y = [BASE3_Y + BASE3_H + 12, BASE3_Y + BASE3_H + 12 + row_h[0] + 12]
 CBOT = P_Y[1] + row_h[1] + 10
 A(f'<g class="node" data-id="p_box" data-search="各模組處理器 processing"><rect x="{CX0:.1f}" y="{R1Y3}" width="{CX1 - CX0:.1f}" height="{CBOT - R1Y3:.1f}" rx="12" fill="{PURPLE_FILL}" stroke="{PURPLE}" stroke-width="1.6"/>'
   f'<text x="{CX0 + 12:.1f}" y="{R1Y3 + 22}" font-size="13" font-weight="700" fill="#101828">各模組處理器（Modules/*/Processing）</text></g>')
-l2card("p_base", UCX0, BASE3_Y, UCX1 - UCX0, BASE3_H, "共用處理基底　Processors/", [], "",
+l2card("p_base", (UCX0, BASE3_Y, UCX1 - UCX0, BASE3_H), "共用處理基底　Processors/", [], "",
        ["FileProcessing/：IFileProcessor.cs ─ SingleFileProcessorBase.cs／MultiFileProcessorBase.cs",
         "                FileBackupScope.cs・ProgressCalculator.cs",
         "ProcessorExecutionOptions.cs・ExecutionLocalizationOptions.cs"], stroke=PURPLE, fill="#fff")
@@ -65,7 +65,7 @@ for r, row in enumerate(rows):
     for c, (name, files, ext) in enumerate(row):
         x = UCX0 + c * (MWID + MG)
         P_POS[name] = (x, P_Y[r], MWID, row_h[r])
-        l2card(f"p_{name}", x, P_Y[r], MWID, row_h[r], name, [], "…/Processing/", wrap(files, MAXCH), ext, stroke=PURPLE_SOFT, fill="#fff")
+        l2card(f"p_{name}", (x, P_Y[r], MWID, row_h[r]), name, [], "…/Processing/", wrap(files, MAXCH), ext, stroke=PURPLE_SOFT, fill="#fff")
 
 # part B entries into the processors
 path([(X_MOD, -6), (X_MOD, R1Y3)], src="a_base", dst="p_box", color=GREY, width=1.4)
@@ -80,13 +80,13 @@ _st = sorted(posixpath.basename(p) for p in AF if p.startswith("Clickra.Core/Sto
 _facade = [f for f in _st if f.startswith("ClickraStorage")]
 ST_FILES = [f"ClickraStorage.*.cs（門面，{len(_facade)} 檔）"] + [f for f in _st if f not in _facade]
 store_h = max(need_h(["a", "b"], "x", ST_FILES, ["a", "b", "c"]), need_h(["a", "b"], "x", ["a"] * 6, ["a"] * 4)) + 8
-l2card("t_store", STX0, R1Y3, STX1 - STX0, store_h, "儲存（Storage）", ["對外只有靜態門面 ClickraStorage，其餘是各 Store；", "資料寫在使用者資料夾（設定、任務紀錄、歷史）"],
+l2card("t_store", (STX0, R1Y3, STX1 - STX0, store_h), "儲存（Storage）", ["對外只有靜態門面 ClickraStorage，其餘是各 Store；", "資料寫在使用者資料夾（設定、任務紀錄、歷史）"],
        f"Core/Storage/（{len(_st)} 檔）", ST_FILES,
        ["被：L2 歷史／設定／任務生命週期（上方三條線）", "另被：處理器取 ClickraSettings 預設值常數"], stroke=PURPLE, fill=PURPLE_FILL)
 for x in (X_HIST, X_LIFE, X_SET):
     src = {X_HIST: "a_hist", X_LIFE: "a_life", X_SET: "a_set"}[x]
     path([(x, -6), (x, R1Y3)], src=src, dst="t_store", color=GREY, width=1.4)
-l2card("t_offinf", COL(7), R1Y3, MW, store_h, "Office 引擎", ["偵測、安裝、呼叫", "LibreOffice／Office"], "Modules/Office/Infra…/",
+l2card("t_offinf", (COL(7), R1Y3, MW, store_h), "Office 引擎", ["偵測、安裝、呼叫", "LibreOffice／Office"], "Modules/Office/Infra…/",
        wrap(sorted(posixpath.basename(p) for p in AF if p.startswith("Clickra.Core/Modules/Office/Infrastructure/")), 22),
        ["外部：LibreOffice 下載（HTTP）、", "soffice、PowerShell／Office"], stroke=PURPLE, fill=PURPLE_FILL)
 path([(X_OFF, -6), (X_OFF, R1Y3)], src="a_off", dst="t_offinf", color=GREY, width=1.4)
@@ -145,7 +145,7 @@ CROSS = [
 XH = max(need_h(folder=f, classes=c, also=a) for _, _, _, _, f, c, a in CROSS)
 for nid, col, span, title, folder, cls, also in CROSS:
     w = COL(col + span - 1) + MW - COL(col)
-    l2card(nid, COL(col), XY, w, XH, title, [], folder, cls, also, stroke=PURPLE, fill=PURPLE_FILL)
+    l2card(nid, (COL(col), XY, w, XH), title, [], folder, cls, also, stroke=PURPLE, fill=PURPLE_FILL)
 
 L3H = XY + XH + 28
 _mark = len(o)

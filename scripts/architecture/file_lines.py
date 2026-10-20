@@ -10,7 +10,8 @@ for dp, _, fs in os.walk(src):
     for f in fs:
         if f.endswith(".cs"):
             p = os.path.join(dp, f)
-            out[os.path.relpath(p, src).replace("\\", "/")] = open(p, "rb").read().count(b"\n") + 1
+            with open(p, "rb") as pf:
+                out[os.path.relpath(p, src).replace("\\", "/")] = pf.read().count(b"\n") + 1
 with open(os.path.join(here, "file_lines.json"), "w", encoding="utf-8", newline="\n") as fh:
     json.dump(out, fh, indent=0, sort_keys=True)
 print(len(out), "files")
