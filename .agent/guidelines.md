@@ -78,7 +78,7 @@ Microsoft Ingestion API 操作高度非同步。不要信任暫態 HTTP 回應�
 - **避免單字元變數**：在長方法中使用描述性名稱，如 `inputLabelW` 而非 `w1`。
 
 ## 4. 架構規則
-- **架構權威**：current component / packaging / execution-path architecture 只以 `docs/ARCHITECTURE.md` 與實際 project/workflow/manifest 為準；不要從本文件維護第二份「三層架構」摘要。`Clickra.Core` 持有共享轉換/儲存契約，CLI、Fluent、Launcher、Shell 的邊界依 architecture document。
+- **架構權威**：current component / packaging / execution-path architecture 只以 `docs/architecture/spec/clickra_architecture.md`（或 `docs/architecture/`）與實際 project/workflow/manifest 為準；不要從本文件維護第二份「三層架構」摘要。`Clickra.Core` 持有共享轉換/儲存契約，CLI、Fluent、Launcher、Shell 的邊界依 architecture document。
 - **Partial Class 拆分**：大檔案按功能拆分，每個 partial class 檔案職責單一。
 - **Processor 繼承**：單一檔案處理繼承 `SingleFileProcessorBase`，多檔案處理繼承 `MultiFileProcessorBase`。
 - **UI 工具方法**：共用的 UI 繪圖方法統一放在 `UIHelper.cs`。

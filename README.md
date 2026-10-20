@@ -52,7 +52,7 @@ Locally tracks every conversion in a Fluent master-detail view with paths, opera
 Clickra operates on a strict **Local-First** philosophy:
 - **100% Offline by Default**: PDF merge/split/compress/decrypt, Markdown conversion, image conversion/compression/stitching, and Office-to-PDF run entirely on your local machine. Your documents never leave your device.
 - **Zero Telemetry**: No tracking, analytics, or background telemetry.
-- **Transparent Network Access**: Only the optional PDF Translation connects to public translation APIs, and the optional LibreOffice installer connects to the official Document Foundation repository. See [PRIVACY.md](PRIVACY.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
+- **Transparent Network Access**: Only the optional PDF Translation connects to public translation APIs, and the optional LibreOffice installer connects to the official Document Foundation repository. See [PRIVACY.md](PRIVACY.md) and [docs/architecture/](docs/architecture/README.md) for details.
 
 ## Installation
 
@@ -101,7 +101,7 @@ Before opening a pull request, please see:
 - [docs/development/shell_extension_best_practices.md](docs/development/shell_extension_best_practices.md) — COM and NativeAOT shell invariants
 - [docs/development/shell_diagnostic_guide.md](docs/development/shell_diagnostic_guide.md) — shell extension logging and diagnostics
 - [docs/development/archive/dual_track_guide.md](docs/development/archive/dual_track_guide.md) — historical Fluent/NativeAOT dual-track distribution design
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — NativeAOT/Fluent architecture
+- [docs/architecture/](docs/architecture/README.md) — NativeAOT/Fluent architecture and diagrams
 - [docs/ROADMAP.md](docs/ROADMAP.md) — product roadmap and milestones
 - [CHANGELOG.md](CHANGELOG.md) — full version history
 
