@@ -224,7 +224,7 @@ path([(137, 672), (137, 806)], muted=True, dashed=True, src="fluent", dst="fmain
 path([(355, 672), (355, 806)], muted=True, dashed=True, src="fluent", dst="fprog", cls="unshipped", label="command＋檔案", lpos=(362, 772), anchor="start")
 path([(847, 690), (847, 806)], src="native", dst="ndash", label="無參數", lpos=(854, 772), anchor="start", color="#2e90fa")
 path([(1145, 690), (1145, 806)], src="native", dst="nprog", label="command＋檔案", lpos=(1152, 772), anchor="start", color="#2e90fa")
-path([(1365, 690), (1365, 806)], src="native", dst="nnone", label="--quiet／工具", lpos=(1372, 772), anchor="start", color="#2e90fa")
+path([(1365, 690), (1365, 806)], src="native", dst="nnone", label="--quiet／工具", lpos=(1358, 772), anchor="end", color="#2e90fa")
 # screen -> screen
 path([(1000, 860), (1020, 860)], src="ndash", dst="nprog", color="#05603a")
 path([(235, 860), (255, 860)], muted=True, dashed=True, src="fmain", dst="fprog", cls="unshipped")
