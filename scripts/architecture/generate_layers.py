@@ -115,7 +115,8 @@ def render_page(target_name, title, h1, active_href, controls, meta, note, svg_c
             .replace("__NOTE__", note)
             .replace("__SVG__", svg_content)
     )
-    with open(os.path.join(docs_arch, target_name), "w", encoding="utf-8", newline="\n") as fh:
+    target_file = os.path.join(docs_arch, os.path.basename(target_name))
+    with open(target_file, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(html_out)
 
 
@@ -295,8 +296,8 @@ for _p in AF:
 _grp: dict[str, str] = {}
 for (_dir_path, _stem_name), _fs_list in _by.items():
     if len(_fs_list) > 1 and any(posixpath.basename(f) in (_stem_name + ".cs", _stem_name + ".xaml.cs") for f in _fs_list):
-        for f in _fs_list:
-            _grp[f] = _dir_path + "/" + _stem_name + ".*.cs"
+        for _file_p in _fs_list:
+            _grp[_file_p] = _dir_path + "/" + _stem_name + ".*.cs"
 PARTIAL_GROUPS = sorted(set(_grp.values()))
 
 
@@ -344,8 +345,8 @@ def panel_of(n):
 
 NODES = collections.defaultdict(lambda: {"files": [], "lines": 0})
 for _p, _lines_cnt in AF.items():
-    nd = NODES[anode(_p)]
-    nd["files"].append(posixpath.basename(_p)); nd["lines"] += _lines_cnt
+    _node_ent = NODES[anode(_p)]
+    _node_ent["files"].append(posixpath.basename(_p)); _node_ent["lines"] += _lines_cnt
 NEDGES = sorted({(anode(a), anode(b)) for a, b in AE if anode(a) != anode(b)})
 PANEL = {n: panel_of(n) for n in NODES}
 INNER = [(a, b) for a, b in NEDGES if PANEL[a] == PANEL[b]]
@@ -481,11 +482,11 @@ for did, under, _d_title, _d_lines, _d_where in [
     ("d_feed", "m_hist", "歷史顯示清單", ["HistoryFeed.cs"], "Modules/HistoryTasks"),
     ("d_set", "m_set", "設定目錄", ["SettingDescriptor.cs"], "Modules/Settings"),
 ]:
-    x, _, w, _ = M[under]
-    card(did, x, DY, w, DH, _d_title, _d_lines, _d_where, "#12b76a", "#f6fef9")
-    DATA[did] = (x, DY, w, DH)
+    _did_x, _, _did_w, _ = M[under]
+    card(did, _did_x, DY, _did_w, DH, _d_title, _d_lines, _d_where, "#12b76a", "#f6fef9")
+    DATA[did] = (_did_x, DY, _did_w, DH)
     # controller uses its data helper
-    path([(x + w / 2, MY + MH), (x + w / 2, DY)], src=under, dst=did, color="#12b76a", width=1.6)
+    path([(_did_x + _did_w / 2, MY + MH), (_did_x + _did_w / 2, DY)], src=under, dst=did, color="#12b76a", width=1.6)
 
 # screen -> controller / data wiring, straight from the code graph
 USES = {s: [t for t in [m[0] for m in MODELS_DEF] + ["d_feed", "d_set"] if l1_link(s, t)] for s in ("ndash", "nprog", "fmain", "fprog")}
@@ -499,18 +500,18 @@ for s_id in ORDER:
     slot = ORDER.index(s_id)
     x_out = sx + sw / 2
     unshipped = s_id.startswith("f")
-    for t in USES[s_id]:
-        cls_ = "unshipped" if unshipped else ""
-        if t in M:
-            tx, ty, tw, th = M[t]
-            x_in = tx + tw / 2 + (slot - 1.5) * 12
-            pts = [(x_out, sy + sh), (x_out, LANE[s_id]), (x_in, LANE[s_id]), (x_in, ty)]
+    for _use_t in USES[s_id]:
+        _use_cls = "unshipped" if unshipped else ""
+        if _use_t in M:
+            tx, ty, _use_tw, th = M[_use_t]
+            x_in = tx + _use_tw / 2 + (slot - 1.5) * 12
+            _use_pts = [(x_out, sy + sh), (x_out, LANE[s_id]), (x_in, LANE[s_id]), (x_in, ty)]
         else:  # data box: drop through the gap left of its controller, enter from the left side
-            dx, dy, dw, dh = DATA[t]
-            gx = dx - MGAP / 2 + GAP_SLOT[s_id]
+            dx, dy, dw, dh = DATA[_use_t]
+            _use_gx = dx - MGAP / 2 + GAP_SLOT[s_id]
             ey = dy + dh / 2 + (GAP_SLOT[s_id] * 1.5)
-            pts = [(x_out, sy + sh), (x_out, LANE[s_id]), (gx, LANE[s_id]), (gx, ey), (dx, ey)]
-        path(pts, color=COLOR[s_id], width=1.6, dashed=unshipped, src=s_id, dst=t, cls=cls_)
+            _use_pts = [(x_out, sy + sh), (x_out, LANE[s_id]), (_use_gx, LANE[s_id]), (_use_gx, ey), (dx, ey)]
+        path(_use_pts, color=COLOR[s_id], width=1.6, dashed=unshipped, src=s_id, dst=_use_t, cls=_use_cls)
 # quiet: bypass presentation
 path([(1440 - 20, 1072), (1440 - 20, 1198)], src="nnone", dst="", label="不經 Presentation，直接進 L2 ↓", lpos=(1412, 1192), anchor="end", color="#12b76a")
 
@@ -717,16 +718,16 @@ for _c_src, _c_dst, sx, ex in CALLS:
     if _c_dst == "a_off":
         # leave the settings card on its right side, cross the empty slot, drop into column 7
         my = MY + MH / 2 + L1_OFF
-        pts = [(col_pos(6) + MW, my), (ex, my), (ex, ENTRY)]
+        _line_pts = [(col_pos(6) + MW, my), (ex, my), (ex, ENTRY)]
     elif _c_src in ("m_hist", "m_set"):
         # controller sits above its data card: go round it through the gap on its right
-        gx = sx + 22 + MGAP / 2
-        pts = [(sx, CTRL_BOTTOM), (sx, CTRL_BOTTOM + 10), (gx, CTRL_BOTTOM + 10), (gx, ENTRY - 10), (ex, ENTRY - 10), (ex, ENTRY)]
+        _line_gx = sx + 22 + MGAP / 2
+        _line_pts = [(sx, CTRL_BOTTOM), (sx, CTRL_BOTTOM + 10), (_line_gx, CTRL_BOTTOM + 10), (_line_gx, ENTRY - 10), (ex, ENTRY - 10), (ex, ENTRY)]
     elif _c_src.startswith("d_"):
-        pts = [(sx, DATA_BOTTOM), (ex, ENTRY)]
+        _line_pts = [(sx, DATA_BOTTOM), (ex, ENTRY)]
     else:
-        pts = [(sx, CTRL_BOTTOM), (ex, ENTRY)]
-    path(pts, src=_c_src, dst=_c_dst, color="#12b76a", width=1.6, arrow=False)
+        _line_pts = [(sx, CTRL_BOTTOM), (ex, ENTRY)]
+    path(_line_pts, src=_c_src, dst=_c_dst, color="#12b76a", width=1.6, arrow=False)
 # visual-split bypass (L1 -> L3), red
 BYX = col_pos(4) - MGAP / 2
 SPLIT_BYPASS = problem_link("m_split", "s_proc")      # C1
@@ -797,8 +798,8 @@ for _k_chip, (_chip_nid, _chip_l1, _chip_l2, _chip_file, _chip_cls) in enumerate
     if (_chip_nid, "a_pages") not in DRAWN:
         continue
     cy0 = R1Y + _k_chip * (CH + 10)
-    stroke, dash = ("#98a2b3", ' stroke-dasharray="6 4"') if _chip_cls else ("#0e9384", "")
-    A(f'<g class="node {_chip_cls}" data-id="{_chip_nid}" data-search="{e((_chip_l2 + " " + _chip_file).lower())}"><rect x="{col_pos(3):.1f}" y="{cy0:.1f}" width="{MW:.1f}" height="{CH:.1f}" rx="9" fill="#f6fef9" stroke="{stroke}" stroke-width="1.4"{dash}/>'
+    _c_stroke, _c_dash = ("#98a2b3", ' stroke-dasharray="6 4"') if _chip_cls else ("#0e9384", "")
+    A(f'<g class="node {_chip_cls}" data-id="{_chip_nid}" data-search="{e((_chip_l2 + " " + _chip_file).lower())}"><rect x="{col_pos(3):.1f}" y="{cy0:.1f}" width="{MW:.1f}" height="{CH:.1f}" rx="9" fill="#f6fef9" stroke="{_c_stroke}" stroke-width="1.4"{_c_dash}/>'
       f'<text x="{col_pos(3) + 10:.1f}" y="{cy0 + 18:.1f}" font-size="10" fill="#667085">{e(_chip_l1)}</text>'
       f'<text x="{col_pos(3) + 10:.1f}" y="{cy0 + 36:.1f}" font-size="12.5" font-weight="700" fill="#101828">{e(_chip_l2)}</text>'
       f'<text x="{col_pos(3) + 10:.1f}" y="{cy0 + 53:.1f}" font-size="9" fill="#344054" {MONO_FONT}>{e(_chip_file.split(".", 1)[0])}</text>'
@@ -846,9 +847,9 @@ MODS = [(n, files_of("u_" + n, MOD_NOTES, 25), mod_also("u_" + n)) for n in MOD_
 MOD_RH: list[int] = [max(need_h(folder="x", classes=f, also=a) for _, f, a in MODS[:4]) + 6, max(need_h(folder="x", classes=f, also=a) for _, f, a in MODS[4:]) + 6]
 MOD_Y: list[int] = [BASEY + 100, BASEY + 100 + MOD_RH[0] + 12]
 for _k_mod, (_m_name, _m_items, _m_also) in enumerate(MODS):
-    r, c = divmod(_k_mod, 4)
-    mh = MOD_RH[r]
-    l2card(f"u_{_m_name}", (UCX0 + c * (MWID + MG), MOD_Y[r], MWID, mh), _m_name, [], "…/Application/", _m_items, _m_also, stroke="#fdb022")
+    _mod_r, _mod_c = divmod(_k_mod, 4)
+    mh = MOD_RH[_mod_r]
+    l2card(f"u_{_m_name}", (UCX0 + _mod_c * (MWID + MG), MOD_Y[_mod_r], MWID, mh), _m_name, [], "…/Application/", _m_items, _m_also, stroke="#fdb022")
 MOD_BOTTOM = MOD_Y[1] + MOD_RH[1]
 if link("a_uc", "UC"):
     path([(c_mid(2), R1Y + H1), (c_mid(2), BASEY)], "依指令找到用例", lpos=(c_mid(2) + 8, R1Y + H1 + 24), anchor="start", src="a_uc", dst="a_base", color=AMBER, width=1.6)
@@ -998,8 +999,8 @@ l2card("p_base", (UCX0, BASE3_Y, UCX1 - UCX0, BASE3_H), "共用處理基底　Pr
         "ProcessorExecutionOptions.cs・ExecutionLocalizationOptions.cs"], stroke=PURPLE, fill="#fff")
 P_POS: dict[str, tuple[float, float, float, float]] = {}
 for _r, _proc_row in enumerate(_proc_rows):
-    for c, (_pr_name, _pr_files, _pr_ext) in enumerate(_proc_row):
-        _px = UCX0 + c * (MWID + MG)
+    for _proc_c, (_pr_name, _pr_files, _pr_ext) in enumerate(_proc_row):
+        _px = UCX0 + _proc_c * (MWID + MG)
         P_POS[_pr_name] = (_px, P_Y[_r], MWID, row_h[_r])
         l2card(f"p_{_pr_name}", (_px, P_Y[_r], MWID, row_h[_r]), _pr_name, [], "…/Processing/", wrap(_pr_files, MAXCH), _pr_ext, stroke=PURPLE_SOFT, fill="#fff")
 
@@ -1081,8 +1082,8 @@ L3_CROSS: list[tuple[str, str, float]] = [
 ]
 XH = max(need_h(folder=f, classes=c, also=a) for _, _, _, _, f, c, a in L3_CROSS)
 for _c_nid, _c_col, _c_span, _c_title, _c_folder, _c_cls, _c_also in L3_CROSS:
-    w = col_pos(_c_col + _c_span - 1) + MW - col_pos(_c_col)
-    l2card(_c_nid, (col_pos(_c_col), XY, w, XH), _c_title, [], _c_folder, _c_cls, _c_also, stroke=PURPLE, fill=PURPLE_FILL)
+    _cross_w = col_pos(_c_col + _c_span - 1) + MW - col_pos(_c_col)
+    l2card(_c_nid, (col_pos(_c_col), XY, _cross_w, XH), _c_title, [], _c_folder, _c_cls, _c_also, stroke=PURPLE, fill=PURPLE_FILL)
 
 L3H = XY + XH + 28
 _mark = len(o)
@@ -1727,8 +1728,8 @@ H = _H2
 
 
 svg_full = "\n".join(o)
-with open(os.path.join(svg_dir, "clickra_layers.svg"), "w", encoding="utf-8", newline="\n") as fh:
-    fh.write(svg_full)
+with open(os.path.join(svg_dir, "clickra_layers.svg"), "w", encoding="utf-8", newline="\n") as _svg_fh:
+    _svg_fh.write(svg_full)
 # ---- Generate Overview Dashboard (High-level system topology) ----
 def make_overview_svg():
     """Generate executive overview dashboard SVG."""
@@ -1810,8 +1811,8 @@ Y0 = 730
 l1_parts = o[:TITLE_AT] + [G_OPEN] + STUB + o[L1_AT:L1_END] + [FOOT_L1, "</g>", "</svg>"]
 L1H = L1_BOTTOM + 70
 l1_svg = "\n".join(l1_parts).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{L1H - Y0}" viewBox="0 {Y0} {W} {L1H - Y0}"', 1)
-with open(os.path.join(svg_dir, "l1_presentation.svg"), "w", encoding="utf-8", newline="\n") as fh:
-    fh.write(l1_svg.replace(WHITE_BG, f'<rect x="0" y="{Y0}" width="{W}" height="{L1H - Y0}" fill="#fff"/>'))
+with open(os.path.join(svg_dir, "l1_presentation.svg"), "w", encoding="utf-8", newline="\n") as _svg_fh:
+    _svg_fh.write(l1_svg.replace(WHITE_BG, f'<rect x="0" y="{Y0}" width="{W}" height="{L1H - Y0}" fill="#fff"/>'))
 ctrl_l1 = '<button id="unBtn">隱藏未發佈（Fluent）</button>'
 meta_l1 = f"{SCREENS} 個畫面 · {MODELS} 個共用畫面狀態 · 2 個資料目錄 · 9 個 Native 版面表（Clickra.CLI）"
 note_l1 = "上排是畫面（Renderer），下排是 Native 與 Fluent 共用的畫面模型。點方塊可標出它的所有連線。"
@@ -1822,8 +1823,8 @@ print("l1 ok")
 L0H = 870
 l0_parts = o[:TITLE_AT] + o[TITLE_AT + 2:L1_AT] + ['<text x="40" y="852" font-size="11.5" fill="#667085">來源：packaging/msix/AppxManifest.xml（Store／GitHub 同一份 MSIX）、src/resources/AppxManifest.xml（--deploy）、ClickraShell/ComMethods.cs、ClickraLauncher/Program.cs、Clickra.CLI/Cli/ClickraStartup.cs、Clickra.Fluent/App.xaml.cs</text>', '</g>', '</svg>']
 l0_svg = "\n".join(l0_parts).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{L0H - 70}" viewBox="0 70 {W} {L0H - 70}"', 1)
-with open(os.path.join(svg_dir, "l0_entry_points.svg"), "w", encoding="utf-8", newline="\n") as fh:
-    fh.write(l0_svg)
+with open(os.path.join(svg_dir, "l0_entry_points.svg"), "w", encoding="utf-8", newline="\n") as _svg_fh:
+    _svg_fh.write(l0_svg)
 L0_EDGES = sum(1 for x in o[:L1_AT] if x.startswith('<g class="edge'))
 ctrl_l0 = (
     '<button class="var on" data-v="all">全部路徑</button>\n'
@@ -1856,8 +1857,8 @@ _l2 = _l2[:-1] + STANDALONE_ONLY + _l2[-1:]          # chips go inside the L2 gr
 l2_parts = o[:TITLE_AT] + [G_OPEN] + chips + _l2 + [FOOT_L2, "</g>", "</svg>"]
 L2V1 = L2_TOP + L2H + 50
 l2_svg = "\n".join(l2_parts).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{L2V1 - L2V0}" viewBox="0 {L2V0} {W} {L2V1 - L2V0}"', 1)
-with open(os.path.join(svg_dir, "l2_application.svg"), "w", encoding="utf-8", newline="\n") as fh:
-    fh.write(l2_svg.replace(WHITE_BG, f'<rect x="0" y="{L2V0}" width="{W}" height="{L2V1 - L2V0}" fill="#fff"/>'))
+with open(os.path.join(svg_dir, "l2_application.svg"), "w", encoding="utf-8", newline="\n") as _svg_fh:
+    _svg_fh.write(l2_svg.replace(WHITE_BG, f'<rect x="0" y="{L2V0}" width="{W}" height="{L2V1 - L2V0}" fill="#fff"/>'))
 meta_l2 = f"{L2_SERVICES} 組應用服務 · 8 個模組 · 19 個轉換指令 · 3 個往 L3 的出口"
 note_l2 = "上排是應用服務（與 L1 共用畫面狀態同一欄），左下是各模組轉換用例，最底是往 L3 的出口。"
 render_page("l2_application.html", "Clickra Architecture — L2 應用", "Clickra — L2 應用", "l2_application.html", "", meta_l2, note_l2, l2_svg)
@@ -1868,8 +1869,8 @@ L3V0 = L3_TOP - 84
 L3V1 = L3_TOP + L3H + 50
 l3_parts = o[:TITLE_AT] + [G_OPEN] + L3_CHIPS + o[L3_AT:L3_END] + [FOOT_L3, "</g>", "</svg>"]
 l3_svg = "\n".join(l3_parts).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{L3V1 - L3V0}" viewBox="0 {L3V0} {W} {L3V1 - L3V0}"', 1)
-with open(os.path.join(svg_dir, "l3_infrastructure.svg"), "w", encoding="utf-8", newline="\n") as fh:
-    fh.write(l3_svg.replace(WHITE_BG, f'<rect x="0" y="{L3V0}" width="{W}" height="{L3V1 - L3V0}" fill="#fff"/>'))
+with open(os.path.join(svg_dir, "l3_infrastructure.svg"), "w", encoding="utf-8", newline="\n") as _svg_fh:
+    _svg_fh.write(l3_svg.replace(WHITE_BG, f'<rect x="0" y="{L3V0}" width="{W}" height="{L3V1 - L3V0}" fill="#fff"/>'))
 meta_l3 = "8 個模組處理器 · 儲存 15 檔 · Office 引擎 4 檔 · 6 組橫切支援 · 8 項外部依賴"
 note_l3 = "上排是處理器、儲存與 Office 引擎（與 L2 出口同一欄），中排是橫切支援，最底是外部依賴。"
 render_page("l3_infrastructure.html", "Clickra Architecture — L3 基礎", "Clickra — L3 基礎", "l3_infrastructure.html", "", meta_l3, note_l3, l3_svg)
@@ -1880,8 +1881,8 @@ L4V0 = L4_TOP - 20
 L4V1 = L4_TOP + L4H + 50
 l4_parts = o[:TITLE_AT] + [G_OPEN] + o[L4_AT:L4_END] + [FOOT_L4, "</g>", "</svg>"]
 l4_svg = "\n".join(l4_parts).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{L4V1 - L4V0}" viewBox="0 {L4V0} {W} {L4V1 - L4V0}"', 1)
-with open(os.path.join(svg_dir, "l4_inside.svg"), "w", encoding="utf-8", newline="\n") as fh:
-    fh.write(l4_svg.replace(WHITE_BG, f'<rect x="0" y="{L4V0}" width="{W}" height="{L4V1 - L4V0}" fill="#fff"/>'))
+with open(os.path.join(svg_dir, "l4_inside.svg"), "w", encoding="utf-8", newline="\n") as _svg_fh:
+    _svg_fh.write(l4_svg.replace(WHITE_BG, f'<rect x="0" y="{L4V0}" width="{W}" height="{L4V1 - L4V0}" fill="#fff"/>'))
 meta_l4 = f"src/ 全部 {len(AF)} 個 .cs 檔 · {len(PANEL_INFO)} 張面板 · {len(INNER)} 條面板內引用 · {len(CROSS)} 條跨面板引用（灰虛線替身）"
 note_l4 = "src/ 底下每個檔案都在這裡：上方是呼叫者，下方是被用的檔案；灰虛線小方塊是引用到別的面板的檔案，點它會連同本尊一起亮；紅虛線框是互相引用的循環。"
 render_page("l4_modules_internal.html", "Clickra Architecture — L4 模組內部", "Clickra — L4 模組內部", "l4_modules_internal.html", "", meta_l4, note_l4, l4_svg)
