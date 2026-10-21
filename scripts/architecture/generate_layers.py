@@ -1118,6 +1118,100 @@ RULE = ("線色規則：線的顏色＝發出呼叫的那一方。L0 藍、L1 �
         "紅虛線＝跳層、灰虛線＝未發佈（Fluent）或外部依賴。")
 FOOT_L3 = f'<text x="40" y="{L3_TOP + L3H + 30}" font-size="11.5" fill="#667085">{e(RULE)}</text>'
 
+MAG, MAG_FILL, MAG_SOFT = "#c11574", "#fdf2fa", "#f670c7"
+RED = "#d92d20"
+
+
+def _tr_key(n):
+    """Resolve translation pipeline node key."""
+    return "Translation/" if tr_folder(n) == "Translation" else posixpath.basename(n)
+
+
+def _tr_folder_label(f):
+    """Format human-readable label for translation folder."""
+    return {"Translation/": "Translation/（引擎）", "Pipeline/": "Pipeline/（根目錄）"}.get(f, f)
+
+
+def _tr_best_order(n5, e5, fo):
+    """Calculate optimal folder ordering minimizing feedback edges."""
+    cnt = collections.Counter((fo(a), fo(b)) for a, b in e5 if fo(a) != fo(b))
+    fs = sorted({fo(n) for n in n5})
+    k = len(fs)
+    w = [[cnt.get((fs[i], fs[j]), 0) for j in range(k)] for i in range(k)]
+    inf = 10 ** 9
+    dp = [inf] * (1 << k)
+    par = [None] * (1 << k)
+    dp[0] = 0
+    for m in range(1 << k):
+        if dp[m] == inf:
+            continue
+        for j in range(k):
+            if not m >> j & 1:
+                c = dp[m] + sum(w[j][s] for s in range(k) if m >> s & 1)
+                if c < dp[m | 1 << j]:
+                    dp[m | 1 << j] = c
+                    par[m | 1 << j] = j
+    m, order = (1 << k) - 1, []
+    while m:
+        j = par[m]
+        order.append(fs[j])
+        m ^= 1 << j
+    order = order[::-1]
+    pos = {f: i for i, f in enumerate(order)}
+    back = [(a, b) for a, b in e5 if fo(a) != fo(b) and pos[fo(b)] < pos[fo(a)]]
+    return order, cnt, back
+
+
+def _draw_dsm(x, y, order, cnt, back, title, sub, fo):
+    """Draw Design Structure Matrix table for translation pipeline."""
+    cell, lw, top = 22, 166, 64
+    k = len(order)
+    w, h = lw + k * cell + 16, top + k * cell + 40
+    backset = {(fo(a), fo(b)) for a, b in back}
+    A(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="12" fill="#fff" stroke="{MAG}" stroke-width="1.6"/>'
+      f'<text x="{x + 14}" y="{y + 22}" font-size="13.5" font-weight="700" fill="#101828">{e(title)}</text>'
+      f'<text x="{x + 14}" y="{y + 39}" font-size="10" fill="{"#d92d20" if back else "#067647"}">{e(sub)}</text>')
+    gx, gy = x + lw, y + top
+    for j in range(k):
+        A(f'<text x="{gx + j * cell + cell / 2}" y="{gy - 6}" font-size="9.5" fill="#667085" text-anchor="middle">{j + 1}</text>')
+    for i, fa in enumerate(order):
+        lbl = _tr_folder_label(fa).replace("Pipeline/", "") if fa != "Pipeline/" else "Pipeline/（根目錄）"
+        A(f'<text x="{gx - 8}" y="{gy + i * cell + 15}" font-size="10" fill="#344054" text-anchor="end" {MONO_FONT}>{i + 1:>2} {e(lbl)}</text>')
+        for j, fb in enumerate(order):
+            cx, cy_ = gx + j * cell, gy + i * cell
+            if i == j:
+                A(f'<rect x="{cx}" y="{cy_}" width="{cell}" height="{cell}" fill="#eaecf0" stroke="#fff"/>')
+                continue
+            c = cnt.get((fa, fb), 0)
+            if not c:
+                A(f'<rect x="{cx}" y="{cy_}" width="{cell}" height="{cell}" fill="#fcfcfd" stroke="#f2f4f7"/>')
+                continue
+            bad = (fa, fb) in backset
+            A(f'<rect x="{cx}" y="{cy_}" width="{cell}" height="{cell}" fill="{"#fee4e2" if bad else "#fce7f6"}" stroke="#fff"/>'
+              f'<text x="{cx + cell / 2}" y="{cy_ + 15}" font-size="10" font-weight="{700 if bad else 400}" fill="{"#b42318" if bad else "#c11574"}" text-anchor="middle">{c}</text>')
+    A(f'<text x="{x + 14}" y="{y + h - 12}" font-size="9.5" fill="#667085">列＝引用方、欄＝被引用方；數字＝檔案引用數。右上＝往下引用，左下紅＝回頭引用</text>')
+    return w, h
+
+
+def _draw_tcard(x, y, w, lines, stroke=MAG):
+    """Draw translation pipeline summary card."""
+    hh = {"h": 20, "t": 16, "m": 14, "r": 16, "s": 8}
+    h = 18 + sum(hh[k] for _, k in lines) + 6
+    A(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="12" fill="#fff" stroke="{stroke}" stroke-width="1.6"/>')
+    yy_ = y + 14
+    for t, k in lines:
+        yy_ += hh[k]
+        if k == "h":
+            A(f'<text x="{x + 14}" y="{yy_ - 4}" font-size="12.5" font-weight="700" fill="#101828">{e(t)}</text>')
+        elif k == "t":
+            A(f'<text x="{x + 14}" y="{yy_ - 4}" font-size="11" fill="#475467">{e(t)}</text>')
+        elif k == "r":
+            A(f'<text x="{x + 14}" y="{yy_ - 4}" font-size="11" fill="#b42318">{e(t)}</text>')
+        elif k == "m":
+            A(f'<text x="{x + 22}" y="{yy_ - 3}" font-size="9.8" fill="#344054" {MONO_FONT} xml:space="preserve">{e(t)}</text>')
+    return h
+
+
 def draw_translation_section(yy):
     # ======================= L4 part 2: PDF translation, file level (exec'd from l4_block.py, inside the L4 group) =======================
     # Data: the whole-repo model (l4_model.py); the translation engines are one node here (they have their own panel).
@@ -1127,13 +1221,7 @@ def draw_translation_section(yy):
     #   2. the back references, if any, and the file-level loops (strongly connected components);
     #   3. after this block, each folder's files are drawn by the normal L4 panels.
     """Draw translation pipeline Design Structure Matrix and cards."""
-    CY, RED = MAG, "#d92d20"
-    # translation subset of the whole-repo model (l4_model.py); the 11 engine files are one node here
-    def _tr_key(n):
-        """Resolve translation pipeline node key."""
-        return "Translation/" if tr_folder(n) == "Translation" else posixpath.basename(n)
-    
-    
+    CY = MAG
     N5 = {}
     for _n in NODES:
         if _n.startswith(TR):
@@ -1141,106 +1229,24 @@ def draw_translation_section(yy):
             _f = tr_folder(_n)
             N5.setdefault(_k, {"folder": (_f if _f.endswith("/") else _f + "/"), "lines": 0})["lines"] += NODES[_n]["lines"]
     E5 = sorted({(_tr_key(a), _tr_key(b)) for a, b in NEDGES if a.startswith(TR) and b.startswith(TR) and _tr_key(a) != _tr_key(b)})
+
     def fold_now(n):
         """Get current folder of a translation node."""
         return N5[n]["folder"]
-    
-    
-    def best_order(fo):
-        """Calculate optimal folder ordering minimizing feedback edges."""
-        cnt = collections.Counter((fo(a), fo(b)) for a, b in E5 if fo(a) != fo(b))
-        fs = sorted({fo(n) for n in N5}); k = len(fs)
-        w = [[cnt.get((fs[i], fs[j]), 0) for j in range(k)] for i in range(k)]
-        inf = 10 ** 9; dp = [inf] * (1 << k); par = [None] * (1 << k); dp[0] = 0
-        for m in range(1 << k):
-            if dp[m] == inf:
-                continue
-            for j in range(k):
-                if not m >> j & 1:
-                    c = dp[m] + sum(w[j][s] for s in range(k) if m >> s & 1)
-                    if c < dp[m | 1 << j]:
-                        dp[m | 1 << j] = c; par[m | 1 << j] = j
-        m, order = (1 << k) - 1, []
-        while m:
-            j = par[m]; order.append(fs[j]); m ^= 1 << j
-        order = order[::-1]
-        pos = {f: i for i, f in enumerate(order)}
-        back = [(a, b) for a, b in E5 if fo(a) != fo(b) and pos[fo(b)] < pos[fo(a)]]
-        return order, cnt, back
-    
-    
-    ORDER_NOW, CNT_NOW, BACK_NOW = best_order(fold_now)
+
+    ORDER_NOW, CNT_NOW, BACK_NOW = _tr_best_order(N5, E5, fold_now)
     _LOOPS = [sorted(c) for c in scc(list(N5), E5) if len(c) > 1]
-    
-    
-    PIPELINE_ROOT = "Pipeline/"
-    
-    
+
     def short(f):
         """Format shortened folder name for display."""
-        return f.replace(PIPELINE_ROOT, "") if f != PIPELINE_ROOT else "Pipeline/（根）"
-    
-    
-    def label_of(f):
-        """Format human-readable label for translation folder."""
-        return {"Translation/": "Translation/（引擎）", PIPELINE_ROOT: "Pipeline/（根目錄）"}.get(f, f)
-    
-    
-    # ---- drawing helpers
-    def dsm(x, y, order, cnt, back, title, sub, fo=None):
-        """Draw Design Structure Matrix table for translation pipeline."""
-        cell, lw, top = 22, 166, 64
-        k = len(order)
-        w, h = lw + k * cell + 16, top + k * cell + 40
-        fo = fo or fold_now
-        backset = {(fo(a), fo(b)) for a, b in back}
-        A(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="12" fill="#fff" stroke="{CY}" stroke-width="1.6"/>'
-          f'<text x="{x + 14}" y="{y + 22}" font-size="13.5" font-weight="700" fill="#101828">{e(title)}</text>'
-          f'<text x="{x + 14}" y="{y + 39}" font-size="10" fill="{RED if back else "#067647"}">{e(sub)}</text>')
-        gx, gy = x + lw, y + top
-        for j in range(k):
-            A(f'<text x="{gx + j * cell + cell / 2}" y="{gy - 6}" font-size="9.5" fill="#667085" text-anchor="middle">{j + 1}</text>')
-        for i, fa in enumerate(order):
-            A(f'<text x="{gx - 8}" y="{gy + i * cell + 15}" font-size="10" fill="#344054" text-anchor="end" {MONO_FONT}>{i + 1:>2} {e(label_of(fa).replace("Pipeline/", "") if fa not in ("Pipeline/",) else "Pipeline/（根目錄）")}</text>')
-            for j, fb in enumerate(order):
-                cx, cy_ = gx + j * cell, gy + i * cell
-                if i == j:
-                    A(f'<rect x="{cx}" y="{cy_}" width="{cell}" height="{cell}" fill="#eaecf0" stroke="#fff"/>'); continue
-                c = cnt.get((fa, fb), 0)
-                if not c:
-                    A(f'<rect x="{cx}" y="{cy_}" width="{cell}" height="{cell}" fill="#fcfcfd" stroke="#f2f4f7"/>'); continue
-                bad = (fa, fb) in backset
-                A(f'<rect x="{cx}" y="{cy_}" width="{cell}" height="{cell}" fill="{"#fee4e2" if bad else "#fce7f6"}" stroke="#fff"/>'
-                  f'<text x="{cx + cell / 2}" y="{cy_ + 15}" font-size="10" font-weight="{700 if bad else 400}" fill="{"#b42318" if bad else "#c11574"}" text-anchor="middle">{c}</text>')
-        A(f'<text x="{x + 14}" y="{y + h - 12}" font-size="9.5" fill="#667085">列＝引用方、欄＝被引用方；數字＝檔案引用數。右上＝往下引用，左下紅＝回頭引用</text>')
-        return w, h
-    
-    
-    def tcard(x, y, w, lines, stroke=CY):
-        """Draw translation pipeline summary card."""
-        hh = {"h": 20, "t": 16, "m": 14, "r": 16, "s": 8}
-        h = 18 + sum(hh[k] for _, k in lines) + 6
-        A(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="12" fill="#fff" stroke="{stroke}" stroke-width="1.6"/>')
-        yy_ = y + 14
-        for t, k in lines:
-            yy_ += hh[k]
-            if k == "h":
-                A(f'<text x="{x + 14}" y="{yy_ - 4}" font-size="12.5" font-weight="700" fill="#101828">{e(t)}</text>')
-            elif k == "t":
-                A(f'<text x="{x + 14}" y="{yy_ - 4}" font-size="11" fill="#475467">{e(t)}</text>')
-            elif k == "r":
-                A(f'<text x="{x + 14}" y="{yy_ - 4}" font-size="11" fill="#b42318">{e(t)}</text>')
-            elif k == "m":
-                A(f'<text x="{x + 22}" y="{yy_ - 3}" font-size="9.8" fill="#344054" {MONO_FONT} xml:space="preserve">{e(t)}</text>')
-        return h
-    
-    
-    # ---- translation part of L4 (starts at the current yy)
+        return f.replace("Pipeline/", "") if f != "Pipeline/" else "Pipeline/（根）"
+
     band(yy + 20, 0, f"翻譯模組（{len(N5) - 1} 個檔＋引擎，檔案多，分資料夾畫）：{len(E5)} 條檔案引用中，{len(BACK_NOW)} 條在回頭（待辦 E6、E8）")
     yy += 40
     _ok = not BACK_NOW
-    w1, h1 = dsm(40, yy, ORDER_NOW, CNT_NOW, BACK_NOW, "資料夾之間的引用",
-                 "✓ 沒有回頭引用：資料夾之間沒有循環" if _ok else f"⚠ {len(BACK_NOW)} 條回頭引用 → 資料夾又形成循環（待辦 E8）")
+    w1, h1 = _draw_dsm(40, yy, ORDER_NOW, CNT_NOW, BACK_NOW, "資料夾之間的引用",
+                       "✓ 沒有回頭引用：資料夾之間沒有循環" if _ok else f"⚠ {len(BACK_NOW)} 條回頭引用 → 資料夾又形成循環（待辦 E8）",
+                       fold_now)
     _lx = 40 + w1 + 12
     _info = [("怎麼讀", "h"),
              ("資料夾依「回頭引用最少」的順序排列（精確解）。", "t"),
@@ -1256,7 +1262,7 @@ def draw_translation_section(yy):
     if BACK_NOW:
         _info += [("", "s"), ("現在的回頭引用", "h")] + [(f"{short(fold_now(a))}{a} → {short(fold_now(b))}{b}", "m")
                                                      for a, b in sorted(BACK_NOW, key=lambda t: (fold_now(t[0]), t[0], t[1]))]
-    _h2 = tcard(_lx, yy, 1440 - _lx, _info, stroke=RED if BACK_NOW else CY)
+    _h2 = _draw_tcard(_lx, yy, 1440 - _lx, _info, stroke=RED if BACK_NOW else CY)
     yy += max(h1, _h2) + 14
     return yy
 
@@ -1269,7 +1275,6 @@ def draw_translation_section(yy):
 #   4. order inside a rank is improved by barycentre sweeps (down / up / down) to cut crossings;
 #   5. lines leave and enter boxes at spread-out ports and turn only inside the gaps between ranks.
 
-MAG, MAG_FILL, MAG_SOFT = "#c11574", "#fdf2fa", "#f670c7"
 L4_TOP = L3_TOP + L3H + 34
 CH_W, NODE_H, GAP_X, PAD = 6.0, 36, 18, 18
 PORT, LANE_H, GAP_PAD = 16, 8, 14
@@ -1370,17 +1375,8 @@ def _rank_w(lo, r):
     return sum(lo["size"][i][0] for i in lo["order"][r]) + GAP_X * (len(lo["order"][r]) - 1)
 
 
-def _layout_once(data, minr):
-    """Execute single iteration of panel layout optimization."""
-    nodes = list(data["nodes"])
-    edges = [tuple(x) for x in data["edges"]]
-    comps = scc(nodes, edges)
-    comp_of = {n: i for i, c in enumerate(comps) for n in c}
-    cedges = sorted({(comp_of[a], comp_of[b]) for a, b in edges if comp_of[a] != comp_of[b]})
-    rank = {i: minr.get(i, 0) for i in range(len(comps))}
-    for _ in range(len(comps) + 1):
-        for a, b in cedges:
-            rank[b] = max(rank[b], rank[a] + 1)
+def _compute_comp_boxes(comps, data):
+    """Compute component bounding boxes and grid layout."""
     size, grid = {}, {}
     for i, c in enumerate(comps):
         if len(c) == 1:
@@ -1393,43 +1389,153 @@ def _layout_once(data, minr):
             gh = sum(max(b[1] for b in r) for r in rows_) + 10 * (len(rows_) - 1)
             size[i] = (cols * cw + (cols - 1) * 12 + 24, gh + 40)
             grid[i] = (cols, cw)
+    return size, grid
+
+
+def _compute_chains_and_links(cedges, rank, size):
+    """Build routing chains and links between components."""
     chains = {}
     for a, b in cedges:
         ch = [a]
         for r in range(rank[a] + 1, rank[b]):
             d = ("d", a, b, r)
-            rank[d] = r; size[d] = (10, 0); ch.append(d)
+            rank[d] = r
+            size[d] = (10, 0)
+            ch.append(d)
         ch.append(b)
         chains[(a, b)] = ch
     links = [(ch[k], ch[k + 1]) for ch in chains.values() for k in range(len(ch) - 1)]
-    for i in list(size.keys()):                           # wide enough that every port gets its own slot
-        if isinstance(i, tuple):
-            continue
-        deg = max(sum(1 for p, q in links if p == i), sum(1 for p, q in links if q == i))
-        size[i] = (max(size[i][0], (deg - 1) * PORT + 24), size[i][1])
+    for i in list(size.keys()):
+        if not isinstance(i, tuple):
+            deg = max(sum(1 for p, q in links if p == i), sum(1 for p, q in links if q == i))
+            size[i] = (max(size[i][0], (deg - 1) * PORT + 24), size[i][1])
+    return chains, links
+
+
+def _sweep_rank_order(order, nr, preds, succs):
+    """Execute barycentric passes to optimize layer ordering."""
+    for sweep in ("down", "up", "down", "up", "down"):
+        rs = range(1, nr) if sweep == "down" else range(nr - 2, -1, -1)
+        nb = preds if sweep == "down" else succs
+        for r in rs:
+            ref = {i: k for rr in order for k, i in enumerate(order[rr])}
+
+            def _bary_key(i, nb=nb, ref=ref):
+                ps = [ref[j] for j in nb[i]]
+                return sum(ps) / len(ps) if ps else ref[i]
+            order[r].sort(key=_bary_key)
+
+
+def _barycentric_order(rank, links, size):
+    """Optimize node order in ranks via barycentric sweeps."""
     nr = max(rank.values()) + 1
     order = {r: [i for i in rank if rank[i] == r] for r in range(nr)}
     preds = {i: [p for p, q in links if q == i] for i in rank}
     succs = {i: [q for p, q in links if p == i] for i in rank}
-    for sweep in ("down", "up", "down", "up", "down"):
-        rs = range(1, nr) if sweep == "down" else range(nr - 2, -1, -1)
-        for r in rs:
-            nb = preds if sweep == "down" else succs
-            ref = {i: k for rr in order for k, i in enumerate(order[rr])}
-
-            def key(i, nb=nb, ref=ref):
-                """Barycentric ordering key for rank layout."""
-                ps = [ref[j] for j in nb[i]]
-                return sum(ps) / len(ps) if ps else ref[i]
-            order[r].sort(key=key)
+    _sweep_rank_order(order, nr, preds, succs)
     nat_w = max(sum(size[i][0] for i in order[r]) + GAP_X * (len(order[r]) - 1) for r in range(nr)) + 2 * PAD
     rowh = {r: max([size[i][1] for i in order[r]] + [0]) for r in range(nr)}
     nlinks = {r: sum(1 for p, q in links if rank[p] == r) for r in range(nr)}
+    return order, nr, nat_w, rowh, nlinks
+
+
+def _layout_once(data, minr):
+    """Execute single iteration of panel layout optimization."""
+    nodes = list(data["nodes"])
+    edges = [tuple(x) for x in data["edges"]]
+    comps = scc(nodes, edges)
+    comp_of = {n: i for i, c in enumerate(comps) for n in c}
+    cedges = sorted({(comp_of[a], comp_of[b]) for a, b in edges if comp_of[a] != comp_of[b]})
+    rank = {i: minr.get(i, 0) for i in range(len(comps))}
+    for _ in range(len(comps) + 1):
+        for a, b in cedges:
+            rank[b] = max(rank[b], rank[a] + 1)
+    size, grid = _compute_comp_boxes(comps, data)
+    chains, links = _compute_chains_and_links(cedges, rank, size)
+    order, nr, nat_w, rowh, nlinks = _barycentric_order(rank, links, size)
     return {
         "comps": comps, "rank": rank, "size": size, "grid": grid, "chains": chains,
         "links": links, "order": order, "nr": nr, "nat_w": nat_w, "rowh": rowh,
         "nlinks": nlinks, "data": data,
     }
+
+
+def _calc_panel_ports(comps, data, xs, size, out_l, in_l):
+    """Compute ports dict for panel component links."""
+    def ports(i, others):
+        px, pw = xs[i], size[i][0]
+        if isinstance(i, tuple):
+            return {o: px + pw / 2 for o in others}
+        if data["nodes"][comps[i][0]].get("stack"):
+            return {o: px + 8 for o in others}
+        others = sorted(others, key=lambda o: xs[o] + size[o][0] / 2)
+        span = PORT * (len(others) - 1)
+        return {o: px + pw / 2 - span / 2 + PORT * k for k, o in enumerate(others)}
+    outp = {i: ports(i, v) for i, v in out_l.items()}
+    inp = {i: ports(i, v) for i, v in in_l.items()}
+    return outp, inp
+
+
+def _nudge_panel_waypoints(xs, size, order, rank, outp, inp):
+    """Nudge waypoints sideways to avoid overlapping box ports."""
+    real_ports = collections.defaultdict(list)
+    for i, d in list(outp.items()) + list(inp.items()):
+        if not isinstance(i, tuple):
+            real_ports[rank[i]] += list(d.values())
+    for d in [i for i in xs if isinstance(i, tuple)]:
+        near = real_ports[rank[d] - 1] + real_ports[rank[d] + 1] + real_ports[rank[d]]
+        row = order[rank[d]]
+        k = row.index(d)
+        low_bound = xs[row[k - 1]] + size[row[k - 1]][0] + 4 if k > 0 else -1e9
+        hi = xs[row[k + 1]] - 4 - size[d][0] if k + 1 < len(row) else 1e9
+        for off in (0, 6, -6, 9, -9):
+            nx = xs[d] + off
+            if low_bound <= nx <= hi and all(abs(nx + size[d][0] / 2 - p) >= 6 for p in near):
+                xs[d] = nx
+                break
+
+
+def _draw_panel_chains(pid, lo, pos, row_top, rank, lane_of, outp, inp, comps):
+    """Draw link chains between panel nodes."""
+    for (a, b), ch in lo["chains"].items():
+        pts = [(outp[ch[0]][ch[1]], pos[ch[0]][1] + pos[ch[0]][3])]
+        for k in range(len(ch) - 1):
+            p, q = ch[k], ch[k + 1]
+            x1, x2 = outp[p][q], inp[q][p]
+            r = rank[p]
+            ym = row_top[r] + lo["rowh"][r] + GAP_PAD + LANE_H * lane_of.get((p, q), 0)
+            pts += [(x1, ym), (x2, ym), (x2, row_top[rank[q]] + (lo["rowh"][rank[q]] if isinstance(q, tuple) else 0))]
+        clean = [pts[0]]
+        for _pt in pts[1:]:
+            if abs(_pt[0] - clean[-1][0]) > 0.1 or abs(_pt[1] - clean[-1][1]) > 0.1:
+                clean.append(_pt)
+        src = comps[a][0] if len(comps[a]) == 1 else f"{pid}_loop{a}"
+        dst = comps[b][0] if len(comps[b]) == 1 else f"{pid}_loop{b}"
+        path(clean, src=f"{pid}:{src}", dst=f"{pid}:{dst}", color=P_STYLE["soft"], width=1.2, dashed=P_STYLE["un"], cls=_un())
+
+
+def _draw_panel_comps(pid, comps, data, pos, lo):
+    """Draw components and mutual loops inside panel."""
+    for i, c in enumerate(comps):
+        px, py, pw, ph_ = pos[i]
+        if len(c) == 1:
+            if data["nodes"][c[0]].get("stack"):
+                srcs = [a for a, b in data["edges"] if b == c[0]]
+                draw_stack(pid, c[0], data["nodes"][c[0]], px, py, pw, ph_, f"{pid}:{srcs[0]}")
+            else:
+                draw_node(pid, c[0], data["nodes"][c[0]], px, py, pw, ph_)
+            continue
+        A(f'<g class="{_un("node")}" data-id="{pid}:{pid}_loop{i}" data-search="互相引用 {e(" ".join(c).lower())}"><rect x="{px:.1f}" y="{py:.1f}" width="{pw:.1f}" height="{ph_:.1f}" rx="10" fill="#fef3f2" stroke="#d92d20" stroke-width="1.4" stroke-dasharray="6 4"/>'
+          f'<text x="{px + 12:.1f}" y="{py + 21:.1f}" font-size="11" font-weight="700" fill="#b42318">⚠ 互相引用（{len(c)} 個，彼此有循環）</text></g>')
+        cols, cw = lo["grid"][i]
+        node_boxes = [(n, node_box(n, data["nodes"][n])) for n in c]
+        yy_ = py + 32
+        for r0 in range(0, len(node_boxes), cols):
+            row = node_boxes[r0:r0 + cols]
+            rh = max(b[1][1] for b in row)
+            for j, (n, _) in enumerate(row):
+                draw_node(pid, n, data["nodes"][n], px + 12 + j * (cw + 12), yy_, cw, rh)
+            yy_ += rh + 10
 
 
 def draw_panel(pid, lo, x, y, w, title, sub, foot):
@@ -1445,40 +1551,13 @@ def draw_panel(pid, lo, x, y, w, title, sub, foot):
             cx += size[i][0] + GAP_X
     out_l, in_l = {}, {}
     for p, q in lo["links"]:
-        out_l.setdefault(p, []).append(q); in_l.setdefault(q, []).append(p)
+        out_l.setdefault(p, []).append(q)
+        in_l.setdefault(q, []).append(p)
 
-    def ports(i, others):
-        """Compute connection port coordinates for a panel component."""
-        px, pw = xs[i], size[i][0]
-        if isinstance(i, tuple):
-            return {o: px + pw / 2 for o in others}
-        if data["nodes"][comps[i][0]].get("stack"):
-            return {o: px + 8 for o in others}
-        others = sorted(others, key=lambda o: xs[o] + size[o][0] / 2)
-        n = len(others)
-        span = PORT * (n - 1)
-        return {o: px + pw / 2 - span / 2 + PORT * k for k, o in enumerate(others)}
-    outp = {i: ports(i, v) for i, v in out_l.items()}
-    inp = {i: ports(i, v) for i, v in in_l.items()}
-    # a waypoint's vertical must not run on top of a real box's port in the same gap: nudge it sideways
-    real_ports = collections.defaultdict(list)          # rank -> x of every port on its boxes
-    for i, d in list(outp.items()) + list(inp.items()):
-        if not isinstance(i, tuple):
-            real_ports[rank[i]] += list(d.values())
-    for d in [i for i in xs if isinstance(i, tuple)]:
-        near = real_ports[rank[d] - 1] + real_ports[rank[d] + 1] + real_ports[rank[d]]
-        row = order[rank[d]]
-        k = row.index(d)
-        low_bound = xs[row[k - 1]] + size[row[k - 1]][0] + 4 if k > 0 else -1e9          # stay clear of the neighbours
-        hi = xs[row[k + 1]] - 4 - size[d][0] if k + 1 < len(row) else 1e9
-        for off in (0, 6, -6, 9, -9):
-            nx = xs[d] + off
-            if low_bound <= nx <= hi and all(abs(nx + size[d][0] / 2 - p) >= 6 for p in near):
-                xs[d] = nx
-                break
-    outp = {i: ports(i, v) for i, v in out_l.items()}
-    inp = {i: ports(i, v) for i, v in in_l.items()}
-    # one private lane per bent link in each gap; ordered so same-direction links never cross
+    outp, inp = _calc_panel_ports(comps, data, xs, size, out_l, in_l)
+    _nudge_panel_waypoints(xs, size, order, rank, outp, inp)
+    outp, inp = _calc_panel_ports(comps, data, xs, size, out_l, in_l)
+
     lane_of, nlane = {}, {}
     for r in range(nr):
         bent = [(p, q) for p, q in lo["links"] if rank[p] == r and abs(outp[p][q] - inp[q][p]) > 0.5]
@@ -1500,41 +1579,8 @@ def draw_panel(pid, lo, x, y, w, title, sub, foot):
     for j, l in enumerate(foot):
         A(f'<text x="{x + 14:.1f}" y="{y + ph - 12 - 15 * (len(foot) - 1 - j):.1f}" font-size="10" fill="{"#b42318" if l.startswith("⚠") else "#667085"}">{e(l)}</text>')
     A('</g>')
-    for (a, b), ch in lo["chains"].items():
-        pts = [(outp[ch[0]][ch[1]], pos[ch[0]][1] + pos[ch[0]][3])]
-        for k in range(len(ch) - 1):
-            p, q = ch[k], ch[k + 1]
-            x1, x2 = outp[p][q], inp[q][p]
-            r = rank[p]
-            ym = row_top[r] + lo["rowh"][r] + GAP_PAD + LANE_H * lane_of.get((p, q), 0)
-            pts += [(x1, ym), (x2, ym), (x2, row_top[rank[q]] + (lo["rowh"][rank[q]] if isinstance(q, tuple) else 0))]
-        clean = [pts[0]]
-        for _pt in pts[1:]:
-            if abs(_pt[0] - clean[-1][0]) > 0.1 or abs(_pt[1] - clean[-1][1]) > 0.1:
-                clean.append(_pt)
-        src = comps[a][0] if len(comps[a]) == 1 else f"{pid}_loop{a}"
-        dst = comps[b][0] if len(comps[b]) == 1 else f"{pid}_loop{b}"
-        path(clean, src=f"{pid}:{src}", dst=f"{pid}:{dst}", color=P_STYLE["soft"], width=1.2, dashed=P_STYLE["un"], cls=_un())
-    for i, c in enumerate(comps):
-        px, py, pw, ph_ = pos[i]
-        if len(c) == 1:
-            if data["nodes"][c[0]].get("stack"):
-                srcs = [a for a, b in data["edges"] if b == c[0]]
-                draw_stack(pid, c[0], data["nodes"][c[0]], px, py, pw, ph_, f"{pid}:{srcs[0]}")
-            else:
-                draw_node(pid, c[0], data["nodes"][c[0]], px, py, pw, ph_)
-            continue
-        A(f'<g class="{_un("node")}" data-id="{pid}:{pid}_loop{i}" data-search="互相引用 {e(" ".join(c).lower())}"><rect x="{px:.1f}" y="{py:.1f}" width="{pw:.1f}" height="{ph_:.1f}" rx="10" fill="#fef3f2" stroke="#d92d20" stroke-width="1.4" stroke-dasharray="6 4"/>'
-          f'<text x="{px + 12:.1f}" y="{py + 21:.1f}" font-size="11" font-weight="700" fill="#b42318">⚠ 互相引用（{len(c)} 個，彼此有循環）</text></g>')
-        cols, cw = lo["grid"][i]
-        node_boxes = [(n, node_box(n, data["nodes"][n])) for n in c]
-        yy_ = py + 32
-        for r0 in range(0, len(node_boxes), cols):
-            row = node_boxes[r0:r0 + cols]
-            rh = max(b[1][1] for b in row)
-            for j, (n, _) in enumerate(row):
-                draw_node(pid, n, data["nodes"][n], px + 12 + j * (cw + 12), yy_, cw, rh)
-            yy_ += rh + 10
+    _draw_panel_chains(pid, lo, pos, row_top, rank, lane_of, outp, inp, comps)
+    _draw_panel_comps(pid, comps, data, pos, lo)
     return ph
 
 
