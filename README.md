@@ -92,11 +92,11 @@ powershell -File scripts/build_msix.ps1
 dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release
 ```
 
-Full setup, packaging, and Git workflow details: [LOCAL_BUILD_NOTES.md](LOCAL_BUILD_NOTES.md)
+Full setup, packaging, and Git workflow details: [local_build_notes.md](docs/development/local_build_notes.md)
 
 ## Contributing
 Before opening a pull request, please see:
-- [LOCAL_BUILD_NOTES.md](LOCAL_BUILD_NOTES.md) — build, packaging, and Git workflow
+- [local_build_notes.md](docs/development/local_build_notes.md) — build, packaging, and Git workflow
 - [docs/development/release_guideline.md](docs/development/release_guideline.md) — versioning and release checklists
 - [docs/development/shell_extension_best_practices.md](docs/development/shell_extension_best_practices.md) — COM and NativeAOT shell invariants
 - [docs/development/shell_diagnostic_guide.md](docs/development/shell_diagnostic_guide.md) — shell extension logging and diagnostics

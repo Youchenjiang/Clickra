@@ -83,11 +83,11 @@ powershell -File scripts/build_msix.ps1
 dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release
 ```
 
-完整的環境設定、打包與 Git 流程說明：[LOCAL_BUILD_NOTES.md](LOCAL_BUILD_NOTES.md)
+完整的環境設定、打包與 Git 流程說明：[local_build_notes.md](docs/development/local_build_notes.md)
 
 ## 貢獻
 發起 Pull Request 前，請參閱：
-- [LOCAL_BUILD_NOTES.md](LOCAL_BUILD_NOTES.md) — 建置、打包與 Git 流程
+- [local_build_notes.md](docs/development/local_build_notes.md) — 建置、打包與 Git 流程
 - [docs/development/release_guideline.md](docs/development/release_guideline.md) — 版本管理與發布檢查清單
 - [docs/development/shell_extension_best_practices.md](docs/development/shell_extension_best_practices.md) — COM 與 NativeAOT 殼層不變量
 - [docs/development/shell_diagnostic_guide.md](docs/development/shell_diagnostic_guide.md) — Shell 擴充日誌與診斷
