@@ -6,7 +6,7 @@ import unittest
 from unittest import mock
 
 
-SCRIPT_DIR = pathlib.Path(__file__).resolve().parents[1] / "scripts"
+SCRIPT_DIR = pathlib.Path(__file__).resolve().parents[1]
 SCRIPT_PATH = SCRIPT_DIR / "enrich_store_release.py"
 SPEC = importlib.util.spec_from_file_location("enrich_store_release", SCRIPT_PATH)
 if SPEC is None or SPEC.loader is None:

@@ -102,14 +102,14 @@ else
 fi
 
 echo "[pre-push] Running PR governance script tests..."
-python -m unittest discover -s tests -p 'test_pr_preflight.py' -v
-python -m unittest discover -s tests -p 'test_gh_guard.py' -v
-python -m unittest discover -s tests -p 'test_pr_tool.py' -v
-python -m unittest discover -s tests -p 'test_branch_policy.py' -v
-python -m unittest discover -s tests -p 'test_pr_reports.py' -v
-python -m unittest discover -s tests -p 'test_pr_publication.py' -v
-python -m unittest discover -s tests -p 'test_pr_creation.py' -v
-python -m unittest discover -s tests -p 'test_pr_verification.py' -v
+python -m unittest discover -s scripts/tests -p 'test_pr_preflight.py' -v
+python -m unittest discover -s scripts/tests -p 'test_gh_guard.py' -v
+python -m unittest discover -s scripts/tests -p 'test_pr_tool.py' -v
+python -m unittest discover -s scripts/tests -p 'test_branch_policy.py' -v
+python -m unittest discover -s scripts/tests -p 'test_pr_reports.py' -v
+python -m unittest discover -s scripts/tests -p 'test_pr_publication.py' -v
+python -m unittest discover -s scripts/tests -p 'test_pr_creation.py' -v
+python -m unittest discover -s scripts/tests -p 'test_pr_verification.py' -v
 
 echo "Running pre-push checks (mirrors .github/workflows/ci.yml)..."
 
@@ -146,7 +146,7 @@ echo "[pre-push] Running functional unit tests (warnaserror)..."
 dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --property:TreatWarningsAsErrors=true -- --functional
 
 echo "[pre-push] Running Store publishing unit tests..."
-python -m unittest discover -s tests -p 'test_*store*.py' -v
+python -m unittest discover -s scripts/tests -p 'test_*store*.py' -v
 
 # NativeAOT is a required release-path gate, not an optional follow-up.
 echo "[pre-push] Publishing all three NativeAOT products in parallel (warnings as errors)..."

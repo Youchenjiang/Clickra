@@ -1,5 +1,13 @@
 # Tests
 
+This directory is dedicated exclusively to **Clickra product code tests**:
+1. **`Clickra.Core.Tests/`**: C# contract suite (architecture guards, localization, settings, and functional unit tests).
+2. **`PdfRegression/`**: Python PDF translation, visual layout occupancy, and rendering regression suite.
+
+> Developer tooling, PR governance, and Store publication unit tests live under [`scripts/tests/`](../scripts/tests/README.md).
+
+## C# Contract Suite
+
 The primary test project is the C# contract suite:
 
 ```powershell

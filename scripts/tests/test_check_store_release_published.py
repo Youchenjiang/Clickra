@@ -5,7 +5,7 @@ import unittest
 from unittest import mock
 
 
-SCRIPT_PATH = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "check_store_release_published.py"
+SCRIPT_PATH = pathlib.Path(__file__).resolve().parents[1] / "check_store_release_published.py"
 SPEC = importlib.util.spec_from_file_location("check_store_release_published", SCRIPT_PATH)
 if SPEC is None or SPEC.loader is None:
     raise RuntimeError(f"Unable to load Store publication probe from {SCRIPT_PATH}")
