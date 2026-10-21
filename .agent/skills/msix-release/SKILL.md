@@ -48,7 +48,7 @@ version tables or invent release notes.
 
 1. Replace the new CHANGELOG TODO with the actual release summary.
 2. Update `docs/ROADMAP.md` milestone state only where the release actually changes it.
-3. Update `LOCAL_BUILD_NOTES.md` only if its architecture/version marker is genuinely affected.
+3. Update `docs/development/local_build_notes.md` only if its architecture/version marker is genuinely affected.
 4. Update the five Store listing content sections (Description / What's new / Product Features /
    Short description) as required; the bump script changes only their version stamps.
 

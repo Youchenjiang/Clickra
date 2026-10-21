@@ -1,10 +1,10 @@
 # Local Build Notes
 
 > **Agent & Developer Documentation Index**:
-> - [ARCHITECTURE_AND_FRAMEWORK.md](docs/ARCHITECTURE_AND_FRAMEWORK.md): .NET 8 baseline, roll-forward policy, and trimming rules.
-> - [WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md](docs/WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md): Win10/Win11 context-menu and packaged storage notes.
-> - [TROUBLESHOOTING_AND_RESOLUTIONS.md](docs/TROUBLESHOOTING_AND_RESOLUTIONS.md): troubleshooting history and prior fixes.
-> - [CI_CD_DUAL_RELEASE_GUIDE.md](docs/CI_CD_DUAL_RELEASE_GUIDE.md): current automated release pipeline and source-of-truth boundaries.
+> - [ARCHITECTURE](../architecture/README.md): .NET 8 baseline, roll-forward policy, and interactive maps ([overview.html](../architecture/diagrams/overview.html)).
+> - [WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md](../WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md): Win10/Win11 context-menu and packaged storage notes.
+> - [TROUBLESHOOTING_AND_RESOLUTIONS.md](../TROUBLESHOOTING_AND_RESOLUTIONS.md): troubleshooting history and prior fixes.
+> - [CI_CD_DUAL_RELEASE_GUIDE.md](../CI_CD_DUAL_RELEASE_GUIDE.md): current automated release pipeline and source-of-truth boundaries.
 
 ## Windows SDK Tools
 This project requires `makeappx.exe` and `signtool.exe`. On this machine, the
@@ -21,7 +21,7 @@ The current automated release pipeline ships one production MSIX:
 
 - **`Clickra.msix`**: NativeAOT Main package containing `ClickraLauncher.exe` (entry point), `Clickra.exe` (CLI / AOT Dashboard), and `ClickraShell.dll` (Explorer integration). The Main manifest does not declare Windows App Runtime.
 
-The repository also contains `AppxManifest.Fluent.xml` and `scripts/build_store.ps1` for the proposed Fluent optional-package / related-set path. Those files are a **conditional PoC/migration path**, not proof that the current `release.yml` builds or publishes a Fluent optional MSIX. See `docs/development/store_optional_fluent_plan.md` before using that path.
+The repository also contains `AppxManifest.Fluent.xml` and `scripts/build_store.ps1` for the proposed Fluent optional-package / related-set path. Those files are a **conditional PoC/migration path**, not proof that the current `release.yml` builds or publishes a Fluent optional MSIX. See [`store_optional_fluent_plan.md`](store_optional_fluent_plan.md) before using that path.
 
 ### Build Scripts
 - `scripts/build_msix.ps1` — canonical current Main MSIX build used by `release.yml`.
@@ -109,7 +109,7 @@ Use `scripts/build_msix.ps1` for the actual current Main package so the CLI, Lau
 The project provides built-in PowerShell scripts for automated version bumping and MSIX packaging:
 
 > [!IMPORTANT]
-> `bump_version.ps1` is a **release-preparation tool**, not an ordinary feature/bugfix step. Do not run it merely because product code changed; version bumps occur only at an authorized release boundary. For version-surface rules see `docs/development/release_guideline.md`.
+> `bump_version.ps1` is a **release-preparation tool**, not an ordinary feature/bugfix step. Do not run it merely because product code changed; version bumps occur only at an authorized release boundary. For version-surface rules see [`release_guideline.md`](release_guideline.md).
 
 *   **Bump Version & Build**:
     By default, the script increments the `patch` version (3rd digit) and resets the `revision` (4th digit) to `0` for Microsoft Store compatibility.
@@ -265,7 +265,7 @@ Before preparing the next PR, fetch the latest `origin/main`. Reconstruct **only
 
 ### Pull Request Convention
 
-Use the canonical [pull request template](.github/pull_request_template.md).
+Use the canonical [pull request template](../../.github/pull_request_template.md).
 The template is authoritative for PR body structure; commit body rules do not
 replace it.
 
@@ -578,7 +578,7 @@ after each reinstall so it reloads `ClickraShell.dll`.
 5. Build the shell DLL and CLI, install the package, and verify submenu
    enumeration plus one real invocation.
 6. If Explorer never calls the DLL, follow the staged checks in
-   [`docs/development/shell_diagnostic_guide.md`](docs/development/shell_diagnostic_guide.md)
+   [`shell_diagnostic_guide.md`](shell_diagnostic_guide.md)
    before changing COM code.
 
 Do not use a legacy HKCU registry-verb installer as a substitute for the

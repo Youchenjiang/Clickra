@@ -24,7 +24,7 @@
 ### Step 3：手動更新文件（腳本無法自動處理的內容）
 - [ ] **CHANGELOG.md**：將 `**TODO**: Add changelog entry here` 替換為實際的變更描述（參考 §3.3）
 - [ ] **docs/ROADMAP.md**：更新里程碑完成狀態（`[ ]` → `[x]`）與進度說明
-- [ ] **LOCAL_BUILD_NOTES.md**：更新架構版本標記（如有）
+- [ ] **docs/development/local_build_notes.md**：更新架構版本標記（如有）
 - [ ] **docs/StoreListing_*.md**（5 語言）：更新 Description、What's new、Product Features、Short description（參考 §3.4）
 
 ### Step 4：驗證
@@ -112,7 +112,7 @@ $$\text{Version} = \text{Major} . \text{Minor} . \text{Patch} . \mathbf{0}$$
 ### 3.3 專案文件 (Documentation) — 需手動更新
 *   **[CHANGELOG.md](../../CHANGELOG.md)**: 腳本會自動插入 TODO placeholder，需手動替換為實際變更描述。
 *   **[docs/ROADMAP.md](../ROADMAP.md)**: 更新里程碑完成狀態（`[ ]` → `[x]`）與進度說明。
-*   **[LOCAL_BUILD_NOTES.md](../../LOCAL_BUILD_NOTES.md)**: 更新架構版本標記（如有）。
+*   **[docs/development/local_build_notes.md](local_build_notes.md)**: 更新架構版本標記（如有）。
 
 ### 3.4 商店文案 (Store Listings) — `bump_version.ps1` 自動更新版本標題，內容需手動更新
 *   **[docs/StoreListing_EN.md](../StoreListing_EN.md)**: 英文商店文案。
