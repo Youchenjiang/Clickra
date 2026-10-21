@@ -23,6 +23,22 @@ e = html.escape
 W, H = 1556, 3540
 F = 'font-family="Microsoft JhengHei UI,Microsoft JhengHei,Noto Sans CJK TC,Segoe UI,Arial,sans-serif"'
 MONO_FONT = 'font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace"'
+# Reused string literals (Sonar S1192)
+STR_PIPELINE = "Pipeline/"
+STR_CORE_APP = "Core/Application/"
+STR_FROM_L2 = "來自 L2"
+STR_NATIVE_PROG = "Native 進度視窗"
+STR_OFFICE_SETTINGS = "Office 引擎設定"
+STR_EXT_PDFSHARP = "外部：PDFsharp"
+SVG_CLOSE = "</svg>"
+PAGE_OVERVIEW = "overview.html"
+PAGE_L0 = "l0_entry_points.html"
+PAGE_L1 = "l1_presentation.html"
+PAGE_L2 = "l2_application.html"
+PAGE_L3 = "l3_infrastructure.html"
+PAGE_L4 = "l4_modules_internal.html"
+SRC_FLUENT = "src/Clickra.Fluent/"
+
 o: list[str] = []
 A = o.append
 A(f'<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Clickra 架構圖" width="{W}" height="{H}" viewBox="0 0 {W} {H}" {F}>')
@@ -94,12 +110,12 @@ _NAV_OFF = 'border:1px solid #bfc6d1;color:#111827;background:#fff;'
 def render_page(target_name, title, h1, active_href, controls, meta, note, svg_content):
     """Render full HTML page wrapping SVG diagram and navigation."""
     nav_links = [
-        ("overview.html", "總表"),
-        ("l0_entry_points.html", "L0 入口"),
-        ("l1_presentation.html", "L1 畫面"),
-        ("l2_application.html", "L2 應用"),
-        ("l3_infrastructure.html", "L3 基礎"),
-        ("l4_modules_internal.html", "L4 模組內部"),
+        (PAGE_OVERVIEW, "總表"),
+        (PAGE_L0, "L0 入口"),
+        (PAGE_L1, "L1 畫面"),
+        (PAGE_L2, "L2 應用"),
+        (PAGE_L3, "L3 基礎"),
+        (PAGE_L4, "L4 模組內部"),
     ]
     nav_html = []
     for href, label in nav_links:
@@ -201,7 +217,7 @@ launcher = box(400, 470, 640, 104, "ClickraLauncher.exe", ["NativeAOT、零相�
                                                           "嘗試以 COM 啟動 Fluent；目前套件沒有 Fluent → 立即轉給 Clickra.exe"], nid="launcher", edge="#2e90fa", files=["src/ClickraLauncher/Program.cs"])
 fluent = box(40, 640, 480, 152, "Clickra.Fluent.exe（保留・目前未發佈）", ["WinUI 3；選用套件方案自 2026-10-08 凍結",
                                                     "不在 Clickra.msix 內，以下兩條路徑目前都不會成功"], "land", nid="fluent", cls="unshipped",
-             files=["src/Clickra.Fluent/", (3, ["App.xaml.cs", "MainWindow.xaml.cs", "TrayIcon.cs", "TrayService.cs", "ToastHelper.cs"]), "packaging/msix/AppxManifest.Fluent.xml"])
+             files=[SRC_FLUENT, (3, ["App.xaml.cs", "MainWindow.xaml.cs", "TrayIcon.cs", "TrayService.cs", "ToastHelper.cs"]), "packaging/msix/AppxManifest.Fluent.xml"])
 native = box(760, 640, 680, 170, "Clickra.exe", ["NativeAOT；入口 ClickraStartup.Run",
                                                "無參數 → 找 Clickra.Fluent.exe（目前找不到）→ Native Dashboard",
                                                "command＋檔案 → 進度視窗，或 --quiet 背景執行；另有 --version / --help / --deploy"], nid="native", edge="#2e90fa",
@@ -243,14 +259,14 @@ section(740, 1498, "L1・畫面", "Presentation", "#12b76a")
 # ======================= L1: screens =======================
 band(788, 0, "畫面（Renderer）")
 fmain = box(40, 806, 195, 266, "Fluent 主頁", ["MainPage（WinUI）", "分頁同 Dashboard", "續跑 → 進度頁"], "land", 14, nid="fmain", cls="unshipped",
-            files=["src/Clickra.Fluent/", "MainPage.xaml.cs", "MainPage.History.cs", "MainPage.LibreOffice.cs", "DynamicSettingsController.cs", "OfficeEnginePreflight.cs", "Controls/FluentDialogs.cs"])
+            files=[SRC_FLUENT, "MainPage.xaml.cs", "MainPage.History.cs", "MainPage.LibreOffice.cs", "DynamicSettingsController.cs", "OfficeEnginePreflight.cs", "Controls/FluentDialogs.cs"])
 fprog = box(255, 806, 200, 266, "Fluent 進度頁", ["TaskProgressPage", "續跑／帶參數啟動"], "land", 14, nid="fprog", cls="unshipped",
-            files=["src/Clickra.Fluent/", "TaskProgressPage.xaml.cs", "src/Clickra.Fluent/Controls/", "VisualSplitterControl.xaml.cs", "SplitPagesOverlay.xaml.cs", "FluentDialogs.cs"])
+            files=[SRC_FLUENT, "TaskProgressPage.xaml.cs", "src/Clickra.Fluent/Controls/", "VisualSplitterControl.xaml.cs", "SplitPagesOverlay.xaml.cs", "FluentDialogs.cs"])
 ndash = box(695, 806, 305, 266, "Native Dashboard", ["DashboardWindow（Win32 自繪）", "總覽／轉換／歷史／設定／關於", "轉換、續跑 → 開進度視窗"], "door", 14, nid="ndash", edge="#05603a",
             files=["src/Clickra.CLI/Dashboard/", "DashboardWindow.*.cs（18 檔）：", (2, ["（主檔）", "State", "Lifecycle", "Convert", "ConvertRegistry", "HitTesting",
                    "Events", "Events.Click", "Events.History", "Events.LibreOffice", "Events.Settings", "Paint", "Paint.Overview", "Paint.History",
                    "Paint.Settings", "Paint.Settings.Dynamic", "Paint.Dropdowns", "Paint.About"])])
-nprog = box(1020, 806, 250, 266, "Native 進度視窗", ["ProgressWindow", "附屬：密碼、Markdown 選項、", "視覺分割、系統匣", "⚠ 逐一辨認 8 個指令（C4）"], "door", 14, nid="nprog", edge="#0e9384",
+nprog = box(1020, 806, 250, 266, STR_NATIVE_PROG, ["ProgressWindow", "附屬：密碼、Markdown 選項、", "視覺分割、系統匣", "⚠ 逐一辨認 8 個指令（C4）"], "door", 14, nid="nprog", edge="#0e9384",
             files=["src/Clickra.CLI/Progress/", "ProgressWindow.*.cs（8 檔）：", (2, ["（主檔）", "Process", "Paint", "Controls", "PasswordInput", "MarkdownOptions", "VisualSplitter", "Tray"]),
                    "NativeConversionExecutionAdapter.cs"])
 nnone = box(1290, 806, 150, 266, "無畫面", ["--quiet 背景轉換", "--version / --help", "--deploy → 直接到 L2", "⚠ 逐一辨認指令（C4）"], "door", 14, nid="nnone", edge="#12b76a",
@@ -308,14 +324,14 @@ def anode(p):
 
 
 TR = "Clickra.Core/Modules/PdfTranslation/"
-TR_SMALL: set[str] = {"Application", "Execution", "Pipeline/", "Pipeline/Layout", "Pipeline/Fonts"}
+TR_SMALL: set[str] = {"Application", "Execution", STR_PIPELINE, "Pipeline/Layout", "Pipeline/Fonts"}
 
 
 def tr_folder(n):
     """Map translation module node to its pipeline folder."""
     r = n[len(TR):].split("/")
     if r[0] == "Pipeline":
-        return "Pipeline/" + (r[1] if len(r) > 2 else "")
+        return STR_PIPELINE + (r[1] if len(r) > 2 else "")
     return r[0]
 
 
@@ -541,9 +557,9 @@ def linked(src, dst):
     return any(_BLINK[(a, b)] for a in boxes(src) for b in boxes(dst))
 
 
-NAME: dict[str, str] = {"ndash": "Native Dashboard", "nprog": "Native 進度視窗", "nnone": "CLI／ClickraStartup", "m_lay": "Native 版面表",
+NAME: dict[str, str] = {"ndash": "Native Dashboard", "nprog": STR_NATIVE_PROG, "nnone": "CLI／ClickraStartup", "m_lay": "Native 版面表",
         "fmain": "Fluent 主頁", "fprog": "Fluent 進度頁", "a_cmd": "指令目錄", "a_uc": "用例目錄", "a_pages": "頁數查詢",
-        "a_hist": "歷史服務", "a_set": "設定服務", "a_off": "Office 引擎設定", "a_base": "用例基底", "a_life": "任務生命週期",
+        "a_hist": "歷史服務", "a_set": "設定服務", "a_off": STR_OFFICE_SETTINGS, "a_base": "用例基底", "a_life": "任務生命週期",
         "UC": "各模組用例"}
 NAME.update({m[0]: m[1] + "（狀態）" for m in MODELS_DEF})
 NAME.update({"d_feed": "歷史顯示清單", "d_set": "設定目錄"})
@@ -759,12 +775,12 @@ for _c_src, _c_dst, sx, ex in CALLS:
 
 # row-1 cards: titles and roles are hand-written; file lists and 也被 come from the code graph
 ROW1: dict[str, tuple[float, str, list[str], str, list[str]]] = {  # id: (x, title, role lines, folder, extra lines under the files)
-    "a_cmd": (col_pos(1), "指令目錄", ["指令、可接受副檔名、", "最少檔數、顯示名稱"], "Core/Application/", ["↳ src/Shared/"] + wrap(["  ConvertCommandMetadata.cs"], 22)),
-    "a_uc": (col_pos(2), "轉換用例目錄", ["指令 → 唯一的用例", "Validate→Plan→Execute"], "Core/Application/", []),
+    "a_cmd": (col_pos(1), "指令目錄", ["指令、可接受副檔名、", "最少檔數、顯示名稱"], STR_CORE_APP, ["↳ src/Shared/"] + wrap(["  ConvertCommandMetadata.cs"], 22)),
+    "a_uc": (col_pos(2), "轉換用例目錄", ["指令 → 唯一的用例", "Validate→Plan→Execute"], STR_CORE_APP, []),
     "a_pages": (col_pos(4), "頁數查詢", ["讀 PDF 頁數"], "Modules/PdfSplit/App…/", []),
     "a_hist": (col_pos(5), "歷史與暫停任務", ["清除與刪除／讀清單／", "認領暫停任務續跑"], "Modules/HistoryTasks/App…/", []),
     "a_set": (col_pos(6), "設定", ["讀寫偏好與儲存路徑"], "Modules/Settings/App…/", []),
-    "a_off": (col_pos(7), "Office 引擎設定", ["安裝／移除 LibreOffice、", "回報引擎是否就緒"], "Modules/Settings/App…/", []),
+    "a_off": (col_pos(7), STR_OFFICE_SETTINGS, ["安裝／移除 LibreOffice、", "回報引擎是否就緒"], "Modules/Settings/App…/", []),
 }
 ROW1_NOTES: dict[str, list[str]] = {"a_uc": ["需輸入時回呼 L1：", "密碼／分割頁／MD 選項"]}
 ROW1_CONTENT: dict[str, tuple[list[str], list[str]]] = {}
@@ -795,7 +811,7 @@ COMBINED_ONLY = (_c, len(o))
 _mark = len(o)
 CH = (H1 - 10) / 2
 for _k_chip, (_chip_nid, _chip_l1, _chip_l2, _chip_file, _chip_cls) in enumerate([
-        ("nprog", "來自 L1 畫面", "Native 進度視窗", "ProgressWindow.VisualSplitter.cs", ""),
+        ("nprog", "來自 L1 畫面", STR_NATIVE_PROG, "ProgressWindow.VisualSplitter.cs", ""),
         ("fprog", "來自 L1 畫面（未發佈）", "Fluent 視覺分割", "VisualSplitterControl.xaml.cs", "unshipped")]):
     if (_chip_nid, "a_pages") not in DRAWN:
         continue
@@ -831,7 +847,7 @@ if sorted(MOD_ORDER) != sorted(k[2:] for k in CARDS if k.startswith("u_")):
 MOD_NOTES: dict[str, str] = {"ImageFormatConvertUseCase.cs": "（5 個指令）", "ImgMergeUseCase.cs": "（合一）", "ImgStitchUseCase.cs": "（合一）",
              "OfficeToPdfUseCaseBase.cs": "（查 Office 引擎）", "DecryptPdfUseCase.cs": "（需密碼）", "MergePdfUseCase.cs": "（合一）",
              "SplitPdfUseCase.cs": "（需分割頁）"}
-SHORT: dict[str, str] = {"Native 進度視窗": "Native", "CLI／ClickraStartup": "CLI"}
+SHORT: dict[str, str] = {STR_NATIVE_PROG: "Native", "CLI／ClickraStartup": "CLI"}
 
 
 def mod_also(k):
@@ -860,8 +876,8 @@ if link("a_uc", "UC"):
 LCX, LCW = col_pos(5), col_pos(6) + MW - col_pos(5)
 LIFE_FILES = files_of("a_life", maxch=60)
 LIFE_ALSO = also_lines("a_life", LCW)
-LIFE_H = need_h(["x"], "Core/Application/", LIFE_FILES, LIFE_ALSO) + 8
-lc = l2card("a_life", (LCX, BASEY, LCW, LIFE_H), "任務生命週期", ["開始 → 進行中 → 完成／失敗／暫停，寫入任務紀錄"], "Core/Application/",
+LIFE_H = need_h(["x"], STR_CORE_APP, LIFE_FILES, LIFE_ALSO) + 8
+lc = l2card("a_life", (LCX, BASEY, LCW, LIFE_H), "任務生命週期", ["開始 → 進行中 → 完成／失敗／暫停，寫入任務紀錄"], STR_CORE_APP,
             LIFE_FILES, LIFE_ALSO, stroke=AMBER, fill=AMBER_FILL)
 if link("UC", "a_life"):
     path([(UCX1, BASEY + 25), (LCX, BASEY + 25)], "執行時建立與結束任務紀錄", lpos=((UCX1 + LCX) / 2, BASEY + 18), src="a_base", dst="a_life", color=AMBER, width=1.6)
@@ -971,7 +987,7 @@ def _tr_summary():
         if p.startswith(pre):
             r = p[len(pre):].split("/")
             cnt[r[0] + ("/" + r[1] if r[0] == "Pipeline" and len(r) > 2 else "")] += 1
-    pipe = sorted(((k.split("/", 1)[1], v) for k, v in cnt.items() if k.startswith("Pipeline/")), key=lambda t: -t[1])
+    pipe = sorted(((k.split("/", 1)[1], v) for k, v in cnt.items() if k.startswith(STR_PIPELINE)), key=lambda t: -t[1])
     out = [f"Execution/（{cnt['Execution']}）", f"Pipeline/（{sum(v for k, v in cnt.items() if k.startswith('Pipeline'))} 檔）", "  PdfTranslationPipeline.cs"]
     out += [f"  {k}/（{v}）" for k, v in pipe]
     return out + [f"Model/（{cnt['Model']} 檔）", f"Translation/（{cnt['Translation']} 檔）"]
@@ -981,11 +997,11 @@ PROC: list[tuple[str, list[str], list[str]]] = [
     ("Image", _proc_files("Image"), ["外部：Imazen.WebP、WIC、", "System.Drawing、PDFsharp"]),
     ("Markdown", _proc_files("Markdown"), ["外部：Markdig、PDFsharp"]),
     ("Office", _proc_files("Office"), ["經 PowerShellHelper 叫 Office"]),
-    ("PdfCompression", _proc_files("PdfCompression"), ["外部：PDFsharp"]),
-    ("PdfDecrypt", _proc_files("PdfDecrypt"), ["外部：PDFsharp"]),
-    ("PdfMerge", _proc_files("PdfMerge"), ["外部：PDFsharp"]),
+    ("PdfCompression", _proc_files("PdfCompression"), [STR_EXT_PDFSHARP]),
+    ("PdfDecrypt", _proc_files("PdfDecrypt"), [STR_EXT_PDFSHARP]),
+    ("PdfMerge", _proc_files("PdfMerge"), [STR_EXT_PDFSHARP]),
     ("PdfTranslation", _tr_summary(), ["外部：PdfPig、PDFsharp、", "網路翻譯（Google、MyMemory）"]),
-    ("PdfSplit", _proc_files("PdfSplit"), ["外部：PDFsharp"] + (["⚠ 也被 L1 視覺分割直接呼叫", "  （紅虛線，待辦 C1）"] if SPLIT_BYPASS else [])),
+    ("PdfSplit", _proc_files("PdfSplit"), [STR_EXT_PDFSHARP] + (["⚠ 也被 L1 視覺分割直接呼叫", "  （紅虛線，待辦 C1）"] if SPLIT_BYPASS else [])),
 ]
 BASE3_Y = R1Y3 + 34
 BASE3_H = 86
@@ -1107,12 +1123,12 @@ def chip3(nid, x0, x1, l1, l2, col="#dc6803", fill="#fffaeb"):
                     f'<text x="{x0 + 10:.1f}" y="{L3_TOP - 26}" font-size="12.5" font-weight="700" fill="#101828">{e(l2)}</text></g>')
 
 
-chip3("a_base", col_pos(0), col_pos(2) + MW, "來自 L2", "各模組轉換用例")
+chip3("a_base", col_pos(0), col_pos(2) + MW, STR_FROM_L2, "各模組轉換用例")
 if SPLIT_BYPASS:
     chip3("m_split", col_pos(3), col_pos(4) - 6, "來自 L1（跳層）", "視覺分割狀態", col="#d92d20", fill="#fef3f2")
-chip3("a_pages", col_pos(4), col_pos(4) + MW, "來自 L2", "頁數查詢")
-chip3("a_life", STX0, STX1, "來自 L2", "歷史・任務生命週期・設定")
-chip3("a_off", col_pos(7), col_pos(7) + MW, "來自 L2", "Office 引擎設定")
+chip3("a_pages", col_pos(4), col_pos(4) + MW, STR_FROM_L2, "頁數查詢")
+chip3("a_life", STX0, STX1, STR_FROM_L2, "歷史・任務生命週期・設定")
+chip3("a_off", col_pos(7), col_pos(7) + MW, STR_FROM_L2, STR_OFFICE_SETTINGS)
 
 RULE = ("線色規則：線的顏色＝發出呼叫的那一方。L0 藍、L1 綠（畫面另分 深綠＝Native Dashboard、青綠＝Native 進度視窗）、L2 橘、L3 紫；"
         "紅虛線＝跳層、灰虛線＝未發佈（Fluent）或外部依賴。")
@@ -1129,7 +1145,7 @@ def _tr_key(n):
 
 def _tr_folder_label(f):
     """Format human-readable label for translation folder."""
-    return {"Translation/": "Translation/（引擎）", "Pipeline/": "Pipeline/（根目錄）"}.get(f, f)
+    return {"Translation/": "Translation/（引擎）", STR_PIPELINE: "Pipeline/（根目錄）"}.get(f, f)
 
 
 def _solve_order_dp(fs, w):
@@ -1181,7 +1197,7 @@ def _draw_dsm(x, y, order, cnt, back, title, sub, fo):
     for j in range(k):
         A(f'<text x="{gx + j * cell + cell / 2}" y="{gy - 6}" font-size="9.5" fill="#667085" text-anchor="middle">{j + 1}</text>')
     for i, fa in enumerate(order):
-        lbl = _tr_folder_label(fa).replace("Pipeline/", "") if fa != "Pipeline/" else "Pipeline/（根目錄）"
+        lbl = _tr_folder_label(fa).replace(STR_PIPELINE, "") if fa != STR_PIPELINE else "Pipeline/（根目錄）"
         A(f'<text x="{gx - 8}" y="{gy + i * cell + 15}" font-size="10" fill="#344054" text-anchor="end" {MONO_FONT}>{i + 1:>2} {e(lbl)}</text>')
         for j, fb in enumerate(order):
             cx, cy_ = gx + j * cell, gy + i * cell
@@ -1245,7 +1261,7 @@ def draw_translation_section(yy):
 
     def short(f):
         """Format shortened folder name for display."""
-        return f.replace("Pipeline/", "") if f != "Pipeline/" else "Pipeline/（根）"
+        return f.replace(STR_PIPELINE, "") if f != STR_PIPELINE else "Pipeline/（根）"
 
     band(yy + 20, 0, f"翻譯模組（{len(N5) - 1} 個檔＋引擎，檔案多，分資料夾畫）：{len(E5)} 條檔案引用中，{len(BACK_NOW)} 條在回頭（待辦 E6、E8）")
     yy += 40
@@ -1662,7 +1678,7 @@ _sec4_at = len(o)
 PANEL_INFO: dict[str, tuple[str, str, str]] = {  # key: (title, folder line, short name used on stand-ins)
     "entry": ("入口：ClickraShell・ClickraLauncher・Shared", "src/ClickraShell/、src/ClickraLauncher/、src/Shared/", "入口"),
     "cli": ("Clickra.CLI（Native 畫面＋CLI）", "src/Clickra.CLI/", "CLI"),
-    "fluent": ("Clickra.Fluent（保留・目前未發佈；灰虛線）", "src/Clickra.Fluent/", "Fluent"),
+    "fluent": ("Clickra.Fluent（保留・目前未發佈；灰虛線）", SRC_FLUENT, "Fluent"),
     "capp": ("Core 應用層與共用畫面狀態", "Core/Application/、Core/Presentation/", "Core 應用"),
     "m_image": ("模組 Image", "Core/Modules/Image/", "Image"),
     "m_markdown": ("模組 Markdown", "Core/Modules/Markdown/", "Markdown"),
@@ -1811,7 +1827,7 @@ FOOT_L3 = f'<text x="40" y="{L3_TOP + L3H + 30}" font-size="11.5" fill="#667085"
 FOOT_L4 = f'<text x="40" y="{L4_TOP + L4H + 30}" font-size="11.5" fill="#667085">{e(RULE)}</text>'
 A(FOOT_L4)
 A('</g>')
-A('</svg>')
+A(SVG_CLOSE)
 _H2 = L4_TOP + L4H + 60
 o[0] = o[0].replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{_H2}" viewBox="0 0 {W} {_H2}"', 1)
 H = _H2
@@ -1833,23 +1849,23 @@ def make_overview_svg():
     
     # Layer cards specification: (title, sub, href, color, fill, border, y, h, details)
     layers = [
-        ("L0・入口（OS Entry Points & Handoffs）", "4 種使用者觸發方式 · 4 個進入點執行檔 · Win11 整合", "l0_entry_points.html",
+        ("L0・入口（OS Entry Points & Handoffs）", "4 種使用者觸發方式 · 4 個進入點執行檔 · Win11 整合", PAGE_L0,
          "#2e90fa", "#f5faff", "#2e90fa", 100, 130,
          ["Win11 檔案總管右鍵選單、開始功能表「Clickra」捷徑、檔案類型關聯（.pdf .docx 等 14 種）、CLI 終端機指令",
           "進入點：ClickraShell（COM 選單）、ClickraLauncher（MSIX 啟動）、Clickra.CLI（NativeAOT 主程式）、Clickra.Fluent（WinUI 3）"]),
-        ("L1・畫面（Presentation & Shared State Controllers）", f"{SCREENS} 個畫面 · {MODELS} 個共用畫面狀態 · 9 個 Native 版面表", "l1_presentation.html",
+        ("L1・畫面（Presentation & Shared State Controllers）", f"{SCREENS} 個畫面 · {MODELS} 個共用畫面狀態 · 9 個 Native 版面表", PAGE_L1,
          "#12b76a", "#f6fef9", "#12b76a", 270, 130,
          ["畫面 Renderer：Native Dashboard（Win32 自繪）、Progress Window、Fluent UI（保留中，未隨套件發佈）",
           "共用控制器：ConvertWorkspace、ConversionExecution、TaskProgress、VisualSplit、History、Settings"]),
-        ("L2・應用（Application Services & 19 Use Cases）", f"{L2_SERVICES} 組應用服務 · 8 個功能模組 · 19 個轉換用例目錄", "l2_application.html",
+        ("L2・應用（Application Services & 19 Use Cases）", f"{L2_SERVICES} 組應用服務 · 8 個功能模組 · 19 個轉換用例目錄", PAGE_L2,
          "#dc6803", "#fffaeb", "#dc6803", 440, 130,
          ["核心服務：ConvertCommandRegistry（指令清單）、ConversionUseCases（用例目錄）、Task Lifecycle（任務生命週期）",
           "19 個轉換用例：PDF 壓縮／解密／合併／分割／翻譯、圖片轉換與拼貼、Word／PPT／Excel 轉換、Markdown 文件"]),
-        ("L3・基礎（Infrastructure, Storage & Engines）", "8 個模組處理器 · 儲存門面 · Office 引擎 · 6 組橫切支援", "l3_infrastructure.html",
+        ("L3・基礎（Infrastructure, Storage & Engines）", "8 個模組處理器 · 儲存門面 · Office 引擎 · 6 組橫切支援", PAGE_L3,
          "#7a5af8", "#f9f5ff", "#7a5af8", 610, 130,
          ["處理器與引擎：SingleFileProcessorBase、MultiFileProcessorBase、ClickraStorage 門面、LibreOffice/Office 偵測與叫用",
           "外部依賴：PDFsharp 6.2.4、PdfPig 0.1.14、Imazen.WebP、System.Drawing、Markdig、PowerShellHelper"]),
-        ("L4・模組內部（Modules Internal File Graphs & Cycles）", f"全部 {len(AF)} 個 C# 原始碼檔案 · {len(PANEL_INFO)} 個面板 · 循環依賴分析", "l4_modules_internal.html",
+        ("L4・模組內部（Modules Internal File Graphs & Cycles）", f"全部 {len(AF)} 個 C# 原始碼檔案 · {len(PANEL_INFO)} 個面板 · 循環依賴分析", PAGE_L4,
          "#d444cf", "#fdf2fa", "#d444cf", 780, 130,
          ["模組內部結構：src/ 所有 .cs 檔的語意引用圖（Roslyn MSBuild 分析）、強連通分量（SCC）循環偵測",
           "翻譯管線 DSM 矩陣：9 個資料夾引用關係、回頭引用分析與架構邊界修復追蹤（E6/E8）"])
@@ -1873,7 +1889,7 @@ def make_overview_svg():
             ov.append(f'<line x1="778" y1="{arrow_y}" x2="778" y2="{arrow_y + 40}" stroke="#475467" stroke-width="2" marker-end="url(#arr)"/>')
 
     ov.append('<text x="40" y="945" font-size="12" fill="#667085">💡 提示：點擊上方各層方塊可進入該層專屬詳細架構圖；若需檢視包含所有細節的完整長條總圖（1556×22330），請開啟 <a href="svg/clickra_layers.svg" target="_blank" style="fill:#2e90fa;font-weight:700;">🖼️ clickra_layers.svg</a>。</text>')
-    ov.append('</svg>')
+    ov.append(SVG_CLOSE)
     return "\n".join(ov)
 
 meta_overview = (
@@ -1884,7 +1900,7 @@ meta_overview = (
     f"L4：全部 {len(AF)} 個檔的引用（{len(INNER) + len(CROSS)} 條）"
 )
 note_overview = "L0 入口 → L1 畫面 → L2 應用 → L3 基礎 → L4 模組內部。點擊方塊進入該層專屬詳細地圖。"
-render_page("overview.html", "Clickra Architecture — 總表", "Clickra — 架構總表", "overview.html", "", meta_overview, note_overview, make_overview_svg())
+render_page(PAGE_OVERVIEW, "Clickra Architecture — 總表", "Clickra — 架構總表", PAGE_OVERVIEW, "", meta_overview, note_overview, make_overview_svg())
 print("overview ok")
 
 
@@ -1899,7 +1915,7 @@ STUB: list[str] = [
     '<text x="774" y="799" font-size="12" fill="#475467">NativeAOT；ClickraStartup.Run 依參數分派</text></g>',
 ]
 Y0 = 730
-l1_parts = o[:TITLE_AT] + [G_OPEN] + STUB + o[L1_AT:L1_END] + [FOOT_L1, "</g>", "</svg>"]
+l1_parts = o[:TITLE_AT] + [G_OPEN] + STUB + o[L1_AT:L1_END] + [FOOT_L1, "</g>", SVG_CLOSE]
 L1H = L1_BOTTOM + 70
 l1_svg = "\n".join(l1_parts).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{L1H - Y0}" viewBox="0 {Y0} {W} {L1H - Y0}"', 1)
 with open(os.path.join(svg_dir, "l1_presentation.svg"), "w", encoding="utf-8", newline="\n") as _svg_fh:
@@ -1907,12 +1923,12 @@ with open(os.path.join(svg_dir, "l1_presentation.svg"), "w", encoding="utf-8", n
 ctrl_l1 = '<button id="unBtn">隱藏未發佈（Fluent）</button>'
 meta_l1 = f"{SCREENS} 個畫面 · {MODELS} 個共用畫面狀態 · 2 個資料目錄 · 9 個 Native 版面表（Clickra.CLI）"
 note_l1 = "上排是畫面（Renderer），下排是 Native 與 Fluent 共用的畫面模型。點方塊可標出它的所有連線。"
-render_page("l1_presentation.html", "Clickra Architecture — L1 畫面", "Clickra — L1 畫面", "l1_presentation.html", ctrl_l1, meta_l1, note_l1, l1_svg)
+render_page(PAGE_L1, "Clickra Architecture — L1 畫面", "Clickra — L1 畫面", PAGE_L1, ctrl_l1, meta_l1, note_l1, l1_svg)
 print("l1 ok")
 
 # ---------------- standalone L0 export ----------------
 L0H = 870
-l0_parts = o[:TITLE_AT] + o[TITLE_AT + 2:L1_AT] + ['<text x="40" y="852" font-size="11.5" fill="#667085">來源：packaging/msix/AppxManifest.xml（Store／GitHub 同一份 MSIX）、src/resources/AppxManifest.xml（--deploy）、ClickraShell/ComMethods.cs、ClickraLauncher/Program.cs、Clickra.CLI/Cli/ClickraStartup.cs、Clickra.Fluent/App.xaml.cs</text>', '</g>', '</svg>']
+l0_parts = o[:TITLE_AT] + o[TITLE_AT + 2:L1_AT] + ['<text x="40" y="852" font-size="11.5" fill="#667085">來源：packaging/msix/AppxManifest.xml（Store／GitHub 同一份 MSIX）、src/resources/AppxManifest.xml（--deploy）、ClickraShell/ComMethods.cs、ClickraLauncher/Program.cs、Clickra.CLI/Cli/ClickraStartup.cs、Clickra.Fluent/App.xaml.cs</text>', '</g>', SVG_CLOSE]
 l0_svg = "\n".join(l0_parts).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{L0H - 70}" viewBox="0 70 {W} {L0H - 70}"', 1)
 with open(os.path.join(svg_dir, "l0_entry_points.svg"), "w", encoding="utf-8", newline="\n") as _svg_fh:
     _svg_fh.write(l0_svg)
@@ -1924,7 +1940,7 @@ ctrl_l0 = (
 )
 meta_l0 = f"4 種使用者動作 · 4 個執行檔 · {L0_EDGES} 條轉交"
 note_l0 = "由上往下：使用者從哪裡進來 → 第一個碰到的執行檔 → 執行檔之間怎麼轉交。點方塊可標出它的所有路徑。"
-render_page("l0_entry_points.html", "Clickra Architecture — L0 入口", "Clickra — L0 入口", "l0_entry_points.html", ctrl_l0, meta_l0, note_l0, l0_svg)
+render_page(PAGE_L0, "Clickra Architecture — L0 入口", "Clickra — L0 入口", PAGE_L0, ctrl_l0, meta_l0, note_l0, l0_svg)
 print("l0 ok")
 
 # ---------------- standalone L2 export ----------------
@@ -1945,38 +1961,38 @@ _l2 = o[L2_AT:L2_END]
 _c0, _c1 = COMBINED_ONLY[0] - L2_AT, COMBINED_ONLY[1] - L2_AT
 _l2 = _l2[:_c0] + _l2[_c1:]
 _l2 = _l2[:-1] + STANDALONE_ONLY + _l2[-1:]          # chips go inside the L2 group (before its closing tag)
-l2_parts = o[:TITLE_AT] + [G_OPEN] + chips + _l2 + [FOOT_L2, "</g>", "</svg>"]
+l2_parts = o[:TITLE_AT] + [G_OPEN] + chips + _l2 + [FOOT_L2, "</g>", SVG_CLOSE]
 L2V1 = L2_TOP + L2H + 50
 l2_svg = "\n".join(l2_parts).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{L2V1 - L2V0}" viewBox="0 {L2V0} {W} {L2V1 - L2V0}"', 1)
 with open(os.path.join(svg_dir, "l2_application.svg"), "w", encoding="utf-8", newline="\n") as _svg_fh:
     _svg_fh.write(l2_svg.replace(WHITE_BG, f'<rect x="0" y="{L2V0}" width="{W}" height="{L2V1 - L2V0}" fill="#fff"/>'))
 meta_l2 = f"{L2_SERVICES} 組應用服務 · 8 個模組 · 19 個轉換指令 · 3 個往 L3 的出口"
 note_l2 = "上排是應用服務（與 L1 共用畫面狀態同一欄），左下是各模組轉換用例，最底是往 L3 的出口。"
-render_page("l2_application.html", "Clickra Architecture — L2 應用", "Clickra — L2 應用", "l2_application.html", "", meta_l2, note_l2, l2_svg)
+render_page(PAGE_L2, "Clickra Architecture — L2 應用", "Clickra — L2 應用", PAGE_L2, "", meta_l2, note_l2, l2_svg)
 print("l2 ok")
 
 # ---------------- standalone L3 export ----------------
 L3V0 = L3_TOP - 84
 L3V1 = L3_TOP + L3H + 50
-l3_parts = o[:TITLE_AT] + [G_OPEN] + L3_CHIPS + o[L3_AT:L3_END] + [FOOT_L3, "</g>", "</svg>"]
+l3_parts = o[:TITLE_AT] + [G_OPEN] + L3_CHIPS + o[L3_AT:L3_END] + [FOOT_L3, "</g>", SVG_CLOSE]
 l3_svg = "\n".join(l3_parts).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{L3V1 - L3V0}" viewBox="0 {L3V0} {W} {L3V1 - L3V0}"', 1)
 with open(os.path.join(svg_dir, "l3_infrastructure.svg"), "w", encoding="utf-8", newline="\n") as _svg_fh:
     _svg_fh.write(l3_svg.replace(WHITE_BG, f'<rect x="0" y="{L3V0}" width="{W}" height="{L3V1 - L3V0}" fill="#fff"/>'))
 meta_l3 = "8 個模組處理器 · 儲存 15 檔 · Office 引擎 4 檔 · 6 組橫切支援 · 8 項外部依賴"
 note_l3 = "上排是處理器、儲存與 Office 引擎（與 L2 出口同一欄），中排是橫切支援，最底是外部依賴。"
-render_page("l3_infrastructure.html", "Clickra Architecture — L3 基礎", "Clickra — L3 基礎", "l3_infrastructure.html", "", meta_l3, note_l3, l3_svg)
+render_page(PAGE_L3, "Clickra Architecture — L3 基礎", "Clickra — L3 基礎", PAGE_L3, "", meta_l3, note_l3, l3_svg)
 print("l3 ok")
 
 # ---------------- standalone L4 export ----------------
 L4V0 = L4_TOP - 20
 L4V1 = L4_TOP + L4H + 50
-l4_parts = o[:TITLE_AT] + [G_OPEN] + o[L4_AT:L4_END] + [FOOT_L4, "</g>", "</svg>"]
+l4_parts = o[:TITLE_AT] + [G_OPEN] + o[L4_AT:L4_END] + [FOOT_L4, "</g>", SVG_CLOSE]
 l4_svg = "\n".join(l4_parts).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{L4V1 - L4V0}" viewBox="0 {L4V0} {W} {L4V1 - L4V0}"', 1)
 with open(os.path.join(svg_dir, "l4_inside.svg"), "w", encoding="utf-8", newline="\n") as _svg_fh:
     _svg_fh.write(l4_svg.replace(WHITE_BG, f'<rect x="0" y="{L4V0}" width="{W}" height="{L4V1 - L4V0}" fill="#fff"/>'))
 meta_l4 = f"src/ 全部 {len(AF)} 個 .cs 檔 · {len(PANEL_INFO)} 張面板 · {len(INNER)} 條面板內引用 · {len(CROSS)} 條跨面板引用（灰虛線替身）"
 note_l4 = "src/ 底下每個檔案都在這裡：上方是呼叫者，下方是被用的檔案；灰虛線小方塊是引用到別的面板的檔案，點它會連同本尊一起亮；紅虛線框是互相引用的循環。"
-render_page("l4_modules_internal.html", "Clickra Architecture — L4 模組內部", "Clickra — L4 模組內部", "l4_modules_internal.html", "", meta_l4, note_l4, l4_svg)
+render_page(PAGE_L4, "Clickra Architecture — L4 模組內部", "Clickra — L4 模組內部", PAGE_L4, "", meta_l4, note_l4, l4_svg)
 print("l4 ok")
 
 
