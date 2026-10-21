@@ -409,11 +409,11 @@ L2_CARDS = [k for k in CARDS if k.startswith(("a_", "u_"))]
 L2_SCOPE: list[str] = ["Clickra.Core/Application/*", "Clickra.Core/Modules/*/Application/*"]   # every file here must sit in an L2 card
 
 
-def _match(path, pat):
+def _match(file_path, pat):
     """Match file path against glob pattern."""
     if "**" in pat:
-        return fnmatch.fnmatch(path, pat.replace("/**", "/*")) or fnmatch.fnmatch(path, pat.replace("**", "*"))
-    return fnmatch.fnmatch(path, pat) and path.count("/") == pat.count("/")
+        return fnmatch.fnmatch(file_path, pat.replace("/**", "/*")) or fnmatch.fnmatch(file_path, pat.replace("**", "*"))
+    return fnmatch.fnmatch(file_path, pat) and file_path.count("/") == pat.count("/")
 
 
 def assign(paths):
@@ -478,7 +478,7 @@ for _i, (_mid, _m_title, _m_cls_lines, _m_where) in enumerate(MODELS_DEF):
 # ======================= L1: data / catalogs =======================
 band(1372, 0, "資料／目錄（不持有狀態，供畫面狀態與畫面直接取用）")
 DY, DH = 1394, 78
-DATA: dict[str, tuple[str, str, list[str], str]] = {}
+DATA: dict[str, tuple[float, float, float, float]] = {}
 for did, under, _d_title, _d_lines, _d_where in [
     ("d_feed", "m_hist", "歷史顯示清單", ["HistoryFeed.cs"], "Modules/HistoryTasks"),
     ("d_set", "m_set", "設定目錄", ["SettingDescriptor.cs"], "Modules/Settings"),
@@ -491,7 +491,7 @@ for did, under, _d_title, _d_lines, _d_where in [
 
 # screen -> controller / data wiring, straight from the code graph
 USES = {s: [t for t in [m[0] for m in MODELS_DEF] + ["d_feed", "d_set"] if l1_link(s, t)] for s in ("ndash", "nprog", "fmain", "fprog")}
-SCREEN_BOX: dict[str, str] = {"ndash": ndash, "nprog": nprog, "fmain": fmain, "fprog": fprog}
+SCREEN_BOX: dict[str, tuple[float, float, float, float]] = {"ndash": ndash, "nprog": nprog, "fmain": fmain, "fprog": fprog}
 LANE: dict[str, int] = {"fmain": 1108, "fprog": 1126, "ndash": 1144, "nprog": 1162}
 COLOR: dict[str, str] = {"ndash": "#05603a", "nprog": "#0e9384", "fmain": "#98a2b3", "fprog": "#98a2b3"}
 ORDER: list[str] = ["fmain", "fprog", "ndash", "nprog"]
@@ -556,7 +556,8 @@ PLANNED: list[tuple[str, str]] = [("m_ws", "a_cmd"), ("m_exec", "a_uc"), ("m_spl
            ("m_set", "a_off"), ("nprog", "a_pages"), ("fprog", "a_pages"), ("m_split", "s_proc"), ("a_uc", "UC"), ("UC", "a_life"),
            ("a_cmd", "s_shared"), ("UC", "s_proc"), ("a_pages", "s_proc"), ("a_hist", "s_store"), ("a_life", "s_store"),
            ("a_set", "s_store"), ("a_off", "s_office")]
-DRAWN, STALE = [], []
+DRAWN: list[tuple[str, str]] = []
+STALE: list[tuple[str, str]] = []
 
 
 def link(src, dst):
