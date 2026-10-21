@@ -1073,7 +1073,7 @@ path([(col_pos(7) + 16, ST_BOTTOM), (col_pos(7) + 16, EY - 26), (NETC + 24, EY -
 # ---- cross-cutting support (no lines: used almost everywhere; callers listed as text)
 XY = EY + EH + 46
 band(XY - 10, 0, "橫切支援（到處都在用，不畫線；呼叫者寫在「被：」）")
-L3_CROSS: list[tuple[str, str, float]] = [
+L3_CROSS: list[tuple[Any, ...]] = [
     ("x_loc", 0, 1, "在地化", "Core/Localization/", ["Localization.*.cs（5 檔）", "  （主檔）・.General・.Cli", "  .Fluent", "  .DocumentProcessing", "ChineseTextConverter", "  .*.cs（主檔・.Pairs）"],
      ["被：CLI、Fluent、處理器、用例"]),
     ("x_font", 1, 1, "字型", "Core/Fonts/", wrap(["ClickraFontResolver.cs"], 22), ["被：ClickraStartup、", "Markdown／壓縮／翻譯處理器", "外部：PDFsharp.Fonts"]),
@@ -1272,9 +1272,9 @@ def draw_translation_section(yy):
 MAG, MAG_FILL, MAG_SOFT = "#c11574", "#fdf2fa", "#f670c7"
 L4_TOP = L3_TOP + L3H + 34
 CH_W, NODE_H, GAP_X, PAD = 6.0, 36, 18, 18
-PORT, LANE, GAP_PAD = 16, 8, 14
+PORT, LANE_H, GAP_PAD = 16, 8, 14
 GROUP_MAX_W = 1000
-P_STYLE: dict[str, tuple[str, str]] = {
+P_STYLE: dict[str, Any] = {
     "col": MAG,
     "fill": MAG_FILL,
     "soft": MAG_SOFT,
@@ -1386,10 +1386,10 @@ def _layout_once(data, minr):
         if len(c) == 1:
             size[i] = node_box(c[0], data["nodes"][c[0]])
         else:
-            boxes = [node_box(n, data["nodes"][n]) for n in c]
-            cw = max(b[0] for b in boxes)
+            node_boxes = [node_box(n, data["nodes"][n]) for n in c]
+            cw = max(b[0] for b in node_boxes)
             cols = max(1, min(len(c), int((GROUP_MAX_W - 24 + 12) // (cw + 12))))
-            rows_ = [boxes[r:r + cols] for r in range(0, len(boxes), cols)]
+            rows_ = [node_boxes[r:r + cols] for r in range(0, len(node_boxes), cols)]
             gh = sum(max(b[1] for b in r) for r in rows_) + 10 * (len(rows_) - 1)
             size[i] = (cols * cw + (cols - 1) * 12 + 24, gh + 40)
             grid[i] = (cols, cw)
@@ -1492,7 +1492,7 @@ def draw_panel(pid, lo, x, y, w, title, sub, foot):
         for i in order[r]:
             pos[i] = (xs[i], cy, size[i][0], size[i][1])
         row_top[r] = cy
-        cy += lo["rowh"][r] + 2 * GAP_PAD + LANE * max(nlane[r] - 1, 0)
+        cy += lo["rowh"][r] + 2 * GAP_PAD + LANE_H * max(nlane[r] - 1, 0)
     ph = cy - y - 10 + 15 * len(foot) + 8
     A(f'<g class="{_un("node")}" data-id="{pid}" data-search="{e((title + " " + sub).lower())}"><rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{ph:.1f}" rx="12" fill="{P_STYLE["fill"]}" stroke="{P_STYLE["col"]}" stroke-width="1.6"{_dash("8 5")}/>'
       f'<text x="{x + 14:.1f}" y="{y + 22:.1f}" font-size="13.5" font-weight="700" fill="#101828">{e(title)}</text>'
@@ -1506,12 +1506,12 @@ def draw_panel(pid, lo, x, y, w, title, sub, foot):
             p, q = ch[k], ch[k + 1]
             x1, x2 = outp[p][q], inp[q][p]
             r = rank[p]
-            ym = row_top[r] + lo["rowh"][r] + GAP_PAD + LANE * lane_of.get((p, q), 0)
+            ym = row_top[r] + lo["rowh"][r] + GAP_PAD + LANE_H * lane_of.get((p, q), 0)
             pts += [(x1, ym), (x2, ym), (x2, row_top[rank[q]] + (lo["rowh"][rank[q]] if isinstance(q, tuple) else 0))]
         clean = [pts[0]]
-        for pt in pts[1:]:
-            if abs(pt[0] - clean[-1][0]) > 0.1 or abs(pt[1] - clean[-1][1]) > 0.1:
-                clean.append(pt)
+        for _pt in pts[1:]:
+            if abs(_pt[0] - clean[-1][0]) > 0.1 or abs(_pt[1] - clean[-1][1]) > 0.1:
+                clean.append(_pt)
         src = comps[a][0] if len(comps[a]) == 1 else f"{pid}_loop{a}"
         dst = comps[b][0] if len(comps[b]) == 1 else f"{pid}_loop{b}"
         path(clean, src=f"{pid}:{src}", dst=f"{pid}:{dst}", color=P_STYLE["soft"], width=1.2, dashed=P_STYLE["un"], cls=_un())
@@ -1527,10 +1527,10 @@ def draw_panel(pid, lo, x, y, w, title, sub, foot):
         A(f'<g class="{_un("node")}" data-id="{pid}:{pid}_loop{i}" data-search="互相引用 {e(" ".join(c).lower())}"><rect x="{px:.1f}" y="{py:.1f}" width="{pw:.1f}" height="{ph_:.1f}" rx="10" fill="#fef3f2" stroke="#d92d20" stroke-width="1.4" stroke-dasharray="6 4"/>'
           f'<text x="{px + 12:.1f}" y="{py + 21:.1f}" font-size="11" font-weight="700" fill="#b42318">⚠ 互相引用（{len(c)} 個，彼此有循環）</text></g>')
         cols, cw = lo["grid"][i]
-        boxes = [(n, node_box(n, data["nodes"][n])) for n in c]
+        node_boxes = [(n, node_box(n, data["nodes"][n])) for n in c]
         yy_ = py + 32
-        for r0 in range(0, len(boxes), cols):
-            row = boxes[r0:r0 + cols]
+        for r0 in range(0, len(node_boxes), cols):
+            row = node_boxes[r0:r0 + cols]
             rh = max(b[1][1] for b in row)
             for j, (n, _) in enumerate(row):
                 draw_node(pid, n, data["nodes"][n], px + 12 + j * (cw + 12), yy_, cw, rh)
@@ -1602,7 +1602,7 @@ PANEL_INFO: dict[str, tuple[str, str, str]] = {  # key: (title, folder line, sho
 }
 if not (set(PANEL.values()) <= set(PANEL_INFO)):
     raise RuntimeError(f"Unknown panel values: {set(PANEL.values()) - set(PANEL_INFO)}")
-PANEL_NOTES: dict[str, str] = {
+PANEL_NOTES: dict[str, list[str]] = {
     "store": ["⚠ 門面 ClickraStorage 與大部分 Store 互相引用（待辦 E7）"],
 }
 GROUPS: list[tuple[str, list[str]]] = [
@@ -1735,12 +1735,13 @@ with open(os.path.join(svg_dir, "clickra_layers.svg"), "w", encoding="utf-8", ne
 # ---- Generate Overview Dashboard (High-level system topology) ----
 def make_overview_svg():
     """Generate executive overview dashboard SVG."""
-    ov = []
-    ov.append(f'<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Clickra 架構總表" width="{W}" height="980" viewBox="0 0 {W} 980" {F}>')
-    ov.append('<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#475467"/></marker></defs>')
-    ov.append(WHITE_BG)
-    ov.append('<text x="40" y="44" font-size="24" font-weight="700" fill="#101828">Clickra 架構總表（Architecture Overview）</text>')
-    ov.append('<text x="40" y="70" font-size="13" fill="#475467">五層架構全景與分層導覽：由上往下單向依賴。點擊各層方塊可開啟專屬互動式架構地圖。</text>')
+    ov = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Clickra 架構總表" width="{W}" height="980" viewBox="0 0 {W} 980" {F}>',
+        '<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#475467"/></marker></defs>',
+        WHITE_BG,
+        '<text x="40" y="44" font-size="24" font-weight="700" fill="#101828">Clickra 架構總表（Architecture Overview）</text>',
+        '<text x="40" y="70" font-size="13" fill="#475467">五層架構全景與分層導覽：由上往下單向依賴。點擊各層方塊可開啟專屬互動式架構地圖。</text>',
+    ]
     
     # Layer cards specification: (title, sub, href, color, fill, border, y, h, details)
     layers = [
@@ -1801,7 +1802,7 @@ print("overview ok")
 
 
 # ---------------- standalone L1 export ----------------
-STUB: list[tuple[str, str, str, str]] = [
+STUB: list[str] = [
     '<g class="node unshipped" data-id="fluent" data-search="clickra.fluent.exe"><rect x="40" y="756" width="480" height="54" rx="10" fill="#f9fafb" stroke="#98a2b3" stroke-width="1.4" stroke-dasharray="7 5"/>'
     '<text x="54" y="780" font-size="14" font-weight="700" fill="#475467">來自 L0：Clickra.Fluent.exe（保留・目前未發佈）</text>'
     '<text x="54" y="799" font-size="12" fill="#98a2b3">WinUI 3</text></g>',
