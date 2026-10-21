@@ -43,19 +43,23 @@ SRC_FLUENT = "src/Clickra.Fluent/"
 def _count_registered_use_cases() -> int:
     """Dynamically count registered conversion use cases in ConversionUseCases.cs."""
     cs_path = os.path.join(repo_root, "src", "Clickra.Core", "Application", "ConversionUseCases.cs")
-    if os.path.isfile(cs_path):
-        with open(cs_path, encoding="utf-8") as f:
-            return len([m for m in re.findall(r"new\s+(\w+UseCase)\b", f.read()) if not m.startswith("IConversionUseCase")])
-    return 19
-
+    if not os.path.isfile(cs_path):
+        raise FileNotFoundError(f"ConversionUseCases.cs not found at: {cs_path}")
+    with open(cs_path, encoding="utf-8") as f:
+        matches = [m for m in re.findall(r"new\s+(\w+UseCase)\b", f.read()) if not m.startswith("IConversionUseCase")]
+        if not matches:
+            raise ValueError(f"No use cases found in {cs_path}")
+        return len(matches)
 
 def _count_native_layouts() -> int:
-    """Dynamically count native layout files in Clickra.CLI/UI/Layout."""
+    """Dynamically count native layout tables (*Layout.cs) in Clickra.CLI/UI/Layout."""
     layout_dir = os.path.join(repo_root, "src", "Clickra.CLI", "UI", "Layout")
-    if os.path.isdir(layout_dir):
-        return len([f for f in os.listdir(layout_dir) if f.endswith(".cs")])
-    return 9
-
+    if not os.path.isdir(layout_dir):
+        raise FileNotFoundError(f"Layout directory not found at: {layout_dir}")
+    layouts = [f for f in os.listdir(layout_dir) if f.endswith("Layout.cs")]
+    if not layouts:
+        raise ValueError(f"No *Layout.cs files found in {layout_dir}")
+    return len(layouts)
 
 o: list[str] = []
 A = o.append
@@ -154,6 +158,7 @@ def render_page(target_name, title, h1, active_href, controls, meta, note, svg_c
             .replace("__META__", meta)
             .replace("__NOTE__", note)
             .replace("__SVG__", svg_content)
+            .replace("__DATA_SCRIPT__\n", '<script src="layers_data.js"></script>\n' if target_name == PAGE_OVERVIEW else "")
     )
     target_file = os.path.join(docs_arch, os.path.basename(target_name))
     with open(target_file, "w", encoding="utf-8", newline="\n") as fh:
@@ -1907,7 +1912,7 @@ def make_overview_svg():
          "#12b76a", "#f6fef9", "#12b76a", 270, 130,
          ["畫面 Renderer：Native Dashboard（Win32 自繪）、Progress Window、Fluent UI（保留中，未隨套件發佈）",
           "共用控制器：ConvertWorkspace、ConversionExecution、TaskProgress、VisualSplit、History、Settings"]),
-        ("L2・應用（Application Services & 19 Use Cases）", f"{L2_SERVICES} 組應用服務 · {module_count} 個功能模組 · {use_case_count} 個轉換用例目錄", PAGE_L2,
+        (f"L2・應用（Application Services & {use_case_count} Use Cases）", f"{L2_SERVICES} 組應用服務 · {module_count} 個功能模組 · {use_case_count} 個轉換用例目錄", PAGE_L2,
          "#dc6803", "#fffaeb", "#dc6803", 440, 130,
          ["核心服務：ConvertCommandRegistry（指令清單）、ConversionUseCases（用例目錄）、Task Lifecycle（任務生命週期）",
           f"{use_case_count} 個轉換用例：PDF 壓縮／解密／合併／分割／翻譯、圖片轉換與拼貼、Word／PPT／Excel 轉換、Markdown 文件"]),
