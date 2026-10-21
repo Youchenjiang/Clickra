@@ -39,6 +39,24 @@ PAGE_L3 = "l3_infrastructure.html"
 PAGE_L4 = "l4_modules_internal.html"
 SRC_FLUENT = "src/Clickra.Fluent/"
 
+
+def _count_registered_use_cases() -> int:
+    """Dynamically count registered conversion use cases in ConversionUseCases.cs."""
+    cs_path = os.path.join(repo_root, "src", "Clickra.Core", "Application", "ConversionUseCases.cs")
+    if os.path.isfile(cs_path):
+        with open(cs_path, encoding="utf-8") as f:
+            return len([m for m in re.findall(r"new\s+([A-Za-z0-9_]+UseCase)\b", f.read()) if not m.startswith("IConversionUseCase")])
+    return 19
+
+
+def _count_native_layouts() -> int:
+    """Dynamically count native layout files in Clickra.CLI/UI/Layout."""
+    layout_dir = os.path.join(repo_root, "src", "Clickra.CLI", "UI", "Layout")
+    if os.path.isdir(layout_dir):
+        return len([f for f in os.listdir(layout_dir) if f.endswith(".cs")])
+    return 9
+
+
 o: list[str] = []
 A = o.append
 A(f'<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Clickra 架構圖" width="{W}" height="{H}" viewBox="0 0 {W} {H}" {F}>')
@@ -838,7 +856,7 @@ L2_SERVICES = 6
 # ---- conversion use cases (cols 0-3)
 UCX0, UCX1 = col_pos(0), col_pos(3) + MW
 R2 = R1Y + H1 + 40
-A(f'<text x="{UCX0}" y="{R2}" font-size="12.5" font-weight="700" fill="#667085" letter-spacing=".5">轉換用例（ConversionUseCases 登記的 19 個指令）</text>')
+A(f'<text x="{UCX0}" y="{R2}" font-size="12.5" font-weight="700" fill="#667085" letter-spacing=".5">轉換用例（ConversionUseCases 登記的 {_count_registered_use_cases()} 個指令）</text>')
 BASEY = R2 + 16
 base = l2card("a_base", (UCX0, BASEY, UCX1 - UCX0, 88), "共用執行基底　Core/Application/",
               [], "", ["ConversionUseCaseBase.cs（所有用例的父類別）",
@@ -1871,27 +1889,33 @@ def make_overview_svg():
     ]
     
     # Layer cards specification: (title, sub, href, color, fill, border, y, h, details)
+    use_case_count = _count_registered_use_cases()
+    module_count = len(MOD_ORDER)
+    layout_count = _count_native_layouts()
+    proc_count = len(PROC)
+    dsm_pipeline_folders = len([f for f in set(tr_folder(n) for n in NODES if n.startswith(TR)) if f.startswith("Pipeline/") and f != "Pipeline/"])
+
     layers = [
         ("L0・入口（OS Entry Points & Handoffs）", "4 種使用者觸發方式 · 4 個進入點執行檔 · Win11 整合", PAGE_L0,
          "#2e90fa", "#f5faff", "#2e90fa", 100, 130,
          ["Win11 檔案總管右鍵選單、開始功能表「Clickra」捷徑、檔案類型關聯（.pdf .docx 等 14 種）、CLI 終端機指令",
           "進入點：ClickraShell（COM 選單）、ClickraLauncher（MSIX 啟動）、Clickra.CLI（NativeAOT 主程式）、Clickra.Fluent（WinUI 3）"]),
-        ("L1・畫面（Presentation & Shared State Controllers）", f"{SCREENS} 個畫面 · {MODELS} 個共用畫面狀態 · 9 個 Native 版面表", PAGE_L1,
+        ("L1・畫面（Presentation & Shared State Controllers）", f"{SCREENS} 個畫面 · {MODELS} 個共用畫面狀態 · {layout_count} 個 Native 版面表", PAGE_L1,
          "#12b76a", "#f6fef9", "#12b76a", 270, 130,
          ["畫面 Renderer：Native Dashboard（Win32 自繪）、Progress Window、Fluent UI（保留中，未隨套件發佈）",
           "共用控制器：ConvertWorkspace、ConversionExecution、TaskProgress、VisualSplit、History、Settings"]),
-        ("L2・應用（Application Services & 19 Use Cases）", f"{L2_SERVICES} 組應用服務 · 8 個功能模組 · 19 個轉換用例目錄", PAGE_L2,
+        ("L2・應用（Application Services & 19 Use Cases）", f"{L2_SERVICES} 組應用服務 · {module_count} 個功能模組 · {use_case_count} 個轉換用例目錄", PAGE_L2,
          "#dc6803", "#fffaeb", "#dc6803", 440, 130,
          ["核心服務：ConvertCommandRegistry（指令清單）、ConversionUseCases（用例目錄）、Task Lifecycle（任務生命週期）",
-          "19 個轉換用例：PDF 壓縮／解密／合併／分割／翻譯、圖片轉換與拼貼、Word／PPT／Excel 轉換、Markdown 文件"]),
-        ("L3・基礎（Infrastructure, Storage & Engines）", "8 個模組處理器 · 儲存門面 · Office 引擎 · 6 組橫切支援", PAGE_L3,
+          f"{use_case_count} 個轉換用例：PDF 壓縮／解密／合併／分割／翻譯、圖片轉換與拼貼、Word／PPT／Excel 轉換、Markdown 文件"]),
+        ("L3・基礎（Infrastructure, Storage & Engines）", f"{proc_count} 個模組處理器 · 儲存門面 · Office 引擎 · 6 組橫切支援", PAGE_L3,
          "#7a5af8", "#f9f5ff", "#7a5af8", 610, 130,
          ["處理器與引擎：SingleFileProcessorBase、MultiFileProcessorBase、ClickraStorage 門面、LibreOffice/Office 偵測與叫用",
-          "外部依賴：PDFsharp 6.2.4、PdfPig 0.1.14、Imazen.WebP、System.Drawing、Markdig、PowerShellHelper"]),
+          "外部依賴：PDFsharp 6.2.4、PdfPig 0.1.14、Imazen.WebP、System.Drawing、Markdig、Windows WIC"]),
         ("L4・模組內部（Modules Internal File Graphs & Cycles）", f"全部 {len(AF)} 個 C# 原始碼檔案 · {len(PANEL_INFO)} 個面板 · 循環依賴分析", PAGE_L4,
-         "#d444cf", "#fdf2fa", "#d444cf", 780, 130,
+         "#c11574", "#fdf2fa", "#c11574", 780, 130,
          ["模組內部結構：src/ 所有 .cs 檔的語意引用圖（Roslyn MSBuild 分析）、強連通分量（SCC）循環偵測",
-          "翻譯管線 DSM 矩陣：9 個資料夾引用關係、回頭引用分析與架構邊界修復追蹤（E6/E8）"])
+          f"翻譯管線 DSM 矩陣：{dsm_pipeline_folders} 個資料夾引用關係、回頭引用分析與架構邊界修復追蹤（E6/E8）"])
     ]
     
     for title, sub, href, col, fill, border, y, h, details in layers:
@@ -1921,9 +1945,9 @@ def make_overview_svg():
 
 meta_overview = (
     f"L0：4 種使用者動作 · 4 個執行檔　"
-    f"L1：{SCREENS} 個畫面 · {MODELS} 個共用畫面狀態 · 9 個 Native 版面表　"
-    f"L2：{L2_SERVICES} 組應用服務 · 19 個轉換指令　"
-    f"L3：8 個模組處理器 · 儲存 · Office 引擎 · 6 組橫切支援　"
+    f"L1：{SCREENS} 個畫面 · {MODELS} 個共用畫面狀態 · {_count_native_layouts()} 個 Native 版面表　"
+    f"L2：{L2_SERVICES} 組應用服務 · {_count_registered_use_cases()} 個轉換指令　"
+    f"L3：{len(PROC)} 個模組處理器 · 儲存 · Office 引擎 · 6 組橫切支援　"
     f"L4：全部 {len(AF)} 個檔的引用（{len(INNER) + len(CROSS)} 條）"
 )
 note_overview = "L0 入口 → L1 畫面 → L2 應用 → L3 基礎 → L4 模組內部。點擊方塊進入該層專屬詳細地圖。"
@@ -1948,7 +1972,7 @@ l1_svg = "\n".join(l1_parts).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'he
 with open(os.path.join(svg_dir, "l1_presentation.svg"), "w", encoding="utf-8", newline="\n") as _svg_fh:
     _svg_fh.write(l1_svg.replace(WHITE_BG, f'<rect x="0" y="{Y0}" width="{W}" height="{L1H - Y0}" fill="#fff"/>'))
 ctrl_l1 = '<button id="unBtn">隱藏未發佈（Fluent）</button>'
-meta_l1 = f"{SCREENS} 個畫面 · {MODELS} 個共用畫面狀態 · 2 個資料目錄 · 9 個 Native 版面表（Clickra.CLI）"
+meta_l1 = f"{SCREENS} 個畫面 · {MODELS} 個共用畫面狀態 · 2 個資料目錄 · {_count_native_layouts()} 個 Native 版面表（Clickra.CLI）"
 note_l1 = "上排是畫面（Renderer），下排是 Native 與 Fluent 共用的畫面模型。點方塊可標出它的所有連線。"
 render_page(PAGE_L1, "Clickra Architecture — L1 畫面", "Clickra — L1 畫面", PAGE_L1, ctrl_l1, meta_l1, note_l1, l1_svg)
 print("l1 ok")
@@ -1993,7 +2017,7 @@ L2V1 = L2_TOP + L2H + 50
 l2_svg = "\n".join(l2_parts).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{L2V1 - L2V0}" viewBox="0 {L2V0} {W} {L2V1 - L2V0}"', 1)
 with open(os.path.join(svg_dir, "l2_application.svg"), "w", encoding="utf-8", newline="\n") as _svg_fh:
     _svg_fh.write(l2_svg.replace(WHITE_BG, f'<rect x="0" y="{L2V0}" width="{W}" height="{L2V1 - L2V0}" fill="#fff"/>'))
-meta_l2 = f"{L2_SERVICES} 組應用服務 · 8 個模組 · 19 個轉換指令 · 3 個往 L3 的出口"
+meta_l2 = f"{L2_SERVICES} 組應用服務 · {len(MOD_ORDER)} 個模組 · {_count_registered_use_cases()} 個轉換指令 · 3 個往 L3 的出口"
 note_l2 = "上排是應用服務（與 L1 共用畫面狀態同一欄），左下是各模組轉換用例，最底是往 L3 的出口。"
 render_page(PAGE_L2, "Clickra Architecture — L2 應用", "Clickra — L2 應用", PAGE_L2, "", meta_l2, note_l2, l2_svg)
 print("l2 ok")
@@ -2005,7 +2029,8 @@ l3_parts = o[:TITLE_AT] + [G_OPEN] + L3_CHIPS + o[L3_AT:L3_END] + [FOOT_L3, "</g
 l3_svg = "\n".join(l3_parts).replace(f'height="{H}" viewBox="0 0 {W} {H}"', f'height="{L3V1 - L3V0}" viewBox="0 {L3V0} {W} {L3V1 - L3V0}"', 1)
 with open(os.path.join(svg_dir, "l3_infrastructure.svg"), "w", encoding="utf-8", newline="\n") as _svg_fh:
     _svg_fh.write(l3_svg.replace(WHITE_BG, f'<rect x="0" y="{L3V0}" width="{W}" height="{L3V1 - L3V0}" fill="#fff"/>'))
-meta_l3 = "8 個模組處理器 · 儲存 15 檔 · Office 引擎 4 檔 · 6 組橫切支援 · 8 項外部依賴"
+_off_inf_count = len([p for p in AF if p.startswith("Clickra.Core/Modules/Office/Infrastructure/")])
+meta_l3 = f"{len(PROC)} 個模組處理器 · 儲存 {len(_st)} 檔 · Office 引擎 {_off_inf_count} 檔 · 6 組橫切支援 · {len(EXT_DEF) + 3} 項外部依賴"
 note_l3 = "上排是處理器、儲存與 Office 引擎（與 L2 出口同一欄），中排是橫切支援，最底是外部依賴。"
 render_page(PAGE_L3, "Clickra Architecture — L3 基礎", "Clickra — L3 基礎", PAGE_L3, "", meta_l3, note_l3, l3_svg)
 print("l3 ok")
