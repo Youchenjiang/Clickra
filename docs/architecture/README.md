@@ -81,7 +81,7 @@ powershell -ExecutionPolicy Bypass -File scripts\architecture\update_architectur
 | 層級 (Layer) | 產生器自動推導 (Automated) | 人工設計與佈局 (Manual Design) |
 |---|---|---|
 | **L4** | 節點、檔案行數、呼叫／被呼叫引用關係、循環依賴群組 (SCC)、資料夾分組卡片 | 無需人工介入 (100% Roslyn 推導) |
-| **L1, L2** | 卡片內檔案列表、連線存在性驗證、"also called by" 外部呼叫註記 | 新卡片定義：在 `cards.py` 增加方塊；在 `generate_layers.py` / `l2_block.py` 安排擺放位置 |
+| **L1, L2** | 卡片內檔案列表、連線存在性驗證、"also called by" 外部呼叫註記 | 新卡片定義：在 `generate_layers.py` 內的 `CARDS`、`MOD_ORDER`、`PANEL_INFO` 增加方塊並安排擺放位置 |
 | **L3** | 各處理器、Office 引擎與儲存層之內部檔案列表 | 處理器方塊版面擺放 |
 | **L0** | — (由入口門面手繪拓撲) | 手繪拓撲；下方 `names ok` 檢查仍涵蓋所有型別與檔案存在性 |
 | **已知問題連線** | 程式碼修復解耦後，`problem_link` 自動消失 | — |
@@ -90,5 +90,5 @@ powershell -ExecutionPolicy Bypass -File scripts\architecture\update_architectur
 
 執行 `update_architecture_diagrams.ps1` 時，產生器會進行以下靜態驗證：
 - `names ok`：若 L0–L3 卡片上列出的任何型別或檔案在 `src/` 中已不存在或改名，會立即印出警示清單。
-- **卡片覆蓋率**：若 `src/Clickra.Core/Presentation` 或 `Application` 中有任何新增檔案未被收錄至 `cards.py`，會直接拋出錯誤中斷。
+- **卡片覆蓋率**：若 `src/Clickra.Core/Presentation` 或 `Application` 中有任何新增檔案未被收錄至 `generate_layers.py` 內的 `CARDS`，會直接拋出錯誤中斷。
 - **廢棄連線檢查**：若圖面上規劃的箭頭在實際程式碼中已無依賴關係，會主動提示移除。

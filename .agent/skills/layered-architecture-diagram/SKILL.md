@@ -144,34 +144,29 @@ description: "從實際程式碼逐層畫出可互動的架構圖（L0 入口→
 
 ---
 
-## 6. 產生器結構（可重跑、可維護）
+## 6. 產生器結構（單一檔案、可重跑、可維護）
 
 ```
-Claude outputs/
-├─ README.md                 ← 每個檔案是什麼（表格）
-├─ 架構圖/
-│   ├─ 總表.html              ← 所有層一起
-│   ├─ L0_入口.html … L4_模組內部.html
-├─ 待辦問題清單.md
-├─ _產生器/
-│   ├─ layers.py             ← 主程式：共用繪圖函式、L0、L1、各視圖匯出
-│   ├─ l2_block.py           ← 每層一個 block 檔，依序 exec（l2 → l3 → l4）
-│   ├─ l3_block.py
-│   ├─ l4_block.py           ← 自動版面
-│   ├─ l4.json ＋ 掃描腳本    ← L4 資料（在使用者電腦上產生）
-│   ├─ files_map.py
-│   ├─ *_template.html       ← 頁面範本（__SVG__／__META__ 佔位）
-│   └─ svg/                  ← 同內容純 SVG
-└─ _舊版（可刪）/             ← 被取代的東西搬進來，不要亂丟在根目錄
+docs/architecture/
+├── README.md                          ← 單一入口與閱讀導覽
+├── spec/                              ← 規格、架構約定與技術債待辦清單
+└── diagrams/                          ← 互動式架構圖與向量圖匯出
+    ├── overview.html                  ← 總表（模組化＋跨層互動全景）
+    ├── l0_entry_points.html …         ← L0 至 L4 專屬互動地圖
+    ├── viewer.css / viewer.js         ← 高亮追蹤、搜尋、層級過濾引擎
+    └── svg/                           ← 原生高解析度 SVG 向量圖檔
+
+scripts/architecture/
+├── generate_layers.py                 ← 核心產生器：整合繪圖、拓撲排版、靜態檢查與各視圖匯出
+├── file_lines.py                      ← 原始碼行數統計
+├── template.html                      ← HTML 容器範本
+└── update_architecture_diagrams.ps1   ← 一鍵重新產生腳本（Roslyn 語意分析 ➔ 產圖 ➔ 驗證）
 ```
 
-- 用 Python 產 SVG 字串清單 `o`，記錄每層在 `o` 裡的起訖索引（`L1_AT`、`L1_END`、`L2_AT`…），單層圖用切片＋該層替身＋頁尾組合；總表用全部。
-- 每層包在 `<g transform="translate(0, 該層頂端)">`，外層再一個 `translate(左側標題欄寬, 0)`；區塊高度在內容畫完後才知道時，先記住外框在 `o` 中的位置，畫完再插入；總高 `H` 最後回填 `o[0]`。切片時注意 `<g>` 開關要成對（產生後用 `xml.dom.minidom.parse` 驗證每個 svg）。
-- `path(points, …, color, dashed, arrow=True)`：A 段用 `arrow=False`。
-- 方塊函式內 assert 文字最後一行不超過方塊高度；區塊總高度也 assert，超過就調整常數而不是讓它溢出；`max()` 前先處理空清單。
-- 改圖只改 `_產生器/`，重跑覆寫 `架構圖/`；舊檔名改名時把舊檔搬進 `_舊版（可刪）/` 並更新 README。
-- 刪除檔案需要權限時，改為搬到 `_舊版（可刪）/`，請使用者自己刪。
-- 雲端保留一份來源，改完後把變更的檔案寫回使用者資料夾（只寫有變的檔）。
+- 核心邏輯整合在單一產生器 `generate_layers.py`，卡片定義於 `CARDS`、模組順序於 `MOD_ORDER`、面板於 `PANEL_INFO`，不再分散於多個 block 檔案。
+- 繪圖產出 SVG 字串清單 `o`，記錄每層起訖索引（`L1_AT`、`L1_END`、`L2_AT`…），單層圖用切片＋該層替身＋頁尾組合；總表支援模組化折疊與跨層高亮。
+- 方塊函式內 assert 文字最後一行不超過方塊高度；區塊總高度也 assert，超過就調整常數而不是讓它溢出。
+- 改圖統一在 `scripts/architecture/generate_layers.py` 維護，重跑 `update_architecture_diagrams.ps1` 即自動更新 HTML 與 SVG。
 
 ---
 
