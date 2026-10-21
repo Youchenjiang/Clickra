@@ -134,13 +134,13 @@
 <path d="M760.0,712.0 L520.0,712.0" fill="none" stroke="#98a2b3" stroke-width="1.4" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#m)"/>
 <text x="640" y="705" font-size="12" fill="#98a2b3" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="5">無參數：找 Fluent（目前找不到）</text>
 </g>
-<rect x="20" y="90" width="1440" height="736" rx="12" fill="#2e90fa" fill-opacity=".035"/>
+<rect id="sec-l0" class="layer-section" data-layer="l0" x="20" y="90" width="1440" height="736" rx="12" fill="#2e90fa" fill-opacity=".035"/>
 <line x1="20" y1="96" x2="20" y2="820" stroke="#2e90fa" stroke-width="3" stroke-linecap="round"/>
 <text x="-52" y="124" font-size="30" font-weight="800" fill="#2e90fa">L0</text>
 <text x="-52" y="148" font-size="15" font-weight="700" fill="#101828">入口</text>
 <text x="-52" y="166" font-size="10.5" fill="#98a2b3">Entry</text>
 <g transform="translate(0,120)">
-<rect x="20" y="740" width="1440" height="758" rx="12" fill="#12b76a" fill-opacity=".035"/>
+<rect id="sec-l1" class="layer-section" data-layer="l1" x="20" y="740" width="1440" height="758" rx="12" fill="#12b76a" fill-opacity=".035"/>
 <line x1="20" y1="746" x2="20" y2="1492" stroke="#12b76a" stroke-width="3" stroke-linecap="round"/>
 <text x="-52" y="774" font-size="30" font-weight="800" fill="#12b76a">L1</text>
 <text x="-52" y="798" font-size="15" font-weight="700" fill="#101828">畫面</text>
@@ -462,7 +462,7 @@
 <path d="M1262.2,1417.0 L1362.1,1417.0 L1362.1,1646.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round"/>
 </g>
 <g transform="translate(0,1652)">
-<rect x="20" y="0" width="1440" height="1026" rx="12" fill="#dc6803" fill-opacity=".035"/>
+<rect id="sec-l2" class="layer-section" data-layer="l2" x="20" y="0" width="1440" height="1026" rx="12" fill="#dc6803" fill-opacity=".035"/>
 <line x1="20" y1="6" x2="20" y2="1020" stroke="#dc6803" stroke-width="3" stroke-linecap="round"/>
 <text x="-52" y="34" font-size="30" font-weight="800" fill="#dc6803">L2</text>
 <text x="-52" y="58" font-size="15" font-weight="700" fill="#101828">應用</text>
@@ -759,7 +759,7 @@
 <path d="M1362.1,2571.0 L1362.1,2706.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round"/>
 </g>
 <g transform="translate(0,2712)">
-<rect x="20" y="0" width="1440" height="1079" rx="12" fill="#7a5af8" fill-opacity=".035"/>
+<rect id="sec-l3" class="layer-section" data-layer="l3" x="20" y="0" width="1440" height="1079" rx="12" fill="#7a5af8" fill-opacity=".035"/>
 <line x1="20" y1="6" x2="20" y2="1073" stroke="#7a5af8" stroke-width="3" stroke-linecap="round"/>
 <text x="-52" y="34" font-size="30" font-weight="800" fill="#7a5af8">L3</text>
 <text x="-52" y="58" font-size="15" font-weight="700" fill="#101828">基礎</text>
@@ -1072,7 +1072,7 @@
 </g>
 </g>
 <g transform="translate(0,3825)">
-<rect x="20" y="0" width="1440" height="18445" rx="12" fill="#c11574" fill-opacity=".035"/>
+<rect id="sec-l4" class="layer-section" data-layer="l4" x="20" y="0" width="1440" height="18445" rx="12" fill="#c11574" fill-opacity=".035"/>
 <line x1="20" y1="6" x2="20" y2="18439" stroke="#c11574" stroke-width="3" stroke-linecap="round"/>
 <text x="-52" y="34" font-size="30" font-weight="800" fill="#c11574">L4</text>
 <text x="-52" y="58" font-size="15" font-weight="700" fill="#101828">模組內部</text>

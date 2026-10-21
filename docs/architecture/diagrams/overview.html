@@ -18,77 +18,25 @@
 <a href="l3_infrastructure.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #bfc6d1;color:#111827;background:#fff;">L3 基礎</a>
 <a href="l4_modules_internal.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #bfc6d1;color:#111827;background:#fff;">L4 模組內部</a>
 </nav>
-
+<button class="layer-jump on" data-layer="all">全部層級</button>
+<button class="layer-jump" data-layer="l0">L0 入口</button>
+<button class="layer-jump" data-layer="l1">L1 畫面</button>
+<button class="layer-jump" data-layer="l2">L2 應用</button>
+<button class="layer-jump" data-layer="l3">L3 基礎</button>
+<button class="layer-jump" data-layer="l4">L4 模組</button>
+<button id="traceBtn" class="var" title="切換端到端全路徑追蹤">跨層連鎖追蹤</button>
+<button id="unBtn">隱藏未發佈（Fluent）</button>
 <input id="q" type="text" placeholder="搜尋類別、檔案或指令..." aria-label="搜尋類別、檔案或指令">
 <button id="themeBtn" title="切換深色／淺色">深色</button>
 <button id="resetBtn">Reset</button>
 <button id="infoBtn" title="顯示統計與說明">說明</button>
 </div>
-<div class="infobox" id="infoBox" hidden><span class="meta">L0：4 種使用者動作 · 4 個執行檔　L1：4 個畫面 · 7 個共用畫面狀態 · 9 個 Native 版面表　L2：6 組應用服務 · 19 個轉換指令　L3：8 個模組處理器 · 儲存 · Office 引擎 · 6 組橫切支援　L4：全部 273 個檔的引用（847 條）</span> <span class="note">L0 入口 → L1 畫面 → L2 應用 → L3 基礎 → L4 模組內部。點擊方塊進入該層專屬詳細地圖。</span></div>
+<div class="infobox" id="infoBox" hidden><span class="meta">L0：4 種使用者動作 · 4 個執行檔　L1：4 個畫面 · 7 個共用畫面狀態 · 6 個 Native 版面表　L2：6 組應用服務 · 19 個轉換指令　L3：8 個模組處理器 · 儲存 · Office 引擎 · 6 組橫切支援　L4：全部 273 個檔的引用（847 條）</span> <span class="note">L0 入口 → L1 畫面 → L2 應用 → L3 基礎 → L4 模組內部。由上往下單向依賴。點擊方塊可高亮連線；支援跨層連鎖追蹤與層級切換。</span></div>
 </header>
 <div id="view">
-<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Clickra 架構總表" width="1556" height="980" viewBox="0 0 1556 980" font-family="Microsoft JhengHei UI,Microsoft JhengHei,Noto Sans CJK TC,Segoe UI,Arial,sans-serif">
-<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#475467"/></marker></defs>
-<rect width="100%" height="100%" fill="#fff"/>
-<text x="40" y="44" font-size="24" font-weight="700" fill="#101828">Clickra 架構總表（Architecture Overview）</text>
-<text x="40" y="70" font-size="13" fill="#475467">五層架構全景與分層導覽：由上往下單向依賴。點擊各層方塊可開啟專屬互動式架構地圖。</text>
-<g class="node" data-id="l0_entry_points.html" onclick="location.href='l0_entry_points.html'" style="cursor:pointer;">
-<rect x="40" y="100" width="1476" height="130" rx="10" fill="#f5faff" stroke="#2e90fa" stroke-width="1.8"/>
-<text x="64" y="132" font-size="16" font-weight="700" fill="#101828">L0・入口（OS Entry Points &amp; Handoffs）</text>
-<text x="64" y="154" font-size="12" font-weight="600" fill="#2e90fa">4 種使用者觸發方式 · 4 個進入點執行檔 · Win11 整合</text>
-<line x1="64" y1="166" x2="1492" y2="166" stroke="#eaecf0"/>
-<text x="64" y="186" font-size="11.5" fill="#475467">Win11 檔案總管右鍵選單、開始功能表「Clickra」捷徑、檔案類型關聯（.pdf .docx 等 14 種）、CLI 終端機指令</text>
-<text x="64" y="206" font-size="11.5" fill="#475467">進入點：ClickraShell（COM 選單）、ClickraLauncher（MSIX 啟動）、Clickra.CLI（NativeAOT 主程式）、Clickra.Fluent（WinUI 3）</text>
-<rect x="1380" y="120" width="112" height="32" rx="6" fill="#101828"/>
-<text x="1436" y="141" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">開啟專屬圖 ➔</text>
-</g>
-<line x1="778" y1="230" x2="778" y2="270" stroke="#475467" stroke-width="2" marker-end="url(#arr)"/>
-<g class="node" data-id="l1_presentation.html" onclick="location.href='l1_presentation.html'" style="cursor:pointer;">
-<rect x="40" y="270" width="1476" height="130" rx="10" fill="#f6fef9" stroke="#12b76a" stroke-width="1.8"/>
-<text x="64" y="302" font-size="16" font-weight="700" fill="#101828">L1・畫面（Presentation &amp; Shared State Controllers）</text>
-<text x="64" y="324" font-size="12" font-weight="600" fill="#12b76a">4 個畫面 · 7 個共用畫面狀態 · 9 個 Native 版面表</text>
-<line x1="64" y1="336" x2="1492" y2="336" stroke="#eaecf0"/>
-<text x="64" y="356" font-size="11.5" fill="#475467">畫面 Renderer：Native Dashboard（Win32 自繪）、Progress Window、Fluent UI（保留中，未隨套件發佈）</text>
-<text x="64" y="376" font-size="11.5" fill="#475467">共用控制器：ConvertWorkspace、ConversionExecution、TaskProgress、VisualSplit、History、Settings</text>
-<rect x="1380" y="290" width="112" height="32" rx="6" fill="#101828"/>
-<text x="1436" y="311" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">開啟專屬圖 ➔</text>
-</g>
-<line x1="778" y1="400" x2="778" y2="440" stroke="#475467" stroke-width="2" marker-end="url(#arr)"/>
-<g class="node" data-id="l2_application.html" onclick="location.href='l2_application.html'" style="cursor:pointer;">
-<rect x="40" y="440" width="1476" height="130" rx="10" fill="#fffaeb" stroke="#dc6803" stroke-width="1.8"/>
-<text x="64" y="472" font-size="16" font-weight="700" fill="#101828">L2・應用（Application Services &amp; 19 Use Cases）</text>
-<text x="64" y="494" font-size="12" font-weight="600" fill="#dc6803">6 組應用服務 · 8 個功能模組 · 19 個轉換用例目錄</text>
-<line x1="64" y1="506" x2="1492" y2="506" stroke="#eaecf0"/>
-<text x="64" y="526" font-size="11.5" fill="#475467">核心服務：ConvertCommandRegistry（指令清單）、ConversionUseCases（用例目錄）、Task Lifecycle（任務生命週期）</text>
-<text x="64" y="546" font-size="11.5" fill="#475467">19 個轉換用例：PDF 壓縮／解密／合併／分割／翻譯、圖片轉換與拼貼、Word／PPT／Excel 轉換、Markdown 文件</text>
-<rect x="1380" y="460" width="112" height="32" rx="6" fill="#101828"/>
-<text x="1436" y="481" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">開啟專屬圖 ➔</text>
-</g>
-<line x1="778" y1="570" x2="778" y2="610" stroke="#475467" stroke-width="2" marker-end="url(#arr)"/>
-<g class="node" data-id="l3_infrastructure.html" onclick="location.href='l3_infrastructure.html'" style="cursor:pointer;">
-<rect x="40" y="610" width="1476" height="130" rx="10" fill="#f9f5ff" stroke="#7a5af8" stroke-width="1.8"/>
-<text x="64" y="642" font-size="16" font-weight="700" fill="#101828">L3・基礎（Infrastructure, Storage &amp; Engines）</text>
-<text x="64" y="664" font-size="12" font-weight="600" fill="#7a5af8">8 個模組處理器 · 儲存門面 · Office 引擎 · 6 組橫切支援</text>
-<line x1="64" y1="676" x2="1492" y2="676" stroke="#eaecf0"/>
-<text x="64" y="696" font-size="11.5" fill="#475467">處理器與引擎：SingleFileProcessorBase、MultiFileProcessorBase、ClickraStorage 門面、LibreOffice/Office 偵測與叫用</text>
-<text x="64" y="716" font-size="11.5" fill="#475467">外部依賴：PDFsharp 6.2.4、PdfPig 0.1.14、Imazen.WebP、System.Drawing、Markdig、PowerShellHelper</text>
-<rect x="1380" y="630" width="112" height="32" rx="6" fill="#101828"/>
-<text x="1436" y="651" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">開啟專屬圖 ➔</text>
-</g>
-<line x1="778" y1="740" x2="778" y2="780" stroke="#475467" stroke-width="2" marker-end="url(#arr)"/>
-<g class="node" data-id="l4_modules_internal.html" onclick="location.href='l4_modules_internal.html'" style="cursor:pointer;">
-<rect x="40" y="780" width="1476" height="130" rx="10" fill="#fdf2fa" stroke="#d444cf" stroke-width="1.8"/>
-<text x="64" y="812" font-size="16" font-weight="700" fill="#101828">L4・模組內部（Modules Internal File Graphs &amp; Cycles）</text>
-<text x="64" y="834" font-size="12" font-weight="600" fill="#d444cf">全部 273 個 C# 原始碼檔案 · 27 個面板 · 循環依賴分析</text>
-<line x1="64" y1="846" x2="1492" y2="846" stroke="#eaecf0"/>
-<text x="64" y="866" font-size="11.5" fill="#475467">模組內部結構：src/ 所有 .cs 檔的語意引用圖（Roslyn MSBuild 分析）、強連通分量（SCC）循環偵測</text>
-<text x="64" y="886" font-size="11.5" fill="#475467">翻譯管線 DSM 矩陣：9 個資料夾引用關係、回頭引用分析與架構邊界修復追蹤（E6/E8）</text>
-<rect x="1380" y="800" width="112" height="32" rx="6" fill="#101828"/>
-<text x="1436" y="821" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">開啟專屬圖 ➔</text>
-</g>
-<text x="40" y="945" font-size="12" fill="#667085">💡 提示：點擊上方各層方塊可進入該層專屬詳細架構圖；若需檢視包含所有細節的完整長條總圖（1556×22330），請開啟 <a href="svg/clickra_layers.svg" target="_blank" style="fill:#2e90fa;font-weight:700;">🖼️ clickra_layers.svg</a>。</text>
-</svg>
+<div id="loading" style="padding:40px;color:#667085;text-align:center;">載入架構總圖...</div>
 </div>
+<script src="layers_data.js"></script>
 <script src="viewer.js"></script>
 </body>
 </html>

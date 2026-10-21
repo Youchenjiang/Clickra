@@ -1,11 +1,22 @@
 (function () {
-  const nodes = Array.from(document.querySelectorAll('.node'));
-  const edges = Array.from(document.querySelectorAll('.edge'));
   const q = document.getElementById('q');
   const view = document.getElementById('view');
+  if (view && (!view.querySelector('svg') || view.querySelector('#loading')) && window.CLICKRA_LAYERS_SVG) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(window.CLICKRA_LAYERS_SVG, 'image/svg+xml');
+    const svgEl = doc.documentElement;
+    if (svgEl?.tagName.toLowerCase() === 'svg') {
+      view.replaceChildren(svgEl);
+    }
+  }
+  const nodes = Array.from(document.querySelectorAll('.node'));
+  const edges = Array.from(document.querySelectorAll('.edge'));
   let variant = 'all';
+  let traceMode = false;
+  let selectedNodeId = null;
 
   function reset() {
+    selectedNodeId = null;
     document.querySelectorAll('.dim,.hot,.sel').forEach((el) => {
       el.classList.remove('dim', 'hot', 'sel');
     });
@@ -20,10 +31,10 @@
   }
 
   function initVariantSelector() {
-    document.querySelectorAll('button.var').forEach((btn) => {
+    document.querySelectorAll('button.var:not(#traceBtn)').forEach((btn) => {
       btn.onclick = () => {
         variant = btn.dataset.v;
-        document.querySelectorAll('button.var').forEach((other) => {
+        document.querySelectorAll('button.var:not(#traceBtn)').forEach((other) => {
           other.classList.toggle('on', other === btn);
         });
         applyVariant();
@@ -35,29 +46,105 @@
     });
   }
 
+  function findConnectedGraph(startId) {
+    const keepNodes = new Set([startId]);
+    const keepEdges = new Set();
+    const maxDepth = 15;
+
+    // Upstream: callers (edges pointing to current frontier)
+    let frontierUp = [startId];
+    let depthUp = 0;
+    while (frontierUp.length > 0 && depthUp < maxDepth) {
+      const next = [];
+      frontierUp.forEach((curr) => {
+        edges.forEach((edge) => {
+          if (edge.classList.contains('off')) {
+            return;
+          }
+          if (edge.dataset.dst === curr && !keepEdges.has(edge)) {
+            keepEdges.add(edge);
+            const s = edge.dataset.src;
+            if (!keepNodes.has(s)) {
+              keepNodes.add(s);
+              next.push(s);
+            }
+          }
+        });
+      });
+      frontierUp = next;
+      depthUp += 1;
+    }
+
+    // Downstream: callees (edges originating from current frontier)
+    let frontierDown = [startId];
+    let depthDown = 0;
+    while (frontierDown.length > 0 && depthDown < maxDepth) {
+      const next = [];
+      frontierDown.forEach((curr) => {
+        edges.forEach((edge) => {
+          if (edge.classList.contains('off')) {
+            return;
+          }
+          if (edge.dataset.src === curr && !keepEdges.has(edge)) {
+            keepEdges.add(edge);
+            const d = edge.dataset.dst;
+            if (!keepNodes.has(d)) {
+              keepNodes.add(d);
+              next.push(d);
+            }
+          }
+        });
+      });
+      frontierDown = next;
+      depthDown += 1;
+    }
+
+    return { keepNodes, keepEdges };
+  }
+
   function focusNode(id) {
     reset();
-    const keep = new Set([id]);
-    edges.forEach((edge) => {
-      if (edge.classList.contains('off')) {
-        return;
-      }
-      if (edge.dataset.src === id || edge.dataset.dst === id) {
-        edge.classList.add('hot');
-        keep.add(edge.dataset.src);
-        keep.add(edge.dataset.dst);
-      } else {
-        edge.classList.add('dim');
-      }
-    });
-    nodes.forEach((node) => {
-      if (!keep.has(node.dataset.id)) {
-        node.classList.add('dim');
-      }
-      if (node.dataset.id === id) {
-        node.classList.add('sel');
-      }
-    });
+    selectedNodeId = id;
+    if (traceMode) {
+      const { keepNodes, keepEdges } = findConnectedGraph(id);
+      edges.forEach((edge) => {
+        if (keepEdges.has(edge)) {
+          edge.classList.add('hot');
+        } else {
+          edge.classList.add('dim');
+        }
+      });
+      nodes.forEach((node) => {
+        if (!keepNodes.has(node.dataset.id)) {
+          node.classList.add('dim');
+        }
+        if (node.dataset.id === id) {
+          node.classList.add('sel');
+        }
+      });
+    } else {
+      const keep = new Set([id]);
+      edges.forEach((edge) => {
+        if (edge.classList.contains('off')) {
+          return;
+        }
+        if (edge.dataset.src === id || edge.dataset.dst === id) {
+          edge.classList.add('hot');
+          keep.add(edge.dataset.src);
+          keep.add(edge.dataset.dst);
+        } else {
+          edge.classList.add('dim');
+        }
+      });
+      nodes.forEach((node) => {
+        if (!keep.has(node.dataset.id)) {
+          node.classList.add('dim');
+        }
+        if (node.dataset.id === id) {
+          node.classList.add('sel');
+        }
+      });
+    }
   }
 
   function initNodeEvents() {
@@ -120,6 +207,44 @@
         reset();
       };
     }
+
+    const traceBtn = document.getElementById('traceBtn');
+    if (traceBtn) {
+      traceBtn.addEventListener('click', () => {
+        traceMode = !traceMode;
+        traceBtn.classList.toggle('on', traceMode);
+        traceBtn.textContent = traceMode ? '跨層連鎖：端到端' : '跨層連鎖追蹤';
+        if (selectedNodeId) {
+          focusNode(selectedNodeId);
+        }
+      });
+    }
+  }
+
+  function initLayerControls() {
+    const layerBtns = Array.from(document.querySelectorAll('.layer-jump'));
+    if (!layerBtns.length) {
+      return;
+    }
+    layerBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const targetLayer = btn.dataset.layer;
+        layerBtns.forEach((b) => b.classList.toggle('on', b === btn));
+        if (targetLayer === 'all') {
+          if (view) {
+            view.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        } else {
+          const targetEl = document.getElementById('sec-' + targetLayer);
+          if (targetEl && view) {
+            const viewRect = view.getBoundingClientRect();
+            const targetRect = targetEl.getBoundingClientRect();
+            const targetY = view.scrollTop + (targetRect.top - viewRect.top);
+            view.scrollTo({ top: Math.max(0, targetY - 20), behavior: 'smooth' });
+          }
+        }
+      });
+    });
   }
 
   function initTheme() {
@@ -202,6 +327,7 @@
   initNodeEvents();
   initSearch();
   initActionButtons();
+  initLayerControls();
   initTheme();
   initZoom();
   initInfoBox();
