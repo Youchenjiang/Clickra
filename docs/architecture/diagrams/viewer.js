@@ -1,8 +1,11 @@
 (function () {
-  const nodes = Array.from(document.querySelectorAll('.node'));
-  const edges = Array.from(document.querySelectorAll('.edge'));
   const q = document.getElementById('q');
   const view = document.getElementById('view');
+  if (view && (!view.querySelector('svg') || view.querySelector('#loading')) && window.CLICKRA_LAYERS_SVG) {
+    view.innerHTML = window.CLICKRA_LAYERS_SVG;
+  }
+  const nodes = Array.from(document.querySelectorAll('.node'));
+  const edges = Array.from(document.querySelectorAll('.edge'));
   let variant = 'all';
   let traceMode = false;
   let selectedNodeId = null;

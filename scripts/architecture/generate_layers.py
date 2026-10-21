@@ -1878,6 +1878,8 @@ H = _H2
 svg_full = "\n".join(o)
 with open(os.path.join(svg_dir, "clickra_layers.svg"), "w", encoding="utf-8", newline="\n") as _svg_fh:
     _svg_fh.write(svg_full)
+with open(os.path.join(docs_arch, "layers_data.js"), "w", encoding="utf-8", newline="\n") as _js_fh:
+    _js_fh.write("window.CLICKRA_LAYERS_SVG = " + json.dumps(svg_full, ensure_ascii=False) + ";\n")
 # ---- Generate Overview Dashboard (High-level system topology) ----
 def make_overview_svg():
     """Generate executive overview dashboard SVG."""
@@ -1962,7 +1964,7 @@ ctrl_overview = (
     '<button id="unBtn">隱藏未發佈（Fluent）</button>'
 )
 note_overview = "L0 入口 → L1 畫面 → L2 應用 → L3 基礎 → L4 模組內部。由上往下單向依賴。點擊方塊可高亮連線；支援跨層連鎖追蹤與層級切換。"
-render_page(PAGE_OVERVIEW, "Clickra Architecture — 總表", "Clickra — 架構總表", PAGE_OVERVIEW, ctrl_overview, meta_overview, note_overview, svg_full)
+render_page(PAGE_OVERVIEW, "Clickra Architecture — 總表", "Clickra — 架構總表", PAGE_OVERVIEW, ctrl_overview, meta_overview, note_overview, '<div id="loading" style="padding:40px;color:#667085;text-align:center;">載入架構總圖...</div>')
 print("overview ok")
 
 
