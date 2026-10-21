@@ -64,6 +64,28 @@ def band(y, _h, label):
 NODE_TEXT: dict[str, str] = {}
 
 
+def _draw_box_files(x, w, fy, files):
+    """Draw file listings within an architecture card node."""
+    A(f'<line x1="{x + 14}" y1="{fy - 4}" x2="{x + w - 14}" y2="{fy - 4}" stroke="#eaecf0"/>')
+    row = 0
+    for f in files:
+        by = fy + 12 + row * 14
+        if isinstance(f, tuple):
+            n, items = f
+            cw = (w - 28) / n
+            rows = (len(items) + n - 1) // n
+            for k, it in enumerate(items):
+                c, r = divmod(k, rows)
+                A(f'<text x="{x + 14 + c * cw:.1f}" y="{by + r * 14}" font-size="10" fill="#344054" {MONO_FONT}>{e(it)}</text>')
+            row += (len(items) + n - 1) // n
+        elif f.endswith(("/", "：")):
+            A(f'<text x="{x + 14}" y="{by}" font-size="9.5" fill="#98a2b3" {MONO_FONT}>{e(f)}</text>')
+            row += 1
+        else:
+            A(f'<text x="{x + 14}" y="{by}" font-size="10" fill="#344054" {MONO_FONT}>{e(f)}</text>')
+            row += 1
+
+
 def box(x, y, w, h, title, lines=(), kind="door", tfs=15, nid=None, cls="", files=(), edge=None):
     """Draw an architecture card node with optional file listings."""
     NODE_TEXT[nid] = title + " " + " ".join(lines)
@@ -80,24 +102,7 @@ def box(x, y, w, h, title, lines=(), kind="door", tfs=15, nid=None, cls="", file
         A(f'<text x="{x + 14}" y="{y + 47 + i * 18}" font-size="12.5" fill="{col}"{fam}>{e(l.strip("`"))}</text>')
     if files:
         fy = y + 47 + len(lines) * 18 - 6
-        A(f'<line x1="{x + 14}" y1="{fy - 4}" x2="{x + w - 14}" y2="{fy - 4}" stroke="#eaecf0"/>')
-        row = 0
-        for f in files:
-            by = fy + 12 + row * 14
-            if isinstance(f, tuple):
-                n, items = f
-                cw = (w - 28) / n
-                rows = (len(items) + n - 1) // n
-                for k, it in enumerate(items):
-                    c, r = divmod(k, rows)
-                    A(f'<text x="{x + 14 + c * cw:.1f}" y="{by + r * 14}" font-size="10" fill="#344054" {MONO_FONT}>{e(it)}</text>')
-                row += (len(items) + n - 1) // n
-            elif f.endswith(("/", "：")):
-                A(f'<text x="{x + 14}" y="{by}" font-size="9.5" fill="#98a2b3" {MONO_FONT}>{e(f)}</text>')
-                row += 1
-            else:
-                A(f'<text x="{x + 14}" y="{by}" font-size="10" fill="#344054" {MONO_FONT}>{e(f)}</text>')
-                row += 1
+        _draw_box_files(x, w, fy, files)
     A('</g>')
     return (x, y, w, h)
 
@@ -1184,6 +1189,20 @@ def _tr_best_order(n5, e5, fo):
     return order, cnt, back
 
 
+def _draw_dsm_cell(cx, cy_, cell, i, j, fa, fb, cnt, backset):
+    """Draw a single cell in the DSM table."""
+    if i == j:
+        A(f'<rect x="{cx}" y="{cy_}" width="{cell}" height="{cell}" fill="#eaecf0" stroke="#fff"/>')
+        return
+    c = cnt.get((fa, fb), 0)
+    if not c:
+        A(f'<rect x="{cx}" y="{cy_}" width="{cell}" height="{cell}" fill="#fcfcfd" stroke="#f2f4f7"/>')
+        return
+    bad = (fa, fb) in backset
+    A(f'<rect x="{cx}" y="{cy_}" width="{cell}" height="{cell}" fill="{"#fee4e2" if bad else "#fce7f6"}" stroke="#fff"/>'
+      f'<text x="{cx + cell / 2}" y="{cy_ + 15}" font-size="10" font-weight="{700 if bad else 400}" fill="{"#b42318" if bad else "#c11574"}" text-anchor="middle">{c}</text>')
+
+
 def _draw_dsm(x, y, order, cnt, back, title, sub, fo):
     """Draw Design Structure Matrix table for translation pipeline."""
     cell, lw, top = 22, 166, 64
@@ -1201,16 +1220,7 @@ def _draw_dsm(x, y, order, cnt, back, title, sub, fo):
         A(f'<text x="{gx - 8}" y="{gy + i * cell + 15}" font-size="10" fill="#344054" text-anchor="end" {MONO_FONT}>{i + 1:>2} {e(lbl)}</text>')
         for j, fb in enumerate(order):
             cx, cy_ = gx + j * cell, gy + i * cell
-            if i == j:
-                A(f'<rect x="{cx}" y="{cy_}" width="{cell}" height="{cell}" fill="#eaecf0" stroke="#fff"/>')
-                continue
-            c = cnt.get((fa, fb), 0)
-            if not c:
-                A(f'<rect x="{cx}" y="{cy_}" width="{cell}" height="{cell}" fill="#fcfcfd" stroke="#f2f4f7"/>')
-                continue
-            bad = (fa, fb) in backset
-            A(f'<rect x="{cx}" y="{cy_}" width="{cell}" height="{cell}" fill="{"#fee4e2" if bad else "#fce7f6"}" stroke="#fff"/>'
-              f'<text x="{cx + cell / 2}" y="{cy_ + 15}" font-size="10" font-weight="{700 if bad else 400}" fill="{"#b42318" if bad else "#c11574"}" text-anchor="middle">{c}</text>')
+            _draw_dsm_cell(cx, cy_, cell, i, j, fa, fb, cnt, backset)
     A(f'<text x="{x + 14}" y="{y + h - 12}" font-size="9.5" fill="#667085">列＝引用方、欄＝被引用方；數字＝檔案引用數。右上＝往下引用，左下紅＝回頭引用</text>')
     return w, h
 
@@ -1324,31 +1334,38 @@ def sub_w(t):   # rough width of a 9px mixed CJK/latin string
     return sum(9.2 if ord(c) > 0x2e80 else 5.3 for c in t)
 
 
+def _tarjan_strongconnect(v, adj, idx, low, st, on, out, k):
+    """Tarjan strongconnect recursive traversal."""
+    idx[v] = low[v] = k[0]
+    k[0] += 1
+    st.append(v)
+    on.add(v)
+    for w in adj[v]:
+        if w not in idx:
+            _tarjan_strongconnect(w, adj, idx, low, st, on, out, k)
+            low[v] = min(low[v], low[w])
+        elif w in on:
+            low[v] = min(low[v], idx[w])
+    if low[v] == idx[v]:
+        comp = []
+        while True:
+            w = st.pop()
+            on.discard(w)
+            comp.append(w)
+            if w == v:
+                break
+        out.append(sorted(comp))
+
+
 def scc(nodes, edges):
     """Compute strongly connected components via Tarjan algorithm."""
     adj = {n: [] for n in nodes}
     for a, b in edges:
         adj[a].append(b)
     idx, low, st, on, out, k = {}, {}, [], set(), [], [0]
-
-    def go(v):
-        """Tarjan strongconnect recursive traversal."""
-        idx[v] = low[v] = k[0]; k[0] += 1; st.append(v); on.add(v)
-        for w in adj[v]:
-            if w not in idx:
-                go(w); low[v] = min(low[v], low[w])
-            elif w in on:
-                low[v] = min(low[v], idx[w])
-        if low[v] == idx[v]:
-            comp = []
-            while True:
-                w = st.pop(); on.discard(w); comp.append(w)
-                if w == v:
-                    break
-            out.append(sorted(comp))
     for n in nodes:
         if n not in idx:
-            go(n)
+            _tarjan_strongconnect(n, adj, idx, low, st, on, out, k)
     return out
 
 
@@ -1541,20 +1558,26 @@ def _nudge_panel_waypoints(xs, size, order, rank, outp, inp):
                 break
 
 
+def _build_chain_path_points(ch, outp, inp, rank, pos, row_top, lo, lane_of):
+    """Compute and simplify SVG path waypoints for a link chain."""
+    pts = [(outp[ch[0]][ch[1]], pos[ch[0]][1] + pos[ch[0]][3])]
+    for k in range(len(ch) - 1):
+        p, q = ch[k], ch[k + 1]
+        x1, x2 = outp[p][q], inp[q][p]
+        r = rank[p]
+        ym = row_top[r] + lo["rowh"][r] + GAP_PAD + LANE_H * lane_of.get((p, q), 0)
+        pts += [(x1, ym), (x2, ym), (x2, row_top[rank[q]] + (lo["rowh"][rank[q]] if isinstance(q, tuple) else 0))]
+    clean = [pts[0]]
+    for _pt in pts[1:]:
+        if abs(_pt[0] - clean[-1][0]) > 0.1 or abs(_pt[1] - clean[-1][1]) > 0.1:
+            clean.append(_pt)
+    return clean
+
+
 def _draw_panel_chains(pid, lo, pos, row_top, rank, lane_of, outp, inp, comps):
     """Draw link chains between panel nodes."""
     for (a, b), ch in lo["chains"].items():
-        pts = [(outp[ch[0]][ch[1]], pos[ch[0]][1] + pos[ch[0]][3])]
-        for k in range(len(ch) - 1):
-            p, q = ch[k], ch[k + 1]
-            x1, x2 = outp[p][q], inp[q][p]
-            r = rank[p]
-            ym = row_top[r] + lo["rowh"][r] + GAP_PAD + LANE_H * lane_of.get((p, q), 0)
-            pts += [(x1, ym), (x2, ym), (x2, row_top[rank[q]] + (lo["rowh"][rank[q]] if isinstance(q, tuple) else 0))]
-        clean = [pts[0]]
-        for _pt in pts[1:]:
-            if abs(_pt[0] - clean[-1][0]) > 0.1 or abs(_pt[1] - clean[-1][1]) > 0.1:
-                clean.append(_pt)
+        clean = _build_chain_path_points(ch, outp, inp, rank, pos, row_top, lo, lane_of)
         src = comps[a][0] if len(comps[a]) == 1 else f"{pid}_loop{a}"
         dst = comps[b][0] if len(comps[b]) == 1 else f"{pid}_loop{b}"
         path(clean, src=f"{pid}:{src}", dst=f"{pid}:{dst}", color=P_STYLE["soft"], width=1.2, dashed=P_STYLE["un"], cls=_un())
