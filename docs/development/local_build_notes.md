@@ -1,10 +1,10 @@
 # Local Build Notes
 
 > **Agent & Developer Documentation Index**:
-> - [ARCHITECTURE_AND_FRAMEWORK.md](docs/ARCHITECTURE_AND_FRAMEWORK.md): .NET 8 baseline, roll-forward policy, and trimming rules.
-> - [WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md](docs/WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md): Win10/Win11 context-menu and packaged storage notes.
-> - [TROUBLESHOOTING_AND_RESOLUTIONS.md](docs/TROUBLESHOOTING_AND_RESOLUTIONS.md): troubleshooting history and prior fixes.
-> - [CI_CD_DUAL_RELEASE_GUIDE.md](docs/CI_CD_DUAL_RELEASE_GUIDE.md): current automated release pipeline and source-of-truth boundaries.
+> - [ARCHITECTURE](../architecture/README.md): .NET 8 baseline, roll-forward policy, and interactive maps ([overview.html](../architecture/diagrams/overview.html)).
+> - [WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md](../WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md): Win10/Win11 context-menu and packaged storage notes.
+> - [TROUBLESHOOTING_AND_RESOLUTIONS.md](../TROUBLESHOOTING_AND_RESOLUTIONS.md): troubleshooting history and prior fixes.
+> - [CI_CD_DUAL_RELEASE_GUIDE.md](../CI_CD_DUAL_RELEASE_GUIDE.md): current automated release pipeline and source-of-truth boundaries.
 
 ## Windows SDK Tools
 This project requires `makeappx.exe` and `signtool.exe`. On this machine, the
@@ -265,7 +265,7 @@ Before preparing the next PR, fetch the latest `origin/main`. Reconstruct **only
 
 ### Pull Request Convention
 
-Use the canonical [pull request template](.github/pull_request_template.md).
+Use the canonical [pull request template](../../.github/pull_request_template.md).
 The template is authoritative for PR body structure; commit body rules do not
 replace it.
 
@@ -578,7 +578,7 @@ after each reinstall so it reloads `ClickraShell.dll`.
 5. Build the shell DLL and CLI, install the package, and verify submenu
    enumeration plus one real invocation.
 6. If Explorer never calls the DLL, follow the staged checks in
-   [`docs/development/shell_diagnostic_guide.md`](docs/development/shell_diagnostic_guide.md)
+   [`shell_diagnostic_guide.md`](shell_diagnostic_guide.md)
    before changing COM code.
 
 Do not use a legacy HKCU registry-verb installer as a substitute for the
