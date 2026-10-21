@@ -5,7 +5,7 @@ Reusable local diagnostics for PDF translation layout bugs.
 Run from this directory:
 
 ```powershell
-cd tools\pdf-diagnostics
+cd scripts\diagnostics
 python render_pages.py pentest 5 7 8
 ```
 
