@@ -6,7 +6,7 @@ from unittest.mock import patch
 from subprocess import CompletedProcess, TimeoutExpired
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pr_preflight import validate_message, validate_pr_body, check, _check_history
 
 
@@ -223,7 +223,7 @@ class PrePushHookRefTests(unittest.TestCase):
             shell = str(Path(shutil.which("git")).resolve().parent.parent / "bin" / "sh.exe")
         if not shell or (not Path(shell).is_file() and not shutil.which(shell)):
             self.skipTest("Git Bash sh unavailable")
-        hook = Path(__file__).resolve().parents[1] / "scripts" / "hooks" / "pre-push"
+        hook = Path(__file__).resolve().parents[1] / "hooks" / "pre-push"
         return subprocess.run([shell, str(hook), "origin", "https://example.invalid/repo.git"],
                               input=updates, capture_output=True, text=True, check=False,
                               cwd=hook.parents[2], timeout=15)
