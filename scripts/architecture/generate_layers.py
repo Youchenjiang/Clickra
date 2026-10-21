@@ -4,6 +4,7 @@ Generates interactive HTML diagrams and SVG vector maps for Clickra layers
 (L0 to L4) using Roslyn semantic dependency analysis.
 """
 from __future__ import annotations
+from typing import Any
 import collections
 import fnmatch
 import html
@@ -159,7 +160,7 @@ def pt(b, side, f=0.5):
 
 
 EDGES: list[tuple[int, int, int, int]] = []
-MARKERS = set()
+MARKERS: set[str] = set()
 
 
 def path(points, label=None, dashed=False, muted=False, lpos=None, anchor="middle", src="", dst="", variant="both", cls="", color=None, width=None, arrow=True):
@@ -290,7 +291,7 @@ AF = {_strip(p): _lines[_strip(p)] for p in _g["files"]}
 AE = sorted({(_strip(e["source"]), _strip(e["target"])) for e in _g["edges"] if e["source"] != e["target"]})
 ASYM = {(_strip(e["source"]), _strip(e["target"])): e["symbols"] for e in _g["edges"]}
 # partial classes: Name.cs (or Name.xaml.cs) plus Name.*.cs in the same folder, checked against the expected set below
-_by = collections.defaultdict(list)
+_by: dict[tuple[str, str], list[str]] = collections.defaultdict(list)
 for _p in AF:
     _by[(posixpath.dirname(_p), posixpath.basename(_p).split(".")[0])].append(_p)
 _grp: dict[str, str] = {}
@@ -343,7 +344,7 @@ def panel_of(n):
     return "cross"
 
 
-NODES = collections.defaultdict(lambda: {"files": [], "lines": 0})
+NODES: dict[str, dict[str, Any]] = collections.defaultdict(lambda: {"files": [], "lines": 0})
 for _p, _lines_cnt in AF.items():
     _node_ent = NODES[anode(_p)]
     _node_ent["files"].append(posixpath.basename(_p)); _node_ent["lines"] += _lines_cnt
@@ -355,7 +356,7 @@ CROSS = [(a, b) for a, b in NEDGES if PANEL[a] != PANEL[b]]
 The generator fills the boxes' file lists from here and checks every drawn line against the Roslyn graph:
 a line is drawn only when the code really has that reference, and a reference with no line is reported."""
 
-CARDS: dict[str, tuple[str, list[str], str]] = {
+CARDS: dict[str, list[str]] = {
     # ---- L1 screens (renderers)
     "ndash": ["Clickra.CLI/Dashboard/*"],
     "nprog": ["Clickra.CLI/Progress/*"],
@@ -523,7 +524,7 @@ ORDER = list(CARDS)
 # Card file lists, "也被" lines and which lines may be drawn all come from semantic-msbuild.json + cards.py.
 # Layout (columns, rows, routes) stays hand-placed; a planned line whose reference no longer exists is not drawn.
 BOX = assign(AF)
-MEMBERS = collections.defaultdict(list)
+MEMBERS: dict[str, list[str]] = collections.defaultdict(list)
 for _p, _b in BOX.items():
     MEMBERS[_b].append(_p)
 GROUP: dict[str, list[str]] = {"UC": ["a_base"] + [k for k in CARDS if k.startswith("u_")]}
@@ -626,7 +627,7 @@ def also_lines(target, width, prefix="也被：", extra=()):
     return wrap_text(prefix + "、".join(who), width - 20) if who else []
 
 
-L1_BOXES = {"ndash", "nprog", "nnone", "m_lay", "fmain", "fprog"} | {k for k in CARDS if k.startswith(("m_", "d_"))}
+L1_BOXES: set[str] = {"ndash", "nprog", "nnone", "m_lay", "fmain", "fprog"} | {k for k in CARDS if k.startswith(("m_", "d_"))}
 SKIP_TODO: dict[str, str] = {"s_proc": "C1", "s_office": "C5", "s_store": "?"}
 
 
@@ -1891,13 +1892,13 @@ print("l4 ok")
 
 # ---------------- check hand-written names against the code ----------------
 # L0-L3 boxes are laid out by hand; every *.cs name they mention must still exist under src/.
-_known = {posixpath.basename(p) for p in AF}
-_stems = {b.split(".")[0] for b in _known}
+_known: set[str] = {posixpath.basename(p) for p in AF}
+_stems: set[str] = {b.split(".")[0] for b in _known}
 _l03 = html.unescape("\n".join(o[:L4_AT]))
 _l03 = re.sub(r"-</text>\s*<text[^>]*>\s*", "", _l03)          # join names wrapped at a suffix word
 _texts = " ".join(re.findall(r"<text[^>]*>([^<]*)</text>", _l03))    # visible text only (not data-search attributes)
-_named = set(re.findall(r"[A-Za-z_][\w.*]*\.cs\b", _texts))
-_missing = sorted(n for n in _named if n not in _known and not (".*." in n and n.split(".")[0] in _stems)
+_named: set[str] = set(re.findall(r"[A-Za-z_][\w.*]*\.cs\b", _texts))
+_missing: list[str] = sorted(n for n in _named if n not in _known and not (".*." in n and n.split(".")[0] in _stems)
                   and not n.startswith(("Modules", "Clickra", "src")))
 if _missing:
     print("⚠ L0～L3 圖上寫的檔名在 src/ 找不到（改名或刪除了，請更新手寫內容）：", ", ".join(_missing))
