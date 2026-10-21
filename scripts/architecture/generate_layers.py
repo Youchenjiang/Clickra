@@ -1436,7 +1436,7 @@ def _calc_rank_metrics(order, nr, size, links, rank):
     nat_w = 2 * PAD
     rowh = {}
     nlinks = {r: 0 for r in range(nr)}
-    for p, q in links:
+    for p, _ in links:
         nlinks[rank[p]] += 1
     for r in range(nr):
         rw = sum(size[i][0] for i in order[r]) + GAP_X * max(0, len(order[r]) - 1)
