@@ -1,12 +1,12 @@
-﻿<#
+<#
 .SYNOPSIS
     Convenience shortcut to run the Clickra test suite with proper invocation.
 
 .EXAMPLE
-    .\test.ps1
-    .\test.ps1 -Clean
-    .\test.ps1 -RequireFixtures
-    .\test.ps1 -Configuration Release
+    .\scripts\test.ps1
+    .\scripts\test.ps1 -Clean
+    .\scripts\test.ps1 -RequireFixtures
+    .\scripts\test.ps1 -Configuration Release
 #>
 [CmdletBinding()]
 param(
@@ -17,6 +17,6 @@ param(
     [string[]]$RemainingArgs
 )
 
-$runTestsScript = Join-Path $PSScriptRoot "scripts/run_tests.ps1"
+$runTestsScript = Join-Path $PSScriptRoot "run_tests.ps1"
 & $runTestsScript -Clean:$Clean -RequireFixtures:$RequireFixtures -Configuration $Configuration @RemainingArgs
 exit $LASTEXITCODE
