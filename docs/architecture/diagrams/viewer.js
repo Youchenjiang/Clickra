@@ -5,7 +5,7 @@
     const parser = new DOMParser();
     const doc = parser.parseFromString(window.CLICKRA_LAYERS_SVG, 'image/svg+xml');
     const svgEl = doc.documentElement;
-    if (svgEl && svgEl.tagName.toLowerCase() === 'svg') {
+    if (svgEl?.tagName.toLowerCase() === 'svg') {
       view.replaceChildren(svgEl);
     }
   }
@@ -217,7 +217,7 @@
         } else {
           const targetEl = document.getElementById('sec-' + targetLayer);
           if (targetEl && view) {
-            const targetY = parseFloat(targetEl.getAttribute('y')) || 0;
+            const targetY = Number.parseFloat(targetEl.getAttribute('y')) || 0;
             view.scrollTo({ top: Math.max(0, targetY - 20), behavior: 'smooth' });
           }
         }
