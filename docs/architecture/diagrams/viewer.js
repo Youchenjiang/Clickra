@@ -4,8 +4,11 @@
   const q = document.getElementById('q');
   const view = document.getElementById('view');
   let variant = 'all';
+  let traceMode = false;
+  let selectedNodeId = null;
 
   function reset() {
+    selectedNodeId = null;
     document.querySelectorAll('.dim,.hot,.sel').forEach((el) => {
       el.classList.remove('dim', 'hot', 'sel');
     });
@@ -20,10 +23,10 @@
   }
 
   function initVariantSelector() {
-    document.querySelectorAll('button.var').forEach((btn) => {
+    document.querySelectorAll('button.var:not(#traceBtn)').forEach((btn) => {
       btn.onclick = () => {
         variant = btn.dataset.v;
-        document.querySelectorAll('button.var').forEach((other) => {
+        document.querySelectorAll('button.var:not(#traceBtn)').forEach((other) => {
           other.classList.toggle('on', other === btn);
         });
         applyVariant();
@@ -35,29 +38,85 @@
     });
   }
 
+  function findConnectedGraph(startId) {
+    const keepNodes = new Set([startId]);
+    const keepEdges = new Set();
+    let frontier = [startId];
+    const maxDepth = 15;
+    let depth = 0;
+    while (frontier.length > 0 && depth < maxDepth) {
+      const next = [];
+      frontier.forEach((curr) => {
+        edges.forEach((edge) => {
+          if (edge.classList.contains('off')) {
+            return;
+          }
+          const s = edge.dataset.src;
+          const d = edge.dataset.dst;
+          if (s === curr && !keepEdges.has(edge)) {
+            keepEdges.add(edge);
+            if (!keepNodes.has(d)) {
+              keepNodes.add(d);
+              next.push(d);
+            }
+          } else if (d === curr && !keepEdges.has(edge)) {
+            keepEdges.add(edge);
+            if (!keepNodes.has(s)) {
+              keepNodes.add(s);
+              next.push(s);
+            }
+          }
+        });
+      });
+      frontier = next;
+      depth += 1;
+    }
+    return { keepNodes, keepEdges };
+  }
+
   function focusNode(id) {
     reset();
-    const keep = new Set([id]);
-    edges.forEach((edge) => {
-      if (edge.classList.contains('off')) {
-        return;
-      }
-      if (edge.dataset.src === id || edge.dataset.dst === id) {
-        edge.classList.add('hot');
-        keep.add(edge.dataset.src);
-        keep.add(edge.dataset.dst);
-      } else {
-        edge.classList.add('dim');
-      }
-    });
-    nodes.forEach((node) => {
-      if (!keep.has(node.dataset.id)) {
-        node.classList.add('dim');
-      }
-      if (node.dataset.id === id) {
-        node.classList.add('sel');
-      }
-    });
+    selectedNodeId = id;
+    if (traceMode) {
+      const { keepNodes, keepEdges } = findConnectedGraph(id);
+      edges.forEach((edge) => {
+        if (keepEdges.has(edge)) {
+          edge.classList.add('hot');
+        } else {
+          edge.classList.add('dim');
+        }
+      });
+      nodes.forEach((node) => {
+        if (!keepNodes.has(node.dataset.id)) {
+          node.classList.add('dim');
+        }
+        if (node.dataset.id === id) {
+          node.classList.add('sel');
+        }
+      });
+    } else {
+      const keep = new Set([id]);
+      edges.forEach((edge) => {
+        if (edge.classList.contains('off')) {
+          return;
+        }
+        if (edge.dataset.src === id || edge.dataset.dst === id) {
+          edge.classList.add('hot');
+          keep.add(edge.dataset.src);
+          keep.add(edge.dataset.dst);
+        } else {
+          edge.classList.add('dim');
+        }
+      });
+      nodes.forEach((node) => {
+        if (!keep.has(node.dataset.id)) {
+          node.classList.add('dim');
+        }
+        if (node.dataset.id === id) {
+          node.classList.add('sel');
+        }
+      });
+    }
   }
 
   function initNodeEvents() {
@@ -120,6 +179,42 @@
         reset();
       };
     }
+
+    const traceBtn = document.getElementById('traceBtn');
+    if (traceBtn) {
+      traceBtn.addEventListener('click', () => {
+        traceMode = !traceMode;
+        traceBtn.classList.toggle('on', traceMode);
+        traceBtn.textContent = traceMode ? '跨層連鎖：端到端' : '跨層連鎖追蹤';
+        if (selectedNodeId) {
+          focusNode(selectedNodeId);
+        }
+      });
+    }
+  }
+
+  function initLayerControls() {
+    const layerBtns = Array.from(document.querySelectorAll('.layer-jump'));
+    if (!layerBtns.length) {
+      return;
+    }
+    layerBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const targetLayer = btn.dataset.layer;
+        layerBtns.forEach((b) => b.classList.toggle('on', b === btn));
+        if (targetLayer === 'all') {
+          if (view) {
+            view.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        } else {
+          const targetEl = document.getElementById('sec-' + targetLayer);
+          if (targetEl && view) {
+            const targetY = parseFloat(targetEl.getAttribute('y')) || 0;
+            view.scrollTo({ top: Math.max(0, targetY - 20), behavior: 'smooth' });
+          }
+        }
+      });
+    });
   }
 
   function initTheme() {
@@ -202,6 +297,7 @@
   initNodeEvents();
   initSearch();
   initActionButtons();
+  initLayerControls();
   initTheme();
   initZoom();
   initInfoBox();

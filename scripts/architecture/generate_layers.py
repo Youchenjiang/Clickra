@@ -264,8 +264,9 @@ path([(760, 712), (520, 712)], "無參數：找 Fluent（目前找不到）", da
 def section(y0, y1, label, sub, col):
     """Draw high-level layer section background and header."""
     num, name = label.split("・")
+    layer_id = f"sec-{num.strip().lower()}"
     # light tinted panel for the layer + a thin accent rule on its left edge
-    A(f'<rect x="20" y="{y0}" width="{W - 76 - 40}" height="{y1 - y0}" rx="12" fill="{col}" fill-opacity=".035"/>')
+    A(f'<rect id="{layer_id}" class="layer-section" data-layer="{num.strip().lower()}" x="20" y="{y0}" width="{W - 76 - 40}" height="{y1 - y0}" rx="12" fill="{col}" fill-opacity=".035"/>')
     A(f'<line x1="20" y1="{y0 + 6}" x2="20" y2="{y1 - 6}" stroke="{col}" stroke-width="3" stroke-linecap="round"/>')
     # layer heading in the left gutter
     A(f'<text x="-52" y="{y0 + 34}" font-size="30" font-weight="800" fill="{col}">{e(num)}</text>')
@@ -1950,8 +1951,18 @@ meta_overview = (
     f"L3：{len(PROC)} 個模組處理器 · 儲存 · Office 引擎 · 6 組橫切支援　"
     f"L4：全部 {len(AF)} 個檔的引用（{len(INNER) + len(CROSS)} 條）"
 )
-note_overview = "L0 入口 → L1 畫面 → L2 應用 → L3 基礎 → L4 模組內部。點擊方塊進入該層專屬詳細地圖。"
-render_page(PAGE_OVERVIEW, "Clickra Architecture — 總表", "Clickra — 架構總表", PAGE_OVERVIEW, "", meta_overview, note_overview, make_overview_svg())
+ctrl_overview = (
+    '<button class="layer-jump on" data-layer="all">全部層級</button>\n'
+    '<button class="layer-jump" data-layer="l0">L0 入口</button>\n'
+    '<button class="layer-jump" data-layer="l1">L1 畫面</button>\n'
+    '<button class="layer-jump" data-layer="l2">L2 應用</button>\n'
+    '<button class="layer-jump" data-layer="l3">L3 基礎</button>\n'
+    '<button class="layer-jump" data-layer="l4">L4 模組</button>\n'
+    '<button id="traceBtn" class="var" title="切換端到端全路徑追蹤">跨層連鎖追蹤</button>\n'
+    '<button id="unBtn">隱藏未發佈（Fluent）</button>'
+)
+note_overview = "L0 入口 → L1 畫面 → L2 應用 → L3 基礎 → L4 模組內部。由上往下單向依賴。點擊方塊可高亮連線；支援跨層連鎖追蹤與層級切換。"
+render_page(PAGE_OVERVIEW, "Clickra Architecture — 總表", "Clickra — 架構總表", PAGE_OVERVIEW, ctrl_overview, meta_overview, note_overview, svg_full)
 print("overview ok")
 
 

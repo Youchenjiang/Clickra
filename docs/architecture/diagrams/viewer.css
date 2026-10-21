@@ -59,7 +59,12 @@ input {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+  scroll-behavior: smooth;
   background: #fff;
+}
+
+.layer-section {
+  transition: fill-opacity 0.2s;
 }
 
 #view svg {
