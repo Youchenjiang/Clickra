@@ -1896,7 +1896,7 @@ def make_overview_svg():
     module_count = len(MOD_ORDER)
     layout_count = _count_native_layouts()
     proc_count = len(PROC)
-    dsm_pipeline_folders = len([f for f in set(tr_folder(n) for n in NODES if n.startswith(TR)) if f.startswith("Pipeline/") and f != "Pipeline/"])
+    dsm_pipeline_folders = len({tr_folder(n) for n in NODES if n.startswith(TR) and tr_folder(n).startswith("Pipeline/") and tr_folder(n) != "Pipeline/"})
 
     layers = [
         ("L0・入口（OS Entry Points & Handoffs）", "4 種使用者觸發方式 · 4 個進入點執行檔 · Win11 整合", PAGE_L0,
