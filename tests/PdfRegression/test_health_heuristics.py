@@ -10,7 +10,7 @@ from opencc import OpenCC
 ROOT = Path(__file__).resolve().parents[2]
 # The health implementation lives with the maintained PDF diagnostics tools.
 # `scratch/scripts` was removed, but this test still pointed at that old path.
-SCRIPTS = ROOT / "tools" / "pdf-diagnostics"
+SCRIPTS = ROOT / "scripts" / "diagnostics"
 sys.path.insert(0, str(SCRIPTS))
 
 from pdf_health import is_citation_dense_reference_page  # noqa: E402
