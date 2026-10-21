@@ -2,6 +2,7 @@
   const nodes = Array.from(document.querySelectorAll('.node'));
   const edges = Array.from(document.querySelectorAll('.edge'));
   const q = document.getElementById('q');
+  const view = document.getElementById('view');
   let variant = 'all';
 
   function reset() {
@@ -18,19 +19,21 @@
     });
   }
 
-  document.querySelectorAll('button.var').forEach((btn) => {
-    btn.onclick = () => {
-      variant = btn.dataset.v;
-      document.querySelectorAll('button.var').forEach((other) => {
-        other.classList.toggle('on', other === btn);
-      });
-      applyVariant();
-      reset();
-      if (q) {
-        q.value = '';
-      }
-    };
-  });
+  function initVariantSelector() {
+    document.querySelectorAll('button.var').forEach((btn) => {
+      btn.onclick = () => {
+        variant = btn.dataset.v;
+        document.querySelectorAll('button.var').forEach((other) => {
+          other.classList.toggle('on', other === btn);
+        });
+        applyVariant();
+        reset();
+        if (q) {
+          q.value = '';
+        }
+      };
+    });
+  }
 
   function focusNode(id) {
     reset();
@@ -57,24 +60,28 @@
     });
   }
 
-  nodes.forEach((node) => {
-    node.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      if (q) {
-        q.value = '';
-      }
-      focusNode(node.dataset.id);
+  function initNodeEvents() {
+    nodes.forEach((node) => {
+      node.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (q) {
+          q.value = '';
+        }
+        focusNode(node.dataset.id);
+      });
     });
-  });
 
-  const view = document.getElementById('view');
-  if (view) {
-    view.addEventListener('click', () => {
-      reset();
-    });
+    if (view) {
+      view.addEventListener('click', () => {
+        reset();
+      });
+    }
   }
 
-  if (q) {
+  function initSearch() {
+    if (!q) {
+      return;
+    }
     q.addEventListener('input', () => {
       reset();
       const s = q.value.trim().toLowerCase();
@@ -82,7 +89,7 @@
         return;
       }
       nodes.forEach((node) => {
-        if (!node.dataset.search || !node.dataset.search.includes(s)) {
+        if (!node.dataset.search?.includes(s)) {
           node.classList.add('dim');
         }
       });
@@ -92,39 +99,43 @@
     });
   }
 
-  const unBtn = document.getElementById('unBtn');
-  if (unBtn) {
-    let un = false;
-    unBtn.onclick = () => {
-      un = !un;
-      document.body.classList.toggle('hideUn', un);
-      unBtn.textContent = un ? '顯示未發佈（Fluent）' : '隱藏未發佈（Fluent）';
-      unBtn.classList.toggle('on', un);
-    };
+  function initActionButtons() {
+    const unBtn = document.getElementById('unBtn');
+    if (unBtn) {
+      let un = false;
+      unBtn.onclick = () => {
+        un = !un;
+        document.body.classList.toggle('hideUn', un);
+        unBtn.textContent = un ? '顯示未發佈（Fluent）' : '隱藏未發佈（Fluent）';
+        unBtn.classList.toggle('on', un);
+      };
+    }
+
+    const resetBtn = document.getElementById('resetBtn');
+    if (resetBtn) {
+      resetBtn.onclick = () => {
+        if (q) {
+          q.value = '';
+        }
+        reset();
+      };
+    }
   }
 
-  const resetBtn = document.getElementById('resetBtn');
-  if (resetBtn) {
-    resetBtn.onclick = () => {
-      if (q) {
-        q.value = '';
-      }
-      reset();
-    };
-  }
-
-  // Theme toggle
-  const root = document.documentElement;
-  const themeBtn = document.getElementById('themeBtn');
-  if (themeBtn) {
+  function initTheme() {
+    const root = document.documentElement;
+    const themeBtn = document.getElementById('themeBtn');
+    if (!themeBtn) {
+      return;
+    }
     let t = null;
     try {
       t = localStorage.getItem('clickra-arch-theme');
-    } catch (err) {
+    } catch {
       // Ignore localStorage access failures
     }
     if (!t) {
-      t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+      t = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }
     function applyTheme() {
       root.dataset.theme = t;
@@ -136,49 +147,62 @@
       applyTheme();
       try {
         localStorage.setItem('clickra-arch-theme', t);
-      } catch (err) {
+      } catch {
         // Ignore localStorage access failures
       }
     };
   }
 
-  // Diagram zoom/fit
-  if (view) {
+  function initZoom() {
+    if (!view) {
+      return;
+    }
     const svg = view.querySelector('svg');
-    if (svg) {
-      const base = window.devicePixelRatio || 1;
-      function zoom() {
-        const z = (window.devicePixelRatio || 1) / base;
-        return Math.abs(z - 1) < 0.02 ? 1 : z;
+    if (!svg) {
+      return;
+    }
+    const base = window.devicePixelRatio || 1;
+    function zoom() {
+      const z = (window.devicePixelRatio || 1) / base;
+      return Math.abs(z - 1) < 0.02 ? 1 : z;
+    }
+    const hdr = document.querySelector('header');
+    function fit() {
+      const z = zoom();
+      if (hdr) {
+        hdr.style.zoom = z === 1 ? '' : String(1 / z);
       }
-      const hdr = document.querySelector('header');
-      function fit() {
-        const z = zoom();
-        if (hdr) {
-          hdr.style.zoom = z === 1 ? '' : String(1 / z);
-        }
-        if (z === 1) {
-          svg.style.width = '';
-          svg.style.maxWidth = '';
-          view.style.overflowX = 'hidden';
-          return;
-        }
-        view.style.overflowX = 'auto';
-        svg.style.maxWidth = 'none';
-        svg.style.width = Math.floor(Math.min(1556, view.clientWidth * z)) + 'px';
+      if (z === 1) {
+        svg.style.width = '';
+        svg.style.maxWidth = '';
+        view.style.overflowX = 'hidden';
+        return;
       }
-      fit();
-      window.addEventListener('resize', fit);
+      view.style.overflowX = 'auto';
+      svg.style.maxWidth = 'none';
+      svg.style.width = Math.floor(Math.min(1556, view.clientWidth * z)) + 'px';
+    }
+    fit();
+    window.addEventListener('resize', fit);
+  }
+
+  function initInfoBox() {
+    const infoBtn = document.getElementById('infoBtn');
+    const infoBox = document.getElementById('infoBox');
+    if (infoBtn && infoBox) {
+      infoBtn.onclick = () => {
+        infoBox.hidden = !infoBox.hidden;
+        infoBtn.classList.toggle('on', !infoBox.hidden);
+        window.dispatchEvent(new Event('resize'));
+      };
     }
   }
 
-  const infoBtn = document.getElementById('infoBtn');
-  const infoBox = document.getElementById('infoBox');
-  if (infoBtn && infoBox) {
-    infoBtn.onclick = () => {
-      infoBox.hidden = !infoBox.hidden;
-      infoBtn.classList.toggle('on', !infoBox.hidden);
-      window.dispatchEvent(new Event('resize'));
-    };
-  }
+  initVariantSelector();
+  initNodeEvents();
+  initSearch();
+  initActionButtons();
+  initTheme();
+  initZoom();
+  initInfoBox();
 })();
