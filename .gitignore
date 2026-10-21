@@ -25,3 +25,6 @@ __pycache__/
 pdf_refer/
 local_store_config.json
 temp_store_metadata.json
+# Architecture diagram generated artifacts
+scripts/architecture/semantic-msbuild.json
+scripts/architecture/file_lines.json

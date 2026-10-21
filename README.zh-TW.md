@@ -52,7 +52,7 @@
 Clickra 秉持嚴格的 **本機優先（Local-First）** 設計準則：
 - **預設 100% 離線運作**：PDF 合併/分割/壓縮/解密、Markdown 轉換、圖片轉檔/壓縮/拼接、Office 轉 PDF 等核心功能完全在您的電腦本機執行，檔案絕不上傳伺服器。
 - **零遙測監控**：不收集任何個人資訊、不內嵌任何遙測追蹤程式碼。
-- **透明的網路連線**：僅可選的「PDF 智慧翻譯」需呼叫翻譯 API，以及在設定中手動選擇下載 LibreOffice 引擎時會自官方伺服器下載安裝檔。詳情請參閱 [PRIVACY.md](PRIVACY.md) 與 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+- **透明的網路連線**：僅可選的「PDF 智慧翻譯」需呼叫翻譯 API，以及在設定中手動選擇下載 LibreOffice 引擎時會自官方伺服器下載安裝檔。詳情請參閱 [PRIVACY.md](PRIVACY.md) 與 [docs/architecture/](docs/architecture/README.md)。
 
 ## 安裝說明
 
@@ -92,7 +92,7 @@ dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Relea
 - [docs/development/shell_extension_best_practices.md](docs/development/shell_extension_best_practices.md) — COM 與 NativeAOT 殼層不變量
 - [docs/development/shell_diagnostic_guide.md](docs/development/shell_diagnostic_guide.md) — Shell 擴充日誌與診斷
 - [docs/development/archive/dual_track_guide.md](docs/development/archive/dual_track_guide.md) — 歷史 Fluent／NativeAOT 雙軌發行設計紀錄
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — NativeAOT／Fluent 架構
+- [docs/architecture/](docs/architecture/README.md) — NativeAOT／Fluent 架構與互動地圖
 - [docs/ROADMAP.md](docs/ROADMAP.md) — 產品路線圖與里程碑
 - [CHANGELOG.md](CHANGELOG.md) — 完整版本歷史
 

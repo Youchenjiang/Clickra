@@ -19,7 +19,7 @@ Related design records:
 
 ### Canonical as-built architecture
 
-This is both the current implementation map and the dependency contract the repository must preserve. The primary organization axis is capability/module ownership; technical roles are local to each capability rather than global repository layers.
+This is both the current implementation map and the dependency contract the repository must preserve. The primary organization axis is capability/module ownership; technical roles are local to each capability rather than global repository layers. For interactive layer-by-layer dependency exploration and full file-level graphs, see the [Architecture Overview](../diagrams/overview.html) and [L4 Module Internal Map](../diagrams/l4_modules_internal.html).
 
 ```mermaid
 flowchart TB
@@ -100,7 +100,7 @@ flowchart TB
 
     subgraph HistoryTasks["Modules/HistoryTasks"]
         HistoryPresentation["Presentation\nHistoryPresentationController / HistoryFeed"]
-        HistoryApplication["Application\nHistoryController / HistoryQueryController /\nParkedTaskController"]
+        HistoryApplication["Application\nHistoryController / HistoryQueryController /\nParkedTaskController / ITaskLifecycleRepository"]
         HistoryPresentation --> HistoryApplication
     end
 
@@ -158,7 +158,7 @@ flowchart TB
     SharedApplication --> OfficeApplication
     SharedApplication --> MarkdownApplication
     SharedApplication --> SettingsApplication
-    SharedApplication --> Storage
+    SharedApplication -->|"task lifecycle via ITaskLifecycleRepository"| HistoryApplication
     SharedProcessors --> SharedTechnical
     PdfPipeline --> SharedTechnical
     PdfCompressionProcessing --> SharedTechnical
@@ -166,6 +166,7 @@ flowchart TB
     SettingsApplication --> Storage
     SettingsApplication --> OfficeInfrastructure
     HistoryApplication --> Storage
+    Storage -.->|"implements"| HistoryApplication
 
     Storage --> SettingsFile
     Storage --> HistoryFile
@@ -397,14 +398,15 @@ Shared conversion contracts, generic processor execution/localization helpers, `
 
 #### HistoryTasks module
 
-`Modules/HistoryTasks` owns the safe application/presentation boundary around history and parked-task actions:
+`Modules/HistoryTasks` owns the safe application/presentation boundary around history, task lifecycle contracts, and parked-task actions:
 
 - `Application/HistoryQueryController` — immutable history/task query facts;
 - `Application/HistoryController` — completed-history actions/path access;
 - `Application/ParkedTaskController` — parked-task retention/cancel/resume gateway;
+- `Application/ITaskLifecycleRepository` — task lifecycle abstraction decoupling application orchestration from storage implementations;
 - `Presentation/HistoryPresentationController` and `HistoryFeed` — authoritative Native/Fluent History screen state, wording, and available actions.
 
-This migration intentionally stops at the lifecycle boundary. `ConversionTaskLifecycle`, `ConversionTaskProgressController`, `ConversionTaskCleanup`, `TaskProgressController`, task-record persistence, `ParkedTaskCoordinator`, and legacy `active.tmp` compatibility remain in their existing owners until a separate evidence-backed migration proves they can move without changing resume identity, atomic transitions, retention, or compatibility semantics.
+This migration establishes a clean, decoupled lifecycle boundary. `ConversionTaskLifecycle` orchestrates task recording, progression, completion, and rollback through `ITaskLifecycleRepository` rather than coupling directly to `ClickraStorage` or concrete store internals. Concrete persistence (`TaskRecordStore`, `TaskQueueStore`, `ParkedTaskCoordinator`, and legacy `active.tmp` compatibility) resides in `Clickra.Core.Storage` and implements `ITaskLifecycleRepository`.
 
 #### Shared Processors
 

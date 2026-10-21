@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__TITLE__</title>
+<link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+<header>
+<div class="bar">
+<h1>__H1__</h1>
+<nav style="display:inline-flex;gap:4px;align-items:center;">
+__NAV__
+</nav>
+__CONTROLS__
+<input id="q" type="text" placeholder="搜尋類別、檔案或指令..." aria-label="搜尋類別、檔案或指令">
+<button id="themeBtn" title="切換深色／淺色">深色</button>
+<button id="resetBtn">Reset</button>
+<button id="infoBtn" title="顯示統計與說明">說明</button>
+</div>
+<div class="infobox" id="infoBox" hidden><span class="meta">__META__</span> <span class="note">__NOTE__</span></div>
+</header>
+<div id="view">
+__SVG__
+</div>
+<script src="viewer.js"></script>
+</body>
+</html>

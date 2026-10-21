@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Clickra Architecture — L2 應用</title>
+<link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+<header>
+<div class="bar">
+<h1>Clickra — L2 應用</h1>
+<nav style="display:inline-flex;gap:4px;align-items:center;">
+<a href="overview.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #bfc6d1;color:#111827;background:#fff;">總表</a>
+<a href="l0_entry_points.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #bfc6d1;color:#111827;background:#fff;">L0 入口</a>
+<a href="l1_presentation.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #bfc6d1;color:#111827;background:#fff;">L1 畫面</a>
+<a href="l2_application.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #101828;color:#fff;background:#101828;font-weight:700;">L2 應用</a>
+<a href="l3_infrastructure.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #bfc6d1;color:#111827;background:#fff;">L3 基礎</a>
+<a href="l4_modules_internal.html" style="text-decoration:none;font-size:12px;padding:6px 9px;border-radius:6px;border:1px solid #bfc6d1;color:#111827;background:#fff;">L4 模組內部</a>
+</nav>
+
+<input id="q" type="text" placeholder="搜尋類別、檔案或指令..." aria-label="搜尋類別、檔案或指令">
+<button id="themeBtn" title="切換深色／淺色">深色</button>
+<button id="resetBtn">Reset</button>
+<button id="infoBtn" title="顯示統計與說明">說明</button>
+</div>
+<div class="infobox" id="infoBox" hidden><span class="meta">6 組應用服務 · 8 個模組 · 19 個轉換指令 · 3 個往 L3 的出口</span> <span class="note">上排是應用服務（與 L1 共用畫面狀態同一欄），左下是各模組轉換用例，最底是往 L3 的出口。</span></div>
+</header>
+<div id="view">
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Clickra 架構圖" width="1556" height="1160" viewBox="0 1568 1556 1160" font-family="Microsoft JhengHei UI,Microsoft JhengHei,Noto Sans CJK TC,Segoe UI,Arial,sans-serif">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#344054"/></marker><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#98a2b3"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<g transform="translate(76,0)">
+<g class="node" data-id="m_ws" data-search="轉換工作區"><rect x="217.8" y="1588" width="155.8" height="50" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.4"/><text x="227.8" y="1608" font-size="10.5" fill="#667085">來自 L1</text><text x="227.8" y="1626" font-size="12.5" font-weight="700" fill="#101828">轉換工作區</text></g>
+<g class="node" data-id="m_exec" data-search="轉換執行"><rect x="395.5" y="1588" width="155.8" height="50" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.4"/><text x="405.5" y="1608" font-size="10.5" fill="#667085">來自 L1</text><text x="405.5" y="1626" font-size="12.5" font-weight="700" fill="#101828">轉換執行</text></g>
+<g class="node" data-id="m_split" data-search="視覺分割"><rect x="729.0" y="1588" width="177.8" height="50" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.4"/><text x="739.0" y="1608" font-size="10.5" fill="#667085">來自 L1</text><text x="739.0" y="1626" font-size="12.5" font-weight="700" fill="#101828">視覺分割</text></g>
+<g class="node" data-id="m_hist" data-search="歷史・歷史清單"><rect x="928.8" y="1588" width="155.8" height="50" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.4"/><text x="938.8" y="1608" font-size="10.5" fill="#667085">來自 L1</text><text x="938.8" y="1626" font-size="12.5" font-weight="700" fill="#101828">歷史・歷史清單</text></g>
+<g class="node" data-id="m_set" data-search="設定・設定目錄"><rect x="1106.5" y="1588" width="155.8" height="50" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.4"/><text x="1116.5" y="1608" font-size="10.5" fill="#667085">來自 L1</text><text x="1116.5" y="1626" font-size="12.5" font-weight="700" fill="#101828">設定・設定目錄</text></g>
+<g class="node" data-id="m_set" data-search="設定（office 引擎）"><rect x="1284.2" y="1588" width="155.8" height="50" rx="9" fill="#f6fef9" stroke="#12b76a" stroke-width="1.4"/><text x="1294.2" y="1608" font-size="10.5" fill="#667085">來自 L1</text><text x="1294.2" y="1626" font-size="12.5" font-weight="700" fill="#101828">設定（Office 引擎）</text></g>
+<g transform="translate(0,1652)">
+<rect x="20" y="0" width="1440" height="1026" rx="12" fill="#dc6803" fill-opacity=".035"/>
+<line x1="20" y1="6" x2="20" y2="1020" stroke="#dc6803" stroke-width="3" stroke-linecap="round"/>
+<text x="-52" y="34" font-size="30" font-weight="800" fill="#dc6803">L2</text>
+<text x="-52" y="58" font-size="15" font-weight="700" fill="#101828">應用</text>
+<text x="-52" y="76" font-size="10.5" fill="#98a2b3">Application</text>
+<text x="40" y="38" font-size="12.5" font-weight="700" fill="#667085" letter-spacing=".5" paint-order="stroke" stroke="#fff" stroke-width="5">應用服務（每一欄對應上方 L1 共用畫面狀態的同一欄）</text>
+<line x1="40" y1="46" x2="1440" y2="46" stroke="#eaecf0"/>
+<g class="edge " data-src="m_ws" data-dst="a_cmd" data-variant="both">
+<path d="M295.6,-6.0 L295.6,56.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
+</g>
+<g class="edge " data-src="m_exec" data-dst="a_uc" data-variant="both">
+<path d="M473.4,-6.0 L473.4,56.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
+</g>
+<g class="edge " data-src="m_split" data-dst="a_pages" data-variant="both">
+<path d="M828.9,-6.0 L828.9,56.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
+</g>
+<g class="edge " data-src="m_hist" data-dst="a_hist" data-variant="both">
+<path d="M1062.5,-6.0 L1062.5,56.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
+</g>
+<g class="edge " data-src="d_feed" data-dst="a_hist" data-variant="both">
+<path d="M1006.6,-6.0 L1006.6,56.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
+</g>
+<g class="edge " data-src="m_set" data-dst="a_set" data-variant="both">
+<path d="M1240.2,-6.0 L1240.2,56.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
+</g>
+<g class="edge " data-src="d_set" data-dst="a_set" data-variant="both">
+<path d="M1184.4,-6.0 L1184.4,56.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
+</g>
+<g class="edge " data-src="m_set" data-dst="a_off" data-variant="both">
+<path d="M1362.1,-6.0 L1362.1,56.0" fill="none" stroke="#12b76a" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_12b76a)"/>
+</g>
+<g class="node" data-id="a_cmd" data-search="指令目錄 指令、可接受副檔名、 最少檔數、顯示名稱 core/application/ convertcommand-   registry.cs ↳ src/shared/   convertcommand-   metadata.cs 也被：native 進度視窗、   cli／clickrastartup、   歷史顯示清單、各模組用例">
+<rect x="217.8" y="56" width="155.8" height="269" rx="9" fill="#fffaeb" stroke="#dc6803" stroke-width="1.6"/>
+<text x="227.8" y="76" font-size="13" font-weight="700" fill="#101828">指令目錄</text>
+<text x="227.8" y="94" font-size="10.5" fill="#475467">指令、可接受副檔名、</text>
+<text x="227.8" y="108" font-size="10.5" fill="#475467">最少檔數、顯示名稱</text>
+<line x1="227.8" y1="116" x2="363.5" y2="116" stroke="#eaecf0"/>
+<text x="227.8" y="128" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Core/Application/</text>
+<text x="227.8" y="141" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConvertCommand-</text>
+<text x="227.8" y="154" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Registry.cs</text>
+<text x="227.8" y="167" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">↳ src/Shared/</text>
+<text x="227.8" y="180" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  ConvertCommand-</text>
+<text x="227.8" y="193" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Metadata.cs</text>
+<text x="227.8" y="209" font-size="9.5" fill="#98a2b3">也被：Native 進度視窗、</text>
+<text x="227.8" y="221" font-size="9.5" fill="#98a2b3">  CLI／ClickraStartup、</text>
+<text x="227.8" y="233" font-size="9.5" fill="#98a2b3">  歷史顯示清單、各模組用例</text>
+</g>
+<g class="node" data-id="a_uc" data-search="轉換用例目錄 指令 → 唯一的用例 validate→plan→execute core/application/ conversion-   interaction.cs conversionplan.cs conversionrequest.cs conversionresult.cs conversionusecase-   registry.cs conversionusecases.cs iconversionusecase.cs 也被：native 進度視窗、   cli／clickrastartup、   各模組用例、任務生命週期 需輸入時回呼 l1： 密碼／分割頁／md 選項">
+<rect x="395.5" y="56" width="155.8" height="269" rx="9" fill="#fffaeb" stroke="#dc6803" stroke-width="1.6"/>
+<text x="405.5" y="76" font-size="13" font-weight="700" fill="#101828">轉換用例目錄</text>
+<text x="405.5" y="94" font-size="10.5" fill="#475467">指令 → 唯一的用例</text>
+<text x="405.5" y="108" font-size="10.5" fill="#475467">Validate→Plan→Execute</text>
+<line x1="405.5" y1="116" x2="541.2" y2="116" stroke="#eaecf0"/>
+<text x="405.5" y="128" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Core/Application/</text>
+<text x="405.5" y="141" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">Conversion-</text>
+<text x="405.5" y="154" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Interaction.cs</text>
+<text x="405.5" y="167" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionPlan.cs</text>
+<text x="405.5" y="180" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionRequest.cs</text>
+<text x="405.5" y="193" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionResult.cs</text>
+<text x="405.5" y="206" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionUseCase-</text>
+<text x="405.5" y="219" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Registry.cs</text>
+<text x="405.5" y="232" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionUseCases.cs</text>
+<text x="405.5" y="245" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">IConversionUseCase.cs</text>
+<text x="405.5" y="261" font-size="9.5" fill="#98a2b3">也被：Native 進度視窗、</text>
+<text x="405.5" y="273" font-size="9.5" fill="#98a2b3">  CLI／ClickraStartup、</text>
+<text x="405.5" y="285" font-size="9.5" fill="#98a2b3">  各模組用例、任務生命週期</text>
+<text x="405.5" y="297" font-size="9.5" fill="#98a2b3">需輸入時回呼 L1：</text>
+<text x="405.5" y="309" font-size="9.5" fill="#98a2b3">密碼／分割頁／MD 選項</text>
+</g>
+<g class="node" data-id="a_pages" data-search="頁數查詢 讀 pdf 頁數 modules/pdfsplit/app…/ pdfpagecountquery.cs">
+<rect x="751.0" y="56" width="155.8" height="269" rx="9" fill="#fffaeb" stroke="#dc6803" stroke-width="1.6"/>
+<text x="761.0" y="76" font-size="13" font-weight="700" fill="#101828">頁數查詢</text>
+<text x="761.0" y="94" font-size="10.5" fill="#475467">讀 PDF 頁數</text>
+<line x1="761.0" y1="102" x2="896.8" y2="102" stroke="#eaecf0"/>
+<text x="761.0" y="114" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Modules/PdfSplit/App…/</text>
+<text x="761.0" y="127" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">PdfPageCountQuery.cs</text>
+</g>
+<g class="node" data-id="a_hist" data-search="歷史與暫停任務 清除與刪除／讀清單／ 認領暫停任務續跑 modules/historytasks/app…/ historycontroller.cs historyquery-   controller.cs itasklifecycle-   repository.cs parkedtask-   controller.cs 也被：native dashboard、   native 進度視窗、   fluent 主頁、用例目錄、   任務生命週期">
+<rect x="928.8" y="56" width="155.8" height="269" rx="9" fill="#fffaeb" stroke="#dc6803" stroke-width="1.6"/>
+<text x="938.8" y="76" font-size="13" font-weight="700" fill="#101828">歷史與暫停任務</text>
+<text x="938.8" y="94" font-size="10.5" fill="#475467">清除與刪除／讀清單／</text>
+<text x="938.8" y="108" font-size="10.5" fill="#475467">認領暫停任務續跑</text>
+<line x1="938.8" y1="116" x2="1074.5" y2="116" stroke="#eaecf0"/>
+<text x="938.8" y="128" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Modules/HistoryTasks/App…/</text>
+<text x="938.8" y="141" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">HistoryController.cs</text>
+<text x="938.8" y="154" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">HistoryQuery-</text>
+<text x="938.8" y="167" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Controller.cs</text>
+<text x="938.8" y="180" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ITaskLifecycle-</text>
+<text x="938.8" y="193" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Repository.cs</text>
+<text x="938.8" y="206" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ParkedTask-</text>
+<text x="938.8" y="219" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Controller.cs</text>
+<text x="938.8" y="235" font-size="9.5" fill="#98a2b3">也被：Native Dashboard、</text>
+<text x="938.8" y="247" font-size="9.5" fill="#98a2b3">  Native 進度視窗、</text>
+<text x="938.8" y="259" font-size="9.5" fill="#98a2b3">  Fluent 主頁、用例目錄、</text>
+<text x="938.8" y="271" font-size="9.5" fill="#98a2b3">  任務生命週期</text>
+</g>
+<g class="node" data-id="a_set" data-search="設定 讀寫偏好與儲存路徑 modules/settings/app…/ settingscontract.cs settingscontroller.cs storagepath-   controller.cs 也被：native dashboard、   cli／clickrastartup、   fluent 主頁、   office 引擎設定、   各模組用例">
+<rect x="1106.5" y="56" width="155.8" height="269" rx="9" fill="#fffaeb" stroke="#dc6803" stroke-width="1.6"/>
+<text x="1116.5" y="76" font-size="13" font-weight="700" fill="#101828">設定</text>
+<text x="1116.5" y="94" font-size="10.5" fill="#475467">讀寫偏好與儲存路徑</text>
+<line x1="1116.5" y1="102" x2="1252.2" y2="102" stroke="#eaecf0"/>
+<text x="1116.5" y="114" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Modules/Settings/App…/</text>
+<text x="1116.5" y="127" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">SettingsContract.cs</text>
+<text x="1116.5" y="140" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">SettingsController.cs</text>
+<text x="1116.5" y="153" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">StoragePath-</text>
+<text x="1116.5" y="166" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Controller.cs</text>
+<text x="1116.5" y="182" font-size="9.5" fill="#98a2b3">也被：Native Dashboard、</text>
+<text x="1116.5" y="194" font-size="9.5" fill="#98a2b3">  CLI／ClickraStartup、</text>
+<text x="1116.5" y="206" font-size="9.5" fill="#98a2b3">  Fluent 主頁、</text>
+<text x="1116.5" y="218" font-size="9.5" fill="#98a2b3">  Office 引擎設定、</text>
+<text x="1116.5" y="230" font-size="9.5" fill="#98a2b3">  各模組用例</text>
+</g>
+<g class="node" data-id="a_off" data-search="office 引擎設定 安裝／移除 libreoffice、 回報引擎是否就緒 modules/settings/app…/ libreofficesettings-   controller.cs">
+<rect x="1284.2" y="56" width="155.8" height="269" rx="9" fill="#fffaeb" stroke="#dc6803" stroke-width="1.6"/>
+<text x="1294.2" y="76" font-size="13" font-weight="700" fill="#101828">Office 引擎設定</text>
+<text x="1294.2" y="94" font-size="10.5" fill="#475467">安裝／移除 LibreOffice、</text>
+<text x="1294.2" y="108" font-size="10.5" fill="#475467">回報引擎是否就緒</text>
+<line x1="1294.2" y1="116" x2="1430.0" y2="116" stroke="#eaecf0"/>
+<text x="1294.2" y="128" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Modules/Settings/App…/</text>
+<text x="1294.2" y="141" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">LibreOfficeSettings-</text>
+<text x="1294.2" y="154" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Controller.cs</text>
+</g>
+<text x="40.0" y="365" font-size="12.5" font-weight="700" fill="#667085" letter-spacing=".5">轉換用例（ConversionUseCases 登記的 19 個指令）</text>
+<g class="node" data-id="a_base" data-search="共用執行基底　core/application/  conversionusecasebase.cs（所有用例的父類別） ├ perfileconversionusecasebase.cs（逐檔處理） └ singleoutputconversionusecasebase.cs（多檔合成一個輸出）">
+<rect x="40.0" y="381" width="689.0" height="88" rx="9" fill="#fffaeb" stroke="#dc6803" stroke-width="1.6"/>
+<text x="50.0" y="401" font-size="13" font-weight="700" fill="#101828">共用執行基底　Core/Application/</text>
+<line x1="50.0" y1="413" x2="719.0" y2="413" stroke="#eaecf0"/>
+<text x="50.0" y="425" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionUseCaseBase.cs（所有用例的父類別）</text>
+<text x="50.0" y="438" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">├ PerFileConversionUseCaseBase.cs（逐檔處理）</text>
+<text x="50.0" y="451" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">└ SingleOutputConversionUseCaseBase.cs（多檔合成一個輸出）</text>
+</g>
+<g class="node" data-id="u_Image" data-search="image …/application/ imagecompressionlevel.cs imagecompression-   options.cs imageformatconvert-   usecase.cs   （5 個指令） imageoutputsafety.cs img2pdfusecase.cs imgcompressusecase.cs imgmergeusecase.cs   （合一） imgstitchusecase.cs   （合一） 也被：native、cli（c4）">
+<rect x="40.0" y="481" width="163.2" height="243" rx="9" fill="#fff" stroke="#fdb022" stroke-width="1.6"/>
+<text x="50.0" y="501" font-size="13" font-weight="700" fill="#101828">Image</text>
+<line x1="50.0" y1="513" x2="193.2" y2="513" stroke="#eaecf0"/>
+<text x="50.0" y="525" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">…/Application/</text>
+<text x="50.0" y="538" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ImageCompressionLevel.cs</text>
+<text x="50.0" y="551" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ImageCompression-</text>
+<text x="50.0" y="564" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Options.cs</text>
+<text x="50.0" y="577" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ImageFormatConvert-</text>
+<text x="50.0" y="590" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  UseCase.cs</text>
+<text x="50.0" y="603" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  （5 個指令）</text>
+<text x="50.0" y="616" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ImageOutputSafety.cs</text>
+<text x="50.0" y="629" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">Img2PdfUseCase.cs</text>
+<text x="50.0" y="642" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ImgCompressUseCase.cs</text>
+<text x="50.0" y="655" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ImgMergeUseCase.cs</text>
+<text x="50.0" y="668" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  （合一）</text>
+<text x="50.0" y="681" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ImgStitchUseCase.cs</text>
+<text x="50.0" y="694" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  （合一）</text>
+<text x="50.0" y="710" font-size="9.5" fill="#98a2b3">也被：Native、CLI（C4）</text>
+</g>
+<g class="node" data-id="u_Markdown" data-search="markdown …/application/ markdownconversion-   usecasebase.cs markdownpdfoptions.cs markdowntemplatesource.cs markdowntopdfusecase.cs markdowntowordusecase.cs 也被：native、cli、   fluent 主頁（c4）">
+<rect x="215.2" y="481" width="163.2" height="243" rx="9" fill="#fff" stroke="#fdb022" stroke-width="1.6"/>
+<text x="225.2" y="501" font-size="13" font-weight="700" fill="#101828">Markdown</text>
+<line x1="225.2" y1="513" x2="368.5" y2="513" stroke="#eaecf0"/>
+<text x="225.2" y="525" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">…/Application/</text>
+<text x="225.2" y="538" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">MarkdownConversion-</text>
+<text x="225.2" y="551" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  UseCaseBase.cs</text>
+<text x="225.2" y="564" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">MarkdownPdfOptions.cs</text>
+<text x="225.2" y="577" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">MarkdownTemplateSource.cs</text>
+<text x="225.2" y="590" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">MarkdownToPdfUseCase.cs</text>
+<text x="225.2" y="603" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">MarkdownToWordUseCase.cs</text>
+<text x="225.2" y="619" font-size="9.5" fill="#98a2b3">也被：Native、CLI、</text>
+<text x="225.2" y="631" font-size="9.5" fill="#98a2b3">  Fluent 主頁（C4）</text>
+</g>
+<g class="node" data-id="u_Office" data-search="office …/application/ exceltopdfusecase.cs officeconversion-   options.cs officetopdfusecasebase.cs   （查 office 引擎） ppttopdfusecase.cs wordtopdfusecase.cs 也被：native（c4）">
+<rect x="390.5" y="481" width="163.2" height="243" rx="9" fill="#fff" stroke="#fdb022" stroke-width="1.6"/>
+<text x="400.5" y="501" font-size="13" font-weight="700" fill="#101828">Office</text>
+<line x1="400.5" y1="513" x2="543.8" y2="513" stroke="#eaecf0"/>
+<text x="400.5" y="525" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">…/Application/</text>
+<text x="400.5" y="538" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ExcelToPdfUseCase.cs</text>
+<text x="400.5" y="551" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">OfficeConversion-</text>
+<text x="400.5" y="564" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  Options.cs</text>
+<text x="400.5" y="577" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">OfficeToPdfUseCaseBase.cs</text>
+<text x="400.5" y="590" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  （查 Office 引擎）</text>
+<text x="400.5" y="603" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">PptToPdfUseCase.cs</text>
+<text x="400.5" y="616" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">WordToPdfUseCase.cs</text>
+<text x="400.5" y="632" font-size="9.5" fill="#98a2b3">也被：Native（C4）</text>
+</g>
+<g class="node" data-id="u_PdfCompression" data-search="pdfcompression …/application/ compresspdfusecase.cs pdfcompressionlevel.cs pdfcompressionoptions.cs pdfcompressionsettings.cs 也被：native、cli（c4）">
+<rect x="565.8" y="481" width="163.2" height="243" rx="9" fill="#fff" stroke="#fdb022" stroke-width="1.6"/>
+<text x="575.8" y="501" font-size="13" font-weight="700" fill="#101828">PdfCompression</text>
+<line x1="575.8" y1="513" x2="719.0" y2="513" stroke="#eaecf0"/>
+<text x="575.8" y="525" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">…/Application/</text>
+<text x="575.8" y="538" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">CompressPdfUseCase.cs</text>
+<text x="575.8" y="551" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">PdfCompressionLevel.cs</text>
+<text x="575.8" y="564" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">PdfCompressionOptions.cs</text>
+<text x="575.8" y="577" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">PdfCompressionSettings.cs</text>
+<text x="575.8" y="593" font-size="9.5" fill="#98a2b3">也被：Native、CLI（C4）</text>
+</g>
+<g class="node" data-id="u_PdfDecrypt" data-search="pdfdecrypt …/application/ decryptpdfusecase.cs   （需密碼） 也被：native、cli（c4）">
+<rect x="40.0" y="736" width="163.2" height="125" rx="9" fill="#fff" stroke="#fdb022" stroke-width="1.6"/>
+<text x="50.0" y="756" font-size="13" font-weight="700" fill="#101828">PdfDecrypt</text>
+<line x1="50.0" y1="768" x2="193.2" y2="768" stroke="#eaecf0"/>
+<text x="50.0" y="780" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">…/Application/</text>
+<text x="50.0" y="793" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">DecryptPdfUseCase.cs</text>
+<text x="50.0" y="806" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  （需密碼）</text>
+<text x="50.0" y="822" font-size="9.5" fill="#98a2b3">也被：Native、CLI（C4）</text>
+</g>
+<g class="node" data-id="u_PdfMerge" data-search="pdfmerge …/application/ mergepdfusecase.cs   （合一） 也被：native、cli（c4）">
+<rect x="215.2" y="736" width="163.2" height="125" rx="9" fill="#fff" stroke="#fdb022" stroke-width="1.6"/>
+<text x="225.2" y="756" font-size="13" font-weight="700" fill="#101828">PdfMerge</text>
+<line x1="225.2" y1="768" x2="368.5" y2="768" stroke="#eaecf0"/>
+<text x="225.2" y="780" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">…/Application/</text>
+<text x="225.2" y="793" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">MergePdfUseCase.cs</text>
+<text x="225.2" y="806" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  （合一）</text>
+<text x="225.2" y="822" font-size="9.5" fill="#98a2b3">也被：Native、CLI（C4）</text>
+</g>
+<g class="node" data-id="u_PdfTranslation" data-search="pdftranslation …/application/ translatepdfusecase.cs 也被：native、cli（c4）">
+<rect x="390.5" y="736" width="163.2" height="125" rx="9" fill="#fff" stroke="#fdb022" stroke-width="1.6"/>
+<text x="400.5" y="756" font-size="13" font-weight="700" fill="#101828">PdfTranslation</text>
+<line x1="400.5" y1="768" x2="543.8" y2="768" stroke="#eaecf0"/>
+<text x="400.5" y="780" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">…/Application/</text>
+<text x="400.5" y="793" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">TranslatePdfUseCase.cs</text>
+<text x="400.5" y="809" font-size="9.5" fill="#98a2b3">也被：Native、CLI（C4）</text>
+</g>
+<g class="node" data-id="u_PdfSplit" data-search="pdfsplit …/application/ pdfsplitspecbuilder.cs splitpdfusecase.cs   （需分割頁） 也被：native、cli、   視覺分割（狀態）（c4）">
+<rect x="565.8" y="736" width="163.2" height="125" rx="9" fill="#fff" stroke="#fdb022" stroke-width="1.6"/>
+<text x="575.8" y="756" font-size="13" font-weight="700" fill="#101828">PdfSplit</text>
+<line x1="575.8" y1="768" x2="719.0" y2="768" stroke="#eaecf0"/>
+<text x="575.8" y="780" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">…/Application/</text>
+<text x="575.8" y="793" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">PdfSplitSpecBuilder.cs</text>
+<text x="575.8" y="806" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">SplitPdfUseCase.cs</text>
+<text x="575.8" y="819" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">  （需分割頁）</text>
+<text x="575.8" y="835" font-size="9.5" fill="#98a2b3">也被：Native、CLI、</text>
+<text x="575.8" y="847" font-size="9.5" fill="#98a2b3">  視覺分割（狀態）（C4）</text>
+</g>
+<g class="edge " data-src="a_uc" data-dst="a_base" data-variant="both">
+<defs><marker id="c_dc6803" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#dc6803"/></marker></defs>
+<path d="M473.4,325.0 L473.4,381.0" fill="none" stroke="#dc6803" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_dc6803)"/>
+<text x="481.375" y="349" font-size="12" fill="#dc6803" text-anchor="start" paint-order="stroke" stroke="#fff" stroke-width="5">依指令找到用例</text>
+</g>
+<g class="node" data-id="a_life" data-search="任務生命週期 開始 → 進行中 → 完成／失敗／暫停，寫入任務紀錄 core/application/ conversiontaskcleanup.cs conversiontasklifecycle.cs conversiontaskprogresscontroller.cs 也被：native 進度視窗、cli／clickrastartup">
+<rect x="928.8" y="381" width="333.5" height="129" rx="9" fill="#fffaeb" stroke="#dc6803" stroke-width="1.6"/>
+<text x="938.8" y="401" font-size="13" font-weight="700" fill="#101828">任務生命週期</text>
+<text x="938.8" y="419" font-size="10.5" fill="#475467">開始 → 進行中 → 完成／失敗／暫停，寫入任務紀錄</text>
+<line x1="938.8" y1="427" x2="1252.2" y2="427" stroke="#eaecf0"/>
+<text x="938.8" y="439" font-size="9" fill="#98a2b3" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace">Core/Application/</text>
+<text x="938.8" y="452" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionTaskCleanup.cs</text>
+<text x="938.8" y="465" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionTaskLifecycle.cs</text>
+<text x="938.8" y="478" font-size="9.8" fill="#344054" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" xml:space="preserve">ConversionTaskProgressController.cs</text>
+<text x="938.8" y="494" font-size="9.5" fill="#98a2b3">也被：Native 進度視窗、CLI／ClickraStartup</text>
+</g>
+<g class="edge " data-src="a_base" data-dst="a_life" data-variant="both">
+<path d="M729.0,406.0 L928.8,406.0" fill="none" stroke="#dc6803" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#c_dc6803)"/>
+<text x="828.875" y="399" font-size="12" fill="#dc6803" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="5">執行時建立與結束任務紀錄</text>
+</g>
+<g class="node" data-id="s_shared" data-search="共用指令表（src/shared） convertcommandmetadata.cs：指令、副檔名、 最少檔數、顯示名稱；同一份也編進 clickrashell  指令集合與轉換用例目錄一致（架構測試保證）">
+<rect x="40.0" y="919" width="333.5" height="85" rx="9" fill="#f9fafb" stroke="#98a2b3" stroke-width="1.6" stroke-dasharray="7 5"/>
+<text x="50.0" y="939" font-size="13" font-weight="700" fill="#475467">共用指令表（src/Shared）</text>
+<text x="50.0" y="957" font-size="10.5" fill="#475467">ConvertCommandMetadata.cs：指令、副檔名、</text>
+<text x="50.0" y="971" font-size="10.5" fill="#475467">最少檔數、顯示名稱；同一份也編進 ClickraShell</text>
+<text x="50.0" y="988" font-size="9.5" fill="#98a2b3">指令集合與轉換用例目錄一致（架構測試保證）</text>
+</g>
+<g class="edge " data-src="a_cmd" data-dst="s_shared" data-variant="both">
+<path d="M217.8,301.0 L28.0,301.0 L28.0,961.5 L40.0,961.5" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round" marker-end="url(#c_dc6803)"/>
+<text x="34" y="295" font-size="12" fill="#dc6803" text-anchor="start" paint-order="stroke" stroke="#fff" stroke-width="5">查表</text>
+</g>
+<g class="edge " data-src="a_base" data-dst="p_box" data-variant="both">
+<path d="M513.4,861.0 L513.4,919.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round"/>
+<text x="521.375" y="891" font-size="12" fill="#dc6803" text-anchor="start" paint-order="stroke" stroke="#fff" stroke-width="5">各用例呼叫自己模組的處理器</text>
+</g>
+<g class="edge " data-src="a_pages" data-dst="p_PdfSplit" data-variant="both">
+<path d="M828.9,325.0 L828.9,919.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+<g class="edge " data-src="a_hist" data-dst="t_store" data-variant="both">
+<path d="M928.8,295.0 L917.8,295.0 L917.8,919.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+<g class="edge " data-src="a_set" data-dst="t_store" data-variant="both">
+<path d="M1262.2,295.0 L1273.2,295.0 L1273.2,919.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+<g class="edge " data-src="a_life" data-dst="t_store" data-variant="both">
+<path d="M1095.5,510.0 L1095.5,919.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+<g class="edge " data-src="a_off" data-dst="t_offinf" data-variant="both">
+<path d="M1362.1,325.0 L1362.1,919.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round"/>
+</g>
+<text x="395.5" y="901" font-size="12.5" font-weight="700" fill="#667085" letter-spacing=".5">往下 → L3</text>
+<g class="node" data-id="s_proc" data-search="l3 處理器（processing） modules/*/processing、processors/fileprocessing ">
+<rect x="395.5" y="919" width="511.2" height="85" rx="9" fill="#f9fafb" stroke="#98a2b3" stroke-width="1.6" stroke-dasharray="7 5"/>
+<text x="405.5" y="939" font-size="13" font-weight="700" fill="#475467">L3 處理器（Processing）</text>
+<text x="405.5" y="957" font-size="10.5" fill="#475467">Modules/*/Processing、Processors/FileProcessing</text>
+</g>
+<g class="node" data-id="s_store" data-search="l3 儲存（storage） clickrastorage／clickrasettings 等 15 檔  也被：各模組用例">
+<rect x="906.8" y="919" width="373.5" height="85" rx="9" fill="#f9fafb" stroke="#98a2b3" stroke-width="1.6" stroke-dasharray="7 5"/>
+<text x="916.8" y="939" font-size="13" font-weight="700" fill="#475467">L3 儲存（Storage）</text>
+<text x="916.8" y="957" font-size="10.5" fill="#475467">ClickraStorage／ClickraSettings 等 15 檔</text>
+<text x="916.8" y="974" font-size="9.5" fill="#98a2b3">也被：各模組用例</text>
+</g>
+<g class="node" data-id="s_office" data-search="l3 office 引擎 安裝／偵測 libreoffice、 modules/office/infra…  也被：各模組用例">
+<rect x="1284.2" y="919" width="155.8" height="85" rx="9" fill="#f9fafb" stroke="#98a2b3" stroke-width="1.6" stroke-dasharray="7 5"/>
+<text x="1294.2" y="939" font-size="13" font-weight="700" fill="#475467">L3 Office 引擎</text>
+<text x="1294.2" y="957" font-size="10.5" fill="#475467">安裝／偵測 LibreOffice、</text>
+<text x="1294.2" y="971" font-size="10.5" fill="#475467">Modules/Office/Infra…</text>
+<text x="1294.2" y="988" font-size="9.5" fill="#98a2b3">也被：各模組用例</text>
+</g>
+<g class="edge " data-src="a_base" data-dst="p_box" data-variant="both">
+<path d="M513.4,909.0 L513.4,919.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round" marker-end="url(#c_dc6803)"/>
+</g>
+<g class="edge " data-src="a_pages" data-dst="p_PdfSplit" data-variant="both">
+<path d="M828.9,909.0 L828.9,919.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round" marker-end="url(#c_dc6803)"/>
+</g>
+<g class="edge " data-src="a_hist" data-dst="t_store" data-variant="both">
+<path d="M917.8,909.0 L917.8,919.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round" marker-end="url(#c_dc6803)"/>
+</g>
+<g class="edge " data-src="a_life" data-dst="t_store" data-variant="both">
+<path d="M1095.5,909.0 L1095.5,919.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round" marker-end="url(#c_dc6803)"/>
+</g>
+<g class="edge " data-src="a_set" data-dst="t_store" data-variant="both">
+<path d="M1273.2,909.0 L1273.2,919.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round" marker-end="url(#c_dc6803)"/>
+</g>
+<g class="edge " data-src="a_off" data-dst="t_offinf" data-variant="both">
+<path d="M1362.1,909.0 L1362.1,919.0" fill="none" stroke="#dc6803" stroke-width="1.4" stroke-linejoin="round" marker-end="url(#c_dc6803)"/>
+</g>
+</g>
+<text x="40" y="2708" font-size="11.5" fill="#667085">線色規則：線的顏色＝發出呼叫的那一方。L0 藍、L1 綠（畫面另分 深綠＝Native Dashboard、青綠＝Native 進度視窗）、L2 橘；紅虛線＝跳層、灰虛線＝未發佈（Fluent）。</text>
+</g>
+</svg>
+</div>
+<script src="viewer.js"></script>
+</body>
+</html>

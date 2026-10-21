@@ -1,0 +1,185 @@
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: "Microsoft JhengHei UI", "Microsoft JhengHei", "Segoe UI", Arial, sans-serif;
+  background: #f4f6f8;
+  color: #111827;
+}
+
+header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex: none;
+  background: #fffffff0;
+  border-bottom: 1px solid #d4d9e0;
+  padding: 0;
+}
+
+h1 {
+  font-size: 20px;
+  margin: 0 10px 0 0;
+}
+
+.meta {
+  font-size: 13px;
+  color: #535c68;
+}
+
+button, input {
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid #bfc6d1;
+  border-radius: 7px;
+  background: #fff;
+}
+
+button {
+  cursor: pointer;
+}
+
+button.on {
+  background: #101828;
+  color: #fff;
+  border-color: #101828;
+}
+
+input {
+  width: 300px;
+}
+
+#view {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  background: #fff;
+}
+
+#view svg {
+  display: block;
+  margin: 0 auto;
+  width: 100%;
+  height: auto;
+  max-width: 1556px;
+}
+
+.note {
+  font-size: 12px;
+  color: #68717e;
+}
+
+.node {
+  cursor: pointer;
+}
+
+.node rect, .edge path, .edge text {
+  transition: opacity 0.15s;
+}
+
+.node.dim, .edge.dim {
+  opacity: 0.12;
+}
+
+.edge.off {
+  display: none;
+}
+
+.hideUn .unshipped {
+  display: none;
+}
+
+/* Specificity rules for highlight instead of !important */
+#view svg g.edge.hot path {
+  stroke: #d94b5a;
+  stroke-width: 3;
+}
+
+#view svg g.edge.hot text {
+  fill: #d94b5a;
+  font-weight: 700;
+}
+
+#view svg g.node.sel rect {
+  stroke: #d94b5a;
+  stroke-width: 3;
+}
+
+#themeBtn {
+  min-width: 64px;
+}
+
+.bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow-x: auto;
+  padding: 10px 18px;
+}
+
+.bar > * {
+  flex: none;
+}
+
+.infobox {
+  padding: 0 18px 10px;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.infobox[hidden] {
+  display: none;
+}
+
+/* Dark theme rules */
+html[data-theme="dark"] body {
+  background: #0f1115;
+  color: #e6e8eb;
+}
+
+html[data-theme="dark"] header {
+  background: #15181df0;
+  border-bottom-color: #2a2f37;
+}
+
+html[data-theme="dark"] .meta {
+  color: #a3abb6;
+}
+
+html[data-theme="dark"] .note {
+  color: #8b939e;
+}
+
+html[data-theme="dark"] button,
+html[data-theme="dark"] input {
+  background: #1b1f26;
+  color: #e6e8eb;
+  border-color: #3a414c;
+}
+
+html[data-theme="dark"] button.on {
+  background: #e6e8eb;
+  color: #101828;
+  border-color: #e6e8eb;
+}
+
+html[data-theme="dark"] #view {
+  background: #121417;
+}
+
+html[data-theme="dark"] #view svg {
+  filter: invert(0.9) hue-rotate(180deg) saturate(1.15);
+}
+
+html[data-theme="dark"] .bar::-webkit-scrollbar {
+  height: 6px;
+}

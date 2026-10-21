@@ -2,7 +2,9 @@ version = 1
 
 exclude_patterns = [
   "src/Clickra.Fluent/TrayIcon.cs",
-  "src/Clickra.Fluent/TrayService.cs"
+  "src/Clickra.Fluent/TrayService.cs",
+  "scripts/architecture/**",
+  "scripts/pipeline_cycle_sim.py"
 ]
 
 test_patterns = [
