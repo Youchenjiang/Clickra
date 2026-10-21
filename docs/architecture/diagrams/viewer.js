@@ -49,26 +49,21 @@
   function findConnectedGraph(startId) {
     const keepNodes = new Set([startId]);
     const keepEdges = new Set();
-    let frontier = [startId];
     const maxDepth = 15;
-    let depth = 0;
-    while (frontier.length > 0 && depth < maxDepth) {
+
+    // Upstream: callers (edges pointing to current frontier)
+    let frontierUp = [startId];
+    let depthUp = 0;
+    while (frontierUp.length > 0 && depthUp < maxDepth) {
       const next = [];
-      frontier.forEach((curr) => {
+      frontierUp.forEach((curr) => {
         edges.forEach((edge) => {
           if (edge.classList.contains('off')) {
             return;
           }
-          const s = edge.dataset.src;
-          const d = edge.dataset.dst;
-          if (s === curr && !keepEdges.has(edge)) {
+          if (edge.dataset.dst === curr && !keepEdges.has(edge)) {
             keepEdges.add(edge);
-            if (!keepNodes.has(d)) {
-              keepNodes.add(d);
-              next.push(d);
-            }
-          } else if (d === curr && !keepEdges.has(edge)) {
-            keepEdges.add(edge);
+            const s = edge.dataset.src;
             if (!keepNodes.has(s)) {
               keepNodes.add(s);
               next.push(s);
@@ -76,9 +71,34 @@
           }
         });
       });
-      frontier = next;
-      depth += 1;
+      frontierUp = next;
+      depthUp += 1;
     }
+
+    // Downstream: callees (edges originating from current frontier)
+    let frontierDown = [startId];
+    let depthDown = 0;
+    while (frontierDown.length > 0 && depthDown < maxDepth) {
+      const next = [];
+      frontierDown.forEach((curr) => {
+        edges.forEach((edge) => {
+          if (edge.classList.contains('off')) {
+            return;
+          }
+          if (edge.dataset.src === curr && !keepEdges.has(edge)) {
+            keepEdges.add(edge);
+            const d = edge.dataset.dst;
+            if (!keepNodes.has(d)) {
+              keepNodes.add(d);
+              next.push(d);
+            }
+          }
+        });
+      });
+      frontierDown = next;
+      depthDown += 1;
+    }
+
     return { keepNodes, keepEdges };
   }
 
@@ -217,7 +237,9 @@
         } else {
           const targetEl = document.getElementById('sec-' + targetLayer);
           if (targetEl && view) {
-            const targetY = Number.parseFloat(targetEl.getAttribute('y')) || 0;
+            const viewRect = view.getBoundingClientRect();
+            const targetRect = targetEl.getBoundingClientRect();
+            const targetY = view.scrollTop + (targetRect.top - viewRect.top);
             view.scrollTo({ top: Math.max(0, targetY - 20), behavior: 'smooth' });
           }
         }
