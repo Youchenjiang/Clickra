@@ -1132,12 +1132,9 @@ def _tr_folder_label(f):
     return {"Translation/": "Translation/（引擎）", "Pipeline/": "Pipeline/（根目錄）"}.get(f, f)
 
 
-def _tr_best_order(n5, e5, fo):
-    """Calculate optimal folder ordering minimizing feedback edges."""
-    cnt = collections.Counter((fo(a), fo(b)) for a, b in e5 if fo(a) != fo(b))
-    fs = sorted({fo(n) for n in n5})
+def _solve_order_dp(fs, w):
+    """Solve minimum feedback edge ordering via DP over subsets."""
     k = len(fs)
-    w = [[cnt.get((fs[i], fs[j]), 0) for j in range(k)] for i in range(k)]
     inf = 10 ** 9
     dp = [inf] * (1 << k)
     par = [None] * (1 << k)
@@ -1146,7 +1143,7 @@ def _tr_best_order(n5, e5, fo):
         if dp[m] == inf:
             continue
         for j in range(k):
-            if not m >> j & 1:
+            if not (m >> j & 1):
                 c = dp[m] + sum(w[j][s] for s in range(k) if m >> s & 1)
                 if c < dp[m | 1 << j]:
                     dp[m | 1 << j] = c
@@ -1156,7 +1153,16 @@ def _tr_best_order(n5, e5, fo):
         j = par[m]
         order.append(fs[j])
         m ^= 1 << j
-    order = order[::-1]
+    return order[::-1]
+
+
+def _tr_best_order(n5, e5, fo):
+    """Calculate optimal folder ordering minimizing feedback edges."""
+    cnt = collections.Counter((fo(a), fo(b)) for a, b in e5 if fo(a) != fo(b))
+    fs = sorted({fo(n) for n in n5})
+    k = len(fs)
+    w = [[cnt.get((fs[i], fs[j]), 0) for j in range(k)] for i in range(k)]
+    order = _solve_order_dp(fs, w)
     pos = {f: i for i, f in enumerate(order)}
     back = [(a, b) for a, b in e5 if fo(a) != fo(b) and pos[fo(b)] < pos[fo(a)]]
     return order, cnt, back
@@ -1412,6 +1418,34 @@ def _compute_chains_and_links(cedges, rank, size):
     return chains, links
 
 
+def _init_rank_structures(rank, links, nr):
+    """Initialize rank order and predecessor/successor mappings."""
+    order = {r: [] for r in range(nr)}
+    preds = {i: [] for i in rank}
+    succs = {i: [] for i in rank}
+    for i, r in rank.items():
+        order[r].append(i)
+    for p, q in links:
+        succs[p].append(q)
+        preds[q].append(p)
+    return order, preds, succs
+
+
+def _calc_rank_metrics(order, nr, size, links, rank):
+    """Compute width, heights, and link counts per rank."""
+    nat_w = 2 * PAD
+    rowh = {}
+    nlinks = {r: 0 for r in range(nr)}
+    for p, q in links:
+        nlinks[rank[p]] += 1
+    for r in range(nr):
+        rw = sum(size[i][0] for i in order[r]) + GAP_X * max(0, len(order[r]) - 1)
+        if rw + 2 * PAD > nat_w:
+            nat_w = rw + 2 * PAD
+        rowh[r] = max([size[i][1] for i in order[r]] + [0])
+    return nat_w, rowh, nlinks
+
+
 def _sweep_rank_order(order, nr, preds, succs):
     """Execute barycentric passes to optimize layer ordering."""
     for sweep in ("down", "up", "down", "up", "down"):
@@ -1429,13 +1463,9 @@ def _sweep_rank_order(order, nr, preds, succs):
 def _barycentric_order(rank, links, size):
     """Optimize node order in ranks via barycentric sweeps."""
     nr = max(rank.values()) + 1
-    order = {r: [i for i in rank if rank[i] == r] for r in range(nr)}
-    preds = {i: [p for p, q in links if q == i] for i in rank}
-    succs = {i: [q for p, q in links if p == i] for i in rank}
+    order, preds, succs = _init_rank_structures(rank, links, nr)
     _sweep_rank_order(order, nr, preds, succs)
-    nat_w = max(sum(size[i][0] for i in order[r]) + GAP_X * (len(order[r]) - 1) for r in range(nr)) + 2 * PAD
-    rowh = {r: max([size[i][1] for i in order[r]] + [0]) for r in range(nr)}
-    nlinks = {r: sum(1 for p, q in links if rank[p] == r) for r in range(nr)}
+    nat_w, rowh, nlinks = _calc_rank_metrics(order, nr, size, links, rank)
     return order, nr, nat_w, rowh, nlinks
 
 
@@ -1538,10 +1568,8 @@ def _draw_panel_comps(pid, comps, data, pos, lo):
             yy_ += rh + 10
 
 
-def draw_panel(pid, lo, x, y, w, title, sub, foot):
-    """Draw complete subsystem panel with internal node graph."""
-    comps, rank, size, order, nr = lo["comps"], lo["rank"], lo["size"], lo["order"], lo["nr"]
-    data = lo["data"]
+def _calc_panel_x_coords(nr, order, size, x, w):
+    """Compute X positions of nodes within each rank."""
     xs = {}
     for r in range(nr):
         tw = sum(size[i][0] for i in order[r]) + GAP_X * (len(order[r]) - 1)
@@ -1549,15 +1577,11 @@ def draw_panel(pid, lo, x, y, w, title, sub, foot):
         for i in order[r]:
             xs[i] = cx
             cx += size[i][0] + GAP_X
-    out_l, in_l = {}, {}
-    for p, q in lo["links"]:
-        out_l.setdefault(p, []).append(q)
-        in_l.setdefault(q, []).append(p)
+    return xs
 
-    outp, inp = _calc_panel_ports(comps, data, xs, size, out_l, in_l)
-    _nudge_panel_waypoints(xs, size, order, rank, outp, inp)
-    outp, inp = _calc_panel_ports(comps, data, xs, size, out_l, in_l)
 
+def _assign_panel_lanes(nr, lo, rank, outp, inp):
+    """Assign routing lanes for bent links per rank."""
     lane_of, nlane = {}, {}
     for r in range(nr):
         bent = [(p, q) for p, q in lo["links"] if rank[p] == r and abs(outp[p][q] - inp[q][p]) > 0.5]
@@ -1566,6 +1590,24 @@ def draw_panel(pid, lo, x, y, w, title, sub, foot):
         for k, l in enumerate(right + left):
             lane_of[l] = k
         nlane[r] = len(bent)
+    return lane_of, nlane
+
+
+def draw_panel(pid, lo, x, y, w, title, sub, foot):
+    """Draw complete subsystem panel with internal node graph."""
+    comps, rank, size, order, nr = lo["comps"], lo["rank"], lo["size"], lo["order"], lo["nr"]
+    data = lo["data"]
+    xs = _calc_panel_x_coords(nr, order, size, x, w)
+    out_l, in_l = {}, {}
+    for p, q in lo["links"]:
+        out_l.setdefault(p, []).append(q)
+        in_l.setdefault(q, []).append(p)
+
+    outp, inp = _calc_panel_ports(comps, data, xs, size, out_l, in_l)
+    _nudge_panel_waypoints(xs, size, order, rank, outp, inp)
+    outp, inp = _calc_panel_ports(comps, data, xs, size, out_l, in_l)
+    lane_of, nlane = _assign_panel_lanes(nr, lo, rank, outp, inp)
+
     pos, row_top, cy = {}, {}, y + 50
     for r in range(nr):
         for i in order[r]:
