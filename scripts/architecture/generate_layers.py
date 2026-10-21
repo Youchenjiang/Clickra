@@ -45,7 +45,7 @@ def _count_registered_use_cases() -> int:
     cs_path = os.path.join(repo_root, "src", "Clickra.Core", "Application", "ConversionUseCases.cs")
     if os.path.isfile(cs_path):
         with open(cs_path, encoding="utf-8") as f:
-            return len([m for m in re.findall(r"new\s+([A-Za-z0-9_]+UseCase)\b", f.read()) if not m.startswith("IConversionUseCase")])
+            return len([m for m in re.findall(r"new\s+(\w+UseCase)\b", f.read()) if not m.startswith("IConversionUseCase")])
     return 19
 
 
@@ -1896,7 +1896,7 @@ def make_overview_svg():
     module_count = len(MOD_ORDER)
     layout_count = _count_native_layouts()
     proc_count = len(PROC)
-    dsm_pipeline_folders = len({tr_folder(n) for n in NODES if n.startswith(TR) and tr_folder(n).startswith("Pipeline/") and tr_folder(n) != "Pipeline/"})
+    dsm_pipeline_folders = len({tr_folder(n) for n in NODES if n.startswith(TR) and tr_folder(n).startswith(STR_PIPELINE) and tr_folder(n) != STR_PIPELINE})
 
     layers = [
         ("L0・入口（OS Entry Points & Handoffs）", "4 種使用者觸發方式 · 4 個進入點執行檔 · Win11 整合", PAGE_L0,
