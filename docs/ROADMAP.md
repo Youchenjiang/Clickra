@@ -119,7 +119,7 @@
     - **Phase 4**：未來版本預設使用 DeepL，其他作為備選。
     - **安全改善**：DeepL、Microsoft Translator、Google Cloud Translation 都有設定 HSTS、X-Content-Type-Options 等安全 headers。
     - **隱私改善**：官方 API 有明確的隱私政策，使用者自己的 API key 不會共用。
-    - 詳見 `tools/zap/zap-false-positives.md` 的「Current API Security Limitations」章節。
+    - 詳見 `.github/zap/zap-false-positives.md` 的「Current API Security Limitations」章節。
 - [x] **[F2-18] Image to PDF & Merge**：圖片轉 PDF 與合併（v3.0.0）。
 - [x] **[F2-19] HEIC Input & HEIC Output**：HEIC 輸入與 HEIC 輸出支援（v3.8.0）。
     - 支援將 HEIC 檔案作為現有圖片轉換命令的輸入來源（PNG/JPG/WEBP/GIF/HEIC）。
