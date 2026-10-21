@@ -1427,7 +1427,7 @@ def _compute_chains_and_links(cedges, rank, size):
         ch.append(b)
         chains[(a, b)] = ch
     links = [(ch[k], ch[k + 1]) for ch in chains.values() for k in range(len(ch) - 1)]
-    for i in list(size.keys()):
+    for i in size:
         if not isinstance(i, tuple):
             deg = max(sum(1 for p, q in links if p == i), sum(1 for p, q in links if q == i))
             size[i] = (max(size[i][0], (deg - 1) * PORT + 24), size[i][1])
@@ -1451,7 +1451,7 @@ def _calc_rank_metrics(order, nr, size, links, rank):
     """Compute width, heights, and link counts per rank."""
     nat_w = 2 * PAD
     rowh = {}
-    nlinks = {r: 0 for r in range(nr)}
+    nlinks = dict.fromkeys(range(nr), 0)
     for p, _ in links:
         nlinks[rank[p]] += 1
     for r in range(nr):
@@ -1872,16 +1872,20 @@ def make_overview_svg():
     ]
     
     for title, sub, href, col, fill, border, y, h, details in layers:
-        ov.append(f'<g class="node" data-id="{href}" onclick="location.href=\'{href}\'" style="cursor:pointer;">')
-        ov.append(f'<rect x="40" y="{y}" width="1476" height="{h}" rx="10" fill="{fill}" stroke="{border}" stroke-width="1.8"/>')
-        ov.append(f'<text x="64" y="{y + 32}" font-size="16" font-weight="700" fill="#101828">{e(title)}</text>')
-        ov.append(f'<text x="64" y="{y + 54}" font-size="12" font-weight="600" fill="{col}">{e(sub)}</text>')
-        ov.append(f'<line x1="64" y1="{y + 66}" x2="1492" y2="{y + 66}" stroke="#eaecf0"/>')
+        ov.extend([
+            f'<g class="node" data-id="{href}" onclick="location.href=\'{href}\'" style="cursor:pointer;">',
+            f'<rect x="40" y="{y}" width="1476" height="{h}" rx="10" fill="{fill}" stroke="{border}" stroke-width="1.8"/>',
+            f'<text x="64" y="{y + 32}" font-size="16" font-weight="700" fill="#101828">{e(title)}</text>',
+            f'<text x="64" y="{y + 54}" font-size="12" font-weight="600" fill="{col}">{e(sub)}</text>',
+            f'<line x1="64" y1="{y + 66}" x2="1492" y2="{y + 66}" stroke="#eaecf0"/>',
+        ])
         for idx, dt in enumerate(details):
             ov.append(f'<text x="64" y="{y + 86 + idx * 20}" font-size="11.5" fill="#475467">{e(dt)}</text>')
-        ov.append(f'<rect x="1380" y="{y + 20}" width="112" height="32" rx="6" fill="#101828"/>')
-        ov.append(f'<text x="1436" y="{y + 41}" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">開啟專屬圖 ➔</text>')
-        ov.append('</g>')
+        ov.extend([
+            f'<rect x="1380" y="{y + 20}" width="112" height="32" rx="6" fill="#101828"/>',
+            f'<text x="1436" y="{y + 41}" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">開啟專屬圖 ➔</text>',
+            '</g>',
+        ])
         
         # Draw connector arrow to next layer
         if y < 780:
