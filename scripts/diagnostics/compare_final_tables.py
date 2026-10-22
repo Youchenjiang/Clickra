@@ -62,7 +62,7 @@ def drawing_stats_in_rect(page, rect):
     return {"line_count": len(lines), "rect_count": len(rects), "curve_count": len(curves), "lines": lines[:30], "rects": rects[:20]}
 
 
-def spans_in_rect(page, rect, label=""):
+def spans_in_rect(page, rect, _label=""):
     spans = []
     for b in page.get_text("dict")["blocks"]:
         if b.get("type") != 0:
@@ -127,10 +127,7 @@ def compare_spans(src_spans, trn_spans):
     trn_set = set(trn_texts)
     missing = [t for t in src_texts if t not in trn_set]
     extra = [t for t in trn_texts if t not in src_set]
-    cjk_overlay = [s for s in trn_spans if s["cjk"] and any(
-        re.sub(r"[\u4e00-\u9fff\s]", "", s["text"]).lower() in t.lower() or t.lower() in s["text"].lower()
-        for t in src_texts if re.search(r"[A-Za-z]{3,}", t)
-    )]
+
     eng_in_trn = [s for s in trn_spans if s["eng"] and not s["cjk"]]
     cjk_in_trn = [s for s in trn_spans if s["cjk"]]
     double_layer = []
@@ -231,7 +228,7 @@ def analyze_page(page_num):
 
     if "ref_pig_bbox" in cfg:
         ref_png = OUT / f"final_project_p{page_num}_ref_compare.png"
-        ref_rect, rp_s, rp_t = render_side_by_side(doc_src, doc_trn, page_idx, cfg["ref_pig_bbox"], ref_png, pad=4)
+        ref_rect, _rp_s, _rp_t = render_side_by_side(doc_src, doc_trn, page_idx, cfg["ref_pig_bbox"], ref_png, pad=4)
         rss = spans_in_rect(doc_src[page_idx], ref_rect)
         rts = spans_in_rect(doc_trn[page_idx], ref_rect)
         rsc = compare_spans(rss, rts)

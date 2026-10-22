@@ -1,7 +1,7 @@
 """Render PDF pages to PNG. Merged from 15+ render_*.py scripts."""
 import argparse
 from pathlib import Path
-from _pdf_utils import open_pdf, out_dir, SOURCES
+from _pdf_utils import out_dir, SOURCES
 from PIL import Image
 import fitz
 

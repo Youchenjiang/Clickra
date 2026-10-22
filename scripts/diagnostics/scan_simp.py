@@ -1,6 +1,6 @@
 """Scan simplified Chinese characters in translated PDF using opencc."""
 import argparse
-from _pdf_utils import open_pdf, find_simplified_chars, count_simplified_hits, has_cjk, ENG_RE, SOURCES
+from _pdf_utils import open_pdf, find_simplified_chars, has_cjk, ENG_RE, SOURCES
 
 
 def scan_page(page, x_split=300):

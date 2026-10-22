@@ -5,7 +5,7 @@ import fitz
 import re
 import json
 from pathlib import Path
-from _pdf_utils import open_pdf, SOURCES, CJK_RE, ENG_RE, out_dir, count_simplified_hits
+from _pdf_utils import SOURCES, CJK_RE, ENG_RE, out_dir, count_simplified_hits
 
 MONO_FONTS = ("Courier", "Console", "Inconsolata", "Typewriter", "NimbusMon",
               "MonL", "cmtt", "ectt", "sftt", "Teletype", "Mono", "Code")
@@ -85,7 +85,6 @@ def is_bypass_line(line, page, diagram_regions, in_refs):
 
     x0 = min(s["bbox"][0] for s in line["spans"])
     x1 = max(s["bbox"][2] for s in line["spans"])
-    cy = (y0 + y1) / 2
     span_rect = fitz.Rect(x0, y0, x1, y1)
     for dr in diagram_regions:
         if dr.intersects(span_rect):
@@ -141,6 +140,27 @@ def page_health(page, page_idx, page_texts):
     }
 
 
+def _print_health_summary(pdf_path, page_count, total_cjk, total_simp, total_tofu, bad_pages, warn_pages, pages):
+    print(f"=== Health Report: {pdf_path} ===")
+    print(f"Pages: {page_count}  CJK: {total_cjk}  Simp: {total_simp}  Tofu: {total_tofu}")
+    if bad_pages:
+        print(f"PROBLEM pages: {bad_pages}")
+    if warn_pages:
+        print(f"WARNING (high eng ratio): {warn_pages}")
+    for p in pages:
+        flag = ""
+        if p["tofu"] > 0:
+            flag += " TOFU"
+        if p["simp_chars"] > 0:
+            flag += f" SIMP={p['simp_chars']}"
+        if p["eng_ratio"] > 0.3:
+            flag += f" ENG_R={p['eng_ratio']:.0%}"
+        if flag:
+            print(f"  p{p['page']:2d}: cjk={p['cjk_chars']:4d} eng_r={p['body_eng_right']:2d}/{p['body_total']:2d}{flag}")
+        elif p["page"] <= 3 or p["page"] % 5 == 0:
+            print(f"  p{p['page']:2d}: cjk={p['cjk_chars']:4d} ok")
+
+
 def health_report(pdf_path, out_path=None):
     doc = fitz.open(str(pdf_path))
     page_texts = {}
@@ -171,24 +191,7 @@ def health_report(pdf_path, out_path=None):
         "pages": pages,
     }
 
-    print(f"=== Health Report: {pdf_path} ===")
-    print(f"Pages: {len(pages)}  CJK: {total_cjk}  Simp: {total_simp}  Tofu: {total_tofu}")
-    if bad_pages:
-        print(f"PROBLEM pages: {bad_pages}")
-    if warn_pages:
-        print(f"WARNING (high eng ratio): {warn_pages}")
-    for p in pages:
-        flag = ""
-        if p["tofu"] > 0:
-            flag += " TOFU"
-        if p["simp_chars"] > 0:
-            flag += f" SIMP={p['simp_chars']}"
-        if p["eng_ratio"] > 0.3:
-            flag += f" ENG_R={p['eng_ratio']:.0%}"
-        if flag:
-            print(f"  p{p['page']:2d}: cjk={p['cjk_chars']:4d} eng_r={p['body_eng_right']:2d}/{p['body_total']:2d}{flag}")
-        elif p["page"] <= 3 or p["page"] % 5 == 0:
-            print(f"  p{p['page']:2d}: cjk={p['cjk_chars']:4d} ok")
+    _print_health_summary(pdf_path, len(pages), total_cjk, total_simp, total_tofu, bad_pages, warn_pages, pages)
 
     if out_path:
         with open(out_path, "w", encoding="utf-8") as f:
