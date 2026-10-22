@@ -22,8 +22,12 @@ class CreateTests(unittest.TestCase):
         body = Path(folder) / "pr.md"
         body.write_text(
             "## Summary\nA\n## Changes\nB\n## Validation\nC\n## Review Checklist\n"
-            "- [x] **Assignee**: @owner\n- [x] **Label**: agent\n"
-            "- [x] **Milestone**: Plan\n- [x] **External provider**: none\n",
+            "- [x] **Behavior**: reviewed changes\n"
+            "- [x] **Regression**: test evidence recorded\n"
+            "- [x] **Compatibility**: compatible\n"
+            "- [x] **Security**: secure\n"
+            "- [x] **Documentation**: docs updated\n"
+            "- [x] **External provider**: none\n",
             encoding="utf-8")
         return body
 

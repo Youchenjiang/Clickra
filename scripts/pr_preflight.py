@@ -65,6 +65,37 @@ def _split_pr_sections(body):
     return sections
 
 
+REQUIRED_REVIEW_PROMPTS = (
+    "Behavior",
+    "Regression",
+    "Compatibility",
+    "Security",
+    "Documentation",
+)
+CHECKLIST_METADATA_PATTERN = re.compile(r"(?mi)^- \[[ xX]\] \*\*(?:Assignee|Label|Milestone)\*\*:")
+
+
+def _checklist_metadata_errors(lines):
+    if CHECKLIST_METADATA_PATTERN.search(lines):
+        return [
+            "assignees, labels and milestones must not be duplicated "
+            "as PR-body checkboxes; verify via GitHub metadata"
+        ]
+    return []
+
+
+def _checklist_prompt_errors(lines):
+    errors = []
+    for prompt in REQUIRED_REVIEW_PROMPTS:
+        pattern = rf"(?mi)^- \[[ xX]\] \*\*{re.escape(prompt)}\*\*:[ \t]*(\S[^\r\n]*)$"
+        match = re.search(pattern, lines)
+        if not match:
+            errors.append(f"missing review checklist prompt: {prompt}")
+        elif PLACEHOLDER.search(match.group(1)):
+            errors.append(f"placeholder in review checklist prompt: {prompt}")
+    return errors
+
+
 def _provider_acknowledgement_errors(lines):
     match = re.search(r"(?mi)^- \[x\] \*\*External provider\*\*:[ \t]*(\S[^\r\n]*)$", lines)
     if not match or PLACEHOLDER.search(match.group(1)):
@@ -92,7 +123,10 @@ def validate_pr_body(body, metadata=None):
         content = "\n".join(sections[heading]).strip()
         if not content or (heading != CHECKLIST_SECTION and PLACEHOLDER.search(content)):
             errors.append(f"empty or placeholder {heading}")
-    errors.extend(_provider_acknowledgement_errors("\n".join(sections.get(CHECKLIST_SECTION, []))))
+    checklist_lines = "\n".join(sections.get(CHECKLIST_SECTION, []))
+    errors.extend(_checklist_metadata_errors(checklist_lines))
+    errors.extend(_checklist_prompt_errors(checklist_lines))
+    errors.extend(_provider_acknowledgement_errors(checklist_lines))
     if metadata is not None:
         errors.extend(_live_metadata_errors(metadata))
     return errors
