@@ -4,11 +4,13 @@ exclude_patterns = [
   "src/Clickra.Fluent/TrayIcon.cs",
   "src/Clickra.Fluent/TrayService.cs",
   "scripts/architecture/**",
+  "scripts/diagnostics/**",
   "scripts/pipeline_cycle_sim.py"
 ]
 
 test_patterns = [
-  "tests/**"
+  "tests/**",
+  "scripts/tests/**"
 ]
 
 [[analyzers]]
