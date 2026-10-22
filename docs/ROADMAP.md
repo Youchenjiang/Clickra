@@ -1,6 +1,6 @@
 # Clickra 發展規劃 (Roadmap)
 
-**規劃週期**：2026年5月 — 2026年8月
+**規劃週期**：2026年10月 — 2026年12月
 
 本文件定義了 Clickra 後續的功能擴張與視覺體驗優化標準，目標是從一個實用的腳本套件進化為精緻的 Windows 應用程式。
 
@@ -177,6 +177,8 @@
     - **DashboardHistoryTab 複雜度 (2026/08/28 記錄)**：`DashboardWindow.Paint.History.cs` 的 `DrawHistoryTab` 圈複雜度 69（critical），DeepSource CS-R1140。active tasks 迴圈 + history entries 迴圈 + expanded details（4 個 scrollable 欄位 × scrollbar 計算）+ ConversionStatus switch 堆疊而成。需拆分為 `DrawActiveTasks`、`DrawHistoryEntries`、`DrawExpandedDetails` 等職責單一的方法。
 - [ ] **[R1-4] Test Suite Architecture Standardization**：測試套件架構標準化（技術債）。
     - [x] **命名空間整合 (2026/08/08 完成)**：10 個 `TestSuite` partial 檔已移入 `Clickra.Core.Tests` 命名空間並移除 S3903 pragma，解決全域命名空間污染（CS-W1061）。
+    - [x] **架構守衛與測試套件分層 (2026/10 完成)**：C# 架構守衛與 UI 資源測試獨立模組化，測試架構全面與系統分層對齊。
+    - [x] **Python 腳本測試統一納管 (2026/10 完成)**：建立 `scripts/tests/` 統一測試目錄與共用測試基礎架構，涵蓋 `pr_tool`、`bump_version`、`pdf_rules` 等工具。
     - **升級測試框架**：後續規劃將自建的 `TestRunner` 升級為業界標準的單元測試框架（如 xUnit 或 NUnit），以利於在 CI 流程中整合覆蓋率分析。
 - [ ] **[R1-5] Quality Gate Observations**：品質閘門觀察。
     - [x] **v3.12.0 設定平台現代化 (2026/10/03 完成)**：完成 centralized settings descriptors、Native / Fluent descriptor-driven controls、跨執行中程序的 SettingsReloaded 即時同步與共用 numeric bounds；PR 收斂後 Sonar New Code issues 與 duplication 均為 0，DeepSource C# / Python / Secrets 全數通過。
@@ -197,9 +199,14 @@
     - 新增 `CLICKRA_DATA_DIR` 環境變數覆寫，支援可攜式執行與測試隔離。
     - 新增 `FileTypes` UI 檔案類型註冊表（pdf / word / excel / ppt / image），為 Fluent 儀表板重設計提供基礎。
     - Legacy `active.tmp` API 暫時保留，待 Clickra.CLI 遷移後移除。
-- [ ] **[R1-6] Dev Scaffolding Cleanup**：開發期清理。
+- [x] **[R1-6] Dev Scaffolding Cleanup**：開發期清理與工具目錄收斂（v3.12.0 / 2026/10 完成）。
     - [x] **移除視覺分割測試後門**：移除 `ClickraCli.cs` 中硬編碼的測試 PDF 路徑與依執行檔名稱（`TestVisualSplitter` / `ClickraVisualSplitter`）自動進入視覺分割模式的開發測試邏輯，正式版本應僅由 CLI 旗標與參數驅動。
     - [x] **本機工具狀態隔離 (2026/08/11 完成)**：已將 `.freebuff/`（本機工具 SQLite 狀態）與 `Clickra.rar`（本機備份檔）加入 `.gitignore`，避免污染 git status 與誤提交。
+    - [x] **廢棄目錄與零散檔案消除 (2026/10 完成)**：徹底移除歷史遺留的 `tools/` 與 `archive/` 目錄，將 24 個診斷腳本重構遷入 `scripts/diagnostics/`，清除 60+ 項靜態分析 anti-patterns 並抽換共用函式庫。
+- [x] **[R1-8] Repository Hygiene & Tooling Governance**：倉儲治理與工具鏈規範化（2026/10 完成）。
+    - **治理專案落實**：完成五階段重構（架構文件標準化、根目錄純淨化、腳本測試收斂、工具目錄廢止與診斷收納、文件體系化）。
+    - **自動化防護守衛**：引入 `scripts/tests/test_repo_hygiene.py`，以自動化測試守衛根目錄白名單、`docs/` 結構規範、嚴禁未經核准的散落檔案與工具目錄重現。
+    - **PR 工具品質閘門強化**：升級 `scripts/pr_tool.py` 與 `scripts/sonar_audit.py`，完整可視化 SonarCloud 品質閘門（Quality Gate）、重複率（Duplication Density）、評級與安全性熱點狀態。
 
 ## 4. 維護、診斷與離線轉檔插件 (Diagnostics & Offline Fallback)
 - [x] **[F3-1] One-click Diagnostic Feedback**：一鍵診斷回報與郵件反饋（v3.0.9）。
