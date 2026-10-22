@@ -2,9 +2,9 @@
 
 > **Agent & Developer Documentation Index**:
 > - [ARCHITECTURE](../architecture/README.md): .NET 8 baseline, roll-forward policy, and interactive maps ([overview.html](../architecture/diagrams/overview.html)).
-> - [WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md](../WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md): Win10/Win11 context-menu and packaged storage notes.
-> - [TROUBLESHOOTING_AND_RESOLUTIONS.md](../TROUBLESHOOTING_AND_RESOLUTIONS.md): troubleshooting history and prior fixes.
-> - [CI_CD_DUAL_RELEASE_GUIDE.md](../CI_CD_DUAL_RELEASE_GUIDE.md): current automated release pipeline and source-of-truth boundaries.
+> - [WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md](WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md): Win10/Win11 context-menu and packaged storage notes.
+> - [TROUBLESHOOTING_AND_RESOLUTIONS.md](TROUBLESHOOTING_AND_RESOLUTIONS.md): troubleshooting history and prior fixes.
+> - [CI_CD_DUAL_RELEASE_GUIDE.md](CI_CD_DUAL_RELEASE_GUIDE.md): current automated release pipeline and source-of-truth boundaries.
 
 ## Windows SDK Tools
 This project requires `makeappx.exe` and `signtool.exe`. On this machine, the

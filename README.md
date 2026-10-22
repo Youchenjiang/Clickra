@@ -58,7 +58,7 @@ Clickra operates on a strict **Local-First** philosophy:
 
 ### Code signing policy
 
-Clickra's production direct-download signing rules, maintainer roles, privacy reference, and release-signing controls are documented in the [Code signing policy](docs/CODE_SIGNING_POLICY.md).
+Clickra's production direct-download signing rules, maintainer roles, privacy reference, and release-signing controls are documented in the [Code signing policy](docs/development/CODE_SIGNING_POLICY.md).
 
 ### Recommended: Microsoft Store (auto-updates)
 [![Microsoft Store Badge](https://developer.microsoft.com/en-us/store/badges/images/English_get-it-from-MS.png)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)

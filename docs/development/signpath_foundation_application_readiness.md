@@ -22,7 +22,7 @@ It does not authorize or perform an external application submission. Unknown Sig
 | Existing releases | Yes; public GitHub releases exist |
 | Microsoft Store listing | Product ID `9NGLBF6P1KLD` |
 | Privacy policy | `PRIVACY.md` |
-| Code signing policy | `docs/CODE_SIGNING_POLICY.md` |
+| Code signing policy | `docs/development/CODE_SIGNING_POLICY.md` |
 | Planned trusted build | GitHub Actions on GitHub-hosted Windows runners |
 | Planned signed artifact | GitHub direct-download MSIX |
 

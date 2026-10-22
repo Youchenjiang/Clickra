@@ -3,7 +3,7 @@
 > **文件角色**：本文件保存 2026/08 的 legacy dual-track distribution 設計與其理由，
 > 不是目前 automated release pipeline 的權威來源。現行 `release.yml` / `build_msix.ps1`
 > 只建立 NativeAOT Main `Clickra.msix`；實際 shipping state 請以
-> `docs/CI_CD_DUAL_RELEASE_GUIDE.md` 與 workflow/scripts 為準。
+> `docs/development/CI_CD_DUAL_RELEASE_GUIDE.md` 與 workflow/scripts 為準。
 
 > [!IMPORTANT]
 > **後續候選架構**：專案另有「Store AOT 主套件 +
@@ -115,7 +115,7 @@ ClickraLauncher.exe --quiet           精簡輸出
 
 ## 4. Historical packaging / CI snapshot（2026/08；non-normative）
 
-> 本節只保存 dual-track implementation 當時的 build/CI 形狀。下列 artifact/腳本描述不得拿來推定目前 `release.yml` 行為；current pipeline 只看 `docs/CI_CD_DUAL_RELEASE_GUIDE.md` 與實際 workflow/scripts。
+> 本節只保存 dual-track implementation 當時的 build/CI 形狀。下列 artifact/腳本描述不得拿來推定目前 `release.yml` 行為；current pipeline 只看 `docs/development/CI_CD_DUAL_RELEASE_GUIDE.md` 與實際 workflow/scripts。
 
 ### 4.1 本機打包
 
