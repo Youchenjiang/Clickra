@@ -10,7 +10,7 @@ import sonar_audit
 
 class SonarAuditTests(unittest.TestCase):
     def test_quality_metrics_exposes_duplication_and_gate_conditions(self):
-        def fake(host, endpoint, params, token=None):
+        def fake(host, endpoint, params, token=None, **_kwargs):
             self.assertEqual(sonar_audit.DEFAULT_HOST, host)
             self.assertIsNone(token)
             self.assertEqual(183, params["pullRequest"])
