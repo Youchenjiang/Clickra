@@ -25,7 +25,7 @@
 - [ ] **CHANGELOG.md**：將 `**TODO**: Add changelog entry here` 替換為實際的變更描述（參考 §3.3）
 - [ ] **docs/ROADMAP.md**：更新里程碑完成狀態（`[ ]` → `[x]`）與進度說明
 - [ ] **docs/development/local_build_notes.md**：更新架構版本標記（如有）
-- [ ] **docs/StoreListing_*.md**（5 語言）：更新 Description、What's new、Product Features、Short description（參考 §3.4）
+- [ ] **docs/store/StoreListing_*.md**（5 語言）：更新 Description、What's new、Product Features、Short description（參考 §3.4）
 
 ### Step 4：驗證
 - [ ] `dotnet build` 無錯誤
@@ -115,11 +115,11 @@ $$\text{Version} = \text{Major} . \text{Minor} . \text{Patch} . \mathbf{0}$$
 *   **[docs/development/local_build_notes.md](local_build_notes.md)**: 更新架構版本標記（如有）。
 
 ### 3.4 商店文案 (Store Listings) — `bump_version.ps1` 自動更新版本標題，內容需手動更新
-*   **[docs/StoreListing_EN.md](../StoreListing_EN.md)**: 英文商店文案。
-*   **[docs/StoreListing_ZH.md](../StoreListing_ZH.md)**: 繁體中文商店文案。
-*   **[docs/StoreListing_JA.md](../StoreListing_JA.md)**: 日文商店文案。
-*   **[docs/StoreListing_KO.md](../StoreListing_KO.md)**: 韓文商店文案。
-*   **[docs/StoreListing_ZH-CN.md](../StoreListing_ZH-CN.md)**: 簡體中文商店文案。
+*   **[docs/store/StoreListing_EN.md](../store/StoreListing_EN.md)**: 英文商店文案。
+*   **[docs/store/StoreListing_ZH.md](../store/StoreListing_ZH.md)**: 繁體中文商店文案。
+*   **[docs/store/StoreListing_JA.md](../store/StoreListing_JA.md)**: 日文商店文案。
+*   **[docs/store/StoreListing_KO.md](../store/StoreListing_KO.md)**: 韓文商店文案。
+*   **[docs/store/StoreListing_ZH-CN.md](../store/StoreListing_ZH-CN.md)**: 簡體中文商店文案。
 
 > [!WARNING]
 > 商店文案的 **Description**、**What's new**、**Product Features**、**Short description** 欄位不會被腳本自動更新。
