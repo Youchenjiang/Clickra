@@ -14,7 +14,7 @@ PAGES = [13, 14, 15]  # 0-based: pages 14,15,16
 def render_pair(doc_src, doc_trn, pi):
     zoom = 2.0
     mat = fitz.Matrix(zoom, zoom)
-    for label, doc, suffix in [
+    for _label, doc, suffix in [
         ("src", doc_src, "src"),
         ("trn", doc_trn, "trn"),
     ]:
@@ -41,6 +41,30 @@ def drawing_stats(page):
     return len(drawings), lines, rects, curves, quads
 
 
+def _classify_span(span, y_min=None, y_max=None):
+    t = span.get("text", "").strip()
+    if not t:
+        return None
+    bbox = span.get("bbox", [0, 0, 0, 0])
+    cy = (bbox[1] + bbox[3]) / 2
+    if y_min is not None and cy < y_min:
+        return None
+    if y_max is not None and cy > y_max:
+        return None
+    has_cjk = bool(re.search(r"[\u4e00-\u9fff]", t))
+    has_eng = bool(re.search(r"[A-Za-z]{3,}", t))
+    color = span.get("color", 0)
+    is_ghost = color in (16777215, 0xFFFFFF) or (
+        isinstance(color, int) and color > 0xFEFEFE
+    )
+    return {
+        "text": t,
+        "has_cjk": has_cjk,
+        "has_eng": has_eng,
+        "is_ghost": is_ghost,
+    }
+
+
 def span_stats(page, y_min=None, y_max=None):
     eng_only = cjk_only = mixed = ghost = 0
     eng_samples = []
@@ -50,34 +74,21 @@ def span_stats(page, y_min=None, y_max=None):
             continue
         for line in b.get("lines", []):
             for span in line.get("spans", []):
-                t = span.get("text", "").strip()
-                if not t:
+                info = _classify_span(span, y_min, y_max)
+                if not info:
                     continue
-                bbox = span.get("bbox", [0, 0, 0, 0])
-                cy = (bbox[1] + bbox[3]) / 2
-                if y_min is not None and cy < y_min:
-                    continue
-                if y_max is not None and cy > y_max:
-                    continue
-                has_cjk = bool(re.search(r"[\u4e00-\u9fff]", t))
-                has_eng = bool(re.search(r"[A-Za-z]{3,}", t))
-                color = span.get("color", 0)
-                # ghost: near-white text on white bg
-                is_ghost = color in (16777215, 0xFFFFFF) or (
-                    isinstance(color, int) and color > 0xFEFEFE
-                )
-                if is_ghost:
+                if info["is_ghost"]:
                     ghost += 1
-                if has_cjk and has_eng:
+                if info["has_cjk"] and info["has_eng"]:
                     mixed += 1
-                elif has_cjk:
+                elif info["has_cjk"]:
                     cjk_only += 1
                     if len(cjk_samples) < 8:
-                        cjk_samples.append(t[:80])
-                elif has_eng:
+                        cjk_samples.append(info["text"][:80])
+                elif info["has_eng"]:
                     eng_only += 1
                     if len(eng_samples) < 8:
-                        eng_samples.append(t[:80])
+                        eng_samples.append(info["text"][:80])
     return {
         "eng_only": eng_only,
         "cjk_only": cjk_only,
@@ -110,10 +121,10 @@ def find_table_captions(page):
 def link_info(page):
     links = page.get_links()
     out = []
-    for l in links:
-        r = l.get("from")
-        uri = l.get("uri", "")
-        kind = l.get("kind")
+    for lnk in links:
+        r = lnk.get("from")
+        uri = lnk.get("uri", "")
+        kind = lnk.get("kind")
         out.append({"kind": kind, "rect": r, "uri": uri[:80] if uri else ""})
     return out
 
@@ -146,8 +157,8 @@ def analyze_page(pi):
     print(f"Captions/headings src: {caps_s}")
     print(f"Captions/headings trn: {caps_t}")
 
-    head_s, tail_s = page_text_summary(ps)
-    head_t, tail_t = page_text_summary(pt)
+    head_s, _tail_s = page_text_summary(ps)
+    head_t, _tail_t = page_text_summary(pt)
     print("Source first lines:")
     for ln in head_s[:12]:
         print(f"  | {ln[:100]}")
@@ -164,7 +175,7 @@ def analyze_page(pi):
     if st["eng_samples"]:
         print("  ENG samples:", st["eng_samples"][:5])
 
-  # table-ish region: middle 60% of page height
+    # table-ish region: middle 60% of page height
     h = ps.rect.height
     y0, y1 = h * 0.15, h * 0.85
     ss_mid = span_stats(ps, y0, y1)
@@ -175,8 +186,8 @@ def analyze_page(pi):
     ls = link_info(ps)
     lt = link_info(pt)
     print(f"Links: src={len(ls)} trn={len(lt)}")
-    for l in lt[:5]:
-        print(f"  link {l}")
+    for lnk in lt[:5]:
+        print(f"  link {lnk}")
 
     doc_src.close()
     doc_trn.close()

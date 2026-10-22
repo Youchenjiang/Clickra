@@ -1,6 +1,5 @@
 """Inspect PDF page blocks/spans/drawings. Merged from 15+ inspect_*.py scripts."""
 import argparse
-import fitz
 from _pdf_utils import open_pdf, get_spans, SOURCES
 
 
@@ -11,14 +10,14 @@ def inspect_blocks(pdf_path, page_idx, mode="rawdict"):
     if mode == "rawdict":
         for b in page.get_text("rawdict")["blocks"]:
             if "lines" in b:
-                for l in b["lines"]:
-                    for s in l["spans"]:
+                for line in b["lines"]:
+                    for s in line["spans"]:
                         text_run = "".join(c.get("c", "") for c in s.get("chars", []))
                         bbox = s.get("bbox")
                         print(f"[{bbox[0]:.1f}, {bbox[1]:.1f}, {bbox[2]:.1f}, {bbox[3]:.1f}] Font: {s.get('font')} | Size: {s.get('size', 0):.1f} | Text: '{text_run}'")
     elif mode == "blocks":
         for i, b in enumerate(page.get_text("blocks")):
-            x0, y0, x1, y1, text, block_no, block_type = b
+            x0, y0, x1, y1, text, _block_no, _block_type = b
             print(f"Block {i} [{x0:.1f}, {y0:.1f}, {x1:.1f}, {y1:.1f}]:")
             print(repr(text))
             print("-" * 40)

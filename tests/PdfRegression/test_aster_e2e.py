@@ -21,7 +21,7 @@ SOURCE_CANDIDATES = (
 )
 SOURCE = next((path for path in SOURCE_CANDIDATES if path.is_file()), SOURCE_CANDIDATES[0])
 CLI = ROOT / "src" / "Clickra.CLI" / "bin" / "Debug" / "net10.0-windows" / "Clickra.dll"
-DIAGNOSTICS = ROOT / "tools" / "pdf-diagnostics"
+DIAGNOSTICS = ROOT / "scripts" / "diagnostics"
 sys.path.insert(0, str(DIAGNOSTICS))
 from pdf_health import health_report  # noqa: E402
 from layout_occupancy import compare_pdf_layout_occupancy  # noqa: E402

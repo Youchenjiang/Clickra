@@ -77,7 +77,7 @@ def compare_regions(src_pdf, trn_pdf, pages):
         ss = spans_in_regions(sdoc[pn - 1])
         ts = spans_in_regions(tdoc[pn - 1])
         print(f"\n=== p{pn} src={len(ss)} trn={len(ts)} ===")
-        for text, bbox, ri in ss[:25]:
+        for text, bbox, _ri in ss[:25]:
             match = [x for x in ts if abs(x[1][0] - bbox[0]) < 3 and abs(x[1][1] - bbox[1]) < 3]
             status = "OK" if match and match[0][0] == text else ("POS" if match else "MISS")
             trn_text = match[0][0] if match else "-"

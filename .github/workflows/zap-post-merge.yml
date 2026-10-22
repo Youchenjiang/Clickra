@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - 'src/**'
-      - 'tools/zap/**'
+      - '.github/zap/**'
       - '.github/workflows/zap-post-merge.yml'
   workflow_dispatch:
 
@@ -34,7 +34,7 @@ jobs:
         with:
           target: >-
             https://translate.google.com/translate_a/t?client=at&sl=auto&tl=en
-          rules_file_name: 'tools/zap/zap-rules.tsv'
+          rules_file_name: '.github/zap/zap-rules.tsv'
           cmd_options: >-
             -a
             -j

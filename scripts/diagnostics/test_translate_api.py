@@ -32,8 +32,12 @@ def test_endpoint(name, url, text="Hello world", mobile=False):
         return False
 
 
-if __name__ == "__main__":
+def main():
     text = "Hello world"
     for name, url in ENDPOINTS.items():
         test_endpoint(name, url, text, mobile=(name == "mobile"))
         print()
+
+
+if __name__ == "__main__":
+    main()

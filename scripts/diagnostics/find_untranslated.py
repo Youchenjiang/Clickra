@@ -12,8 +12,7 @@ Bypass rules from docs/translation_rules.md §2:
 import argparse
 import re
 import fitz
-from _pdf_utils import open_pdf, SOURCES, CJK_RE, ENG_RE, CJK_FONT_NAMES
-from pathlib import Path
+from _pdf_utils import SOURCES, CJK_RE, ENG_RE, get_diagram_regions
 
 MONO_FONTS = ("Courier", "Console", "Inconsolata", "Typewriter", "NimbusMon",
               "MonL", "cmtt", "ectt", "sftt", "Teletype", "Mono", "Code")
@@ -29,25 +28,6 @@ REF_TERMINATORS = re.compile(
     r"^\d+\.\s+(?!REFERENCE)",
     re.IGNORECASE
 )
-
-
-def get_diagram_regions(page):
-    regions = []
-    for d in page.get_drawings():
-        r = fitz.Rect(d["rect"])
-        if (r.width > 80 and r.height > 30) or (r.width > 30 and r.height > 60):
-            regions.append(r)
-    merged = []
-    for r in regions:
-        merged_flag = False
-        for i, m in enumerate(merged):
-            if r.intersects(m):
-                merged[i] = m | r
-                merged_flag = True
-                break
-        if not merged_flag:
-            merged.append(r)
-    return merged
 
 
 def get_gray_regions(page):
@@ -104,11 +84,7 @@ def is_table_page(page):
 def is_in_table_region(span_bbox, page, table_page):
     if not table_page:
         return False
-    text = page.get_text()
-    for m in re.finditer(r"(?:Table|TABLE|表)\s*\d+", text):
-        pass
-    x0, y0, x1, y1 = span_bbox
-    cy = (y0 + y1) / 2
+    x0, y0, _x1, _y1 = span_bbox
     for b in page.get_text("dict")["blocks"]:
         if b.get("type") != 0:
             continue
@@ -116,7 +92,7 @@ def is_in_table_region(span_bbox, page, table_page):
             line_text = "".join(s.get("text", "") for s in line["spans"]).strip()
             if re.match(r"^\d+[\.\)]\s", line_text) and len(line_text) < 80:
                 lb = line["spans"][0]["bbox"]
-                lx0, ly0, lx1, ly1 = lb
+                lx0, ly0, _lx1, _ly1 = lb
                 if abs(ly0 - y0) < 5 and abs(lx0 - x0) < 20:
                     return True
     return False
@@ -125,7 +101,7 @@ def is_in_table_region(span_bbox, page, table_page):
 def is_author_block(span_bbox, page_idx, page, title_bottom=None, abstract_top=None):
     if page_idx != 0:
         return False
-    x0, y0, x1, y1 = span_bbox
+    _x0, y0, _x1, y1 = span_bbox
     cy = (y0 + y1) / 2
     avg_size = (y1 - y0)
     if avg_size > 15:
@@ -140,100 +116,120 @@ def is_author_block(span_bbox, page_idx, page, title_bottom=None, abstract_top=N
             max_size = max((s.get("size", 0) for s in line["spans"]), default=0)
             if max_size > 20:
                 title_bottom = line["spans"][0]["bbox"][3]
-    if title_bottom and abstract_top and cy >= abstract_top and cy <= title_bottom:
+    if title_bottom and abstract_top and abstract_top <= cy <= title_bottom:
         return True
     return False
+
+
+def _intersects_regions(span_rect, diagram_regions, gray_regions):
+    for dr in diagram_regions:
+        if dr.intersects(span_rect):
+            area = span_rect.width * span_rect.height
+            overlap = (dr & span_rect).width * (dr & span_rect).height / area if area > 0 else 0
+            if overlap > 0.3:
+                return "diagram"
+    for gr in gray_regions:
+        if gr.intersects(span_rect):
+            return "gray_prompt"
+    return None
+
+
+def _should_skip_line(line, line_text, x0, y0, y1, cy, page_h, in_refs, diagram_regions, gray_regions, page, p, table_page):
+    if in_refs:
+        return "references"
+    fonts = [s.get("font", "") for s in line["spans"]]
+    if any(is_mono_font(f) for f in fonts):
+        return "code"
+    if any(is_math_font(f) for f in fonts):
+        return "math"
+    if cy < 40 or cy > page_h - 30:
+        return "header_footer"
+
+    x1 = max(s["bbox"][2] for s in line["spans"])
+    span_rect = fitz.Rect(x0, y0, x1, y1)
+    region_hit = _intersects_regions(span_rect, diagram_regions, gray_regions)
+    if region_hit:
+        return region_hit
+
+    if is_author_block((x0, y0, x0 + 100, y1), p - 1, page):
+        return "author_block"
+
+    if is_in_table_region((x0, y0, x0 + 100, y1), page, table_page):
+        return "table"
+
+    if re.match(r"^(https?://|www\.|@|\d{1,3}\.\d{1,3})", line_text):
+        return "url"
+
+    return None
+
+
+def _iter_text_lines(page):
+    for b in page.get_text("dict")["blocks"]:
+        if b.get("type") == 0:
+            yield from b.get("lines", [])
+
+
+def _evaluate_line(line, p, in_refs, diagram_regions, gray_regions, table_page, page_h, page, x_split, min_len):
+    line_text = "".join(s.get("text", "") for s in line["spans"]).strip()
+    if not line_text or len(line_text) < min_len:
+        return None
+
+    x0 = min(s["bbox"][0] for s in line["spans"])
+    y0 = min(s["bbox"][1] for s in line["spans"])
+    y1 = max(s["bbox"][3] for s in line["spans"])
+    cy = (y0 + y1) / 2
+
+    if x0 <= x_split or not ENG_RE.search(line_text) or CJK_RE.search(line_text):
+        return None
+
+    skip_reason = _should_skip_line(
+        line, line_text, x0, y0, y1, cy, page_h,
+        in_refs, diagram_regions, gray_regions, page, p, table_page
+    )
+
+    if skip_reason:
+        return None
+
+    return {
+        "text": line_text[:120],
+        "x0": round(x0, 1),
+        "y": round(cy, 1),
+    }
+
+
+def _collect_page_hits(page, p, in_refs, x_split, min_len):
+    diagram_regions = get_diagram_regions(page)
+    gray_regions = get_gray_regions(page)
+    table_page = is_table_page(page)
+    page_h = page.rect.height
+    page_hits = []
+
+    for line in _iter_text_lines(page):
+        hit = _evaluate_line(
+            line, p, in_refs, diagram_regions, gray_regions,
+            table_page, page_h, page, x_split, min_len
+        )
+        if hit:
+            page_hits.append(hit)
+    return page_hits
 
 
 def find_untranslated(pdf_path, pages=None, x_split=300, min_len=15):
     doc = fitz.open(str(pdf_path))
     pages = pages or list(range(1, len(doc) + 1))
-    page_texts = {}
-    for i in range(len(doc)):
-        page_texts[i] = doc[i].get_text()
+    page_texts = {i: doc[i].get_text() for i in range(len(doc))}
 
     results = []
     for p in pages:
-        page = doc[p - 1]
-        diagram_regions = get_diagram_regions(page)
-        gray_regions = get_gray_regions(page)
-        table_page = is_table_page(page)
         in_refs = in_references_section(page_texts, p - 1)
-        page_h = page.rect.height
-        page_w = page.rect.width
-
-        page_hits = []
-        for b in page.get_text("dict")["blocks"]:
-            if b.get("type") != 0:
-                continue
-            for line in b.get("lines", []):
-                line_text = "".join(s.get("text", "") for s in line["spans"]).strip()
-                if not line_text or len(line_text) < min_len:
-                    continue
-
-                x0 = min(s["bbox"][0] for s in line["spans"])
-                y0 = min(s["bbox"][1] for s in line["spans"])
-                y1 = max(s["bbox"][3] for s in line["spans"])
-                cy = (y0 + y1) / 2
-
-                if x0 <= x_split:
-                    continue
-                if not ENG_RE.search(line_text):
-                    continue
-                if CJK_RE.search(line_text):
-                    continue
-
-                skip_reason = None
-
-                if in_refs:
-                    skip_reason = "references"
-
-                fonts = [s.get("font", "") for s in line["spans"]]
-                if any(is_mono_font(f) for f in fonts):
-                    skip_reason = "code"
-
-                if any(is_math_font(f) for f in fonts):
-                    skip_reason = "math"
-
-                if cy < 40 or cy > page_h - 30:
-                    skip_reason = "header_footer"
-
-                span_rect = fitz.Rect(x0, y0, x1 if (x1 := max(s["bbox"][2] for s in line["spans"])) else x0, y1)
-                for dr in diagram_regions:
-                    if dr.intersects(span_rect):
-                        overlap = (dr & span_rect).width * (dr & span_rect).height / (span_rect.width * span_rect.height) if span_rect.width * span_rect.height > 0 else 0
-                        if overlap > 0.3:
-                            skip_reason = "diagram"
-                            break
-
-                for gr in gray_regions:
-                    if gr.intersects(span_rect):
-                        skip_reason = "gray_prompt"
-                        break
-
-                if is_author_block((x0, y0, x0 + 100, y1), p - 1, page):
-                    skip_reason = "author_block"
-
-                if is_in_table_region((x0, y0, x0 + 100, y1), page, table_page):
-                    skip_reason = "table"
-
-                if re.match(r"^(https?://|www\.|@|\d{1,3}\.\d{1,3})", line_text):
-                    skip_reason = "url"
-
-                if not skip_reason:
-                    page_hits.append({
-                        "text": line_text[:120],
-                        "x0": round(x0, 1),
-                        "y": round(cy, 1),
-                    })
-
+        page_hits = _collect_page_hits(doc[p - 1], p, in_refs, x_split, min_len)
         if page_hits:
             results.append({"page": p, "count": len(page_hits), "spans": page_hits})
 
     doc.close()
 
     print(f"=== Untranslated spans in {pdf_path} ===")
-    print(f"(Diagram/Code/Math/Gray/Author/Table/Ref regions excluded)")
+    print("(Diagram/Code/Math/Gray/Author/Table/Ref regions excluded)")
     total = 0
     for r in results:
         total += r["count"]

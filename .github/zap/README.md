@@ -6,7 +6,7 @@ This directory contains OWASP ZAP configuration for security scanning Clickra's
 external API communication endpoints, plus documentation about third-party API
 security limitations.
 
-The GitHub Actions workflow (`.github/workflows/zap-security-scan.yml`) runs two
+The GitHub Actions workflow (`.github/workflows/zap-post-merge.yml`) runs two
 complementary security checks:
 
 1. **NuGet Dependency Vulnerability Scan** — scans Clickra's own package

@@ -1,6 +1,5 @@
 """Verify WORK DIVISION table text on page 14 after reclassify fix."""
 import fitz
-import re
 from pathlib import Path
 from _pdf_utils import out_dir, SOURCES
 
@@ -37,7 +36,7 @@ def check_text(label, path):
     found = [k for k in KEYWORDS if k.lower() in text.lower()]
     names = [n for n in NAMES if n in text]
     lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-    wd_idx = next((i for i, l in enumerate(lines) if "WORK DIVISION" in l.upper()), None)
+    wd_idx = next((i for i, line in enumerate(lines) if "WORK DIVISION" in line.upper()), None)
     print(f"\n=== {label} page 14 ===")
     print(f"keywords: {len(found)}/{len(KEYWORDS)}")
     for k in found:

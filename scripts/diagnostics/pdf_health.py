@@ -5,7 +5,7 @@ import fitz
 import re
 import json
 from pathlib import Path
-from _pdf_utils import open_pdf, SOURCES, CJK_RE, ENG_RE, out_dir, count_simplified_hits
+from _pdf_utils import SOURCES, CJK_RE, ENG_RE, out_dir, count_simplified_hits, get_diagram_regions
 
 MONO_FONTS = ("Courier", "Console", "Inconsolata", "Typewriter", "NimbusMon",
               "MonL", "cmtt", "ectt", "sftt", "Teletype", "Mono", "Code")
@@ -22,25 +22,6 @@ REF_TERMINATORS = re.compile(
     re.IGNORECASE
 )
 CITATION_LINE_RE = re.compile(r"^\s*\[\d+\]")
-
-
-def get_diagram_regions(page):
-    regions = []
-    for d in page.get_drawings():
-        r = fitz.Rect(d["rect"])
-        if (r.width > 80 and r.height > 30) or (r.width > 30 and r.height > 60):
-            regions.append(r)
-    merged = []
-    for r in regions:
-        merged_flag = False
-        for i, m in enumerate(merged):
-            if r.intersects(m):
-                merged[i] = m | r
-                merged_flag = True
-                break
-        if not merged_flag:
-            merged.append(r)
-    return merged
 
 
 def in_references_section(page_texts, page_idx):
@@ -64,36 +45,45 @@ def is_citation_dense_reference_page(page_text):
     return citation_lines >= 3
 
 
-def is_bypass_line(line, page, diagram_regions, in_refs):
-    line_text = "".join(s.get("text", "") for s in line["spans"]).strip()
-    if not line_text:
-        return True
+def _has_special_font(spans):
+    for s in spans:
+        font = s.get("font", "")
+        if any(m in font for m in MONO_FONTS) or any(m in font for m in MATH_FONTS):
+            return True
+    return False
 
-    fonts = [s.get("font", "") for s in line["spans"]]
-    if any(any(m in f for m in MONO_FONTS) for f in fonts):
-        return True
-    if any(any(m in f for m in MATH_FONTS) for f in fonts):
-        return True
 
-    if in_refs:
-        return True
+def _in_margins(spans, page_height):
+    y0 = min(s["bbox"][1] for s in spans)
+    y1 = max(s["bbox"][3] for s in spans)
+    return y0 < 40 or y1 > page_height - 30
 
-    y0 = min(s["bbox"][1] for s in line["spans"])
-    y1 = max(s["bbox"][3] for s in line["spans"])
-    if y0 < 40 or y1 > page.rect.height - 30:
-        return True
 
-    x0 = min(s["bbox"][0] for s in line["spans"])
-    x1 = max(s["bbox"][2] for s in line["spans"])
-    cy = (y0 + y1) / 2
+def _overlaps_diagram(spans, diagram_regions):
+    x0 = min(s["bbox"][0] for s in spans)
+    y0 = min(s["bbox"][1] for s in spans)
+    x1 = max(s["bbox"][2] for s in spans)
+    y1 = max(s["bbox"][3] for s in spans)
     span_rect = fitz.Rect(x0, y0, x1, y1)
+    area = span_rect.width * span_rect.height
+    if area <= 0:
+        return False
     for dr in diagram_regions:
         if dr.intersects(span_rect):
-            overlap = (dr & span_rect).width * (dr & span_rect).height / (span_rect.width * span_rect.height) if span_rect.width * span_rect.height > 0 else 0
+            overlap = (dr & span_rect).width * (dr & span_rect).height / area
             if overlap > 0.3:
                 return True
-
     return False
+
+
+def is_bypass_line(line, page, diagram_regions, in_refs):
+    spans = line["spans"]
+    line_text = "".join(s.get("text", "") for s in spans).strip()
+    if not line_text or in_refs:
+        return True
+    if _has_special_font(spans) or _in_margins(spans, page.rect.height):
+        return True
+    return _overlaps_diagram(spans, diagram_regions)
 
 
 def page_health(page, page_idx, page_texts):
@@ -141,15 +131,34 @@ def page_health(page, page_idx, page_texts):
     }
 
 
+def _print_health_summary(pdf_path, page_count, total_cjk, total_simp, total_tofu, bad_pages, warn_pages, pages):
+    print(f"=== Health Report: {pdf_path} ===")
+    print(f"Pages: {page_count}  CJK: {total_cjk}  Simp: {total_simp}  Tofu: {total_tofu}")
+    if bad_pages:
+        print(f"PROBLEM pages: {bad_pages}")
+    if warn_pages:
+        print(f"WARNING (high eng ratio): {warn_pages}")
+    for p in pages:
+        flag = ""
+        if p["tofu"] > 0:
+            flag += " TOFU"
+        if p["simp_chars"] > 0:
+            flag += f" SIMP={p['simp_chars']}"
+        if p["eng_ratio"] > 0.3:
+            flag += f" ENG_R={p['eng_ratio']:.0%}"
+        if flag:
+            print(f"  p{p['page']:2d}: cjk={p['cjk_chars']:4d} eng_r={p['body_eng_right']:2d}/{p['body_total']:2d}{flag}")
+        elif p["page"] <= 3 or p["page"] % 5 == 0:
+            print(f"  p{p['page']:2d}: cjk={p['cjk_chars']:4d} ok")
+
+
 def health_report(pdf_path, out_path=None):
     doc = fitz.open(str(pdf_path))
-    page_texts = {}
-    for i in range(len(doc)):
-        page_texts[i] = doc[i].get_text()
+    page_texts = {i: page.get_text() for i, page in enumerate(doc)}
 
     pages = []
-    for i in range(len(doc)):
-        h = page_health(doc[i], i, page_texts)
+    for i, page in enumerate(doc):
+        h = page_health(page, i, page_texts)
         h["page"] = i + 1
         pages.append(h)
     doc.close()
@@ -171,24 +180,7 @@ def health_report(pdf_path, out_path=None):
         "pages": pages,
     }
 
-    print(f"=== Health Report: {pdf_path} ===")
-    print(f"Pages: {len(pages)}  CJK: {total_cjk}  Simp: {total_simp}  Tofu: {total_tofu}")
-    if bad_pages:
-        print(f"PROBLEM pages: {bad_pages}")
-    if warn_pages:
-        print(f"WARNING (high eng ratio): {warn_pages}")
-    for p in pages:
-        flag = ""
-        if p["tofu"] > 0:
-            flag += " TOFU"
-        if p["simp_chars"] > 0:
-            flag += f" SIMP={p['simp_chars']}"
-        if p["eng_ratio"] > 0.3:
-            flag += f" ENG_R={p['eng_ratio']:.0%}"
-        if flag:
-            print(f"  p{p['page']:2d}: cjk={p['cjk_chars']:4d} eng_r={p['body_eng_right']:2d}/{p['body_total']:2d}{flag}")
-        elif p["page"] <= 3 or p["page"] % 5 == 0:
-            print(f"  p{p['page']:2d}: cjk={p['cjk_chars']:4d} ok")
+    _print_health_summary(pdf_path, len(pages), total_cjk, total_simp, total_tofu, bad_pages, warn_pages, pages)
 
     if out_path:
         with open(out_path, "w", encoding="utf-8") as f:

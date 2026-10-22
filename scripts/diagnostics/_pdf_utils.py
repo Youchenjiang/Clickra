@@ -101,13 +101,31 @@ def find_problematic_chars(page, checks=None):
                     for c in text:
                         if c in ("\x00", "\ufffd"):
                             results.append({"type": "tofu", "char": c, "font": font, "text": text[:60]})
-                if "cjk_font_latin" in checks:
-                    if any(fn in font for fn in CJK_FONT_NAMES):
-                        for c in text:
-                            o = ord(c)
-                            if 0x0080 <= o <= 0x024F:
-                                results.append({"type": "cjk_latin", "char": c, "codepoint": f"U+{o:04X}", "font": font, "text": text[:60]})
+                if "cjk_font_latin" in checks and any(fn in font for fn in CJK_FONT_NAMES):
+                    for c in text:
+                        o = ord(c)
+                        if 0x0080 <= o <= 0x024F:
+                            results.append({"type": "cjk_latin", "char": c, "codepoint": f"U+{o:04X}", "font": font, "text": text[:60]})
     return results
+
+
+def get_diagram_regions(page):
+    regions = []
+    for d in page.get_drawings():
+        r = fitz.Rect(d["rect"])
+        if (r.width > 80 and r.height > 30) or (r.width > 30 and r.height > 60):
+            regions.append(r)
+    merged = []
+    for r in regions:
+        merged_flag = False
+        for i, m in enumerate(merged):
+            if r.intersects(m):
+                merged[i] = m | r
+                merged_flag = True
+                break
+        if not merged_flag:
+            merged.append(r)
+    return merged
 
 
 def zone_spans(page, y0=None, y1=None, x0=None, x1=None):
@@ -133,8 +151,8 @@ def render_page(pdf_path, page_idx, zoom=2.0):
     return img
 
 
-def render_side_by_side(orig_pdf, trans_pdf, pages, out_dir, prefix, zoom=2.0, gap=20):
-    out_dir = Path(out_dir)
+def render_side_by_side(orig_pdf, trans_pdf, pages, target_dir, prefix, zoom=2.0, gap=20):
+    target_dir = Path(target_dir)
     o_doc = fitz.open(str(orig_pdf))
     t_doc = fitz.open(str(trans_pdf))
     mat = fitz.Matrix(zoom, zoom)
@@ -149,7 +167,7 @@ def render_side_by_side(orig_pdf, trans_pdf, pages, out_dir, prefix, zoom=2.0, g
         combo = Image.new("RGB", (w * 2 + gap, h), (240, 240, 240))
         combo.paste(o_img, (0, 0))
         combo.paste(t_img, (w + gap, 0))
-        out_path = out_dir / f"{prefix}_p{p}.png"
+        out_path = target_dir / f"{prefix}_p{p}.png"
         combo.save(out_path)
         results.append(out_path)
         print(f"p{p} -> {out_path}")

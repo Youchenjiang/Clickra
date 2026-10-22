@@ -62,7 +62,7 @@ def drawing_stats_in_rect(page, rect):
     return {"line_count": len(lines), "rect_count": len(rects), "curve_count": len(curves), "lines": lines[:30], "rects": rects[:20]}
 
 
-def spans_in_rect(page, rect, label=""):
+def spans_in_rect(page, rect, _label=""):
     spans = []
     for b in page.get_text("dict")["blocks"]:
         if b.get("type") != 0:
@@ -120,6 +120,31 @@ def render_side_by_side(doc_src, doc_trn, page_idx, pig_bbox, out_path, pad=8):
     return rect, pix_s, pix_t
 
 
+def _find_double_layers(src_spans, trn_spans):
+    double_layer = []
+    for ts in trn_spans:
+        t_text = ts["text"]
+        if not t_text:
+            continue
+        tb = ts["bbox"]
+        for ss in src_spans:
+            if t_text == ss["text"]:
+                sb = ss["bbox"]
+                if abs(tb[0] - sb[0]) < 3 and abs(tb[1] - sb[1]) < 3:
+                    double_layer.append(t_text[:60])
+    return double_layer
+
+
+def _find_font_changes(src_spans, trn_spans):
+    font_changes = []
+    for ss in src_spans:
+        s_text, s_size = ss["text"], ss["size"]
+        for ts in trn_spans:
+            if s_text == ts["text"] and abs(s_size - ts["size"]) > 0.5:
+                font_changes.append(f"{s_text[:40]}: {s_size}->{ts['size']}")
+    return font_changes
+
+
 def compare_spans(src_spans, trn_spans):
     src_texts = [s["text"] for s in src_spans]
     trn_texts = [s["text"] for s in trn_spans]
@@ -127,24 +152,11 @@ def compare_spans(src_spans, trn_spans):
     trn_set = set(trn_texts)
     missing = [t for t in src_texts if t not in trn_set]
     extra = [t for t in trn_texts if t not in src_set]
-    cjk_overlay = [s for s in trn_spans if s["cjk"] and any(
-        re.sub(r"[\u4e00-\u9fff\s]", "", s["text"]).lower() in t.lower() or t.lower() in s["text"].lower()
-        for t in src_texts if re.search(r"[A-Za-z]{3,}", t)
-    )]
+
     eng_in_trn = [s for s in trn_spans if s["eng"] and not s["cjk"]]
     cjk_in_trn = [s for s in trn_spans if s["cjk"]]
-    double_layer = []
-    for ts in trn_spans:
-        for ss in src_spans:
-            if ts["text"] == ss["text"] and ts["text"]:
-                tb, sb = ts["bbox"], ss["bbox"]
-                if abs(tb[0] - sb[0]) < 3 and abs(tb[1] - sb[1]) < 3:
-                    double_layer.append(ts["text"][:60])
-    font_changes = []
-    for ss in src_spans:
-        for ts in trn_spans:
-            if ss["text"] == ts["text"] and abs(ss["size"] - ts["size"]) > 0.5:
-                font_changes.append(f"{ss['text'][:40]}: {ss['size']}->{ts['size']}")
+    double_layer = _find_double_layers(src_spans, trn_spans)
+    font_changes = _find_font_changes(src_spans, trn_spans)
     return {
         "src_span_count": len(src_spans),
         "trn_span_count": len(trn_spans),
@@ -231,7 +243,7 @@ def analyze_page(page_num):
 
     if "ref_pig_bbox" in cfg:
         ref_png = OUT / f"final_project_p{page_num}_ref_compare.png"
-        ref_rect, rp_s, rp_t = render_side_by_side(doc_src, doc_trn, page_idx, cfg["ref_pig_bbox"], ref_png, pad=4)
+        ref_rect, _rp_s, _rp_t = render_side_by_side(doc_src, doc_trn, page_idx, cfg["ref_pig_bbox"], ref_png, pad=4)
         rss = spans_in_rect(doc_src[page_idx], ref_rect)
         rts = spans_in_rect(doc_trn[page_idx], ref_rect)
         rsc = compare_spans(rss, rts)

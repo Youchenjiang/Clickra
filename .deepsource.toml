@@ -8,7 +8,8 @@ exclude_patterns = [
 ]
 
 test_patterns = [
-  "tests/**"
+  "tests/**",
+  "scripts/tests/**"
 ]
 
 [[analyzers]]

@@ -7,8 +7,7 @@ If yes, the label was translated (violation of §2.A).
 import argparse
 import fitz
 import re
-from _pdf_utils import open_pdf, SOURCES, TRANSLATED, CJK_RE, ENG_RE, out_dir
-from pathlib import Path
+from _pdf_utils import SOURCES, TRANSLATED, CJK_RE, ENG_RE
 
 
 SECTION_HEADING_RE = re.compile(
@@ -79,7 +78,7 @@ def get_cjk_at_position(page, target_rect, tolerance=15):
     return None
 
 
-def check_page(orig_page, trans_page, page_idx):
+def check_page(orig_page, trans_page, _page_idx):
     orig_spans = get_english_label_spans(orig_page)
     violations = []
 
@@ -102,7 +101,7 @@ def check_document(orig_path, trans_path, pages=None):
     trans_doc = fitz.open(str(trans_path))
     pages = pages or range(1, min(len(orig_doc), len(trans_doc)) + 1)
 
-    print(f"=== Diagram label translation check ===")
+    print("=== Diagram label translation check ===")
     print(f"Original: {orig_path}")
     print(f"Translated: {trans_path}")
 
