@@ -275,6 +275,57 @@ class PrToolTests(unittest.TestCase):
         self.assertIn("CI build: SUCCESS", output.getvalue())
         self.assertIn("0 unresolved", output.getvalue())
 
+    def test_sonar_surfaces_quality_gate_and_duplication(self):
+        fake_inventory = {
+            "total": 0, "issues": [], "url": "https://sonar.test/issues"
+        }
+        fake_quality = {
+            "quality_gate": {
+                "status": "OK",
+                "conditions": [
+                    {"metricKey": "new_security_rating", "actualValue": "1",
+                     "status": "OK", "errorThreshold": "1"}
+                ]
+            },
+            "metrics": {"new_duplicated_lines_density": "0.0"},
+            "url": "https://sonar.test/measures"
+        }
+
+        def fake_run(argv):
+            if argv[:3] == ["git", "branch", "--show-current"]:
+                return "refactor/docs-taxonomy"
+            if argv[:3] == ["git", "remote", "get-url"]:
+                return "https://github.com/Youchenjiang/Clickra.git"
+            raise AssertionError(f"unexpected command: {argv}")
+
+        with patch.object(pr_tool, "sonar_inventory", return_value=fake_inventory), \
+             patch.object(pr_tool, "quality_metrics", return_value=fake_quality), \
+             redirect_stdout(StringIO()) as output:
+            self.assertEqual(0, pr_tool.main(["sonar", "180"], fake_run))
+        stdout = output.getvalue()
+        self.assertIn("Quality Gate: OK", stdout)
+        self.assertIn("Duplication on New Code: 0.0%", stdout)
+        self.assertIn("new_security_rating: 1 (threshold: 1) [OK]", stdout)
+        self.assertIn("https://sonar.test/measures", stdout)
+
+    def test_diagnose_surfaces_sonar_quality_gate(self):
+        pr_data = {
+            "number": 180,
+            "headRefOid": "a" * 40,
+            "statusCheckRollup": []
+        }
+        fake_quality = {
+            "quality_gate": {"status": "OK"},
+            "metrics": {"new_duplicated_lines_density": "0.0"}
+        }
+
+        with patch.object(pr_tool, "inspect", return_value=pr_data), \
+             patch.object(pr_tool, "review_threads", return_value=[]), \
+             patch.object(pr_tool, "quality_metrics", return_value=fake_quality), \
+             redirect_stdout(StringIO()) as output:
+            pr_tool.diagnose("org/repo", 180, lambda _argv: '{"check_runs":[]}')
+        self.assertIn("SonarQube Quality Gate: OK (Duplication: 0.0%)", output.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()
