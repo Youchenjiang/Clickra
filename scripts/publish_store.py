@@ -302,8 +302,9 @@ def parse_all_listings(repo_root):
         if parsed:
             parsed_listings[locale] = parsed
             
-    if not parsed_listings:
-        print("Error: No markdown store listing files were parsed.")
+    missing = [suffix for suffix in LOCALE_MAP if LOCALE_MAP[suffix] not in parsed_listings]
+    if missing:
+        print(f"Error: Missing or invalid store listing files for: {', '.join(missing)}")
         sys.exit(1)
     return parsed_listings
 
