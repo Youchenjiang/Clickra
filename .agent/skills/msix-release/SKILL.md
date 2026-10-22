@@ -39,7 +39,7 @@ Use the authorized bump type instead of `patch` when required. The script curren
 - `packaging/msix/AppxManifest.Fluent.xml`
 - `src/resources/AppxManifest.xml`
 - `CHANGELOG.md` with a new-version TODO entry
-- all five `docs/StoreListing_*.md` version stamps
+- all five `docs/store/StoreListing_*.md` version stamps
 
 It preserves each target file's existing UTF-8 BOM state. It does **not** update README
 version tables or invent release notes.
@@ -100,7 +100,7 @@ Manual `workflow_dispatch` is package validation only and must not be treated as
 ## Reference
 
 - Version format/surfaces: `docs/development/release_guideline.md`
-- Current automated release pipeline: `docs/CI_CD_DUAL_RELEASE_GUIDE.md`
+- Current automated release pipeline: `docs/development/CI_CD_DUAL_RELEASE_GUIDE.md`
 - General agent/PR/tag rules: `.agent/guidelines.md`
 - Actual implementation: `.github/workflows/release.yml`, `scripts/bump_version.ps1`,
   `scripts/build_msix.ps1`

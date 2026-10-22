@@ -292,17 +292,19 @@ def update_single_listing(base_listing, new_data):
             base_listing[camel_key] = val
 
 def parse_all_listings(repo_root):
-    print("Syncing app metadata from docs/StoreListing_*.md files...")
+    print("Syncing app metadata from docs/store/StoreListing_*.md files...")
     parsed_listings = {}
-    docs_dir = os.path.join(repo_root, 'docs')
+    store_dir = os.path.join(repo_root, 'docs', 'store')
+    docs_dir = store_dir if os.path.isdir(store_dir) else os.path.join(repo_root, 'docs')
     for suffix, locale in LOCALE_MAP.items():
         md_file = os.path.join(docs_dir, f"StoreListing_{suffix}.md")
         parsed = parse_markdown_listing(md_file)
         if parsed:
             parsed_listings[locale] = parsed
             
-    if not parsed_listings:
-        print("Error: No markdown store listing files were parsed.")
+    missing = [suffix for suffix in LOCALE_MAP if LOCALE_MAP[suffix] not in parsed_listings]
+    if missing:
+        print(f"Error: Missing or invalid store listing files for: {', '.join(missing)}")
         sys.exit(1)
     return parsed_listings
 

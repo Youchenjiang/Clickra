@@ -69,6 +69,6 @@ Report any regressions compared to prior runs (check session checkpoints for his
 
 - Diagnostic scripts directory: `Clickra/scripts/diagnostics/` (24 scripts including `_pdf_utils.py` shared library).
 - `test_pdfs/` directory structure: `source/` (original PDFs), `translated/` (translated output), `diagnostic/` (health check JSONs). May need to be populated if missing.
-- Bypass regions (diagrams, code, tables, references, math, gray prompts, author block) are NOT translation failures per `docs/translation_rules.md` §2.
+- Bypass regions (diagrams, code, tables, references, math, gray prompts, author block) are NOT translation failures per `docs/specs/translation_rules.md` §2.
 - Diagram violation counts from prior runs: 2407=136, PentestAgent=52, TOGLL=37, final_project=156 (proximity-based).
-- If `pdf_health.py` reports failures, cross-reference with `docs/translation_rules.md` to determine if they are real issues or expected bypass behavior.
+- If `pdf_health.py` reports failures, cross-reference with `docs/specs/translation_rules.md` to determine if they are real issues or expected bypass behavior.

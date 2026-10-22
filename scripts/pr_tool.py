@@ -53,7 +53,12 @@ def pr_number(value, repo, branch, run=command):
         if not value.isdecimal() or int(value) < 1:
             raise ValueError("PR number must be a positive integer")
         return int(value)
-    data = json.loads(run(["gh", "pr", "view", "--repo", repo, "--json", "number", "--jq", ".number"]))
+    raw = run(["gh", "pr", "list", "--head", branch, "--repo", repo, "--state", "all",
+               "--json", "number", "--jq", ".[0].number"]).strip()
+    try:
+        data = json.loads(raw) if raw else None
+    except json.JSONDecodeError:
+        data = None
     if not isinstance(data, int) or data < 1:
         raise ValueError(f"no PR found for branch {branch}; provide an explicit PR number")
     return data
@@ -280,7 +285,23 @@ def diagnose(repo, number, run=command, reports="failed", fetch=fetch_report):
     for item in failed:
         _print_failed_check(item, repo, details.get(item.get("name") or item.get("context")) or {}, run)
     _print_provider_reports(failed if reports == "failed" else checks, reports, fetch)
+    _print_sonar_diagnostics(repo, number)
     return failed, _review_feedback(repo, number, passed, run)
+
+
+def _print_sonar_diagnostics(repo, number):
+    project = os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_")
+    base_url = os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT)
+    token = os.environ.get("SONAR_TOKEN")
+    try:
+        quality = quality_metrics(project, number, base_url=base_url, token=token, timeout=5)
+        gate = quality.get("quality_gate", {})
+        status = gate.get("status", "UNKNOWN")
+        dup = quality.get("metrics", {}).get("new_duplicated_lines_density")
+        dup_str = f" (Duplication: {dup}%)" if dup is not None else ""
+        print(f"SonarQube Quality Gate: {status}{dup_str}")
+    except Exception as exc:
+        print(f"SonarQube Quality Gate: unavailable ({safe_terminal(exc)})")
 
 
 def _print_open_threads(result):
@@ -309,10 +330,14 @@ def audit(repo, number, run=command, as_json=False, include_sonar=False):
     pr = inspect(repo, number, run)
     result = inventory(repo, number, pr.get("headRefOid"), review_threads(repo, number, run), run)
     if include_sonar:
-        result["sonar"] = sonar_inventory(
-            os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
-            number, base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
-            token=os.environ.get("SONAR_TOKEN"))
+        project = os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_")
+        base_url = os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT)
+        token = os.environ.get("SONAR_TOKEN")
+        result["sonar"] = sonar_inventory(project, number, base_url=base_url, token=token)
+        try:
+            result["sonar_quality"] = quality_metrics(project, number, base_url=base_url, token=token)
+        except Exception as exc:
+            result["sonar_quality"] = {"error": str(exc), "quality_gate": {"status": "UNAVAILABLE"}}
     if as_json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return result
@@ -323,7 +348,7 @@ def audit(repo, number, run=command, as_json=False, include_sonar=False):
     print(f"All inline comments: {counts['inline']} | General comments: {counts['general']}"
           f" | Review summaries: {counts['reviews']}")
     if include_sonar:
-        print_sonar(result["sonar"])
+        print_sonar(result["sonar"], result.get("sonar_quality"))
     _print_open_threads(result)
     current = sum(c["head_relation"] == "current" for c in result["inline_comments"])
     historical = sum(c["head_relation"] == "historical" for c in result["inline_comments"])
@@ -333,15 +358,58 @@ def audit(repo, number, run=command, as_json=False, include_sonar=False):
     return result
 
 
-def print_sonar(data):
+def _issue_severity(issue):
+    impacts = issue.get("impacts")
+    if impacts:
+        return ", ".join(f"{x.get('softwareQuality')}:{x.get('severity')}" for x in impacts)
+    return issue.get("severity") or "?"
+
+
+def _print_sonar_issues(issues):
+    for issue in issues:
+        severity = _issue_severity(issue)
+        key = safe_terminal(issue.get("key"))
+        comp = safe_terminal(issue.get("component"))
+        line = safe_terminal(issue.get("line") or "?")
+        rule = safe_terminal(issue.get("rule"))
+        msg = safe_terminal(issue.get("message") or "")
+        print(f"- {key} {comp}:{line} [{safe_terminal(severity)}] {rule}")
+        print(f"  {msg}")
+
+
+def _print_sonar_quality(quality):
+    if not quality:
+        return
+    gate = quality.get("quality_gate") or {}
+    status = gate.get("status", "UNKNOWN")
+    print(f"Quality Gate: {status}")
+    if status == "UNAVAILABLE":
+        err = quality.get("error")
+        if err:
+            print(f"  Quality metrics unavailable: {safe_terminal(err)}")
+        return
+    metrics = quality.get("metrics") or {}
+    dup = metrics.get("new_duplicated_lines_density")
+    if dup is not None:
+        print(f"Duplication on New Code: {dup}%")
+    for condition in gate.get("conditions") or []:
+        metric = condition.get("metricKey")
+        val = condition.get("actualValue")
+        if metric == "new_duplicated_lines_density" or val is None:
+            continue
+        thresh = condition.get("errorThreshold")
+        thresh_info = f" (threshold: {thresh})" if thresh else ""
+        cond_status = condition.get("status")
+        print(f"  {metric}: {val}{thresh_info} [{cond_status}]")
+
+
+def print_sonar(data, quality=None):
     print(f"SonarQube Cloud: {data['total']} open/confirmed issue(s)")
-    for issue in data["issues"]:
-        impacts = issue.get("impacts") or []
-        severity = ", ".join(f"{x.get('softwareQuality')}:{x.get('severity')}" for x in impacts) if impacts else issue.get("severity")
-        print(f"- {safe_terminal(issue.get('key'))} {safe_terminal(issue.get('component'))}:{safe_terminal(issue.get('line') or '?')}"
-              f" [{safe_terminal(severity or '?')}] {safe_terminal(issue.get('rule'))}")
-        print(f"  {safe_terminal(issue.get('message') or '')}")
+    _print_sonar_quality(quality)
+    _print_sonar_issues(data.get("issues") or [])
     print(f"SonarQube details: {safe_terminal(data['url'])}")
+    if quality and quality.get("url"):
+        print(f"SonarQube measures: {safe_terminal(quality['url'])}")
 
 
 def _ready(body_file):
@@ -410,13 +478,22 @@ def _execute_action(args, run):
 
 
 def _show_sonar(args, repo, number):
-    data = sonar_inventory(os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
-                           number, base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
-                           token=os.environ.get("SONAR_TOKEN"))
+    project = os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_")
+    base_url = os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT)
+    token = os.environ.get("SONAR_TOKEN")
+    data = sonar_inventory(project, number, base_url=base_url, token=token)
+    quality = None
+    try:
+        quality = quality_metrics(project, number, base_url=base_url, token=token)
+    except Exception as exc:
+        quality = {"error": str(exc), "quality_gate": {"status": "UNAVAILABLE"}}
     if args.json:
-        print(json.dumps(data, indent=2, ensure_ascii=False))
+        combined = dict(data)
+        if quality:
+            combined["quality"] = quality
+        print(json.dumps(combined, indent=2, ensure_ascii=False))
     else:
-        print_sonar(data)
+        print_sonar(data, quality)
 
 
 def _verify_pr(run, repo, number):

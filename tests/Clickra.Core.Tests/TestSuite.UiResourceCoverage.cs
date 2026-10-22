@@ -23,7 +23,7 @@ namespace Clickra.Core.Tests;
 ///    靜態掃描抓到 —— 先前就有 6 個圖片命令的標籤鍵從未被宣告，畫面會直接顯示
 ///    cmd_img_to_png 這種原始鍵名 —— 所以在這裡用執行期的登錄表逐一驗證。
 ///
-/// 3. Microsoft Store 上架清單文件（docs/StoreListing_*.md）必須與 Localization 支援語言
+/// 3. Microsoft Store 上架清單文件（docs/store/StoreListing_*.md）必須與 Localization 支援語言
 ///    雙向嚴格一致、檔案齊全、格式合規且九大 Partner Center 欄位無遺漏。
 /// </summary>
 static partial class TestSuite
@@ -35,7 +35,7 @@ static partial class TestSuite
     private static string CultureFolder(string languageCode) => languageCode.ToLowerInvariant();
 
     /// <summary>
-    /// 應用程式支援語言與 docs/StoreListing_*.md 檔案名稱的對應關係。
+    /// 應用程式支援語言與 docs/store/StoreListing_*.md 檔案名稱的對應關係。
     /// 任何新語言的加入都必須在此處宣告對應的商店說明文件。
     /// </summary>
     private static readonly Dictionary<string, string> StoreListingFileByLanguage = new(StringComparer.OrdinalIgnoreCase)
@@ -186,7 +186,7 @@ static partial class TestSuite
         runner.RunGuard("Package resources: resw keys and the keys consumed by shell menu and manifest are bidirectionally equal", TestShellResourceCoverage);
         runner.RunGuard("Convert registry: every command label key is declared and translated in all 5 languages", TestConvertRegistryLabelCoverage);
         runner.RunGuard("Shell menu: commands reconcile with ConvertCommandRegistry metadata", TestShellCommandRegistryCoverage);
-        runner.RunGuard("Store listing: docs/StoreListing_*.md covers all supported languages with complete fields", TestStoreListingCoverage);
+        runner.RunGuard("Store listing: docs/store/StoreListing_*.md covers all supported languages with complete fields", TestStoreListingCoverage);
     }
 
     private static void TestShellResourceCoverage()
@@ -365,7 +365,10 @@ static partial class TestSuite
             "StoreListingFileByLanguage must exactly match Localization.SupportedLanguages. " +
             "Mapped: [" + string.Join(", ", mappedLangs) + "], Supported: [" + string.Join(", ", supportedLangs) + "]");
 
-        string docsDir = Path.Combine(root, "docs");
+        string storeDir = Path.Combine(root, "docs", "store");
+        string docsDir = Directory.Exists(storeDir) && Directory.GetFiles(storeDir, "StoreListing_*.md").Length > 0
+            ? storeDir
+            : Path.Combine(root, "docs");
         string[] actualListingFiles = Directory.GetFiles(docsDir, "StoreListing_*.md")
             .Select(Path.GetFileName)
             .Where(f => !string.IsNullOrEmpty(f))
@@ -376,7 +379,7 @@ static partial class TestSuite
             .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
             .ToArray();
         Assert.True(expectedListingFiles.SequenceEqual(actualListingFiles, StringComparer.OrdinalIgnoreCase),
-            "The StoreListing markdown files in docs/ must exactly match the application's supported languages. " +
+            "The StoreListing markdown files in docs/store/ must exactly match the application's supported languages. " +
             "Expected: [" + string.Join(", ", expectedListingFiles) + "], Found: [" + string.Join(", ", actualListingFiles) + "]");
 
         foreach (string lang in Localization.SupportedLanguages)
