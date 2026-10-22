@@ -120,6 +120,31 @@ def render_side_by_side(doc_src, doc_trn, page_idx, pig_bbox, out_path, pad=8):
     return rect, pix_s, pix_t
 
 
+def _find_double_layers(src_spans, trn_spans):
+    double_layer = []
+    for ts in trn_spans:
+        t_text = ts["text"]
+        if not t_text:
+            continue
+        tb = ts["bbox"]
+        for ss in src_spans:
+            if t_text == ss["text"]:
+                sb = ss["bbox"]
+                if abs(tb[0] - sb[0]) < 3 and abs(tb[1] - sb[1]) < 3:
+                    double_layer.append(t_text[:60])
+    return double_layer
+
+
+def _find_font_changes(src_spans, trn_spans):
+    font_changes = []
+    for ss in src_spans:
+        s_text, s_size = ss["text"], ss["size"]
+        for ts in trn_spans:
+            if s_text == ts["text"] and abs(s_size - ts["size"]) > 0.5:
+                font_changes.append(f"{s_text[:40]}: {s_size}->{ts['size']}")
+    return font_changes
+
+
 def compare_spans(src_spans, trn_spans):
     src_texts = [s["text"] for s in src_spans]
     trn_texts = [s["text"] for s in trn_spans]
@@ -130,18 +155,8 @@ def compare_spans(src_spans, trn_spans):
 
     eng_in_trn = [s for s in trn_spans if s["eng"] and not s["cjk"]]
     cjk_in_trn = [s for s in trn_spans if s["cjk"]]
-    double_layer = []
-    for ts in trn_spans:
-        for ss in src_spans:
-            if ts["text"] == ss["text"] and ts["text"]:
-                tb, sb = ts["bbox"], ss["bbox"]
-                if abs(tb[0] - sb[0]) < 3 and abs(tb[1] - sb[1]) < 3:
-                    double_layer.append(ts["text"][:60])
-    font_changes = []
-    for ss in src_spans:
-        for ts in trn_spans:
-            if ss["text"] == ts["text"] and abs(ss["size"] - ts["size"]) > 0.5:
-                font_changes.append(f"{ss['text'][:40]}: {ss['size']}->{ts['size']}")
+    double_layer = _find_double_layers(src_spans, trn_spans)
+    font_changes = _find_font_changes(src_spans, trn_spans)
     return {
         "src_span_count": len(src_spans),
         "trn_span_count": len(trn_spans),

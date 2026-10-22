@@ -57,47 +57,50 @@ def eng_ghost_ratio(s: str) -> float:
     return len(words) / (len(words) + len(cjk))
 
 
-doc = fitz.open(str(TRN))
-h = doc[0].rect.height
+def main():
+    doc = fitz.open(str(TRN))
+    # p1 title zone (top ~120pt in fitz coords)
+    p1_text = zone_text(doc[0], 40, 130)
+    p1_ok = has_cjk(p1_text) and "with LLMs" not in p1_text and ("LLM" in p1_text or "??" in p1_text or "??" in p1_text)
 
-# p1 title zone (top ~120pt in fitz coords)
-p1_text = zone_text(doc[0], 40, 130)
-p1_ok = has_cjk(p1_text) and "with LLMs" not in p1_text and ("LLM" in p1_text or "??" in p1_text or "??" in p1_text)
+    # p7 findings box (left column, mid page) - fitz y ~350-450 for RQ2 area
+    p7_left = zone_text(doc[6], 280, 380, 40, 300)
+    p7_ok = has_cjk(p7_left) and "Findings" not in p7_left and ("RQ2" in p7_left or "??" in p7_left or "TOGLL" in p7_left)
 
-# p7 findings box (left column, mid page) - fitz y ~350-450 for RQ2 area
-p7_left = zone_text(doc[6], 280, 380, 40, 300)
-p7_ok = has_cjk(p7_left) and "Findings" not in p7_left and ("RQ2" in p7_left or "??" in p7_left or "TOGLL" in p7_left)
+    # p8 RQ3 finding + RQ4 intro
+    p8_find = zone_text(doc[7], 300, 400, 40, 300)
+    p8_rq4 = zone_text(doc[7], 130, 200, 40, 300)
+    p8_rq4_right = zone_text(doc[7], 130, 200, 300, 580)
+    p8_find_ok = has_cjk(p8_find) and "Finding" not in p8_find
+    p8_rq4_ok = has_cjk(p8_rq4) and eng_ghost_ratio(p8_rq4 + " " + p8_rq4_right) < 0.35
 
-# p8 RQ3 finding + RQ4 intro
-p8_find = zone_text(doc[7], 300, 400, 40, 300)
-p8_rq4 = zone_text(doc[7], 130, 200, 40, 300)
-p8_rq4_right = zone_text(doc[7], 130, 200, 300, 580)
-p8_find_ok = has_cjk(p8_find) and "Finding" not in p8_find
-p8_rq4_ok = has_cjk(p8_rq4) and eng_ghost_ratio(p8_rq4 + " " + p8_rq4_right) < 0.35
+    pngs = {
+        "p1": render(TRN, 1, "trans"),
+        "p7": render(TRN, 7, "trans"),
+        "p8": render(TRN, 8, "trans"),
+        "p1_src": render(SRC, 1, "src"),
+        "p7_src": render(SRC, 7, "src"),
+        "p8_src": render(SRC, 8, "src"),
+    }
 
-pngs = {
-    "p1": render(TRN, 1, "trans"),
-    "p7": render(TRN, 7, "trans"),
-    "p8": render(TRN, 8, "trans"),
-    "p1_src": render(SRC, 1, "src"),
-    "p7_src": render(SRC, 7, "src"),
-    "p8_src": render(SRC, 8, "src"),
-}
+    reg_status = {}
+    for name, path, pnum in REGRESSION:
+        if not path.exists():
+            reg_status[name] = "MISSING"
+            continue
+        out = render(path, pnum, f"reg_{name}")
+        reg_status[name] = f"OK -> {out}"
 
-reg_status = {}
-for name, path, pnum in REGRESSION:
-    if not path.exists():
-        reg_status[name] = "MISSING"
-        continue
-    out = render(path, pnum, f"reg_{name}")
-    reg_status[name] = f"OK -> {out}"
+    doc.close()
 
-doc.close()
+    print("=== TOGLL Fix Verification ===")
+    print(f"p1_title_ok={p1_ok} text_sample={p1_text[:120]!r}")
+    print(f"p7_findings_ok={p7_ok} text_sample={p7_left[:120]!r}")
+    print(f"p8_rq3_finding_ok={p8_find_ok} text_sample={p8_find[:120]!r}")
+    print(f"p8_rq4_ok={p8_rq4_ok} left={p8_rq4[:80]!r} right={p8_rq4_right[:80]!r}")
+    print("pngs:", pngs)
+    print("regression:", reg_status)
 
-print("=== TOGLL Fix Verification ===")
-print(f"p1_title_ok={p1_ok} text_sample={p1_text[:120]!r}")
-print(f"p7_findings_ok={p7_ok} text_sample={p7_left[:120]!r}")
-print(f"p8_rq3_finding_ok={p8_find_ok} text_sample={p8_find[:120]!r}")
-print(f"p8_rq4_ok={p8_rq4_ok} left={p8_rq4[:80]!r} right={p8_rq4_right[:80]!r}")
-print("pngs:", pngs)
-print("regression:", reg_status)
+
+if __name__ == "__main__":
+    main()

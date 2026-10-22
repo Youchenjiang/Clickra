@@ -64,35 +64,45 @@ def is_citation_dense_reference_page(page_text):
     return citation_lines >= 3
 
 
-def is_bypass_line(line, page, diagram_regions, in_refs):
-    line_text = "".join(s.get("text", "") for s in line["spans"]).strip()
-    if not line_text:
-        return True
+def _has_special_font(spans):
+    for s in spans:
+        font = s.get("font", "")
+        if any(m in font for m in MONO_FONTS) or any(m in font for m in MATH_FONTS):
+            return True
+    return False
 
-    fonts = [s.get("font", "") for s in line["spans"]]
-    if any(any(m in f for m in MONO_FONTS) for f in fonts):
-        return True
-    if any(any(m in f for m in MATH_FONTS) for f in fonts):
-        return True
 
-    if in_refs:
-        return True
+def _in_margins(spans, page_height):
+    y0 = min(s["bbox"][1] for s in spans)
+    y1 = max(s["bbox"][3] for s in spans)
+    return y0 < 40 or y1 > page_height - 30
 
-    y0 = min(s["bbox"][1] for s in line["spans"])
-    y1 = max(s["bbox"][3] for s in line["spans"])
-    if y0 < 40 or y1 > page.rect.height - 30:
-        return True
 
-    x0 = min(s["bbox"][0] for s in line["spans"])
-    x1 = max(s["bbox"][2] for s in line["spans"])
+def _overlaps_diagram(spans, diagram_regions):
+    x0 = min(s["bbox"][0] for s in spans)
+    y0 = min(s["bbox"][1] for s in spans)
+    x1 = max(s["bbox"][2] for s in spans)
+    y1 = max(s["bbox"][3] for s in spans)
     span_rect = fitz.Rect(x0, y0, x1, y1)
+    area = span_rect.width * span_rect.height
+    if area <= 0:
+        return False
     for dr in diagram_regions:
         if dr.intersects(span_rect):
-            overlap = (dr & span_rect).width * (dr & span_rect).height / (span_rect.width * span_rect.height) if span_rect.width * span_rect.height > 0 else 0
+            overlap = (dr & span_rect).width * (dr & span_rect).height / area
             if overlap > 0.3:
                 return True
-
     return False
+
+
+def is_bypass_line(line, page, diagram_regions, in_refs):
+    spans = line["spans"]
+    line_text = "".join(s.get("text", "") for s in spans).strip()
+    if not line_text or in_refs:
+        return True
+    if _has_special_font(spans) or _in_margins(spans, page.rect.height):
+        return True
+    return _overlaps_diagram(spans, diagram_regions)
 
 
 def page_health(page, page_idx, page_texts):
@@ -163,13 +173,11 @@ def _print_health_summary(pdf_path, page_count, total_cjk, total_simp, total_tof
 
 def health_report(pdf_path, out_path=None):
     doc = fitz.open(str(pdf_path))
-    page_texts = {}
-    for i in range(len(doc)):
-        page_texts[i] = doc[i].get_text()
+    page_texts = {i: page.get_text() for i, page in enumerate(doc)}
 
     pages = []
-    for i in range(len(doc)):
-        h = page_health(doc[i], i, page_texts)
+    for i, page in enumerate(doc):
+        h = page_health(page, i, page_texts)
         h["page"] = i + 1
         pages.append(h)
     doc.close()

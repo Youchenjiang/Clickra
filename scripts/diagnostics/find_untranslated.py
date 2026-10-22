@@ -135,7 +135,7 @@ def is_author_block(span_bbox, page_idx, page, title_bottom=None, abstract_top=N
             max_size = max((s.get("size", 0) for s in line["spans"]), default=0)
             if max_size > 20:
                 title_bottom = line["spans"][0]["bbox"][3]
-    if title_bottom and abstract_top and cy >= abstract_top and cy <= title_bottom:
+    if title_bottom and abstract_top and abstract_top <= cy <= title_bottom:
         return True
     return False
 
