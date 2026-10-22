@@ -353,32 +353,50 @@ def audit(repo, number, run=command, as_json=False, include_sonar=False):
     return result
 
 
+def _issue_severity(issue):
+    impacts = issue.get("impacts")
+    if impacts:
+        return ", ".join(f"{x.get('softwareQuality')}:{x.get('severity')}" for x in impacts)
+    return issue.get("severity") or "?"
+
+
+def _print_sonar_issues(issues):
+    for issue in issues:
+        severity = _issue_severity(issue)
+        key = safe_terminal(issue.get("key"))
+        comp = safe_terminal(issue.get("component"))
+        line = safe_terminal(issue.get("line") or "?")
+        rule = safe_terminal(issue.get("rule"))
+        msg = safe_terminal(issue.get("message") or "")
+        print(f"- {key} {comp}:{line} [{safe_terminal(severity)}] {rule}")
+        print(f"  {msg}")
+
+
+def _print_sonar_quality(quality):
+    if not quality:
+        return
+    gate = quality.get("quality_gate") or {}
+    status = gate.get("status", "UNKNOWN")
+    print(f"Quality Gate: {status}")
+    metrics = quality.get("metrics") or {}
+    dup = metrics.get("new_duplicated_lines_density")
+    if dup is not None:
+        print(f"Duplication on New Code: {dup}%")
+    for condition in gate.get("conditions") or []:
+        metric = condition.get("metricKey")
+        val = condition.get("actualValue")
+        if metric == "new_duplicated_lines_density" or val is None:
+            continue
+        thresh = condition.get("errorThreshold")
+        thresh_info = f" (threshold: {thresh})" if thresh else ""
+        cond_status = condition.get("status")
+        print(f"  {metric}: {val}{thresh_info} [{cond_status}]")
+
+
 def print_sonar(data, quality=None):
     print(f"SonarQube Cloud: {data['total']} open/confirmed issue(s)")
-    if quality:
-        gate = quality.get("quality_gate", {})
-        status = gate.get("status", "UNKNOWN")
-        print(f"Quality Gate: {status}")
-        metrics = quality.get("metrics", {})
-        dup = metrics.get("new_duplicated_lines_density")
-        if dup is not None:
-            print(f"Duplication on New Code: {dup}%")
-        for condition in gate.get("conditions", []):
-            metric = condition.get("metricKey")
-            val = condition.get("actualValue")
-            cond_status = condition.get("status")
-            thresh = condition.get("errorThreshold")
-            if metric == "new_duplicated_lines_density":
-                continue
-            if val is not None:
-                thresh_info = f" (threshold: {thresh})" if thresh else ""
-                print(f"  {metric}: {val}{thresh_info} [{cond_status}]")
-    for issue in data["issues"]:
-        impacts = issue.get("impacts") or []
-        severity = ", ".join(f"{x.get('softwareQuality')}:{x.get('severity')}" for x in impacts) if impacts else issue.get("severity")
-        print(f"- {safe_terminal(issue.get('key'))} {safe_terminal(issue.get('component'))}:{safe_terminal(issue.get('line') or '?')}"
-              f" [{safe_terminal(severity or '?')}] {safe_terminal(issue.get('rule'))}")
-        print(f"  {safe_terminal(issue.get('message') or '')}")
+    _print_sonar_quality(quality)
+    _print_sonar_issues(data.get("issues") or [])
     print(f"SonarQube details: {safe_terminal(data['url'])}")
     if quality and quality.get("url"):
         print(f"SonarQube measures: {safe_terminal(quality['url'])}")
