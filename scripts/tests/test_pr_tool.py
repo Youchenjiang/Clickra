@@ -326,6 +326,16 @@ class PrToolTests(unittest.TestCase):
             pr_tool.diagnose("org/repo", 180, lambda _argv: '{"check_runs":[]}')
         self.assertIn("SonarQube Quality Gate: OK (Duplication: 0.0%)", output.getvalue())
 
+    def test_pr_number_resolves_from_branch_list(self):
+        def fake(argv):
+            self.assertEqual(["gh", "pr", "list"], argv[:3])
+            self.assertIn("--head", argv)
+            self.assertIn("12345", argv)
+            return "203"
+
+        number = pr_tool.pr_number(None, "Youchenjiang/Clickra", "12345", fake)
+        self.assertEqual(203, number)
+
 
 if __name__ == "__main__":
     unittest.main()

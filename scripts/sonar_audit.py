@@ -8,16 +8,18 @@ PROJECT = re.compile(r"[A-Za-z0-9_.:-]+\Z")
 DEFAULT_HOST = "https://sonarcloud.io"
 HOSTS = {DEFAULT_HOST, "https://sonarqube.us"}
 METRIC_KEYS = ("new_duplicated_lines_density", "new_coverage", "new_bugs",
-               "new_vulnerabilities", "new_code_smells")
+               "new_vulnerabilities", "new_code_smells",
+               "new_reliability_rating", "new_security_rating",
+               "new_maintainability_rating", "new_security_hotspots_reviewed")
 
 
-def _get_json(base_url, endpoint, params, token=None):
+def _get_json(base_url, endpoint, params, token=None, timeout=20):
     if base_url not in HOSTS:
         raise ValueError("invalid SonarQube host")
     headers = {"Accept": "application/json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    connection = HTTPSConnection(base_url.removeprefix("https://"), timeout=20)
+    connection = HTTPSConnection(base_url.removeprefix("https://"), timeout=timeout)
     try:
         connection.request("GET", f"{endpoint}?{urlencode(params)}", headers=headers)
         response = connection.getresponse()
@@ -30,15 +32,15 @@ def _get_json(base_url, endpoint, params, token=None):
         connection.close()
 
 
-def quality_metrics(project, pr, *, base_url=DEFAULT_HOST, token=None):
+def quality_metrics(project, pr, *, base_url=DEFAULT_HOST, token=None, timeout=20):
     """Read branch-specific measures and actual quality gate, not merely issue counts."""
     if not PROJECT.fullmatch(project) or not isinstance(pr, int) or pr < 1:
         raise ValueError("invalid SonarQube project or PR")
     measures = _get_json(base_url, "/api/measures/component",
                          {"component": project, "pullRequest": pr,
-                          "metricKeys": ",".join(METRIC_KEYS)}, token)
+                          "metricKeys": ",".join(METRIC_KEYS)}, token, timeout=timeout)
     gate = _get_json(base_url, "/api/qualitygates/project_status",
-                     {"projectKey": project, "pullRequest": pr}, token)
+                     {"projectKey": project, "pullRequest": pr}, token, timeout=timeout)
     values = measures.get("component", {}).get("measures")
     status = gate.get("projectStatus")
     if not isinstance(values, list) or not isinstance(status, dict) or status.get("status") not in ("OK", "ERROR", "WARN", "NONE") or not isinstance(status.get("conditions"), list):

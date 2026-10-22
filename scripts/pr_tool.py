@@ -53,7 +53,12 @@ def pr_number(value, repo, branch, run=command):
         if not value.isdecimal() or int(value) < 1:
             raise ValueError("PR number must be a positive integer")
         return int(value)
-    data = json.loads(run(["gh", "pr", "view", branch, "--repo", repo, "--json", "number", "--jq", ".number"]))
+    raw = run(["gh", "pr", "list", "--head", branch, "--repo", repo, "--state", "all",
+               "--json", "number", "--jq", ".[0].number"]).strip()
+    try:
+        data = json.loads(raw) if raw else None
+    except json.JSONDecodeError:
+        data = None
     if not isinstance(data, int) or data < 1:
         raise ValueError(f"no PR found for branch {branch}; provide an explicit PR number")
     return data
@@ -289,7 +294,7 @@ def _print_sonar_diagnostics(repo, number):
     base_url = os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT)
     token = os.environ.get("SONAR_TOKEN")
     try:
-        quality = quality_metrics(project, number, base_url=base_url, token=token)
+        quality = quality_metrics(project, number, base_url=base_url, token=token, timeout=5)
         gate = quality.get("quality_gate", {})
         status = gate.get("status", "UNKNOWN")
         dup = quality.get("metrics", {}).get("new_duplicated_lines_density")
@@ -331,8 +336,8 @@ def audit(repo, number, run=command, as_json=False, include_sonar=False):
         result["sonar"] = sonar_inventory(project, number, base_url=base_url, token=token)
         try:
             result["sonar_quality"] = quality_metrics(project, number, base_url=base_url, token=token)
-        except Exception:
-            result["sonar_quality"] = None
+        except Exception as exc:
+            result["sonar_quality"] = {"error": str(exc), "quality_gate": {"status": "UNAVAILABLE"}}
     if as_json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return result
@@ -378,6 +383,11 @@ def _print_sonar_quality(quality):
     gate = quality.get("quality_gate") or {}
     status = gate.get("status", "UNKNOWN")
     print(f"Quality Gate: {status}")
+    if status == "UNAVAILABLE":
+        err = quality.get("error")
+        if err:
+            print(f"  Quality metrics unavailable: {safe_terminal(err)}")
+        return
     metrics = quality.get("metrics") or {}
     dup = metrics.get("new_duplicated_lines_density")
     if dup is not None:
