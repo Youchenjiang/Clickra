@@ -109,6 +109,25 @@ def find_problematic_chars(page, checks=None):
     return results
 
 
+def get_diagram_regions(page):
+    regions = []
+    for d in page.get_drawings():
+        r = fitz.Rect(d["rect"])
+        if (r.width > 80 and r.height > 30) or (r.width > 30 and r.height > 60):
+            regions.append(r)
+    merged = []
+    for r in regions:
+        merged_flag = False
+        for i, m in enumerate(merged):
+            if r.intersects(m):
+                merged[i] = m | r
+                merged_flag = True
+                break
+        if not merged_flag:
+            merged.append(r)
+    return merged
+
+
 def zone_spans(page, y0=None, y1=None, x0=None, x1=None):
     for span in get_spans(page):
         bbox = span["bbox"]

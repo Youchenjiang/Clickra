@@ -5,7 +5,7 @@ import fitz
 import re
 import json
 from pathlib import Path
-from _pdf_utils import SOURCES, CJK_RE, ENG_RE, out_dir, count_simplified_hits
+from _pdf_utils import SOURCES, CJK_RE, ENG_RE, out_dir, count_simplified_hits, get_diagram_regions
 
 MONO_FONTS = ("Courier", "Console", "Inconsolata", "Typewriter", "NimbusMon",
               "MonL", "cmtt", "ectt", "sftt", "Teletype", "Mono", "Code")
@@ -22,25 +22,6 @@ REF_TERMINATORS = re.compile(
     re.IGNORECASE
 )
 CITATION_LINE_RE = re.compile(r"^\s*\[\d+\]")
-
-
-def get_diagram_regions(page):
-    regions = []
-    for d in page.get_drawings():
-        r = fitz.Rect(d["rect"])
-        if (r.width > 80 and r.height > 30) or (r.width > 30 and r.height > 60):
-            regions.append(r)
-    merged = []
-    for r in regions:
-        merged_flag = False
-        for i, m in enumerate(merged):
-            if r.intersects(m):
-                merged[i] = m | r
-                merged_flag = True
-                break
-        if not merged_flag:
-            merged.append(r)
-    return merged
 
 
 def in_references_section(page_texts, page_idx):

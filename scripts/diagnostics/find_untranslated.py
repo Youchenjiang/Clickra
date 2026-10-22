@@ -12,7 +12,7 @@ Bypass rules from docs/translation_rules.md §2:
 import argparse
 import re
 import fitz
-from _pdf_utils import SOURCES, CJK_RE, ENG_RE
+from _pdf_utils import SOURCES, CJK_RE, ENG_RE, get_diagram_regions
 
 MONO_FONTS = ("Courier", "Console", "Inconsolata", "Typewriter", "NimbusMon",
               "MonL", "cmtt", "ectt", "sftt", "Teletype", "Mono", "Code")
@@ -28,25 +28,6 @@ REF_TERMINATORS = re.compile(
     r"^\d+\.\s+(?!REFERENCE)",
     re.IGNORECASE
 )
-
-
-def get_diagram_regions(page):
-    regions = []
-    for d in page.get_drawings():
-        r = fitz.Rect(d["rect"])
-        if (r.width > 80 and r.height > 30) or (r.width > 30 and r.height > 60):
-            regions.append(r)
-    merged = []
-    for r in regions:
-        merged_flag = False
-        for i, m in enumerate(merged):
-            if r.intersects(m):
-                merged[i] = m | r
-                merged_flag = True
-                break
-        if not merged_flag:
-            merged.append(r)
-    return merged
 
 
 def get_gray_regions(page):
