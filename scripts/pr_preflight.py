@@ -72,7 +72,7 @@ REQUIRED_REVIEW_PROMPTS = (
     "Security",
     "Documentation",
 )
-CHECKLIST_METADATA_PATTERN = re.compile(r"(?mi)^- \[[ xX]\] \*\*(?:Assignee|Label|Milestone)\*\*:")
+CHECKLIST_METADATA_PATTERN = re.compile(r"(?mi)^- \[[ x]\] \*\*(?:Assignee|Label|Milestone)\*\*:")
 
 
 def _checklist_metadata_errors(lines):
@@ -87,7 +87,7 @@ def _checklist_metadata_errors(lines):
 def _checklist_prompt_errors(lines):
     errors = []
     for prompt in REQUIRED_REVIEW_PROMPTS:
-        pattern = rf"(?mi)^- \[[ xX]\] \*\*{re.escape(prompt)}\*\*:[ \t]*(\S[^\r\n]*)$"
+        pattern = rf"(?mi)^- \[[ x]\] \*\*{re.escape(prompt)}\*\*:[ \t]*(\S[^\r\n]*)$"
         match = re.search(pattern, lines)
         if not match:
             errors.append(f"missing review checklist prompt: {prompt}")
