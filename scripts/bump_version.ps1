@@ -94,11 +94,11 @@ if (Test-Path $changelogPath) {
 
 # 5. Update StoreListing version stamp at the top of each file
 $storeListingFiles = @(
-    "docs/StoreListing_EN.md",
-    "docs/StoreListing_ZH.md",
-    "docs/StoreListing_JA.md",
-    "docs/StoreListing_KO.md",
-    "docs/StoreListing_ZH-CN.md"
+    "docs/store/StoreListing_EN.md",
+    "docs/store/StoreListing_ZH.md",
+    "docs/store/StoreListing_JA.md",
+    "docs/store/StoreListing_KO.md",
+    "docs/store/StoreListing_ZH-CN.md"
 )
 foreach ($f in $storeListingFiles) {
     # A missing listing must fail the release, never be silently skipped.
@@ -133,4 +133,4 @@ Write-Host "[Success] All files synced successfully!" -ForegroundColor Green
 if ($Build) {
     Write-Host "`n[Build] Starting MSIX package build..." -ForegroundColor Cyan
     powershell -File scripts/build_msix.ps1
-}
+}
