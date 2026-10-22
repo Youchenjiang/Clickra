@@ -9,10 +9,13 @@ Ensures that:
 """
 
 import subprocess
+import sys
 import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+from process_guard import executable  # noqa: E402
 
 ALLOWED_ROOT_DIRS = {
     ".agent",
@@ -56,8 +59,9 @@ ALLOWED_DOCS_SUBDIRS = {
 def get_git_tracked_files() -> list[str]:
     """Return all files tracked by git relative to repository root."""
     try:
+        git_bin = executable("git")
         output = subprocess.check_output(
-            ["git", "ls-files"],
+            [git_bin, "ls-files"],
             cwd=REPO_ROOT,
             text=True,
             encoding="utf-8",

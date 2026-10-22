@@ -110,6 +110,7 @@ python -m unittest discover -s scripts/tests -p 'test_pr_reports.py' -v
 python -m unittest discover -s scripts/tests -p 'test_pr_publication.py' -v
 python -m unittest discover -s scripts/tests -p 'test_pr_creation.py' -v
 python -m unittest discover -s scripts/tests -p 'test_pr_verification.py' -v
+python -m unittest discover -s scripts/tests -p 'test_repo_hygiene.py' -v
 
 echo "Running pre-push checks (mirrors .github/workflows/ci.yml)..."
 
