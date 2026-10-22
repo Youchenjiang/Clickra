@@ -62,7 +62,7 @@ The tracked Microsoft Store Publisher identity must not be replaced by the GitHu
 
 ## Privacy policy
 
-Clickra's privacy policy is published at [PRIVACY.md](../PRIVACY.md).
+Clickra's privacy policy is published at [PRIVACY.md](../../PRIVACY.md).
 
 Clickra collects no telemetry or analytics. Core file processing is local. Network access occurs only for user-initiated optional functionality documented in the privacy policy, including PDF translation providers and optional LibreOffice installer download.
 
@@ -82,4 +82,4 @@ If a signing credential, SignPath account, repository account, trusted-build con
 - **Local development/testing:** uses Clickra self-signed development certificates and is not production trust.
 - **Microsoft Store:** uses the Store package identity and Microsoft Store certification/distribution signing independently of the SignPath direct-release path.
 
-The complete multi-channel design is documented in [Multi-Channel Signing and Distribution Plan](development/multi_channel_signing_distribution_plan.md).
+The complete multi-channel design is documented in [Multi-Channel Signing and Distribution Plan](multi_channel_signing_distribution_plan.md).
