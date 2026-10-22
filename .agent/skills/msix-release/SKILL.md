@@ -39,7 +39,7 @@ Use the authorized bump type instead of `patch` when required. The script curren
 - `packaging/msix/AppxManifest.Fluent.xml`
 - `src/resources/AppxManifest.xml`
 - `CHANGELOG.md` with a new-version TODO entry
-- all five `docs/StoreListing_*.md` version stamps
+- all five `docs/store/StoreListing_*.md` version stamps
 
 It preserves each target file's existing UTF-8 BOM state. It does **not** update README
 version tables or invent release notes.
