@@ -35,7 +35,7 @@ static partial class TestSuite
     private static string CultureFolder(string languageCode) => languageCode.ToLowerInvariant();
 
     /// <summary>
-    /// 應用程式支援語言與 docs/StoreListing_*.md 檔案名稱的對應關係。
+    /// 應用程式支援語言與 docs/store/StoreListing_*.md 檔案名稱的對應關係。
     /// 任何新語言的加入都必須在此處宣告對應的商店說明文件。
     /// </summary>
     private static readonly Dictionary<string, string> StoreListingFileByLanguage = new(StringComparer.OrdinalIgnoreCase)
