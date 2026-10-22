@@ -182,6 +182,40 @@ def _should_skip_line(line, line_text, x0, y0, y1, cy, page_h, in_refs, diagram_
     return None
 
 
+def _iter_text_lines(page):
+    for b in page.get_text("dict")["blocks"]:
+        if b.get("type") == 0:
+            yield from b.get("lines", [])
+
+
+def _evaluate_line(line, p, in_refs, diagram_regions, gray_regions, table_page, page_h, page, x_split, min_len):
+    line_text = "".join(s.get("text", "") for s in line["spans"]).strip()
+    if not line_text or len(line_text) < min_len:
+        return None
+
+    x0 = min(s["bbox"][0] for s in line["spans"])
+    y0 = min(s["bbox"][1] for s in line["spans"])
+    y1 = max(s["bbox"][3] for s in line["spans"])
+    cy = (y0 + y1) / 2
+
+    if x0 <= x_split or not ENG_RE.search(line_text) or CJK_RE.search(line_text):
+        return None
+
+    skip_reason = _should_skip_line(
+        line, line_text, x0, y0, y1, cy, page_h,
+        in_refs, diagram_regions, gray_regions, page, p, table_page
+    )
+
+    if skip_reason:
+        return None
+
+    return {
+        "text": line_text[:120],
+        "x0": round(x0, 1),
+        "y": round(cy, 1),
+    }
+
+
 def _collect_page_hits(page, p, in_refs, x_split, min_len):
     diagram_regions = get_diagram_regions(page)
     gray_regions = get_gray_regions(page)
@@ -189,33 +223,13 @@ def _collect_page_hits(page, p, in_refs, x_split, min_len):
     page_h = page.rect.height
     page_hits = []
 
-    for b in page.get_text("dict")["blocks"]:
-        if b.get("type") != 0:
-            continue
-        for line in b.get("lines", []):
-            line_text = "".join(s.get("text", "") for s in line["spans"]).strip()
-            if not line_text or len(line_text) < min_len:
-                continue
-
-            x0 = min(s["bbox"][0] for s in line["spans"])
-            y0 = min(s["bbox"][1] for s in line["spans"])
-            y1 = max(s["bbox"][3] for s in line["spans"])
-            cy = (y0 + y1) / 2
-
-            if x0 <= x_split or not ENG_RE.search(line_text) or CJK_RE.search(line_text):
-                continue
-
-            skip_reason = _should_skip_line(
-                line, line_text, x0, y0, y1, cy, page_h,
-                in_refs, diagram_regions, gray_regions, page, p, table_page
-            )
-
-            if not skip_reason:
-                page_hits.append({
-                    "text": line_text[:120],
-                    "x0": round(x0, 1),
-                    "y": round(cy, 1),
-                })
+    for line in _iter_text_lines(page):
+        hit = _evaluate_line(
+            line, p, in_refs, diagram_regions, gray_regions,
+            table_page, page_h, page, x_split, min_len
+        )
+        if hit:
+            page_hits.append(hit)
     return page_hits
 
 

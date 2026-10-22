@@ -20,26 +20,32 @@ def _categorize_char(c):
     return "other"
 
 
+def _iter_spans(page):
+    for b in page.get_text("rawdict")["blocks"]:
+        for line in b.get("lines", []):
+            yield from line.get("spans", [])
+
+
+def _record_span(span, font_counter, font_chars, font_ranges):
+    font = span.get("font", "unknown")
+    text = span.get("text", "")
+    font_counter[font] += len(text)
+    if font not in font_chars:
+        font_chars[font] = set()
+        font_ranges[font] = set()
+    for ch in text:
+        font_chars[font].add(ch)
+        cat = _categorize_char(ch)
+        if cat:
+            font_ranges[font].add(cat)
+
+
 def _collect_page_fonts(page):
     font_counter = Counter()
     font_chars = {}
     font_ranges = {}
-    for b in page.get_text("rawdict")["blocks"]:
-        if "lines" not in b:
-            continue
-        for line in b["lines"]:
-            for span in line["spans"]:
-                font = span.get("font", "unknown")
-                text = span.get("text", "")
-                font_counter[font] += len(text)
-                if font not in font_chars:
-                    font_chars[font] = set()
-                    font_ranges[font] = set()
-                for ch in text:
-                    font_chars[font].add(ch)
-                    cat = _categorize_char(ch)
-                    if cat:
-                        font_ranges[font].add(cat)
+    for span in _iter_spans(page):
+        _record_span(span, font_counter, font_chars, font_ranges)
     return font_counter, font_chars, font_ranges
 
 
