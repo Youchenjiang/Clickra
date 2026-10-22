@@ -1,6 +1,6 @@
 """Find untranslated spans in translated PDF, respecting Clickra bypass rules.
 
-Bypass rules from docs/translation_rules.md §2:
+Bypass rules from docs/specs/translation_rules.md §2:
   §2.A Diagrams: large vector paths (w>80 && h>30) || (w>30 && h>60)
   §2.B Math: Math/Symbol/CMSY fonts, equation numbers (1), (2)
   §2.C Code: monospace fonts (Courier, Console, Inconsolata, Typewriter, etc.)
