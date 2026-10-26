@@ -66,6 +66,12 @@ public sealed class SettingsPresentationController : ISettingsPresentationContro
         set => SettingsController.TranslationTargetLanguage = value;
     }
 
+    public string TranslationEngine
+    {
+        get => SettingsController.TranslationEngine;
+        set => SettingsController.TranslationEngine = value;
+    }
+
     public bool QuietMode
     {
         get => SettingsController.QuietMode;
@@ -221,6 +227,7 @@ public sealed class SettingsPresentationController : ISettingsPresentationContro
     public int MinPdfCompressionLevel => SettingsContract.MinPdfCompressionLevel;
     public int MaxPdfCompressionLevel => SettingsContract.MaxPdfCompressionLevel;
     public string DefaultTranslationTargetLanguage => SettingsContract.DefaultTranslationTargetLanguage;
+    public string DefaultTranslationEngine => SettingsContract.DefaultTranslationEngine;
 
     public string GetOfficeEngineLabelKey(string engine) => engine switch
     {

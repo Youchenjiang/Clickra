@@ -228,7 +228,22 @@ namespace Clickra.Core.Modules.Settings.Presentation;
                 Order: 10
             ),
 
-            // PDF: 翻譯目標語言
+            // PDF: 翻譯引擎與目標語言
+            new(
+                SettingsContract.TranslationEngine,
+                GroupPdf,
+                SettingEditorKind.Choice,
+                "setting_trans_engine_title",
+                "setting_trans_engine_desc",
+                Options: new SettingOption[]
+                {
+                    new(SettingsContract.TranslationEngineAuto, "setting_trans_engine_auto"),
+                    new(SettingsContract.TranslationEngineGoogle, "setting_trans_engine_google"),
+                    new(SettingsContract.TranslationEngineMyMemory, "setting_trans_engine_mymemory"),
+                    new(SettingsContract.TranslationEngineOffline, "setting_trans_engine_offline"),
+                },
+                Order: 10
+            ),
             new(
                 SettingsContract.TranslationTargetLanguage,
                 GroupPdf,
@@ -243,7 +258,7 @@ namespace Clickra.Core.Modules.Settings.Presentation;
                     new("ja", "日本語 (ja)", "日本語 (ja)"),
                     new("ko", "한국어 (ko)", "한국어 (ko)"),
                 },
-                Order: 10
+                Order: 20
             ),
         };
 

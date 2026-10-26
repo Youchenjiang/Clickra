@@ -13,6 +13,7 @@ public interface ISettingsPresentationController
 
     string Language { get; set; }
     string TranslationTargetLanguage { get; set; }
+    string TranslationEngine { get; set; }
     bool QuietMode { get; set; }
     bool NotificationsEnabled { get; set; }
     string LibreOfficePath { get; set; }
@@ -51,6 +52,7 @@ public interface ISettingsPresentationController
     int MinPdfCompressionLevel { get; }
     int MaxPdfCompressionLevel { get; }
     string DefaultTranslationTargetLanguage { get; }
+    string DefaultTranslationEngine { get; }
     string GetOfficeEngineLabelKey(string engine);
     string GetDownloadsDirectory();
     string GetDataDirectory();
