@@ -80,15 +80,19 @@ internal class GoogleFreeTranslator : BaseTranslator
         request.Headers.UserAgent.ParseAdd(MobileUserAgent);
 
         using var response = await HttpClient.SendAsync(request, cancellationToken);
+        string body = await response.Content.ReadAsStringAsync(cancellationToken);
+        return ProcessResponse(response, body);
+    }
+
+    internal static string ProcessResponse(HttpResponseMessage response, string body)
+    {
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
         {
             throw new TranslationRateLimitException(
                 "Google Translate rate limited the request.",
                 TranslationProviderLimits.ReadRetryAfter(response, TranslationProviderLimits.DefaultRetryAfter));
         }
-        response.EnsureSuccessStatusCode();
 
-        string body = await response.Content.ReadAsStringAsync(cancellationToken);
         if (LooksLikeVerificationPage(response.Content.Headers.ContentType?.MediaType, body))
         {
             throw new TranslationRateLimitException(
@@ -96,6 +100,7 @@ internal class GoogleFreeTranslator : BaseTranslator
                 TranslationProviderLimits.MaximumRetryAfter);
         }
 
+        response.EnsureSuccessStatusCode();
         return body;
     }
 
