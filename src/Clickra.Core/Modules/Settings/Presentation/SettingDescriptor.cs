@@ -274,6 +274,7 @@ namespace Clickra.Core.Modules.Settings.Presentation;
             SettingsContract.OfficeEngine,
             SettingsContract.Language,
             SettingsContract.TranslationTargetLanguage,
+            SettingsContract.TranslationEngine,
             SettingsContract.QuietMode,
             SettingsContract.Notifications,
             SettingsContract.PdfCompressionImageLevel,
