@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Clickra.Core.Modules.PdfTranslation.Translation;
+using Clickra.Core.Modules.Settings.Application;
 
 namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
 
@@ -64,6 +65,15 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
             return results;
         }
 
+        private static void EnsureOnlineAllowed(ITranslationEngine translator, string language)
+        {
+            if (translator is OfflineTranslator ||
+                string.Equals(SettingsController.TranslationEngine, SettingsContract.TranslationEngineOffline, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new OfflineTranslationException(Localization.T("pdf_error_translation_offline", language));
+            }
+        }
+
         private static List<string> TranslateChunkWithRecovery(
             ITranslationEngine translator,
             List<string> chunk,
@@ -72,10 +82,15 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            EnsureOnlineAllowed(translator, context.Batch.Language);
 
             try
             {
                 return TranslateChunkOnce(translator, chunk, targetLang, context.Batch.Language, cancellationToken);
+            }
+            catch (OfflineTranslationException)
+            {
+                throw;
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
@@ -109,6 +124,7 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
             string sourceText = chunk.Count == 0 ? string.Empty : chunk[0];
             try
             {
+                EnsureOnlineAllowed(translator, context.Batch.Language);
                 string translated = RunWithTimeout(
                     token => translator.TranslateAsync(sourceText, targetLang, token),
                     translator is FallbackTranslator
@@ -121,6 +137,10 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
                     throw new InvalidOperationException(Localization.T("pdf_error_provider_empty", context.Batch.Language));
                 }
                 return new List<string> { translated };
+            }
+            catch (OfflineTranslationException)
+            {
+                throw;
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {

@@ -87,9 +87,10 @@ public static class PdfTranslationPipeline
             PdfReferenceSectionBypasser.Apply(pageParagraphs, pageWidths, PdfPageReadingOrder.GetPageReadingOrder);
 
             onProgress?.Invoke(30, 100, Localization.T("pdf_progress_translating", language));
-            providerName = TranslationEngineFactory.Create().Name;
+            var translator = TranslationEngineFactory.Create();
+            providerName = translator.Name;
             stageReport = PdfParagraphTranslationStage.TranslatePages(
-                pageParagraphs, inputPath, targetLang, language, dataDirectory, onProgress, operationToken);
+                translator, pageParagraphs, inputPath, targetLang, language, dataDirectory, onProgress, operationToken);
 
             if (File.Exists(partialOutputPath)) File.Delete(partialOutputPath);
             layoutSummary = PdfTranslatedPdfRebuilder.Rebuild(

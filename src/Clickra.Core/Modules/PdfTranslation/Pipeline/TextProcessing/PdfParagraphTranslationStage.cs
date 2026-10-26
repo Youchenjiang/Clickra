@@ -13,9 +13,27 @@ internal static class PdfParagraphTranslationStage
         string language,
         string dataDirectory,
         Action<int, int, string>? onProgress,
+        CancellationToken cancellationToken) =>
+        TranslatePages(
+            TranslationEngineFactory.Create(),
+            pageParagraphs,
+            inputPath,
+            targetLang,
+            language,
+            dataDirectory,
+            onProgress,
+            cancellationToken);
+
+    public static PdfTranslationStageReport TranslatePages(
+        ITranslationEngine translator,
+        IReadOnlyList<List<PdfParagraph>> pageParagraphs,
+        string inputPath,
+        string targetLang,
+        string language,
+        string dataDirectory,
+        Action<int, int, string>? onProgress,
         CancellationToken cancellationToken)
     {
-        var translator = TranslationEngineFactory.Create();
         var report = new PdfTranslationStageReport { Provider = translator.Name };
         object logLock = new object();
         int totalPages = pageParagraphs.Count;
@@ -123,6 +141,10 @@ internal static class PdfParagraphTranslationStage
                     {
                         throw new InvalidOperationException(Localization.T("pdf_error_mismatched_batch", language));
                     }
+                }
+                catch (OfflineTranslationException)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
