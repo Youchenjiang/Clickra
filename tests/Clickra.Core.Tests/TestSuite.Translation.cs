@@ -321,13 +321,24 @@ static partial class TestSuite
                     var offline = TranslationEngineFactory.Create();
                     Assert.Equal("offline", offline.Name);
 
-                    var ex = Assert.Throws<InvalidOperationException>(() =>
+                    string expectedOfflineMsg = Localization.T("pdf_error_translation_offline");
+                    var ex = Assert.Throws<OfflineTranslationException>(() =>
                         offline.TranslateAsync("Hello", "zh-TW", CancellationToken.None).GetAwaiter().GetResult());
-                    Assert.True(!string.IsNullOrWhiteSpace(ex.Message), "Offline translator should return an error message.");
+                    Assert.Equal(expectedOfflineMsg, ex.Message);
 
-                    var exBatch = Assert.Throws<InvalidOperationException>(() =>
+                    var exBatch = Assert.Throws<OfflineTranslationException>(() =>
                         offline.TranslateBatchAsync(new List<string> { "Hello" }, "zh-TW", CancellationToken.None).GetAwaiter().GetResult());
-                    Assert.True(!string.IsNullOrWhiteSpace(exBatch.Message), "Offline translator should return a batch error message.");
+                    Assert.Equal(expectedOfflineMsg, exBatch.Message);
+
+                    // Offline setting must take precedence over online environment override:
+                    Environment.SetEnvironmentVariable(TranslationEngineEnvVar, "google");
+                    Assert.Equal("offline", TranslationEngineFactory.Create().Name);
+                    Environment.SetEnvironmentVariable(TranslationEngineEnvVar, null);
+
+                    // Invalid/unsupported values fail closed to offline mode:
+                    SettingsController.TranslationEngine = "unknown_invalid_engine";
+                    Assert.Equal(SettingsContract.TranslationEngineOffline, SettingsController.TranslationEngine);
+                    Assert.Equal("offline", TranslationEngineFactory.Create().Name);
 
                     ClickraStorage.SaveSetting(ClickraSettings.TranslateEngine, ClickraSettings.TranslateEngineGoogle);
                     Assert.Equal("google-free", TranslationEngineFactory.Create().Name);
