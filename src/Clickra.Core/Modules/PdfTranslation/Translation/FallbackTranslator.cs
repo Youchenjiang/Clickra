@@ -30,7 +30,7 @@ internal class FallbackTranslator : ITranslationEngine
             EnsureTranslated(text, translated, targetLanguage, _primary.Name);
             return translated;
         }
-        catch (Exception primaryException) // skipcq: CS-R1008
+        catch (Exception primaryException) // skipcq: CS-R1008, CS-R1084
             when (!cancellationToken.IsCancellationRequested)
         {
             try
@@ -41,7 +41,7 @@ internal class FallbackTranslator : ITranslationEngine
                 EnsureTranslated(text, translated, targetLanguage, _fallback.Name);
                 return translated;
             }
-            catch (Exception fallbackException) // skipcq: CS-R1008, CS-R1034
+            catch (Exception fallbackException) // skipcq: CS-R1008, CS-R1084
                 when (
                     !cancellationToken.IsCancellationRequested &&
                     TranslationProviderLimits.IsLimit(primaryException) &&
@@ -68,7 +68,7 @@ internal class FallbackTranslator : ITranslationEngine
                     cancellationToken);
                 EnsureBatchTranslated(chunk, translated, targetLanguage, _primary.Name);
             }
-            catch (Exception ex) // skipcq: CS-R1008
+            catch (Exception ex) // skipcq: CS-R1008, CS-R1084
                 when (!cancellationToken.IsCancellationRequested)
             {
                 await Console.Error.WriteLineAsync(
@@ -80,7 +80,7 @@ internal class FallbackTranslator : ITranslationEngine
                         cancellationToken);
                     EnsureBatchTranslated(chunk, translated, targetLanguage, _fallback.Name);
                 }
-                catch (Exception fallbackException) // skipcq: CS-R1008, CS-R1034
+                catch (Exception fallbackException) // skipcq: CS-R1008, CS-R1084
                     when (
                         !cancellationToken.IsCancellationRequested &&
                         TranslationProviderLimits.IsLimit(ex) &&

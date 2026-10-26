@@ -31,7 +31,7 @@ internal class MyMemoryTranslator : ITranslationEngine
             }
             // Rate limits and daily quotas surface to the batch runner so it handles
             // the wait, countdown, and retry in one place without stalling.
-            catch (Exception httpException) // skipcq: CS-R1008
+            catch (Exception httpException) // skipcq: CS-R1008, CS-R1084
                 when (
                     retries > 0 &&
                     !cancellationToken.IsCancellationRequested &&
