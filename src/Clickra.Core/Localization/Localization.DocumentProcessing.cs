@@ -51,6 +51,7 @@ namespace Clickra.Core;
                 ("pdf_progress_translating", "正在翻譯文本內容...", "正在翻译文本内容...", "Translating text content...", "テキストを翻訳中...", "텍스트 내용 번역 중..."),
                 ("pdf_progress_translating_page", "正在翻譯第 {0}/{1} 頁...", "正在翻译第 {0}/{1} 页...", "Translating page {0}/{1}...", "{0}/{1} ページを翻訳中...", "{0}/{1} 페이지 번역 중..."),
                 ("pdf_progress_translating_batch", "正在翻譯第 {0}/{1} 頁，批次 {2}/{3}（段落 {4}-{5}/{6}）...", "正在翻译第 {0}/{1} 页，批次 {2}/{3}（段落 {4}-{5}/{6}）...", "Translating page {0}/{1}, batch {2}/{3} (paragraphs {4}-{5}/{6})...", "{0}/{1} ページ、バッチ {2}/{3} を翻訳中（段落 {4}-{5}/{6}）...", "{0}/{1} 페이지, 배치 {2}/{3} 번역 중(문단 {4}-{5}/{6})..."),
+                ("pdf_progress_provider_waiting", "第 {0} 頁遇到翻譯服務限流，等待 {1} 秒後重試...", "第 {0} 页遇到翻译服务限流，等待 {1} 秒后重试...", "Translation provider rate limited on page {0}; waiting {1}s to retry...", "{0} ページで翻訳サービスが一時制限されました。{1} 秒後に再試行します...", "{0}페이지에서 번역 서비스가 일시 제한되었습니다. {1}초 후 다시 시도합니다..."),
                 ("pdf_progress_rebuilding", "正在重建 PDF 版面與公式...", "正在重建 PDF 版面与公式...", "Rebuilding PDF layout and formulas...", "PDF レイアウトと数式を再構築中...", "PDF 레이아웃과 수식 재구성 중..."),
                 ("pdf_progress_saving", "正在儲存翻譯後的檔案...", "正在保存翻译后的文件...", "Saving translated file...", "翻訳済みファイルを保存中...", "번역된 파일 저장 중..."),
                 ("pdf_error_deadline", "PDF 翻譯超過 10 分鐘文件時限。", "PDF 翻译超过 10 分钟文档时限。", "PDF translation exceeded the 10-minute document deadline.", "PDF 翻訳が 10 分の文書制限を超えました。", "PDF 번역이 10분 문서 제한 시간을 초과했습니다."),

@@ -61,9 +61,26 @@ internal class MyMemoryTranslator : ITranslationEngine
         }
     }
 
+    private const string Endpoint = "https://api.mymemory.translated.net/get";
+
     private static async Task<string> TranslateInternalAsync(string text, string targetLanguage, CancellationToken cancellationToken)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, BuildRequestUri(text, targetLanguage));
+        string normalizedTarget = NormalizeLanguageCode(targetLanguage);
+        string sourceLang = DetectSourceLanguage(text, normalizedTarget);
+        if (string.Equals(sourceLang, normalizedTarget, StringComparison.OrdinalIgnoreCase))
+            return text;
+
+        string langPair = $"{sourceLang}|{normalizedTarget}";
+        var formContent = new FormUrlEncodedContent(new[]
+        {
+            new KeyValuePair<string, string>("q", text),
+            new KeyValuePair<string, string>("langpair", langPair)
+        });
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, Endpoint)
+        {
+            Content = formContent
+        };
         request.Headers.UserAgent.ParseAdd("Mozilla/5.0 Clickra/1.0");
         using var response = await HttpClient.SendAsync(request, cancellationToken);
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
@@ -85,9 +102,48 @@ internal class MyMemoryTranslator : ITranslationEngine
     /// </summary>
     internal static Uri BuildRequestUri(string text, string targetLanguage)
     {
-        string langPair = Uri.EscapeDataString($"en|{NormalizeLanguageCode(targetLanguage)}");
+        string normalizedTarget = NormalizeLanguageCode(targetLanguage);
+        string sourceLang = DetectSourceLanguage(text, normalizedTarget);
+        string langPair = Uri.EscapeDataString($"{sourceLang}|{normalizedTarget}");
         string query = Uri.EscapeDataString(text);
-        return new Uri($"https://api.mymemory.translated.net/get?q={query}&langpair={langPair}");
+        return new Uri($"{Endpoint}?q={query}&langpair={langPair}");
+    }
+
+    /// <summary>
+    /// Infers the source language from character sets to avoid sending an
+    /// invalid language pair (such as en|en when translating CJK to English)
+    /// or misclassifying Japanese/Korean/Chinese text as English.
+    /// </summary>
+    internal static string DetectSourceLanguage(string text, string normalizedTarget)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return "en";
+
+        bool hasJapaneseKana = false;
+        bool hasKoreanHangul = false;
+        bool hasCjk = false;
+
+        foreach (char c in text)
+        {
+            if (c is >= '\u3040' and <= '\u30ff')
+                hasJapaneseKana = true;
+            else if (c is >= '\uac00' and <= '\ud7af')
+                hasKoreanHangul = true;
+            else if (c is >= '\u4e00' and <= '\u9fff' or >= '\u3400' and <= '\u4dbf')
+                hasCjk = true;
+        }
+
+        if (hasJapaneseKana) return "ja";
+        if (hasKoreanHangul) return "ko";
+        if (hasCjk)
+        {
+            if (normalizedTarget.Equals("zh-TW", StringComparison.OrdinalIgnoreCase))
+                return "zh-CN";
+            if (normalizedTarget.Equals("zh-CN", StringComparison.OrdinalIgnoreCase))
+                return "zh-TW";
+            return "zh";
+        }
+
+        return "en";
     }
 
     /// <summary>

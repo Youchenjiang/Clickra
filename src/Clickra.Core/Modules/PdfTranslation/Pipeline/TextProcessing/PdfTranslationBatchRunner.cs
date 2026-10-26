@@ -30,8 +30,9 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var chunk = chunks[chunkIndex];
+                int currentProgress = GetTranslationProgress(context.PageIndex, context.TotalPages, chunkIndex, chunks.Count);
                 context.OnProgress?.Invoke(
-                    GetTranslationProgress(context.PageIndex, context.TotalPages, chunkIndex, chunks.Count),
+                    currentProgress,
                     100,
                     string.Format(
                         Localization.T("pdf_progress_translating_batch", context.Language),
@@ -50,7 +51,9 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
                     context.PageIndex,
                     chunkIndex,
                     context.Language,
-                    cancellationToken);
+                    cancellationToken,
+                    context.OnProgress,
+                    currentProgress);
 
                 results.AddRange(chunkResults);
                 translatedCount += chunk.Count;
@@ -66,7 +69,9 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
             int pageIndex,
             int chunkIndex,
             string language,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            Action<int, int, string>? onProgress = null,
+            int currentProgress = 0)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -86,10 +91,23 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
             if (TranslationProviderLimits.IsLimit(failure))
             {
                 TimeSpan wait = TranslationProviderLimits.SuggestedWait(failure);
+                int waitSeconds = (int)Math.Max(1, Math.Ceiling(wait.TotalSeconds));
                 Console.Error.WriteLine(
                     $"[Translate] page {pageIndex + 1}, batch {chunkIndex + 1} hit a provider limit; " +
-                    $"retrying once in {wait.TotalSeconds:0}s: {failure.Message}");
-                Task.Delay(wait, cancellationToken).GetAwaiter().GetResult();
+                    $"retrying once in {waitSeconds}s: {failure.Message}");
+
+                for (int remaining = waitSeconds; remaining > 0; remaining--)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    onProgress?.Invoke(
+                        currentProgress,
+                        100,
+                        string.Format(Localization.T("pdf_progress_provider_waiting", language), pageIndex + 1, remaining));
+                    int sleepMs = remaining == 1 ? (int)(wait.TotalMilliseconds % 1000 == 0 ? 1000 : wait.TotalMilliseconds % 1000) : 1000;
+                    if (sleepMs <= 0) sleepMs = 1000;
+                    Task.Delay(sleepMs, cancellationToken).GetAwaiter().GetResult();
+                }
+
                 try
                 {
                     return TranslateChunkOnce(translator, chunk, targetLang, cancellationToken, language);
@@ -116,7 +134,9 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
                     pageIndex,
                     chunkIndex,
                     language,
-                    cancellationToken);
+                    cancellationToken,
+                    onProgress,
+                    currentProgress);
                 var right = TranslateChunkWithRecovery(
                     translator,
                     chunk.GetRange(midpoint, chunk.Count - midpoint),
@@ -124,7 +144,9 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
                     pageIndex,
                     chunkIndex,
                     language,
-                    cancellationToken);
+                    cancellationToken,
+                    onProgress,
+                    currentProgress);
                 left.AddRange(right);
                 return left;
             }
