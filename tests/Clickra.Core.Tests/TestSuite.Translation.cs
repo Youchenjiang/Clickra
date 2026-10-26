@@ -296,6 +296,8 @@ static partial class TestSuite
                     "Synthetic CJK output did not model the higher information density of CJK text.");
             }));
 
+        const string OfflineEngineName = "offline";
+
         runner.Run("Translation engine defaults to Google with MyMemory fallback", () =>
             WithEnvVar(TranslationEngineEnvVar, null, () =>
             {
@@ -307,8 +309,8 @@ static partial class TestSuite
                 Environment.SetEnvironmentVariable(TranslationEngineEnvVar, "google");
                 Assert.Equal("google-free", TranslationEngineFactory.Create().Name);
 
-                Environment.SetEnvironmentVariable(TranslationEngineEnvVar, "offline");
-                Assert.Equal("offline", TranslationEngineFactory.Create().Name);
+                Environment.SetEnvironmentVariable(TranslationEngineEnvVar, OfflineEngineName);
+                Assert.Equal(OfflineEngineName, TranslationEngineFactory.Create().Name);
             }));
 
         runner.Run("Translation engine factory honors configured setting and offline mode", () =>
@@ -319,7 +321,7 @@ static partial class TestSuite
                 {
                     ClickraStorage.SaveSetting(ClickraSettings.TranslateEngine, ClickraSettings.TranslateEngineOffline);
                     var offline = TranslationEngineFactory.Create();
-                    Assert.Equal("offline", offline.Name);
+                    Assert.Equal(OfflineEngineName, offline.Name);
 
                     string expectedOfflineMsg = Localization.T("pdf_error_translation_offline");
                     var ex = Assert.Throws<OfflineTranslationException>(() =>
@@ -332,13 +334,13 @@ static partial class TestSuite
 
                     // Offline setting must take precedence over online environment override:
                     Environment.SetEnvironmentVariable(TranslationEngineEnvVar, "google");
-                    Assert.Equal("offline", TranslationEngineFactory.Create().Name);
+                    Assert.Equal(OfflineEngineName, TranslationEngineFactory.Create().Name);
                     Environment.SetEnvironmentVariable(TranslationEngineEnvVar, null);
 
                     // Invalid/unsupported values fail closed to offline mode:
                     SettingsController.TranslationEngine = "unknown_invalid_engine";
                     Assert.Equal(SettingsContract.TranslationEngineOffline, SettingsController.TranslationEngine);
-                    Assert.Equal("offline", TranslationEngineFactory.Create().Name);
+                    Assert.Equal(OfflineEngineName, TranslationEngineFactory.Create().Name);
 
                     ClickraStorage.SaveSetting(ClickraSettings.TranslateEngine, ClickraSettings.TranslateEngineGoogle);
                     Assert.Equal("google-free", TranslationEngineFactory.Create().Name);
