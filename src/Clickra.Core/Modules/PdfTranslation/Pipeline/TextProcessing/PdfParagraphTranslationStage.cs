@@ -128,6 +128,8 @@ internal static class PdfParagraphTranslationStage
                 {
                     LogTranslationError(inputPath, p, $"Translation recovery exhausted. Error: {ex.Message}", dataDirectory, logLock);
                     report.Failures.Add($"page {p + 1}: {ex.Message}");
+                    if (TranslationProviderLimits.IsLimit(ex))
+                        throw PdfTranslationBatchRunner.ProviderLimitedError(p, language, ex);
                     throw new InvalidOperationException(
                         string.Format(Localization.T("pdf_error_translation_failed_page", language), p + 1),
                         ex);

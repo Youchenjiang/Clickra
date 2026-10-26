@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
@@ -10,28 +11,18 @@ namespace Clickra.Core.Modules.PdfTranslation.Translation;
 
 internal class GoogleFreeTranslator : BaseTranslator
 {
+    private const string MobileUserAgent = "AndroidTranslate/5.3.0.RC02.130758309-53000263 5.1 phone TRANSLATE_MOBILE_APPLICATION";
+
     public override string Name => "google-free";
 
     public override async Task<string> TranslateInternalAsync(string text, string targetLanguage, CancellationToken cancellationToken)
     {
-        string lang = Uri.EscapeDataString(NormalizeLanguageCode(targetLanguage));
-        string url = $"https://translate.google.com/translate_a/t?client=at&sl=auto&tl={lang}";
-
         var content = new FormUrlEncodedContent(new[]
         {
             new KeyValuePair<string, string>("q", text)
         });
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, url)
-        {
-            Content = content
-        };
-        request.Headers.UserAgent.ParseAdd("AndroidTranslate/5.3.0.RC02.130758309-53000263 5.1 phone TRANSLATE_MOBILE_APPLICATION");
-
-        using var response = await HttpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
-
-        string json = await response.Content.ReadAsStringAsync(cancellationToken);
+        string json = await PostAsync(content, targetLanguage, cancellationToken);
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
 
@@ -56,27 +47,20 @@ internal class GoogleFreeTranslator : BaseTranslator
         {
             try
             {
-                string lang = Uri.EscapeDataString(NormalizeLanguageCode(targetLanguage));
-                string url = $"https://translate.google.com/translate_a/t?client=at&sl=auto&tl={lang}";
-
                 var list = texts.Select(t => new KeyValuePair<string, string>("q", t)).ToList();
                 var content = new FormUrlEncodedContent(list);
-                using var request = new HttpRequestMessage(HttpMethod.Post, url)
-                {
-                    Content = content
-                };
-                request.Headers.UserAgent.ParseAdd("AndroidTranslate/5.3.0.RC02.130758309-53000263 5.1 phone TRANSLATE_MOBILE_APPLICATION");
 
-                using var response = await HttpClient.SendAsync(request, cancellationToken);
-                response.EnsureSuccessStatusCode();
-
-                string json = await response.Content.ReadAsStringAsync(cancellationToken);
+                string json = await PostAsync(content, targetLanguage, cancellationToken);
                 using var doc = JsonDocument.Parse(json);
-                var root = doc.RootElement;
-
-                return ParseBatchResponse(root);
+                return ParseBatchResponse(doc.RootElement);
             }
-            catch (Exception) when (retries > 0 && !cancellationToken.IsCancellationRequested) // skipcq: CS-R1008
+            // A rate limit is not retried here: the fallback provider takes over
+            // at once, and the batch runner waits out the limit before one retry.
+            catch (Exception exception) // skipcq: CS-R1008, CS-R1084
+                when (
+                    retries > 0 &&
+                    !cancellationToken.IsCancellationRequested &&
+                    !TranslationProviderLimits.IsLimit(exception))
             {
                 retries--;
                 await Task.Delay(delayMs, cancellationToken);
@@ -84,6 +68,50 @@ internal class GoogleFreeTranslator : BaseTranslator
             }
         }
     }
+
+    private static async Task<string> PostAsync(HttpContent content, string targetLanguage, CancellationToken cancellationToken)
+    {
+        string lang = Uri.EscapeDataString(NormalizeLanguageCode(targetLanguage));
+        string url = $"https://translate.google.com/translate_a/t?client=at&sl=auto&tl={lang}";
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = content
+        };
+        request.Headers.UserAgent.ParseAdd(MobileUserAgent);
+
+        using var response = await HttpClient.SendAsync(request, cancellationToken);
+        string body = await response.Content.ReadAsStringAsync(cancellationToken);
+        return ProcessResponse(response, body);
+    }
+
+    internal static string ProcessResponse(HttpResponseMessage response, string body)
+    {
+        if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            throw new TranslationRateLimitException(
+                "Google Translate rate limited the request.",
+                TranslationProviderLimits.ReadRetryAfter(response, TranslationProviderLimits.DefaultRetryAfter));
+        }
+
+        if (LooksLikeVerificationPage(response.Content.Headers.ContentType?.MediaType, body))
+        {
+            throw new TranslationRateLimitException(
+                "Google Translate returned a verification page instead of a translation.",
+                TranslationProviderLimits.MaximumRetryAfter);
+        }
+
+        response.EnsureSuccessStatusCode();
+        return body;
+    }
+
+    /// <summary>
+    /// Google answers suspected automated traffic with an HTML verification page
+    /// instead of JSON. That is a limit, not a malformed translation.
+    /// </summary>
+    internal static bool LooksLikeVerificationPage(string? mediaType, string body) =>
+        string.Equals(mediaType, "text/html", StringComparison.OrdinalIgnoreCase) ||
+        body.TrimStart().StartsWith('<');
 
     private static List<string> ParseBatchResponse(JsonElement root)
     {

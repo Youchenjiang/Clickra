@@ -13,6 +13,11 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
         Action<int, int, string>? OnProgress,
         string Language);
 
+    internal readonly record struct TranslationChunkContext(
+        PdfTranslationBatchContext Batch,
+        int ChunkIndex,
+        int CurrentProgress);
+
     internal static class PdfTranslationBatchRunner
     {
         public static List<string> TranslatePageBatches(
@@ -30,8 +35,9 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var chunk = chunks[chunkIndex];
+                int currentProgress = GetTranslationProgress(context.PageIndex, context.TotalPages, chunkIndex, chunks.Count);
                 context.OnProgress?.Invoke(
-                    GetTranslationProgress(context.PageIndex, context.TotalPages, chunkIndex, chunks.Count),
+                    currentProgress,
                     100,
                     string.Format(
                         Localization.T("pdf_progress_translating_batch", context.Language),
@@ -43,13 +49,12 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
                         translatedCount + chunk.Count,
                         textsToTranslate.Count));
 
+                var chunkContext = new TranslationChunkContext(context, chunkIndex, currentProgress);
                 var chunkResults = TranslateChunkWithRecovery(
                     translator,
                     chunk,
                     targetLang,
-                    context.PageIndex,
-                    chunkIndex,
-                    context.Language,
+                    chunkContext,
                     cancellationToken);
 
                 results.AddRange(chunkResults);
@@ -63,33 +68,22 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
             ITranslationEngine translator,
             List<string> chunk,
             string targetLang,
-            int pageIndex,
-            int chunkIndex,
-            string language,
+            TranslationChunkContext context,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             try
             {
-                var translated = RunWithTimeout(
-                    token => translator.TranslateBatchAsync(chunk, targetLang, token),
-                    translator is FallbackTranslator
-                        ? TranslationTimeouts.ChainCallTimeout
-                        : TranslationTimeouts.ProviderCallTimeout,
-                    cancellationToken,
-                    language);
-                if (translated.Count != chunk.Count)
-                {
-                    throw new InvalidOperationException(
-                        $"{translator.Name} returned {translated.Count}/{chunk.Count} results.");
-                }
-                return translated;
+                return TranslateChunkOnce(translator, chunk, targetLang, context.Batch.Language, cancellationToken);
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
+                if (TryRecoverFromLimit(translator, chunk, targetLang, context, ex, cancellationToken, out var recovered) && recovered != null)
+                    return recovered;
+
                 Console.Error.WriteLine(
-                    $"[Translate] page {pageIndex + 1}, batch {chunkIndex + 1} failed; " +
+                    $"[Translate] page {context.Batch.PageIndex + 1}, batch {context.ChunkIndex + 1} failed; " +
                     $"splitting for recovery: {ex.Message}");
             }
 
@@ -100,17 +94,13 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
                     translator,
                     chunk.GetRange(0, midpoint),
                     targetLang,
-                    pageIndex,
-                    chunkIndex,
-                    language,
+                    context,
                     cancellationToken);
                 var right = TranslateChunkWithRecovery(
                     translator,
                     chunk.GetRange(midpoint, chunk.Count - midpoint),
                     targetLang,
-                    pageIndex,
-                    chunkIndex,
-                    language,
+                    context,
                     cancellationToken);
                 left.AddRange(right);
                 return left;
@@ -125,20 +115,106 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
                         ? TranslationTimeouts.ChainCallTimeout
                         : TranslationTimeouts.ProviderCallTimeout,
                     cancellationToken,
-                    language);
+                    context.Batch.Language);
                 if (string.IsNullOrWhiteSpace(translated))
                 {
-                    throw new InvalidOperationException(Localization.T("pdf_error_provider_empty", language));
+                    throw new InvalidOperationException(Localization.T("pdf_error_provider_empty", context.Batch.Language));
                 }
                 return new List<string> { translated };
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
+                if (TranslationProviderLimits.IsLimit(ex))
+                    throw ProviderLimitedError(context.Batch.PageIndex, context.Batch.Language, ex);
                 throw new InvalidOperationException(
-                    string.Format(Localization.T("pdf_error_unable_paragraph", language), pageIndex + 1),
+                    string.Format(Localization.T("pdf_error_unable_paragraph", context.Batch.Language), context.Batch.PageIndex + 1),
                     ex);
             }
         }
+
+        private static bool TryRecoverFromLimit(
+            ITranslationEngine translator,
+            List<string> chunk,
+            string targetLang,
+            TranslationChunkContext context,
+            Exception failure,
+            CancellationToken cancellationToken,
+            out List<string>? recovered)
+        {
+            recovered = null;
+            if (!TranslationProviderLimits.IsLimit(failure)) return false;
+
+            TimeSpan wait = TranslationProviderLimits.SuggestedWait(failure);
+            int waitSeconds = (int)Math.Max(1, Math.Ceiling(wait.TotalSeconds));
+            Console.Error.WriteLine(
+                $"[Translate] page {context.Batch.PageIndex + 1}, batch {context.ChunkIndex + 1} hit a provider limit; " +
+                $"retrying once in {waitSeconds}s: {failure.Message}");
+
+            WaitOutLimitWithProgress(wait, waitSeconds, context, cancellationToken);
+
+            try
+            {
+                recovered = TranslateChunkOnce(translator, chunk, targetLang, context.Batch.Language, cancellationToken);
+                return true;
+            }
+            catch (Exception retryException) when (!cancellationToken.IsCancellationRequested)
+            {
+                if (TranslationProviderLimits.IsLimit(retryException))
+                    throw ProviderLimitedError(context.Batch.PageIndex, context.Batch.Language, retryException);
+                return false;
+            }
+        }
+
+        private static void WaitOutLimitWithProgress(
+            TimeSpan wait,
+            int waitSeconds,
+            TranslationChunkContext context,
+            CancellationToken cancellationToken)
+        {
+            for (int remaining = waitSeconds; remaining > 0; remaining--)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                context.Batch.OnProgress?.Invoke(
+                    context.CurrentProgress,
+                    100,
+                    string.Format(Localization.T("pdf_progress_provider_waiting", context.Batch.Language), context.Batch.PageIndex + 1, remaining));
+                int sleepMs = CalculateSleepMs(wait, remaining);
+                Task.Delay(sleepMs, cancellationToken).GetAwaiter().GetResult();
+            }
+        }
+
+        private static int CalculateSleepMs(TimeSpan wait, int remainingSeconds)
+        {
+            if (remainingSeconds > 1) return 1000;
+            int remainder = (int)(wait.TotalMilliseconds % 1000);
+            return remainder > 0 ? remainder : 1000;
+        }
+
+        private static List<string> TranslateChunkOnce(
+            ITranslationEngine translator,
+            List<string> chunk,
+            string targetLang,
+            string language,
+            CancellationToken cancellationToken)
+        {
+            var translated = RunWithTimeout(
+                token => translator.TranslateBatchAsync(chunk, targetLang, token),
+                translator is FallbackTranslator
+                    ? TranslationTimeouts.ChainCallTimeout
+                    : TranslationTimeouts.ProviderCallTimeout,
+                cancellationToken,
+                language);
+            if (translated.Count != chunk.Count)
+            {
+                throw new InvalidOperationException(
+                    $"{translator.Name} returned {translated.Count}/{chunk.Count} results.");
+            }
+            return translated;
+        }
+
+        /// <summary>The user-facing error when every provider is still rate limited or out of quota.</summary>
+        internal static InvalidOperationException ProviderLimitedError(int pageIndex, string language, Exception cause) =>
+            new(string.Format(Localization.T("pdf_error_provider_limited", language), pageIndex + 1), cause);
 
         private static T RunWithTimeout<T>(
             Func<CancellationToken, Task<T>> operation,

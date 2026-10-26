@@ -30,13 +30,25 @@ internal class FallbackTranslator : ITranslationEngine
             EnsureTranslated(text, translated, targetLanguage, _primary.Name);
             return translated;
         }
-        catch when (!cancellationToken.IsCancellationRequested) // skipcq: CS-R1008
+        catch (Exception primaryException) // skipcq: CS-R1008, CS-R1084
+            when (!cancellationToken.IsCancellationRequested)
         {
-            string translated = await RunProviderCallAsync(
-                token => _fallback.TranslateAsync(text, targetLanguage, token),
-                cancellationToken);
-            EnsureTranslated(text, translated, targetLanguage, _fallback.Name);
-            return translated;
+            try
+            {
+                string translated = await RunProviderCallAsync(
+                    token => _fallback.TranslateAsync(text, targetLanguage, token),
+                    cancellationToken);
+                EnsureTranslated(text, translated, targetLanguage, _fallback.Name);
+                return translated;
+            }
+            catch (Exception fallbackException) // skipcq: CS-R1008, CS-R1084
+                when (
+                    !cancellationToken.IsCancellationRequested &&
+                    TranslationProviderLimits.IsLimit(primaryException) &&
+                    !TranslationProviderLimits.IsLimit(fallbackException))
+            {
+                throw LimitedChainFailure(primaryException, fallbackException);
+            }
         }
     }
 
@@ -56,14 +68,26 @@ internal class FallbackTranslator : ITranslationEngine
                     cancellationToken);
                 EnsureBatchTranslated(chunk, translated, targetLanguage, _primary.Name);
             }
-            catch (Exception ex) when (!cancellationToken.IsCancellationRequested) // skipcq: CS-R1008
+            catch (Exception ex) // skipcq: CS-R1008, CS-R1084
+                when (!cancellationToken.IsCancellationRequested)
             {
                 await Console.Error.WriteLineAsync(
                     $"[Translate] {_primary.Name} batch failed ({ex.Message}); falling back to {_fallback.Name}.");
-                translated = await RunProviderCallAsync(
-                    token => _fallback.TranslateBatchAsync(chunk, targetLanguage, token),
-                    cancellationToken);
-                EnsureBatchTranslated(chunk, translated, targetLanguage, _fallback.Name);
+                try
+                {
+                    translated = await RunProviderCallAsync(
+                        token => _fallback.TranslateBatchAsync(chunk, targetLanguage, token),
+                        cancellationToken);
+                    EnsureBatchTranslated(chunk, translated, targetLanguage, _fallback.Name);
+                }
+                catch (Exception fallbackException) // skipcq: CS-R1008, CS-R1084
+                    when (
+                        !cancellationToken.IsCancellationRequested &&
+                        TranslationProviderLimits.IsLimit(ex) &&
+                        !TranslationProviderLimits.IsLimit(fallbackException))
+                {
+                    throw LimitedChainFailure(ex, fallbackException);
+                }
             }
 
             results.AddRange(translated);
@@ -74,6 +98,17 @@ internal class FallbackTranslator : ITranslationEngine
 
         return results;
     }
+
+    /// <summary>
+    /// The primary provider hit a rate limit or quota and the fallback could not
+    /// take over for another reason. Report the chain as limited so the caller
+    /// waits and retries once instead of splitting the batch into more calls.
+    /// </summary>
+    private TranslationRateLimitException LimitedChainFailure(Exception primaryException, Exception fallbackException) =>
+        new(
+            $"{_primary.Name} hit a provider limit and {_fallback.Name} could not take over: {fallbackException.Message}",
+            TranslationProviderLimits.SuggestedWait(primaryException),
+            primaryException);
 
     private static async Task<T> RunProviderCallAsync<T>(
         Func<CancellationToken, Task<T>> operation,
