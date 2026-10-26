@@ -81,7 +81,7 @@ static partial class TestSuite
             "Language", "OutputDir", "QuietMode", "Notification",
             "OfficeEngine", "LibreOfficePath", "LibreOfficeRemovalPendingRestart", "LibreOfficeInstalledByClickra",
             "LibreOfficeManagedProductCode", "LibreOfficeManagedSofficePath",
-            "TranslateTargetLang", "PdfCompressImageLevel", "PdfCompressStripFonts", "PdfCompressMinifyContent",
+            "TranslateTargetLang", "TranslateEngine", "PdfCompressImageLevel", "PdfCompressStripFonts", "PdfCompressMinifyContent",
             "ImageCompressLevel", "ImageCompressMaxDimension", "ParkedTaskRetention"
         };
         string[] actual = keys.OrderBy(k => k, StringComparer.Ordinal).ToArray();
