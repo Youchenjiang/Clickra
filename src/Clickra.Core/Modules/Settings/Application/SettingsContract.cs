@@ -12,6 +12,7 @@ public static class SettingsContract
     public const string OfficeEngine = ClickraSettings.OfficeEngine;
     public const string Language = ClickraSettings.Language;
     public const string TranslationTargetLanguage = ClickraSettings.TranslateTargetLang;
+    public const string TranslationEngine = ClickraSettings.TranslateEngine;
     public const string QuietMode = ClickraSettings.QuietMode;
     public const string Notifications = ClickraSettings.Notification;
     public const string PdfCompressionImageLevel = ClickraSettings.PdfCompressImageLevel;
@@ -27,6 +28,10 @@ public static class SettingsContract
     public const string OfficeEngineAuto = ClickraSettings.DefaultOfficeEngineAuto;
     public const string OfficeEngineMicrosoft = ClickraSettings.OfficeEngineMicrosoft;
     public const string OfficeEngineLibreOffice = ClickraSettings.OfficeEngineLibreOffice;
+    public const string TranslationEngineAuto = ClickraSettings.TranslateEngineAuto;
+    public const string TranslationEngineGoogle = ClickraSettings.TranslateEngineGoogle;
+    public const string TranslationEngineMyMemory = ClickraSettings.TranslateEngineMyMemory;
+    public const string TranslationEngineOffline = ClickraSettings.TranslateEngineOffline;
 
     public static string GetDefault(string key) => ClickraSettings.GetDefault(key);
 
@@ -43,4 +48,5 @@ public static class SettingsContract
     public static int MinPdfCompressionLevel => ClickraSettings.MinPdfCompressLevel;
     public static int MaxPdfCompressionLevel => ClickraSettings.MaxPdfCompressLevel;
     public static string DefaultTranslationTargetLanguage => ClickraSettings.DefaultTranslateTargetLang;
+    public static string DefaultTranslationEngine => ClickraSettings.DefaultTranslateEngine;
 }

@@ -41,6 +41,12 @@ public static class SettingsController
         set => WriteText(ClickraSettings.TranslateTargetLang, value);
     }
 
+    public static string TranslationEngine
+    {
+        get => ReadText(ClickraSettings.TranslateEngine);
+        set => WriteText(ClickraSettings.TranslateEngine, value);
+    }
+
     public static bool QuietMode
     {
         get => ReadBool(ClickraSettings.QuietMode);
