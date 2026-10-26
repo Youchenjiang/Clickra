@@ -21,6 +21,9 @@ internal static class TranslationResultQualityGuard
 
     public static string? FindProblem(string source, string translated, string targetLanguage)
     {
+        if (IsProviderQuotaNotice(translated) && !IsProviderQuotaNotice(source))
+            return "the provider returned its quota warning instead of a translation";
+
         var sourceMarkers = BoldMarkerRegex.Matches(source).Select(match => match.Value.ToLowerInvariant()).ToArray();
         var translatedMarkers = BoldMarkerRegex.Matches(translated).Select(match => match.Value.ToLowerInvariant()).ToArray();
         if (!sourceMarkers.SequenceEqual(translatedMarkers))
@@ -41,6 +44,14 @@ internal static class TranslationResultQualityGuard
 
         return null;
     }
+
+    /// <summary>
+    /// MyMemory answers an exhausted free quota with HTTP 200 and this notice in
+    /// place of the translation. It must never be rendered as translated text.
+    /// </summary>
+    public static bool IsProviderQuotaNotice(string translated) =>
+        translated.Contains("MYMEMORY WARNING", StringComparison.OrdinalIgnoreCase) ||
+        translated.Contains("USED ALL AVAILABLE FREE TRANSLATIONS", StringComparison.OrdinalIgnoreCase);
 
     private static bool ContainsTripledSequence(string value)
     {

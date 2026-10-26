@@ -70,28 +70,41 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            Exception failure;
             try
             {
-                var translated = RunWithTimeout(
-                    token => translator.TranslateBatchAsync(chunk, targetLang, token),
-                    translator is FallbackTranslator
-                        ? TranslationTimeouts.ChainCallTimeout
-                        : TranslationTimeouts.ProviderCallTimeout,
-                    cancellationToken,
-                    language);
-                if (translated.Count != chunk.Count)
-                {
-                    throw new InvalidOperationException(
-                        $"{translator.Name} returned {translated.Count}/{chunk.Count} results.");
-                }
-                return translated;
+                return TranslateChunkOnce(translator, chunk, targetLang, cancellationToken, language);
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                Console.Error.WriteLine(
-                    $"[Translate] page {pageIndex + 1}, batch {chunkIndex + 1} failed; " +
-                    $"splitting for recovery: {ex.Message}");
+                failure = ex;
             }
+
+            // A rate limit or exhausted quota is not fixed by splitting: smaller
+            // batches only multiply the calls. Wait once as the provider asks,
+            // retry the same batch, and stop with a clear message if still limited.
+            if (TranslationProviderLimits.IsLimit(failure))
+            {
+                TimeSpan wait = TranslationProviderLimits.SuggestedWait(failure);
+                Console.Error.WriteLine(
+                    $"[Translate] page {pageIndex + 1}, batch {chunkIndex + 1} hit a provider limit; " +
+                    $"retrying once in {wait.TotalSeconds:0}s: {failure.Message}");
+                Task.Delay(wait, cancellationToken).GetAwaiter().GetResult();
+                try
+                {
+                    return TranslateChunkOnce(translator, chunk, targetLang, cancellationToken, language);
+                }
+                catch (Exception retryException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    if (TranslationProviderLimits.IsLimit(retryException))
+                        throw ProviderLimitedError(pageIndex, language, retryException);
+                    failure = retryException;
+                }
+            }
+
+            Console.Error.WriteLine(
+                $"[Translate] page {pageIndex + 1}, batch {chunkIndex + 1} failed; " +
+                $"splitting for recovery: {failure.Message}");
 
             if (chunk.Count > 1)
             {
@@ -134,11 +147,39 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
+                if (TranslationProviderLimits.IsLimit(ex))
+                    throw ProviderLimitedError(pageIndex, language, ex);
                 throw new InvalidOperationException(
                     string.Format(Localization.T("pdf_error_unable_paragraph", language), pageIndex + 1),
                     ex);
             }
         }
+
+        private static List<string> TranslateChunkOnce(
+            ITranslationEngine translator,
+            List<string> chunk,
+            string targetLang,
+            CancellationToken cancellationToken,
+            string language)
+        {
+            var translated = RunWithTimeout(
+                token => translator.TranslateBatchAsync(chunk, targetLang, token),
+                translator is FallbackTranslator
+                    ? TranslationTimeouts.ChainCallTimeout
+                    : TranslationTimeouts.ProviderCallTimeout,
+                cancellationToken,
+                language);
+            if (translated.Count != chunk.Count)
+            {
+                throw new InvalidOperationException(
+                    $"{translator.Name} returned {translated.Count}/{chunk.Count} results.");
+            }
+            return translated;
+        }
+
+        /// <summary>The user-facing error when every provider is still rate limited or out of quota.</summary>
+        internal static InvalidOperationException ProviderLimitedError(int pageIndex, string language, Exception cause) =>
+            new(string.Format(Localization.T("pdf_error_provider_limited", language), pageIndex + 1), cause);
 
         private static T RunWithTimeout<T>(
             Func<CancellationToken, Task<T>> operation,
