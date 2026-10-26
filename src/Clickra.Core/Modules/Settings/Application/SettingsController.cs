@@ -43,9 +43,23 @@ public static class SettingsController
 
     public static string TranslationEngine
     {
-        get => ReadText(ClickraSettings.TranslateEngine);
-        set => WriteText(ClickraSettings.TranslateEngine, value);
+        get
+        {
+            string value = ReadText(ClickraSettings.TranslateEngine);
+            return IsValidTranslationEngine(value) ? value : SettingsContract.TranslationEngineOffline;
+        }
+        set
+        {
+            string normalized = IsValidTranslationEngine(value) ? value : SettingsContract.TranslationEngineOffline;
+            WriteText(ClickraSettings.TranslateEngine, normalized);
+        }
     }
+
+    private static bool IsValidTranslationEngine(string? value) =>
+        string.Equals(value, SettingsContract.TranslationEngineAuto, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(value, SettingsContract.TranslationEngineGoogle, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(value, SettingsContract.TranslationEngineMyMemory, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(value, SettingsContract.TranslationEngineOffline, StringComparison.OrdinalIgnoreCase);
 
     public static bool QuietMode
     {
