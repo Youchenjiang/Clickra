@@ -16,7 +16,7 @@ public interface ISettingsPresentationController
     string TranslationEngine
     {
         get => DefaultTranslationEngine;
-        set { }
+        set => _ = value;
     }
     bool QuietMode { get; set; }
     bool NotificationsEnabled { get; set; }
