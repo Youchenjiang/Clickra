@@ -306,6 +306,42 @@ static partial class TestSuite
 
                 Environment.SetEnvironmentVariable(TranslationEngineEnvVar, "google");
                 Assert.Equal("google-free", TranslationEngineFactory.Create().Name);
+
+                Environment.SetEnvironmentVariable(TranslationEngineEnvVar, "offline");
+                Assert.Equal("offline", TranslationEngineFactory.Create().Name);
+            }));
+
+        runner.Run("Translation engine factory honors configured setting and offline mode", () =>
+            WithEnvVar(TranslationEngineEnvVar, null, () =>
+            {
+                string originalSetting = ClickraStorage.GetSetting(ClickraSettings.TranslateEngine);
+                try
+                {
+                    ClickraStorage.SaveSetting(ClickraSettings.TranslateEngine, ClickraSettings.TranslateEngineOffline);
+                    var offline = TranslationEngineFactory.Create();
+                    Assert.Equal("offline", offline.Name);
+
+                    var ex = Assert.Throws<InvalidOperationException>(() =>
+                        offline.TranslateAsync("Hello", "zh-TW", CancellationToken.None).GetAwaiter().GetResult());
+                    Assert.True(!string.IsNullOrWhiteSpace(ex.Message), "Offline translator should return an error message.");
+
+                    var exBatch = Assert.Throws<InvalidOperationException>(() =>
+                        offline.TranslateBatchAsync(new List<string> { "Hello" }, "zh-TW", CancellationToken.None).GetAwaiter().GetResult());
+                    Assert.True(!string.IsNullOrWhiteSpace(exBatch.Message), "Offline translator should return a batch error message.");
+
+                    ClickraStorage.SaveSetting(ClickraSettings.TranslateEngine, ClickraSettings.TranslateEngineGoogle);
+                    Assert.Equal("google-free", TranslationEngineFactory.Create().Name);
+
+                    ClickraStorage.SaveSetting(ClickraSettings.TranslateEngine, ClickraSettings.TranslateEngineMyMemory);
+                    Assert.Equal("mymemory", TranslationEngineFactory.Create().Name);
+
+                    ClickraStorage.SaveSetting(ClickraSettings.TranslateEngine, ClickraSettings.TranslateEngineAuto);
+                    Assert.Equal("google-free+mymemory", TranslationEngineFactory.Create().Name);
+                }
+                finally
+                {
+                    ClickraStorage.SaveSetting(ClickraSettings.TranslateEngine, originalSetting);
+                }
             }));
     }
 
