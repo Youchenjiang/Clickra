@@ -10,12 +10,16 @@ static partial class TestSuite
 {
     private const string MyMemoryQuotaWarning =
         "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY. NEXT AVAILABLE IN 13 HOURS 31 MINUTES";
+    private const string TargetLanguageZhTw = "zh-TW";
+    private const string TargetLanguageZhCn = "zh-CN";
+    private const string SampleHelloWorld = "Hello world";
+    private const string SampleHello = "Hello";
 
     private static void RegisterProviderLimitTests(TestRunner runner)
     {
         runner.Run("MyMemory requests carry no shared contact e-mail", () =>
         {
-            Uri uri = MyMemoryTranslator.BuildRequestUri("Hello world", "zh-TW");
+            Uri uri = MyMemoryTranslator.BuildRequestUri(SampleHelloWorld, TargetLanguageZhTw);
             Assert.True(!uri.Query.Contains("de=", StringComparison.OrdinalIgnoreCase),
                 $"MyMemory request must not send a shared e-mail: {uri}");
             Assert.True(uri.Query.Contains("langpair=en%7Czh-TW", StringComparison.Ordinal),
@@ -24,18 +28,18 @@ static partial class TestSuite
 
         runner.Run("MyMemory source language inference prevents en|en and identifies CJK/JA/KO", () =>
         {
-            Assert.Equal("en", MyMemoryTranslator.DetectSourceLanguage("Hello world", "zh-TW"));
-            Assert.Equal("ja", MyMemoryTranslator.DetectSourceLanguage("こんにちは世界", "zh-TW"));
-            Assert.Equal("ko", MyMemoryTranslator.DetectSourceLanguage("안녕하세요 세계", "zh-TW"));
+            Assert.Equal("en", MyMemoryTranslator.DetectSourceLanguage(SampleHelloWorld, TargetLanguageZhTw));
+            Assert.Equal("ja", MyMemoryTranslator.DetectSourceLanguage("こんにちは世界", TargetLanguageZhTw));
+            Assert.Equal("ko", MyMemoryTranslator.DetectSourceLanguage("안녕하세요 세계", TargetLanguageZhTw));
             Assert.Equal("zh", MyMemoryTranslator.DetectSourceLanguage("測試中文段落", "en"));
-            Assert.Equal("zh-CN", MyMemoryTranslator.DetectSourceLanguage("測試中文段落", "zh-TW"));
-            Assert.Equal("zh-TW", MyMemoryTranslator.DetectSourceLanguage("测试中文段落", "zh-CN"));
+            Assert.Equal(TargetLanguageZhCn, MyMemoryTranslator.DetectSourceLanguage("測試中文段落", TargetLanguageZhTw));
+            Assert.Equal(TargetLanguageZhTw, MyMemoryTranslator.DetectSourceLanguage("测试中文段落", TargetLanguageZhCn));
 
             Uri uriEn = MyMemoryTranslator.BuildRequestUri("測試中文段落", "en");
             Assert.True(uriEn.Query.Contains("langpair=zh%7Cen", StringComparison.Ordinal),
                 $"CJK to English must pair zh|en instead of en|en: {uriEn}");
 
-            Uri uriJa = MyMemoryTranslator.BuildRequestUri("こんにちは世界", "zh-TW");
+            Uri uriJa = MyMemoryTranslator.BuildRequestUri("こんにちは世界", TargetLanguageZhTw);
             Assert.True(uriJa.Query.Contains("langpair=ja%7Czh-TW", StringComparison.Ordinal),
                 $"Japanese to Chinese must pair ja|zh-TW: {uriJa}");
         });
@@ -44,25 +48,25 @@ static partial class TestSuite
         {
             Assert.Throws<TranslationQuotaExceededException>(() => MyMemoryTranslator.ParseResponse(
                 "{\"responseData\":{\"translatedText\":\"" + MyMemoryQuotaWarning + "\"},\"quotaFinished\":false,\"responseStatus\":429}",
-                "Hello world"));
+                SampleHelloWorld));
             Assert.Throws<TranslationQuotaExceededException>(() => MyMemoryTranslator.ParseResponse(
                 "{\"responseData\":{\"translatedText\":\"你好\"},\"quotaFinished\":true,\"responseStatus\":200}",
-                "Hello"));
+                SampleHello));
             Assert.Throws<TranslationRateLimitException>(() => MyMemoryTranslator.ParseResponse(
                 "{\"responseData\":{\"translatedText\":\"slow down\"},\"responseStatus\":429}",
-                "Hello"));
+                SampleHello));
             Assert.Throws<InvalidOperationException>(() => MyMemoryTranslator.ParseResponse(
                 "{\"responseData\":{\"translatedText\":\"INVALID LANGUAGE PAIR\"},\"responseStatus\":\"403\"}",
-                "Hello"));
+                SampleHello));
             Assert.Equal("你好", MyMemoryTranslator.ParseResponse(
                 "{\"responseData\":{\"translatedText\":\"你好\"},\"quotaFinished\":false,\"responseStatus\":200}",
-                "Hello"));
+                SampleHello));
         });
 
         runner.Run("Translation guard rejects a provider quota warning", () =>
         {
             Assert.True(
-                TranslationResultQualityGuard.FindProblem("Hello world", MyMemoryQuotaWarning, "zh-TW") != null,
+                TranslationResultQualityGuard.FindProblem(SampleHelloWorld, MyMemoryQuotaWarning, TargetLanguageZhTw) != null,
                 "A quota warning must not pass as a Chinese translation.");
             Assert.True(
                 TranslationResultQualityGuard.FindProblem("Hallo Welt", MyMemoryQuotaWarning, "en") != null,
@@ -83,12 +87,12 @@ static partial class TestSuite
 
         runner.Run("Fallback translator reports a limited chain when the fallback cannot take over", () =>
         {
-            var translator = new FallbackTranslator(
-                new LimitedTranslationEngine("limited-primary", TimeSpan.FromSeconds(1)),
-                new RecordingTranslationEngine(FallbackEngineName, failOnMarker: "x"));
+            var translator = new LimitedTranslationEngine("limited-primary", TimeSpan.FromSeconds(1));
+            var fallback = new RecordingTranslationEngine(FallbackEngineName, failOnMarker: "x");
+            var combined = new FallbackTranslator(translator, fallback);
 
             var ex = Assert.Throws<TranslationRateLimitException>(() =>
-                translator.TranslateBatchAsync(new List<string> { "x" }, "zh-TW", CancellationToken.None)
+                combined.TranslateBatchAsync(new List<string> { "x" }, TargetLanguageZhTw, CancellationToken.None)
                     .GetAwaiter()
                     .GetResult());
             Assert.True(TranslationProviderLimits.IsLimit(ex), "The chain failure must remain recognisable as a limit.");
@@ -101,7 +105,7 @@ static partial class TestSuite
                 new LimitedTranslationEngine("limited-primary", TimeSpan.FromSeconds(1)),
                 fallback);
 
-            var results = translator.TranslateBatchAsync(new List<string> { "hello" }, "zh-TW", CancellationToken.None)
+            var results = translator.TranslateBatchAsync(new List<string> { "hello" }, TargetLanguageZhTw, CancellationToken.None)
                 .GetAwaiter()
                 .GetResult();
 
@@ -118,7 +122,7 @@ static partial class TestSuite
                 PdfTranslationBatchRunner.TranslatePageBatches(
                     translator,
                     source,
-                    "zh-TW",
+                    TargetLanguageZhTw,
                     new PdfTranslationBatchContext(0, 1, null, ""),
                     cancellationToken: CancellationToken.None));
 
@@ -136,7 +140,7 @@ static partial class TestSuite
             var results = PdfTranslationBatchRunner.TranslatePageBatches(
                 translator,
                 source,
-                "zh-TW",
+                TargetLanguageZhTw,
                 new PdfTranslationBatchContext(0, 1, null, ""),
                 cancellationToken: CancellationToken.None);
 
@@ -151,11 +155,11 @@ static partial class TestSuite
             var source = new List<string> { "one" };
             var progressMessages = new List<string>();
 
-            var results = PdfTranslationBatchRunner.TranslatePageBatches(
+            _ = PdfTranslationBatchRunner.TranslatePageBatches(
                 translator,
                 source,
-                "zh-TW",
-                new PdfTranslationBatchContext(0, 1, (prog, max, msg) => progressMessages.Add(msg), "zh-TW"),
+                TargetLanguageZhTw,
+                new PdfTranslationBatchContext(0, 1, (prog, max, msg) => progressMessages.Add(msg), TargetLanguageZhTw),
                 cancellationToken: CancellationToken.None);
 
             Assert.True(progressMessages.Any(m => m.Contains("限流") || m.Contains("等待")),
