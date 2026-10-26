@@ -312,6 +312,7 @@ static partial class TestSuite
     private static void RegisterEngineAndProcessorTests(TestRunner runner)
     {
         RegisterFallbackEngineTests(runner);
+        RegisterProviderLimitTests(runner);
         RegisterProcessorAndPipelineTests(runner);
     }
 
