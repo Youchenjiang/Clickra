@@ -22,6 +22,24 @@ static partial class TestSuite
                 $"Unexpected MyMemory language pair: {uri}");
         });
 
+        runner.Run("MyMemory source language inference prevents en|en and identifies CJK/JA/KO", () =>
+        {
+            Assert.Equal("en", MyMemoryTranslator.DetectSourceLanguage("Hello world", "zh-TW"));
+            Assert.Equal("ja", MyMemoryTranslator.DetectSourceLanguage("こんにちは世界", "zh-TW"));
+            Assert.Equal("ko", MyMemoryTranslator.DetectSourceLanguage("안녕하세요 세계", "zh-TW"));
+            Assert.Equal("zh", MyMemoryTranslator.DetectSourceLanguage("測試中文段落", "en"));
+            Assert.Equal("zh-CN", MyMemoryTranslator.DetectSourceLanguage("測試中文段落", "zh-TW"));
+            Assert.Equal("zh-TW", MyMemoryTranslator.DetectSourceLanguage("测试中文段落", "zh-CN"));
+
+            Uri uriEn = MyMemoryTranslator.BuildRequestUri("測試中文段落", "en");
+            Assert.True(uriEn.Query.Contains("langpair=zh%7Cen", StringComparison.Ordinal),
+                $"CJK to English must pair zh|en instead of en|en: {uriEn}");
+
+            Uri uriJa = MyMemoryTranslator.BuildRequestUri("こんにちは世界", "zh-TW");
+            Assert.True(uriJa.Query.Contains("langpair=ja%7Czh-TW", StringComparison.Ordinal),
+                $"Japanese to Chinese must pair ja|zh-TW: {uriJa}");
+        });
+
         runner.Run("MyMemory quota warning is rejected instead of rendered", () =>
         {
             Assert.Throws<TranslationQuotaExceededException>(() => MyMemoryTranslator.ParseResponse(
@@ -125,6 +143,23 @@ static partial class TestSuite
             Assert.True(results.SequenceEqual(new[] { "limited-once:one", "limited-once:two" }),
                 $"Unexpected results: {string.Join(", ", results)}");
             Assert.True(translator.BatchAttempts == 2, $"Expected two batch calls, got {translator.BatchAttempts}.");
+        });
+
+        runner.Run("PDF batch runner reports countdown progress during rate limit backoff", () =>
+        {
+            var translator = new LimitedTranslationEngine("limited-once", TimeSpan.FromSeconds(1), limitedCalls: 1);
+            var source = new List<string> { "one" };
+            var progressMessages = new List<string>();
+
+            var results = PdfTranslationBatchRunner.TranslatePageBatches(
+                translator,
+                source,
+                "zh-TW",
+                new PdfTranslationBatchContext(0, 1, (prog, max, msg) => progressMessages.Add(msg), "zh-TW"),
+                cancellationToken: CancellationToken.None);
+
+            Assert.True(progressMessages.Any(m => m.Contains("限流") || m.Contains("等待")),
+                $"Expected countdown progress message during wait, got: {string.Join("; ", progressMessages)}");
         });
     }
 
