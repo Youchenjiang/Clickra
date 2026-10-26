@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -28,12 +30,17 @@ static partial class TestSuite
 
         runner.Run("MyMemory source language inference prevents en|en and identifies CJK/JA/KO", () =>
         {
-            Assert.Equal("en", MyMemoryTranslator.DetectSourceLanguage(SampleHelloWorld, TargetLanguageZhTw));
-            Assert.Equal("ja", MyMemoryTranslator.DetectSourceLanguage("こんにちは世界", TargetLanguageZhTw));
-            Assert.Equal("ko", MyMemoryTranslator.DetectSourceLanguage("안녕하세요 세계", TargetLanguageZhTw));
-            Assert.Equal("zh", MyMemoryTranslator.DetectSourceLanguage("測試中文段落", "en"));
-            Assert.Equal(TargetLanguageZhCn, MyMemoryTranslator.DetectSourceLanguage("測試中文段落", TargetLanguageZhTw));
-            Assert.Equal(TargetLanguageZhTw, MyMemoryTranslator.DetectSourceLanguage("测试中文段落", TargetLanguageZhCn));
+            Assert.Equal("en", MyMemoryTranslator.DetectSourceLanguage(SampleHelloWorld, TargetLanguageZhTw) ?? "");
+            Assert.Equal("ja", MyMemoryTranslator.DetectSourceLanguage("こんにちは世界", TargetLanguageZhTw) ?? "");
+            Assert.Equal("ko", MyMemoryTranslator.DetectSourceLanguage("안녕하세요 세계", TargetLanguageZhTw) ?? "");
+            Assert.Equal("zh", MyMemoryTranslator.DetectSourceLanguage("測試中文段落", "en") ?? "");
+            Assert.Equal(TargetLanguageZhCn, MyMemoryTranslator.DetectSourceLanguage("測試中文段落", TargetLanguageZhTw) ?? "");
+            Assert.Equal(TargetLanguageZhTw, MyMemoryTranslator.DetectSourceLanguage("测试中文段落", TargetLanguageZhCn) ?? "");
+            Assert.Equal("ru", MyMemoryTranslator.DetectSourceLanguage("Привет мир", "en") ?? "");
+            Assert.Equal("el", MyMemoryTranslator.DetectSourceLanguage("Γειά σου", "en") ?? "");
+            Assert.Equal("ar", MyMemoryTranslator.DetectSourceLanguage("مرحبا بالعالم", "en") ?? "");
+            Assert.True(MyMemoryTranslator.DetectSourceLanguage("12345 67890", TargetLanguageZhTw) == null,
+                "Non-letter text must have no inferable source language.");
 
             Uri uriEn = MyMemoryTranslator.BuildRequestUri("測試中文段落", "en");
             Assert.True(uriEn.Query.Contains("langpair=zh%7Cen", StringComparison.Ordinal),
@@ -83,6 +90,34 @@ static partial class TestSuite
                 "An HTML body must be a verification page.");
             Assert.True(!GoogleFreeTranslator.LooksLikeVerificationPage("application/json", "[[\"你好\"]]"),
                 "A JSON translation must not be mistaken for a verification page.");
+
+            using var challengeResponse = new HttpResponseMessage(HttpStatusCode.Forbidden)
+            {
+                Content = new StringContent("<html><body>sorry</body></html>", System.Text.Encoding.UTF8, "text/html")
+            };
+            Assert.Throws<TranslationRateLimitException>(() =>
+                GoogleFreeTranslator.ProcessResponse(challengeResponse, "<html><body>sorry</body></html>"));
+
+            using var rateLimitResponse = new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+            {
+                Content = new StringContent("rate limit", System.Text.Encoding.UTF8, "text/plain")
+            };
+            Assert.Throws<TranslationRateLimitException>(() =>
+                GoogleFreeTranslator.ProcessResponse(rateLimitResponse, "rate limit"));
+
+            using var serverErrorResponse = new HttpResponseMessage(HttpStatusCode.InternalServerError)
+            {
+                Content = new StringContent("server error", System.Text.Encoding.UTF8, "text/plain")
+            };
+            Assert.Throws<HttpRequestException>(() =>
+                GoogleFreeTranslator.ProcessResponse(serverErrorResponse, "server error"));
+
+            using var successResponse = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"ok\":true}", System.Text.Encoding.UTF8, "application/json")
+            };
+            string result = GoogleFreeTranslator.ProcessResponse(successResponse, "{\"ok\":true}");
+            Assert.Equal("{\"ok\":true}", result);
         });
 
         runner.Run("Fallback translator reports a limited chain when the fallback cannot take over", () =>
