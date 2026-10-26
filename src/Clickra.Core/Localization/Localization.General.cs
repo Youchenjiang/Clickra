@@ -168,7 +168,7 @@ namespace Clickra.Core;
                 ("setting_trans_engine_desc", "選擇 PDF 翻譯使用的引擎或離線模式", "选择 PDF 翻译使用的引擎或离线模式", "Choose the engine or offline mode for PDF translation", "PDF 翻訳に使用するエンジンまたはオフラインモードを選択します", "PDF 번역에 사용할 엔진 또는 오프라인 모드를 선택합니다"),
                 ("setting_trans_engine_auto", "自動備援", "自动备用", "Auto Fallback", "自動フォールバック", "자동 대체"),
                 ("setting_trans_engine_google", "Google 翻譯", "Google 翻译", "Google Translate", "Google 翻訳", "Google 번역"),
-                ("setting_trans_engine_mymemory", "MyMemory", "MyMemory", "MyMemory", "MyMemory", "MyMemory"),
+                ("setting_trans_engine_mymemory", MyMemoryName, MyMemoryName, MyMemoryName, MyMemoryName, MyMemoryName),
                 ("setting_trans_engine_offline", "完全離線模式", "完全离线模式", "Offline Mode", "完全オフラインモード", "완전 오프라인 모드"),
                 ("cmd_translate_pdf", "PDF 一鍵翻譯", "PDF 翻译", "PDF Translation", "PDF 翻訳", "PDF 번역"),
                 ("cmd_decrypt_pdf", "去除 PDF 密碼", "去除 PDF 密码", "Remove PDF Password", "PDF パスワード解除", "PDF 비밀번호 제거"),

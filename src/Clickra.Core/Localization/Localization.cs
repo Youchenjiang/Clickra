@@ -25,6 +25,7 @@ namespace Clickra.Core
         private const string MarkdownParsingZh = "正在解析 Markdown：{0}";
         private const string RetentionDayZh = "{0} 天";
         private const string OfficeName = "Office";
+        private const string MyMemoryName = "MyMemory";
 
         private static readonly Dictionary<string, Dictionary<string, string>> Translations = new(StringComparer.OrdinalIgnoreCase)
         {
