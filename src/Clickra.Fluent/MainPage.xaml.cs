@@ -600,6 +600,7 @@ public sealed partial class MainPage : Page
             RefreshHistory();
         };
         PdfLangCombo.SelectionChanged += (_, _) => SaveSettings();
+        PdfEngineCombo.SelectionChanged += (_, _) => SaveSettings();
         CompressionSlider.ValueChanged += (_, _) => { SaveSettings(); UpdateCompressionLabel(CompressionLabel, CompressionSlider); };
         StripFontsToggle.Toggled += (_, _) => SaveSettings();
         MinifyContentToggle.Toggled += (_, _) => SaveSettings();
@@ -646,6 +647,13 @@ public sealed partial class MainPage : Page
             QuietModeToggle.IsOn = SettingsPresentationController.Shared.QuietMode;
             NotificationToggle.IsOn = SettingsPresentationController.Shared.NotificationsEnabled;
             PdfLangCombo.SelectedIndex = SettingsPresentationController.Shared.TranslationTargetLanguage switch { "en" => 1, SimplifiedChineseLanguage => 2, "ja" => 3, "ko" => 4, _ => 0 };
+            PdfEngineCombo.SelectedIndex = SettingsPresentationController.Shared.TranslationEngine switch
+            {
+                SettingsContract.TranslationEngineGoogle => 1,
+                SettingsContract.TranslationEngineMyMemory => 2,
+                SettingsContract.TranslationEngineOffline => 3,
+                _ => 0
+            };
             CompressionSlider.Minimum = SettingsPresentationController.Shared.MinPdfCompressionLevel;
             CompressionSlider.Maximum = SettingsPresentationController.Shared.MaxPdfCompressionLevel;
             CompressionSlider.Value = SettingsPresentationController.Shared.PdfCompressionImageLevel;
@@ -767,6 +775,11 @@ public sealed partial class MainPage : Page
         LanguageTitle.Text = L("fluent_default_language");
         LanguageDesc.Text = L("fluent_default_language_desc");
         PdfTargetTitle.Text = L("fluent_pdf_target");
+        PdfEngineTitle.Text = L("setting_trans_engine_title");
+        PdfEngineAutoItem.Content = L("setting_trans_engine_auto");
+        PdfEngineGoogleItem.Content = L("setting_trans_engine_google");
+        PdfEngineMyMemoryItem.Content = L("setting_trans_engine_mymemory");
+        PdfEngineOfflineItem.Content = L("setting_trans_engine_offline");
         BehaviorTitle.Text = L("fluent_behavior");
         QuietModeTitle.Text = L("fluent_quiet_mode");
         QuietModeDesc.Text = L("fluent_quiet_mode_desc");
@@ -807,6 +820,13 @@ public sealed partial class MainPage : Page
         SettingsPresentationController.Shared.OfficeEngine = EngineCombo.SelectedIndex switch { 1 => OfficeEnginePreference.Microsoft, 2 => OfficeEnginePreference.LibreOffice, _ => OfficeEnginePreference.Auto };
         SettingsPresentationController.Shared.Language = LanguageCombo.SelectedIndex switch { 1 => SimplifiedChineseLanguage, 2 => "en-US", 3 => "ja-JP", 4 => "ko-KR", _ => "zh-TW" };
         SettingsPresentationController.Shared.TranslationTargetLanguage = PdfLangCombo.SelectedIndex switch { 1 => "en", 2 => SimplifiedChineseLanguage, 3 => "ja", 4 => "ko", _ => SettingsPresentationController.Shared.DefaultTranslationTargetLanguage };
+        SettingsPresentationController.Shared.TranslationEngine = PdfEngineCombo.SelectedIndex switch
+        {
+            1 => SettingsContract.TranslationEngineGoogle,
+            2 => SettingsContract.TranslationEngineMyMemory,
+            3 => SettingsContract.TranslationEngineOffline,
+            _ => SettingsContract.TranslationEngineAuto
+        };
         SettingsPresentationController.Shared.PdfCompressionImageLevel = (int)CompressionSlider.Value;
         SettingsPresentationController.Shared.PdfCompressionStripFonts = StripFontsToggle.IsOn;
         SettingsPresentationController.Shared.PdfCompressionMinifyContent = MinifyContentToggle.IsOn;

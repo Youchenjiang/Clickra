@@ -419,6 +419,13 @@
                                     <ComboBoxItem Content="日本語 (ja)"/>
                                     <ComboBoxItem Content="한국어 (ko)"/>
                                 </ComboBox>
+                                <TextBlock x:Name="PdfEngineTitle" Text="Translation Engine" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                                <ComboBox x:Name="PdfEngineCombo" MinWidth="260" SelectedIndex="0">
+                                    <ComboBoxItem x:Name="PdfEngineAutoItem" Content="Auto Fallback"/>
+                                    <ComboBoxItem x:Name="PdfEngineGoogleItem" Content="Google Translate"/>
+                                    <ComboBoxItem x:Name="PdfEngineMyMemoryItem" Content="MyMemory"/>
+                                    <ComboBoxItem x:Name="PdfEngineOfflineItem" Content="Offline Mode"/>
+                                </ComboBox>
                             </StackPanel>
                         </Grid>
                         <Grid Grid.Row="2" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
