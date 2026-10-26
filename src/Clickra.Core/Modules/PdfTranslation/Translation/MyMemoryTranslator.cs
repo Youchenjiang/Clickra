@@ -118,33 +118,24 @@ internal class MyMemoryTranslator : ITranslationEngine
     {
         if (string.IsNullOrWhiteSpace(text)) return "en";
 
-        bool hasJapaneseKana = false;
-        bool hasKoreanHangul = false;
-        bool hasCjk = false;
-
-        foreach (char c in text)
-        {
-            if (c is >= '\u3040' and <= '\u30ff')
-                hasJapaneseKana = true;
-            else if (c is >= '\uac00' and <= '\ud7af')
-                hasKoreanHangul = true;
-            else if (c is >= '\u4e00' and <= '\u9fff' or >= '\u3400' and <= '\u4dbf')
-                hasCjk = true;
-        }
-
-        if (hasJapaneseKana) return "ja";
-        if (hasKoreanHangul) return "ko";
-        if (hasCjk)
-        {
-            if (normalizedTarget.Equals("zh-TW", StringComparison.OrdinalIgnoreCase))
-                return "zh-CN";
-            if (normalizedTarget.Equals("zh-CN", StringComparison.OrdinalIgnoreCase))
-                return "zh-TW";
-            return "zh";
-        }
+        if (text.Any(IsJapaneseKana)) return "ja";
+        if (text.Any(IsKoreanHangul)) return "ko";
+        if (text.Any(IsCjkIdeograph)) return ResolveCjkVariant(normalizedTarget);
 
         return "en";
     }
+
+    private static bool IsJapaneseKana(char c) => c is >= '\u3040' and <= '\u30ff';
+    private static bool IsKoreanHangul(char c) => c is >= '\uac00' and <= '\ud7af';
+    private static bool IsCjkIdeograph(char c) => c is >= '\u4e00' and <= '\u9fff' or >= '\u3400' and <= '\u4dbf';
+
+    private static string ResolveCjkVariant(string normalizedTarget) =>
+        normalizedTarget switch
+        {
+            var t when t.Equals("zh-TW", StringComparison.OrdinalIgnoreCase) => "zh-CN",
+            var t when t.Equals("zh-CN", StringComparison.OrdinalIgnoreCase) => "zh-TW",
+            _ => "zh"
+        };
 
     /// <summary>
     /// Reads a MyMemory reply. When the free quota is used up MyMemory still
