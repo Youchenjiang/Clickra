@@ -75,7 +75,7 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
 
             try
             {
-                return TranslateChunkOnce(translator, chunk, targetLang, cancellationToken, context.Batch.Language);
+                return TranslateChunkOnce(translator, chunk, targetLang, context.Batch.Language, cancellationToken);
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
@@ -154,7 +154,7 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
 
             try
             {
-                recovered = TranslateChunkOnce(translator, chunk, targetLang, cancellationToken, context.Batch.Language);
+                recovered = TranslateChunkOnce(translator, chunk, targetLang, context.Batch.Language, cancellationToken);
                 return true;
             }
             catch (Exception retryException) when (!cancellationToken.IsCancellationRequested)
@@ -194,8 +194,8 @@ namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
             ITranslationEngine translator,
             List<string> chunk,
             string targetLang,
-            CancellationToken cancellationToken,
-            string language)
+            string language,
+            CancellationToken cancellationToken)
         {
             var translated = RunWithTimeout(
                 token => translator.TranslateBatchAsync(chunk, targetLang, token),
