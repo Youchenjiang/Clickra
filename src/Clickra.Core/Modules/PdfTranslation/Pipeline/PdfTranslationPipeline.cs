@@ -90,7 +90,8 @@ public static class PdfTranslationPipeline
             var translator = TranslationEngineFactory.Create();
             providerName = translator.Name;
             stageReport = PdfParagraphTranslationStage.TranslatePages(
-                translator, pageParagraphs, inputPath, targetLang, language, dataDirectory, onProgress, operationToken);
+                new PdfParagraphTranslationRequest(
+                    translator, pageParagraphs, inputPath, targetLang, language, dataDirectory, onProgress, operationToken));
 
             if (File.Exists(partialOutputPath)) File.Delete(partialOutputPath);
             layoutSummary = PdfTranslatedPdfRebuilder.Rebuild(

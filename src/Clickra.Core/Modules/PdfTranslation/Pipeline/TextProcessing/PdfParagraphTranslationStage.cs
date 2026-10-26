@@ -4,6 +4,16 @@ using Clickra.Core.Processors;
 
 namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
 
+internal readonly record struct PdfParagraphTranslationRequest(
+    ITranslationEngine Translator,
+    IReadOnlyList<List<PdfParagraph>> PageParagraphs,
+    string InputPath,
+    string TargetLang,
+    string Language,
+    string DataDirectory,
+    Action<int, int, string>? OnProgress,
+    CancellationToken CancellationToken);
+
 internal static class PdfParagraphTranslationStage
 {
     public static PdfTranslationStageReport TranslatePages(
@@ -14,7 +24,7 @@ internal static class PdfParagraphTranslationStage
         string dataDirectory,
         Action<int, int, string>? onProgress,
         CancellationToken cancellationToken) =>
-        TranslatePages(
+        TranslatePages(new PdfParagraphTranslationRequest(
             TranslationEngineFactory.Create(),
             pageParagraphs,
             inputPath,
@@ -22,18 +32,11 @@ internal static class PdfParagraphTranslationStage
             language,
             dataDirectory,
             onProgress,
-            cancellationToken);
+            cancellationToken));
 
-    public static PdfTranslationStageReport TranslatePages(
-        ITranslationEngine translator,
-        IReadOnlyList<List<PdfParagraph>> pageParagraphs,
-        string inputPath,
-        string targetLang,
-        string language,
-        string dataDirectory,
-        Action<int, int, string>? onProgress,
-        CancellationToken cancellationToken)
+    public static PdfTranslationStageReport TranslatePages(PdfParagraphTranslationRequest request)
     {
+        var (translator, pageParagraphs, inputPath, targetLang, language, dataDirectory, onProgress, cancellationToken) = request;
         var report = new PdfTranslationStageReport { Provider = translator.Name };
         object logLock = new object();
         int totalPages = pageParagraphs.Count;
