@@ -56,10 +56,11 @@ internal class GoogleFreeTranslator : BaseTranslator
             }
             // A rate limit is not retried here: the fallback provider takes over
             // at once, and the batch runner waits out the limit before one retry.
-            catch (Exception exception) when (
-                retries > 0 &&
-                !cancellationToken.IsCancellationRequested &&
-                !TranslationProviderLimits.IsLimit(exception)) // skipcq: CS-R1008
+            catch (Exception exception) // skipcq: CS-R1008, CS-R1084
+                when (
+                    retries > 0 &&
+                    !cancellationToken.IsCancellationRequested &&
+                    !TranslationProviderLimits.IsLimit(exception))
             {
                 retries--;
                 await Task.Delay(delayMs, cancellationToken);
