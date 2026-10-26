@@ -31,10 +31,11 @@ internal class MyMemoryTranslator : ITranslationEngine
             }
             // Rate limits and daily quotas surface to the batch runner so it handles
             // the wait, countdown, and retry in one place without stalling.
-            catch (Exception httpException) when (
-                retries > 0 &&
-                !cancellationToken.IsCancellationRequested &&
-                !TranslationProviderLimits.IsLimit(httpException)) // skipcq: CS-R1008
+            catch (Exception httpException) // skipcq: CS-R1008
+                when (
+                    retries > 0 &&
+                    !cancellationToken.IsCancellationRequested &&
+                    !TranslationProviderLimits.IsLimit(httpException))
             {
                 retries--;
                 await Task.Delay(delayMs, cancellationToken);
@@ -47,7 +48,7 @@ internal class MyMemoryTranslator : ITranslationEngine
 
     private static async Task<string> TranslateInternalAsync(string text, string targetLanguage, CancellationToken cancellationToken)
     {
-        if (!text.Any(char.IsLetter)) return text;
+        if (text.All(c => !char.IsLetter(c))) return text;
 
         string normalizedTarget = NormalizeLanguageCode(targetLanguage);
         string? sourceLang = DetectSourceLanguage(text, normalizedTarget);
