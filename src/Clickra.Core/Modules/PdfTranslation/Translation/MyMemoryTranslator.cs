@@ -29,35 +29,17 @@ internal class MyMemoryTranslator : ITranslationEngine
             {
                 return await TranslateInternalAsync(text, targetLanguage, cancellationToken);
             }
-            catch (TranslationRateLimitException rateLimitException) when (!cancellationToken.IsCancellationRequested)
-            {
-                if (retries <= 0)
-                    throw new TranslationRateLimitException(
-                        "MyMemory rate limit remained active after bounded retries.",
-                        rateLimitException.RetryAfter,
-                        rateLimitException);
-
-                retries--;
-                TimeSpan retryDelay = TranslationProviderLimits.Clamp(rateLimitException.RetryAfter);
-                await Task.Delay(retryDelay, cancellationToken);
-                delayMs = Math.Min(Math.Max(delayMs * 2, (int)retryDelay.TotalMilliseconds), 30000);
-            }
-            // An exhausted daily quota is final for today: retrying only burns time.
+            // Rate limits and daily quotas surface to the batch runner so it handles
+            // the wait, countdown, and retry in one place without stalling.
             catch (Exception httpException) when (
+                retries > 0 &&
                 !cancellationToken.IsCancellationRequested &&
-                httpException is not TranslationQuotaExceededException) // skipcq: CS-R1008
+                !TranslationProviderLimits.IsLimit(httpException)) // skipcq: CS-R1008
             {
-                if (retries <= 0)
-                {
-                    throw new InvalidOperationException(
-                        "MyMemory HTTP translation failed after bounded retries.",
-                        httpException);
-                }
                 retries--;
+                await Task.Delay(delayMs, cancellationToken);
+                delayMs = Math.Min(delayMs * 2, 3000);
             }
-
-            await Task.Delay(delayMs, cancellationToken);
-            delayMs = Math.Min(delayMs * 2, 3000);
         }
     }
 
@@ -65,8 +47,15 @@ internal class MyMemoryTranslator : ITranslationEngine
 
     private static async Task<string> TranslateInternalAsync(string text, string targetLanguage, CancellationToken cancellationToken)
     {
+        if (!text.Any(char.IsLetter)) return text;
+
         string normalizedTarget = NormalizeLanguageCode(targetLanguage);
-        string sourceLang = DetectSourceLanguage(text, normalizedTarget);
+        string? sourceLang = DetectSourceLanguage(text, normalizedTarget);
+        if (sourceLang == null)
+        {
+            throw new NotSupportedException($"Unable to infer source language for translation to '{targetLanguage}'.");
+        }
+
         if (string.Equals(sourceLang, normalizedTarget, StringComparison.OrdinalIgnoreCase))
             return text;
 
@@ -103,8 +92,8 @@ internal class MyMemoryTranslator : ITranslationEngine
     internal static Uri BuildRequestUri(string text, string targetLanguage)
     {
         string normalizedTarget = NormalizeLanguageCode(targetLanguage);
-        string sourceLang = DetectSourceLanguage(text, normalizedTarget);
-        string langPair = Uri.EscapeDataString($"{sourceLang}|{normalizedTarget}");
+        string? sourceLang = DetectSourceLanguage(text, normalizedTarget);
+        string langPair = Uri.EscapeDataString($"{sourceLang ?? "en"}|{normalizedTarget}");
         string query = Uri.EscapeDataString(text);
         return new Uri($"{Endpoint}?q={query}&langpair={langPair}");
     }
@@ -114,20 +103,27 @@ internal class MyMemoryTranslator : ITranslationEngine
     /// invalid language pair (such as en|en when translating CJK to English)
     /// or misclassifying Japanese/Korean/Chinese text as English.
     /// </summary>
-    internal static string DetectSourceLanguage(string text, string normalizedTarget)
+    internal static string? DetectSourceLanguage(string text, string normalizedTarget)
     {
-        if (string.IsNullOrWhiteSpace(text)) return "en";
+        if (string.IsNullOrWhiteSpace(text)) return null;
 
         if (text.Any(IsJapaneseKana)) return "ja";
         if (text.Any(IsKoreanHangul)) return "ko";
         if (text.Any(IsCjkIdeograph)) return ResolveCjkVariant(normalizedTarget);
+        if (text.Any(IsCyrillic)) return "ru";
+        if (text.Any(IsGreek)) return "el";
+        if (text.Any(IsArabic)) return "ar";
+        if (text.Any(char.IsAsciiLetter)) return "en";
 
-        return "en";
+        return null;
     }
 
     private static bool IsJapaneseKana(char c) => c is >= '\u3040' and <= '\u30ff';
     private static bool IsKoreanHangul(char c) => c is >= '\uac00' and <= '\ud7af';
     private static bool IsCjkIdeograph(char c) => c is >= '\u4e00' and <= '\u9fff' or >= '\u3400' and <= '\u4dbf';
+    private static bool IsCyrillic(char c) => c is >= '\u0400' and <= '\u04ff';
+    private static bool IsGreek(char c) => c is >= '\u0370' and <= '\u03ff';
+    private static bool IsArabic(char c) => c is >= '\u0600' and <= '\u06ff';
 
     private static string ResolveCjkVariant(string normalizedTarget) =>
         normalizedTarget switch
