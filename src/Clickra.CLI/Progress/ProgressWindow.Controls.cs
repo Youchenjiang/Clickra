@@ -732,9 +732,7 @@ namespace Clickra.UI
             if (needsConfirmation)
             {
                 string text = Localization.T("progress_cancel_confirm", SettingsPresentationController.Shared.Language);
-                string caption = "Clickra";
-                int btn = MessageBox(hwnd, text, caption, 0x24 | 0x30); // MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2
-                if (btn != 6) // 6 is IDYES
+                if (!NativeDialogs.Confirm(hwnd, "Clickra", text, _dpiScale, SettingsPresentationController.Shared.Language))
                 {
                     return IntPtr.Zero; // Ignore close
                 }

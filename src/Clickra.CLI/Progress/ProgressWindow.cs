@@ -141,7 +141,7 @@ namespace Clickra.UI
         {
             if (files == null || files.Count == 0)
             {
-                MessageBox(IntPtr.Zero, Loc("cli_err_no_input"), Loc("cli_err_no_input_title"), 0x30); // MB_ICONWARNING
+                NativeDialogs.Alert(IntPtr.Zero, Loc("cli_err_no_input_title"), Loc("cli_err_no_input"), 1.0f, SettingsPresentationController.Shared.Language);
                 return;
             }
 
