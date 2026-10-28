@@ -132,6 +132,7 @@ static partial class TestSuite
             var color = System.Drawing.Color.Red;
             VectorIcons.DrawSuccessCheckmark(g, 10, 10, 20, color, 2f);
             VectorIcons.DrawFailureCross(g, 10, 10, 20, color, 2f);
+            VectorIcons.DrawWarningTriangle(g, 10, 10, 20, color, 2f);
             VectorIcons.DrawPlus(g, 32, 32, 8, color, 2f);
             VectorIcons.DrawMinus(g, 32, 32, 8, color, 2f);
             VectorIcons.DrawChevronLeft(g, 32, 32, 8, color, 2f);
