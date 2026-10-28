@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using Clickra.Core;
+using Clickra.UI.Layout;
 using static Clickra.UI.Native.Win32;
 
 namespace Clickra.UI;
@@ -18,7 +19,9 @@ public enum NativeDialogKind
 {
     Text,
     Confirm,
-    Alert
+    Alert,
+    Warning,
+    Error
 }
 
 /// <summary>
@@ -44,7 +47,9 @@ public static class NativeDialogs
     private static bool _parentWasEnabled;
 
     private static string _currentSubtitle = "";
+    private static string _currentHeader = "";
     private static string _currentPrompt = "";
+    private static string _currentLanguage = "zh-Hant";
     private static float _currentDpiScale = 1.0f;
     private static string _currentFontName = "Microsoft JhengHei UI";
 
@@ -185,11 +190,17 @@ public static class NativeDialogs
                 g.DrawString("Clickra", titleFont, Brushes.White, 36 * s, 28 * s);
             }
 
-            // Subtitle (Color 160, 160, 160, 14.67px)
+            // Subtitle
             if (!string.IsNullOrWhiteSpace(_currentSubtitle) && _currentSubtitle != "Clickra")
             {
+                Color subColor = _currentKind switch
+                {
+                    NativeDialogKind.Error => Color.FromArgb(255, 90, 70),
+                    NativeDialogKind.Warning => Color.FromArgb(255, 185, 0),
+                    _ => Color.FromArgb(160, 160, 160)
+                };
                 using (var subFont = new Font(_currentFontName, 14.67f * s, GraphicsUnit.Pixel))
-                using (var subBrush = new SolidBrush(Color.FromArgb(160, 160, 160)))
+                using (var subBrush = new SolidBrush(subColor))
                 {
                     g.DrawString(_currentSubtitle, subFont, subBrush, 36 * s, 72 * s);
                 }
@@ -201,13 +212,50 @@ public static class NativeDialogs
                 g.DrawLine(linePen, 36 * s, 110 * s, 484 * s, 110 * s);
             }
 
-            // Instruction / Message Prompt (Color 220, 220, 220, 14.67px)
-            using (var msgFont = new Font(_currentFontName, 14.67f * s, GraphicsUnit.Pixel))
-            using (var promptBrush = new SolidBrush(Color.FromArgb(220, 220, 220)))
+            if (_currentKind == NativeDialogKind.Error)
             {
-                float promptH = (_currentKind == NativeDialogKind.Text) ? (32 * s) : (72 * s);
-                var promptRect = new RectangleF(36 * s, 130 * s, 448 * s, promptH);
+                Color errColor = Color.FromArgb(255, 90, 70);
+                using var errBrush = new SolidBrush(errColor);
+                using var headerFont = new Font(_currentFontName, 18f * s, FontStyle.Bold, GraphicsUnit.Pixel);
+
+                VectorIcons.DrawFailureCross(g, 36 * s, 134 * s, 16 * s, errColor, 2f * s);
+                string headerText = !string.IsNullOrWhiteSpace(_currentHeader)
+                    ? _currentHeader
+                    : Localization.T("progress_header_failed", _currentLanguage);
+                g.DrawString(headerText, headerFont, errBrush, 58 * s, 131 * s);
+
+                using var msgFont = new Font(_currentFontName, 14f * s, GraphicsUnit.Pixel);
+                using var promptBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
+                var promptRect = new RectangleF(36 * s, 160 * s, 448 * s, 46 * s);
                 g.DrawString(_currentPrompt, msgFont, promptBrush, promptRect);
+            }
+            else if (_currentKind == NativeDialogKind.Warning)
+            {
+                Color warnColor = Color.FromArgb(255, 185, 0);
+                using var warnBrush = new SolidBrush(warnColor);
+                using var headerFont = new Font(_currentFontName, 18f * s, FontStyle.Bold, GraphicsUnit.Pixel);
+
+                VectorIcons.DrawWarningTriangle(g, 36 * s, 134 * s, 16 * s, warnColor, 2f * s);
+                string headerText = !string.IsNullOrWhiteSpace(_currentHeader)
+                    ? _currentHeader
+                    : _currentSubtitle;
+                g.DrawString(headerText, headerFont, warnBrush, 58 * s, 131 * s);
+
+                using var msgFont = new Font(_currentFontName, 14f * s, GraphicsUnit.Pixel);
+                using var promptBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
+                var promptRect = new RectangleF(36 * s, 160 * s, 448 * s, 46 * s);
+                g.DrawString(_currentPrompt, msgFont, promptBrush, promptRect);
+            }
+            else
+            {
+                // Instruction / Message Prompt (Color 220, 220, 220, 14.67px)
+                using (var msgFont = new Font(_currentFontName, 14.67f * s, GraphicsUnit.Pixel))
+                using (var promptBrush = new SolidBrush(Color.FromArgb(220, 220, 220)))
+                {
+                    float promptH = (_currentKind == NativeDialogKind.Text) ? (32 * s) : (72 * s);
+                    var promptRect = new RectangleF(36 * s, 130 * s, 448 * s, promptH);
+                    g.DrawString(_currentPrompt, msgFont, promptBrush, promptRect);
+                }
             }
         }
 
@@ -300,6 +348,8 @@ public static class NativeDialogs
         NativeDialogKind kind,
         float dpiScale,
         string language,
+        string? header = null,
+        RECT? centerRect = null,
         string? initialValue = null,
         bool isPassword = false,
         string? okText = null,
@@ -313,8 +363,10 @@ public static class NativeDialogs
         float s = dpiScale > 0 ? dpiScale : 1.0f;
         _currentDpiScale = s;
         _currentSubtitle = subtitle ?? "";
+        _currentHeader = header ?? "";
         _currentPrompt = prompt ?? "";
-        _currentFontName = LocalizedUiFontSelector.GetTextFontName(language);
+        _currentLanguage = language ?? "zh-Hant";
+        _currentFontName = LocalizedUiFontSelector.GetTextFontName(_currentLanguage);
 
         _parentHwnd = parentHwnd;
         _parentWasEnabled = parentHwnd != IntPtr.Zero && IsWindowEnabled(parentHwnd);
@@ -333,6 +385,12 @@ public static class NativeDialogs
         {
             x = parentRect.left + ((parentRect.right - parentRect.left) - winW) / 2;
             y = parentRect.top + ((parentRect.bottom - parentRect.top) - winH) / 2;
+        }
+        else if (centerRect.HasValue && centerRect.Value.right > centerRect.Value.left)
+        {
+            RECT cr = centerRect.Value;
+            x = cr.left + ((cr.right - cr.left) - winW) / 2;
+            y = cr.top + ((cr.bottom - cr.top) - winH) / 2;
         }
 
         IntPtr hInstance = GetModuleHandle(null);
@@ -376,8 +434,8 @@ public static class NativeDialogs
             _hFontChild = CreateFontW((int)(14.5 * s), 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 0, 0, _currentFontName);
         }
 
-        string resolvedOkText = okText ?? Localization.T("dialog_ok", language);
-        string resolvedCancelText = cancelText ?? Localization.T("dialog_cancel", language);
+        string resolvedOkText = okText ?? Localization.T("dialog_ok", _currentLanguage);
+        string resolvedCancelText = cancelText ?? Localization.T("dialog_cancel", _currentLanguage);
 
         if (kind == NativeDialogKind.Text)
         {
@@ -547,6 +605,61 @@ public static class NativeDialogs
             kind: NativeDialogKind.Alert,
             dpiScale: dpiScale,
             language: language,
+            okText: okText);
+    }
+
+    /// <summary>
+    /// Displays a modal warning alert dialog with vector warning indicator and a single OK button.
+    /// </summary>
+    public static void Warning(
+        IntPtr parentHwnd,
+        string subtitle,
+        string prompt,
+        float dpiScale,
+        string language,
+        string? header = null,
+        string? okText = null,
+        RECT? centerRect = null)
+    {
+        ShowModal(
+            parentHwnd: parentHwnd,
+            subtitle: subtitle,
+            prompt: prompt,
+            kind: NativeDialogKind.Warning,
+            dpiScale: dpiScale,
+            language: language,
+            header: header,
+            centerRect: centerRect,
+            okText: okText);
+    }
+
+    /// <summary>
+    /// Displays a modal failure error dialog with vector cross icon, red header and a single OK button.
+    /// </summary>
+    public static void Error(
+        IntPtr parentHwnd,
+        string subtitle,
+        string prompt,
+        float dpiScale,
+        string language,
+        string? header = null,
+        string? okText = null,
+        RECT? centerRect = null)
+    {
+        string displayPrompt = prompt ?? "";
+        if (displayPrompt.Equals("User Aborted", StringComparison.OrdinalIgnoreCase))
+        {
+            displayPrompt = Localization.T("error_user_aborted", language);
+        }
+        ShowModal(
+            parentHwnd: parentHwnd,
+            subtitle: string.IsNullOrWhiteSpace(subtitle) ? Localization.T("progress_sub_failed", language) : subtitle,
+            prompt: displayPrompt,
+            kind: NativeDialogKind.Error,
+            dpiScale: dpiScale,
+            language: language,
+            header: string.IsNullOrWhiteSpace(header) ? Localization.T("progress_header_failed", language) : header,
+            centerRect: centerRect,
             okText: okText);
     }
 }

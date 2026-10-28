@@ -33,13 +33,8 @@ namespace Clickra
             string CompressionLevel,
             string PagesOption);
 
-        // Native Win32 MessageBox — zero WinForms dependency, keeps exe tiny
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-        static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
-        const uint MB_OK = 0x0, MB_ICONWARNING = 0x30, MB_ICONERROR = 0x10, MB_ICONINFORMATION = 0x40;
-
         static void ShowWarning(string msg, string title) =>
-            MessageBox(IntPtr.Zero, msg, title, MB_OK | MB_ICONWARNING);
+            NativeDialogs.Warning(IntPtr.Zero, title, msg, 1.0f, SettingsPresentationController.Shared.Language);
 
         /// <summary>CLI entry point: delegates the whole startup pipeline (console
         /// attachment, dashboard launch, argument parsing and dispatch) to

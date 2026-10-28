@@ -59,6 +59,7 @@ namespace Clickra.UI
         private bool _completed => _progressPresentation.State.Status == TaskProgressPresentationStatus.Succeeded;
         private bool _hasError => _progressPresentation.State.Status is TaskProgressPresentationStatus.Failed or TaskProgressPresentationStatus.Canceled;
         private string _errorMessage => _progressPresentation.State.Error;
+        private string? _failureToAlert = null;
         private IntPtr _hwnd = IntPtr.Zero;
 
         private double _currentDispWidth = 0;
@@ -141,7 +142,7 @@ namespace Clickra.UI
         {
             if (files == null || files.Count == 0)
             {
-                NativeDialogs.Alert(IntPtr.Zero, Loc("cli_err_no_input_title"), Loc("cli_err_no_input"), 1.0f, SettingsPresentationController.Shared.Language);
+                NativeDialogs.Warning(IntPtr.Zero, Loc("cli_err_no_input_title"), Loc("cli_err_no_input"), 1.0f, SettingsPresentationController.Shared.Language);
                 return;
             }
 
@@ -247,9 +248,30 @@ namespace Clickra.UI
             if (!_isPromptingMarkdownOptions)
                 StartProcessingThread(_hwnd);
 
+            RECT progressRect = default;
+            bool hadRect = GetWindowRect(_hwnd, out progressRect);
+
             RunMessageLoop(_hwnd);
 
             Marshal.FreeHGlobal(hClass);
+
+            if (!string.IsNullOrWhiteSpace(_failureToAlert))
+            {
+                string lang = SettingsPresentationController.Shared.Language;
+                string displayErrMsg = _failureToAlert;
+                if (displayErrMsg.Equals("User Aborted", StringComparison.OrdinalIgnoreCase))
+                {
+                    displayErrMsg = Loc("error_user_aborted");
+                }
+                NativeDialogs.Error(
+                    IntPtr.Zero,
+                    Loc("progress_sub_failed"),
+                    displayErrMsg,
+                    _dpiScale,
+                    lang,
+                    Loc("progress_header_failed"),
+                    centerRect: hadRect ? progressRect : null);
+            }
         }
 
         private static bool IsMarkdownCommand(string command) =>
