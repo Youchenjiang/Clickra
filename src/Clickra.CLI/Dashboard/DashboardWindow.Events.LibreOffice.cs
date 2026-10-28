@@ -38,16 +38,16 @@ namespace Clickra.UI;
             {
                 if (SettingsPresentationController.Shared.TryUseLibreOfficeExecutable(candidate))
                 {
-                    MessageBox(hwnd, string.Format(GetText("setting_libreoffice_validated"), Path.GetDirectoryName(candidate)), AppTitle, 0x40);
+                    ShowAlert(hwnd, string.Format(GetText("setting_libreoffice_validated"), Path.GetDirectoryName(candidate)));
                 }
                 else
                 {
-                    MessageBox(hwnd, GetText("setting_libreoffice_validation_failed"), AppTitle, 0x30);
+                    ShowAlert(hwnd, GetText("setting_libreoffice_validation_failed"));
                 }
             }
             else
             {
-                MessageBox(hwnd, GetText("setting_libreoffice_invalid"), AppTitle, 0x30);
+                ShowAlert(hwnd, GetText("setting_libreoffice_invalid"));
             }
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
@@ -58,7 +58,7 @@ namespace Clickra.UI;
             {
                 if (_libreOfficeDownloadInProgress)
                 {
-                    MessageBox(hwnd, GetText("setting_libreoffice_download_in_progress"), AppTitle, 0x40);
+                    ShowAlert(hwnd, GetText("setting_libreoffice_download_in_progress"));
                     return;
                 }
             }
@@ -67,11 +67,9 @@ namespace Clickra.UI;
             var package = SettingsPresentationController.Shared.RecommendedLibreOfficePackage;
             if (SettingsPresentationController.Shared.TryUseCurrentRecommendedLibreOffice(out string installedVersion))
             {
-                MessageBox(
+                ShowAlert(
                     hwnd,
-                    string.Format(GetText("setting_libreoffice_already_current"), installedVersion),
-                    AppTitle,
-                    0x40);
+                    string.Format(GetText("setting_libreoffice_already_current"), installedVersion));
                 InvalidateRect(hwnd, IntPtr.Zero, false);
                 return;
             }
@@ -84,7 +82,7 @@ namespace Clickra.UI;
                 SettingsPresentationController.Shared.DefaultLibreOfficeInstallRoot,
                 package.Sha256);
 
-            if (MessageBox(hwnd, prompt, AppTitle, 0x41) != 1) return;
+            if (!ShowConfirm(hwnd, prompt)) return;
 
             lock (_libreOfficeDownloadLock)
             {
@@ -150,22 +148,20 @@ namespace Clickra.UI;
             string sofficePath,
             bool managementRecorded)
         {
-            MessageBox(
+            ShowAlert(
                 hwnd,
                 string.Format(
                     GetText(restartRequired
                         ? "setting_libreoffice_install_restart_required"
                         : "setting_libreoffice_download_ready"),
-                    string.IsNullOrWhiteSpace(sofficePath) ? SettingsPresentationController.Shared.DefaultLibreOfficeInstallRoot : sofficePath),
-                AppTitle,
-                0x40);
+                    string.IsNullOrWhiteSpace(sofficePath) ? SettingsPresentationController.Shared.DefaultLibreOfficeInstallRoot : sofficePath));
             if (!managementRecorded)
-                MessageBox(hwnd, GetText("setting_libreoffice_management_unverified"), AppTitle, 0x30);
+                ShowAlert(hwnd, GetText("setting_libreoffice_management_unverified"));
         }
 
         private static void ShowDownloadFailureMessage(IntPtr hwnd, string errorMessage)
         {
-            MessageBox(hwnd, string.Format(GetText("setting_libreoffice_download_failed"), errorMessage), AppTitle, 0x10);
+            ShowAlert(hwnd, string.Format(GetText("setting_libreoffice_download_failed"), errorMessage));
         }
 
         static void HandleLibreOfficeUninstall(IntPtr hwnd)
@@ -174,7 +170,7 @@ namespace Clickra.UI;
             {
                 if (_libreOfficeDownloadInProgress)
                 {
-                    MessageBox(hwnd, GetText("setting_libreoffice_download_in_progress"), AppTitle, 0x40);
+                    ShowAlert(hwnd, GetText("setting_libreoffice_download_in_progress"));
                     return;
                 }
             }
@@ -182,7 +178,7 @@ namespace Clickra.UI;
             LibreOfficePresentationState state = SettingsPresentationController.Shared.GetLibreOfficeState();
             if (state.RemovalPendingRestart)
             {
-                MessageBox(hwnd, GetText("setting_libreoffice_removal_pending"), AppTitle, 0x40);
+                ShowAlert(hwnd, GetText("setting_libreoffice_removal_pending"));
                 return;
             }
 
@@ -190,11 +186,11 @@ namespace Clickra.UI;
             // The dashboard hides the button otherwise, but the action still has to refuse on its own.
             if (!state.IsManagedByClickra)
             {
-                MessageBox(hwnd, GetText("setting_libreoffice_external_note"), AppTitle, 0x40);
+                ShowAlert(hwnd, GetText("setting_libreoffice_external_note"));
                 return;
             }
 
-            if (MessageBox(hwnd, GetText("setting_libreoffice_uninstall_confirm"), AppTitle, 0x31) != 1) return;
+            if (!ShowConfirm(hwnd, GetText("setting_libreoffice_uninstall_confirm"))) return;
 
             lock (_libreOfficeDownloadLock)
             {
@@ -219,21 +215,17 @@ namespace Clickra.UI;
                     .GetAwaiter()
                     .GetResult();
 
-                PostDashboardAction(hwnd, () => MessageBox(
+                PostDashboardAction(hwnd, () => ShowAlert(
                     hwnd,
                     GetText(uninstallResult.RestartRequired
                         ? "setting_libreoffice_uninstall_restart_required"
-                        : "setting_libreoffice_uninstall_ready"),
-                    AppTitle,
-                    0x40));
+                        : "setting_libreoffice_uninstall_ready")));
             }
             catch (Exception ex)
             {
-                PostDashboardAction(hwnd, () => MessageBox(
+                PostDashboardAction(hwnd, () => ShowAlert(
                     hwnd,
-                    string.Format(GetText("setting_libreoffice_uninstall_failed"), ex.Message),
-                    AppTitle,
-                    0x10));
+                    string.Format(GetText("setting_libreoffice_uninstall_failed"), ex.Message)));
             }
             finally
             {
@@ -247,14 +239,14 @@ namespace Clickra.UI;
             {
                 if (_libreOfficeDownloadInProgress)
                 {
-                    MessageBox(hwnd, GetText("setting_libreoffice_download_in_progress"), AppTitle, 0x40);
+                    ShowAlert(hwnd, GetText("setting_libreoffice_download_in_progress"));
                     return;
                 }
             }
 
             if (!SettingsPresentationController.Shared.GetLibreOfficeState().CanAdopt) return;
 
-            if (MessageBox(hwnd, GetText("setting_libreoffice_adopt_confirm"), AppTitle, 0x31) != 1) return;
+            if (!ShowConfirm(hwnd, GetText("setting_libreoffice_adopt_confirm"))) return;
 
             try
             {
@@ -262,12 +254,12 @@ namespace Clickra.UI;
             }
             catch (InvalidOperationException)
             {
-                MessageBox(hwnd, GetText("setting_libreoffice_external_note"), AppTitle, 0x30);
+                ShowAlert(hwnd, GetText("setting_libreoffice_external_note"));
                 InvalidateRect(hwnd, IntPtr.Zero, false);
                 return;
             }
             InvalidateRect(hwnd, IntPtr.Zero, false);
-            MessageBox(hwnd, GetText("setting_libreoffice_adopt_success"), AppTitle, 0x40);
+            ShowAlert(hwnd, GetText("setting_libreoffice_adopt_success"));
         }
 
         static string FormatBytes(long bytes)

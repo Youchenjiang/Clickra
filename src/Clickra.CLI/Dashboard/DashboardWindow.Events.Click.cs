@@ -14,6 +14,12 @@ namespace Clickra.UI
     {
         private const string AppTitle = "Clickra";
 
+        static bool ShowConfirm(IntPtr hwnd, string prompt, string? subtitle = null) =>
+            NativeDialogs.Confirm(hwnd, subtitle ?? AppTitle, prompt, _dpiScale, SettingsPresentationController.Shared.Language);
+
+        static void ShowAlert(IntPtr hwnd, string prompt, string? subtitle = null) =>
+            NativeDialogs.Alert(hwnd, subtitle ?? AppTitle, prompt, _dpiScale, SettingsPresentationController.Shared.Language);
+
         /// <summary>Routes left-button clicks to the active dashboard tab's hit regions.</summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3776", Justification = "Dashboard hit-testing is intentionally ordered so overlapping UI regions resolve deterministically.")]
         static void HandleLButtonDown(IntPtr hwnd, IntPtr w, IntPtr l)
@@ -357,7 +363,7 @@ namespace Clickra.UI
                 }
                 catch (Exception ex)
                 {
-                    MessageBox(hwnd, $"Cannot open browser: {ex.Message}", AppTitle, 0x10);
+                    ShowAlert(hwnd, $"Cannot open browser: {ex.Message}");
                 }
             }
             else if (element == 24)
@@ -395,7 +401,7 @@ namespace Clickra.UI
                 }
                 catch (Exception ex)
                 {
-                    MessageBox(hwnd, $"Cannot start feedback: {ex.Message}", AppTitle, 0x10);
+                    ShowAlert(hwnd, $"Cannot start feedback: {ex.Message}");
                 }
             }
         }

@@ -46,7 +46,7 @@ namespace Clickra.UI;
 
         static void HandleParkedCancel(IntPtr hwnd, string taskId)
         {
-            if (MessageBox(hwnd, GetText("task_parked_cancel_confirm"), AppTitle, 0x24) != 6) return;
+            if (!ShowConfirm(hwnd, GetText("task_parked_cancel_confirm"))) return;
             _historyPresentation.CancelParked(taskId);
             RefreshHistoryData();
             InvalidateRect(hwnd, IntPtr.Zero, false);
@@ -62,7 +62,7 @@ namespace Clickra.UI;
                 }
                 catch (Exception ex)
                 {
-                    MessageBox(IntPtr.Zero, $"Execution failed: {ex.Message}", AppTitle, 0x10);
+                    ShowAlert(hwnd, $"Execution failed: {ex.Message}");
                 }
             });
             thread.SetApartmentState(System.Threading.ApartmentState.STA);
@@ -199,7 +199,7 @@ namespace Clickra.UI;
         /// <summary>Handles the history toolbar clear button.</summary>
         static void HandleHistoryToolbarClick(IntPtr hwnd)
         {
-            if (MessageBox(hwnd, GetText("history_clear_confirm"), AppTitle, 0x24) == 6)
+            if (ShowConfirm(hwnd, GetText("history_clear_confirm")))
             {
                 _historyPresentation.ClearCompleted();
                 _expandedHistoryIndex = -1;

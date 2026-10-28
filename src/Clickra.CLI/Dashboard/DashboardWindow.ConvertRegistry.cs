@@ -90,14 +90,14 @@ public static partial class DashboardWindow
         ConvertWorkspaceValidation validation = _convertWorkspace.ValidateSelection();
         if (!validation.IsValid)
         {
-            MessageBox(hwnd, DescribeConvertValidation(validation), "Clickra", 0x30);
+            ShowAlert(hwnd, DescribeConvertValidation(validation));
             return;
         }
 
         if (!HasAvailableEngine(command))
         {
             string errorKey = SettingsPresentationController.Shared.GetOfficeUnavailableErrorKey();
-            MessageBox(hwnd, Localization.T(errorKey, SettingsPresentationController.Shared.Language), "Clickra", 0x30);
+            ShowAlert(hwnd, Localization.T(errorKey, SettingsPresentationController.Shared.Language));
             return;
         }
 
@@ -144,7 +144,7 @@ public static partial class DashboardWindow
             }
             catch (Exception ex)
             {
-                MessageBox(IntPtr.Zero, $"Execution failed: {ex.Message}", "Clickra", 0x10);
+                ShowAlert(hwnd, $"Execution failed: {ex.Message}");
             }
             finally
             {
