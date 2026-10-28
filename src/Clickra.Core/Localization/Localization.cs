@@ -56,14 +56,10 @@ namespace Clickra.Core
         private static Stream? FindFallbackResourceStream(Assembly assembly, string lang)
         {
             string suffix = $".{lang}.json";
-            foreach (var name in assembly.GetManifestResourceNames())
-            {
-                if (name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
-                {
-                    return assembly.GetManifestResourceStream(name);
-                }
-            }
-            return null;
+            string? match = assembly.GetManifestResourceNames()
+                .FirstOrDefault(name => name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
+
+            return match != null ? assembly.GetManifestResourceStream(match) : null;
         }
 
         /// <summary>Maps a language code (or the current UI culture when empty) to one of the
