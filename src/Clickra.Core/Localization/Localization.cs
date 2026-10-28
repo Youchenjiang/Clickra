@@ -1,5 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text.Json;
 using Clickra.Core.Modules.Settings.Application;
 
 namespace Clickra.Core
@@ -11,20 +15,6 @@ namespace Clickra.Core
         private const string LangEn = "en-US";
         private const string LangJa = "ja-JP";
         private const string LangKo = "ko-KR";
-        private const string AppExcel = "Excel";
-        private const string KeyCmdCompressPdf = "cmd_compress_pdf";
-        private const string KeyLibreOfficeExternalNote = "setting_libreoffice_external_note";
-        private const string KeyLibreOfficeExternalHint = "setting_libreoffice_external_hint";
-        private const string MicrosoftOfficeLabel = "Microsoft Office";
-        private const string LibreOfficeLabel = "LibreOffice";
-        private const string WordToPdfLabel = "Word → PDF";
-        private const string ExcelToPdfLabel = "Excel → PDF";
-        private const string PptToPdfLabel = "PPT → PDF";
-        private const string MarkdownToPdfLabel = "Markdown → PDF";
-        private const string MarkdownToWordLabel = "Markdown → Word";
-        private const string MarkdownParsingZh = "正在解析 Markdown：{0}";
-        private const string RetentionDayZh = "{0} 天";
-        private const string OfficeName = "Office";
 
         private static readonly Dictionary<string, Dictionary<string, string>> Translations = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -34,6 +24,47 @@ namespace Clickra.Core
             [LangJa] = new(StringComparer.OrdinalIgnoreCase),
             [LangKo] = new(StringComparer.OrdinalIgnoreCase)
         };
+
+        static Localization()
+        {
+            LoadEmbeddedTranslations();
+        }
+
+        private static void LoadEmbeddedTranslations()
+        {
+            var assembly = typeof(Localization).Assembly;
+            foreach (string lang in SupportedLanguages)
+            {
+                string resourceName = $"Clickra.Core.Resources.Locales.{lang}.json";
+                using var stream = assembly.GetManifestResourceStream(resourceName)
+                    ?? FindFallbackResourceStream(assembly, lang);
+
+                if (stream == null)
+                {
+                    continue;
+                }
+
+                using var doc = JsonDocument.Parse(stream);
+                var targetDict = Translations[lang];
+                foreach (var prop in doc.RootElement.EnumerateObject())
+                {
+                    targetDict[prop.Name] = prop.Value.GetString() ?? string.Empty;
+                }
+            }
+        }
+
+        private static Stream? FindFallbackResourceStream(Assembly assembly, string lang)
+        {
+            string suffix = $".{lang}.json";
+            foreach (var name in assembly.GetManifestResourceNames())
+            {
+                if (name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                {
+                    return assembly.GetManifestResourceStream(name);
+                }
+            }
+            return null;
+        }
 
         /// <summary>Maps a language code (or the current UI culture when empty) to one of the
         /// supported language keys, defaulting to Traditional Chinese.</summary>
@@ -170,50 +201,6 @@ namespace Clickra.Core
             }
 
             return sb.ToString().TrimEnd();
-        }
-
-        static Localization()
-        {
-            RegisterGeneralTranslations();
-            RegisterCompressionTranslations();
-            RegisterProcessingTranslations();
-            RegisterLibreOfficeManagementTranslations();
-            RegisterFluentDashboardTranslations();
-            RegisterCliTranslations();
-            RegisterDiagnosticsEmailTranslations();
-        }
-
-
-        private static void RegisterTranslations((string Key, string Tw, string Cn, string En, string Ja, string Ko)[] data)
-        {
-            foreach (var item in data)
-            {
-                Translations[LangTw][item.Key] = item.Tw;
-                Translations[LangCn][item.Key] = item.Cn;
-                Translations[LangEn][item.Key] = item.En;
-                Translations[LangJa][item.Key] = item.Ja;
-                Translations[LangKo][item.Key] = item.Ko;
-            }
-        }
-
-        /// <summary>
-        /// 組裝本地化的診斷回報郵件主旨與內文範本。
-        /// </summary>
-        public static (string Subject, string Body) BuildDiagnosticsEmail(string version, string time, string? langCode = null)
-        {
-            string lang = langCode ?? SettingsController.Language;
-            string subject = T("diag_email_subject", lang);
-            string body =
-                T("diag_email_thanks", lang) + "\r\n\r\n" +
-                T("diag_email_attachment_hint", lang) + "\r\n\r\n" +
-                T("diag_email_system_info", lang) + "\r\n" +
-                T("diag_email_os", lang) + "\r\n" +
-                string.Format(T("diag_email_version", lang), version) + "\r\n" +
-                string.Format(T("diag_email_time", lang), time) + "\r\n\r\n" +
-                T("diag_email_problem_desc", lang) + "\r\n" +
-                T("diag_email_problem_placeholder", lang);
-
-            return (subject, body);
         }
     }
 }
