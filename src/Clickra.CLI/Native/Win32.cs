@@ -112,11 +112,13 @@ namespace Clickra.UI.Native
         [DllImport("user32.dll")] public static extern bool GetCursorPos(out Point lpPoint);
         [DllImport("user32.dll")] public static extern bool ScreenToClient(IntPtr hWnd, ref Point lpPoint);
         [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+        [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
         [DllImport("gdi32.dll")] public static extern IntPtr CreateSolidBrush(uint crColor);
         [DllImport("gdi32.dll")] public static extern bool DeleteObject(IntPtr hObject);
         [DllImport("gdi32.dll", EntryPoint = "SetTextColor")] public static extern uint SetTextColor(IntPtr hdc, uint crColor);
         [DllImport("gdi32.dll", EntryPoint = "SetBkColor")] public static extern uint SetBkColor(IntPtr hdc, uint crColor);
+        [DllImport("gdi32.dll", EntryPoint = "SetBkMode")] public static extern int SetBkMode(IntPtr hdc, int iBkMode);
         [DllImport("gdi32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr CreateFontW(int cHeight, int cWidth, int cEscapement, int cOrientation, int cWeight, uint bItalic, uint bUnderline, uint bStrikeOut, uint iCharSet, uint iOutPrecision, uint iClipPrecision, uint iQuality, uint iPitchAndFamily, string pszFaceName);
 
         [DllImport("shell32.dll", EntryPoint = "Shell_NotifyIconW", CharSet = CharSet.Unicode)] public static extern bool Shell_NotifyIcon(uint dwMessage, ref NOTIFYICONDATAW lpData);

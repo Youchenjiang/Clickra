@@ -35,9 +35,6 @@ namespace Clickra.UI
         private bool _processingStarted = false;
         private Action<bool>? _markdownDecision;
         private bool _markdownDecisionResolved = false;
-        private IntPtr _hwndEdit = IntPtr.Zero;
-        private IntPtr _hwndBtnOk = IntPtr.Zero;
-        private IntPtr _hwndBtnCancel = IntPtr.Zero;
         private IntPtr _editBgBrush = IntPtr.Zero;
         private IntPtr _darkBrush = IntPtr.Zero;
         private IntPtr _hFont = IntPtr.Zero;
@@ -300,9 +297,6 @@ namespace Clickra.UI
         /// <summary>Destroys child controls, disposes GDI+ resources and removes the tray icon.</summary>
         private void CleanupResources()
         {
-            if (_hwndEdit != IntPtr.Zero) { DestroyWindow(_hwndEdit); _hwndEdit = IntPtr.Zero; }
-            if (_hwndBtnOk != IntPtr.Zero) { DestroyWindow(_hwndBtnOk); _hwndBtnOk = IntPtr.Zero; }
-            if (_hwndBtnCancel != IntPtr.Zero) { DestroyWindow(_hwndBtnCancel); _hwndBtnCancel = IntPtr.Zero; }
 
             try { _titleFont?.Dispose(); _titleFont = null; } catch { }
             try { _subFont?.Dispose(); _subFont = null; } catch { }

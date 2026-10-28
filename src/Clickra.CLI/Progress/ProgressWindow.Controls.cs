@@ -151,15 +151,15 @@ namespace Clickra.UI
             if (_isPromptingVisualSplitter)
             {
                 ResizeWindowForVisualSplitter(hwnd, true);
+                return IntPtr.Zero;
             }
-            ShowPasswordInputControls(hwnd);
+            ShowPasswordInputDialog(hwnd);
             return IntPtr.Zero;
         }
 
         /// <summary>Hides the password input panel.</summary>
         private IntPtr HandleHidePasswordInput(IntPtr hwnd)
         {
-            HidePasswordInputControls(hwnd);
             return IntPtr.Zero;
         }
 
@@ -211,10 +211,9 @@ namespace Clickra.UI
             return _editBgBrush;
         }
 
-        /// <summary>Dispatches password-prompt button commands (OK / Cancel).</summary>
-        private IntPtr HandleCommand(IntPtr hwnd, IntPtr w)
+        /// <summary>Dispatches button commands (no-op since dialogs handle their own commands).</summary>
+        private static IntPtr HandleCommand(IntPtr hwnd, IntPtr w)
         {
-            HandlePasswordInputCommand(hwnd, w);
             return IntPtr.Zero;
         }
 
