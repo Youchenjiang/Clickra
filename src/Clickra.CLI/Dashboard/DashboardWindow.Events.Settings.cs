@@ -108,6 +108,13 @@ namespace Clickra.UI;
                     break;
                 }
 
+                case SettingEditorKind.Text:
+                {
+                    HandleDynamicTextEdit(hwnd, descriptor);
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                    break;
+                }
+
                 default:
                     // Ignore unsupported future editor kinds until they have an interaction handler.
                     break;

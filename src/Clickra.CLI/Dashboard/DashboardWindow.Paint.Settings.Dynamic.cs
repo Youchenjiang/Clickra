@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using Clickra.Core;
+using Clickra.Core.Modules.Settings.Application;
 using Clickra.UI.Layout;
 using Clickra.Core.Modules.Settings.Model;
 
@@ -39,6 +40,9 @@ namespace Clickra.UI;
                     break;
                 case SettingEditorKind.Choice:
                     DrawDynamicChoiceSetting(g, descriptor, contentX, SettingsLayout.InlineGap, baseElemId, ref y);
+                    break;
+                case SettingEditorKind.Text:
+                    DrawDynamicTextSetting(g, descriptor, contentX, SettingsLayout.InlineGap, baseElemId, ref y);
                     break;
                 default:
                     // Ignore unsupported future editor kinds until a renderer is defined.
@@ -141,6 +145,48 @@ namespace Clickra.UI;
                 _settingsHitRects[elementId] = new RectangleF(choiceRect.X, choiceRect.Y, choiceRect.Width, choiceRect.Height);
                 buttonX += buttonWidth + margin;
             }
+            y += SettingsLayout.DynamicChoiceSectionHeight;
+        }
+
+
+        static void DrawDynamicTextSetting(
+            Graphics g, SettingDescriptor descriptor, float contentX, float margin, int baseElemId, ref float y)
+        {
+            DrawDynamicSettingHeader(g, descriptor, contentX, y);
+            y += SettingsLayout.ControlTopOffset;
+
+            string rawValue = SettingsPresentationController.Shared.ReadText(descriptor);
+            bool isPassword = string.Equals(descriptor.Key, SettingsContract.TranslateAiApiKey, StringComparison.OrdinalIgnoreCase);
+            string displayValue = isPassword
+                ? (string.IsNullOrEmpty(rawValue) ? "(Not set)" : "••••••••••••")
+                : (string.IsNullOrEmpty(rawValue) ? "(Empty)" : ShortPath(rawValue, 40));
+
+            float s = _dpiScale;
+            var measureFont = _subFont ?? SystemFonts.DefaultFont;
+
+            float valBoxW = Math.Max(180f, g.MeasureString(displayValue, measureFont).Width / s + 24f);
+            int h = 30;
+            using (var path = UIHelper.GetRoundedRectPath(new RectangleF(contentX * s, y * s, valBoxW * s, h * s), 4 * s))
+            using (var bgBrush = new SolidBrush(Color.FromArgb(30, 30, 30)))
+            using (var borderPen = new Pen(Color.FromArgb(60, 60, 60)))
+            {
+                g.FillPath(bgBrush, path);
+                g.DrawPath(borderPen, path);
+            }
+
+            if (_subFont != null)
+            {
+                using var textBrush = new SolidBrush(Color.FromArgb(190, 190, 190));
+                g.DrawString(displayValue, _subFont, textBrush, (contentX + 10f) * s, (y + 7f) * s);
+            }
+
+            float btnX = contentX + valBoxW + margin;
+            string btnLabel = GetText("dialog_edit_setting_btn");
+            float btnW = Math.Max(60f, g.MeasureString(btnLabel, measureFont).Width / s + 20f);
+            DrawOutputDirButton(g, btnLabel, false, baseElemId, (int)btnX, (int)y, (int)btnW);
+            LayoutRect hitRect = SettingsLayout.ButtonRect((int)btnX, (int)y, (int)btnW);
+            _settingsHitRects[baseElemId] = new RectangleF(hitRect.X, hitRect.Y, hitRect.Width, hitRect.Height);
+
             y += SettingsLayout.DynamicChoiceSectionHeight;
         }
 
