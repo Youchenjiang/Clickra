@@ -41,6 +41,30 @@ public static class SettingsController
         set => WriteText(ClickraSettings.TranslateTargetLang, value);
     }
 
+    public static string TranslateEngine
+    {
+        get => ReadText(ClickraSettings.TranslateEngine);
+        set => WriteText(ClickraSettings.TranslateEngine, value);
+    }
+
+    public static string TranslateAiEndpoint
+    {
+        get => ReadText(ClickraSettings.TranslateAiEndpoint);
+        set => WriteText(ClickraSettings.TranslateAiEndpoint, value);
+    }
+
+    public static string TranslateAiApiKey
+    {
+        get => ReadText(ClickraSettings.TranslateAiApiKey);
+        set => WriteText(ClickraSettings.TranslateAiApiKey, value);
+    }
+
+    public static string TranslateAiModel
+    {
+        get => ReadText(ClickraSettings.TranslateAiModel);
+        set => WriteText(ClickraSettings.TranslateAiModel, value);
+    }
+
     public static bool QuietMode
     {
         get => ReadBool(ClickraSettings.QuietMode);

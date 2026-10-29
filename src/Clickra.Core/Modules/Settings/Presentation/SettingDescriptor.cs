@@ -22,6 +22,9 @@ namespace Clickra.Core.Modules.Settings.Presentation;
 
         /// <summary>數值輸入框 / 步進計數器（可設定上下限與步進值）。</summary>
         Number,
+
+        /// <summary>單行文字輸入框（端點、金鑰、模型名稱等）。</summary>
+        Text,
     }
 
     /// <summary>Choice 編輯器中的一個選項定義。</summary>
@@ -244,6 +247,45 @@ namespace Clickra.Core.Modules.Settings.Presentation;
                     new("ko", "한국어 (ko)", "한국어 (ko)"),
                 },
                 Order: 10
+            ),
+
+            // PDF: 翻譯引擎與自訂 AI 設定
+            new(
+                SettingsContract.TranslateEngine,
+                GroupPdf,
+                SettingEditorKind.Choice,
+                "setting_trans_engine_title",
+                "setting_trans_engine_desc",
+                Options: new SettingOption[]
+                {
+                    new(SettingsContract.TranslateEngineGoogle, "setting_trans_engine_google"),
+                    new(SettingsContract.TranslateEngineCustomAi, "setting_trans_engine_custom_ai"),
+                },
+                Order: 20
+            ),
+            new(
+                SettingsContract.TranslateAiEndpoint,
+                GroupPdf,
+                SettingEditorKind.Text,
+                "setting_trans_ai_endpoint_title",
+                "setting_trans_ai_endpoint_desc",
+                Order: 30
+            ),
+            new(
+                SettingsContract.TranslateAiApiKey,
+                GroupPdf,
+                SettingEditorKind.Text,
+                "setting_trans_ai_key_title",
+                "setting_trans_ai_key_desc",
+                Order: 40
+            ),
+            new(
+                SettingsContract.TranslateAiModel,
+                GroupPdf,
+                SettingEditorKind.Text,
+                "setting_trans_ai_model_title",
+                "setting_trans_ai_model_desc",
+                Order: 50
             ),
         };
 

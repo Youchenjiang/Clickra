@@ -11,6 +11,10 @@ public sealed class TranslatePdfUseCase : PerFileConversionUseCaseBase
 {
     public const string CommandName = "translate-pdf";
     public const string TargetLanguageOptionKey = "targetLang";
+    public const string EngineOptionKey = "engine";
+    public const string AiEndpointOptionKey = "aiEndpoint";
+    public const string AiApiKeyOptionKey = "aiApiKey";
+    public const string AiModelOptionKey = "aiModel";
 
     public override string Command => CommandName;
 
@@ -60,6 +64,22 @@ public sealed class TranslatePdfUseCase : PerFileConversionUseCaseBase
         {
             options[TargetLanguageOptionKey] =
                 SettingsController.TranslationTargetLanguage;
+        }
+        if (!options.ContainsKey(EngineOptionKey))
+        {
+            options[EngineOptionKey] = SettingsController.TranslateEngine;
+        }
+        if (!options.ContainsKey(AiEndpointOptionKey))
+        {
+            options[AiEndpointOptionKey] = SettingsController.TranslateAiEndpoint;
+        }
+        if (!options.ContainsKey(AiApiKeyOptionKey))
+        {
+            options[AiApiKeyOptionKey] = SettingsController.TranslateAiApiKey;
+        }
+        if (!options.ContainsKey(AiModelOptionKey))
+        {
+            options[AiModelOptionKey] = SettingsController.TranslateAiModel;
         }
         if (!options.ContainsKey(ExecutionLocalizationOptions.LanguageKey))
         {

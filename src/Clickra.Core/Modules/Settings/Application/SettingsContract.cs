@@ -12,6 +12,10 @@ public static class SettingsContract
     public const string OfficeEngine = ClickraSettings.OfficeEngine;
     public const string Language = ClickraSettings.Language;
     public const string TranslationTargetLanguage = ClickraSettings.TranslateTargetLang;
+    public const string TranslateEngine = ClickraSettings.TranslateEngine;
+    public const string TranslateAiEndpoint = ClickraSettings.TranslateAiEndpoint;
+    public const string TranslateAiApiKey = ClickraSettings.TranslateAiApiKey;
+    public const string TranslateAiModel = ClickraSettings.TranslateAiModel;
     public const string QuietMode = ClickraSettings.QuietMode;
     public const string Notifications = ClickraSettings.Notification;
     public const string PdfCompressionImageLevel = ClickraSettings.PdfCompressImageLevel;
@@ -27,6 +31,8 @@ public static class SettingsContract
     public const string OfficeEngineAuto = ClickraSettings.DefaultOfficeEngineAuto;
     public const string OfficeEngineMicrosoft = ClickraSettings.OfficeEngineMicrosoft;
     public const string OfficeEngineLibreOffice = ClickraSettings.OfficeEngineLibreOffice;
+    public const string TranslateEngineGoogle = ClickraSettings.TranslateEngineGoogle;
+    public const string TranslateEngineCustomAi = ClickraSettings.TranslateEngineCustomAi;
 
     public static string GetDefault(string key) => ClickraSettings.GetDefault(key);
 
