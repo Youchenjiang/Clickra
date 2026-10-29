@@ -30,12 +30,16 @@ public enum NativeDialogKind
 /// </summary>
 public static class NativeDialogs
 {
+    private const string PropOldWndProc = "ClickraOldWndProc";
+    private const string PropOldBtnProc = "ClickraOldBtnProc";
+    private const string ButtonClassName = "BUTTON";
+    private const string EditClassName = "EDIT";
+
     private static bool _classRegistered;
     private static string? _resultText;
     private static bool _confirmed;
     private static NativeDialogKind _currentKind = NativeDialogKind.Text;
 
-    private static IntPtr _hDialog;
     private static IntPtr _hEdit;
     private static IntPtr _hBtnOk;
     private static IntPtr _hBtnCancel;
@@ -57,6 +61,21 @@ public static class NativeDialogs
     private const int IdOk = 1001;
     private const int IdCancel = 1002;
 
+    private readonly record struct ModalDialogOptions(
+        IntPtr ParentHwnd,
+        string Subtitle,
+        string Prompt,
+        NativeDialogKind Kind,
+        float DpiScale,
+        string Language,
+        string? Header = null,
+        RECT? CenterRect = null,
+        string? InitialValue = null,
+        bool IsPassword = false,
+        string? OkText = null,
+        string? CancelText = null);
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S6640", Justification = "NativeAOT Win32 window procedure callbacks require unmanaged function pointers.")]
     private static unsafe void EnsureClassRegistered()
     {
         if (_classRegistered) return;
@@ -156,7 +175,6 @@ public static class NativeDialogs
             }
             case 0x0002: // WM_DESTROY
             {
-                _hDialog = IntPtr.Zero;
                 _hEdit = IntPtr.Zero;
                 _hBtnOk = IntPtr.Zero;
                 _hBtnCancel = IntPtr.Zero;
@@ -175,32 +193,33 @@ public static class NativeDialogs
         using var bmp = new Bitmap(clientW, clientH);
         using (var g = Graphics.FromImage(bmp))
         {
-            g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
             g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
-            // Background #202020
+            // Background (#202020)
             using (var bgBrush = new SolidBrush(Color.FromArgb(32, 32, 32)))
             {
                 g.FillRectangle(bgBrush, 0, 0, clientW, clientH);
             }
 
-            // Big "Clickra" Title (White, 32px Bold)
-            using (var titleFont = new Font("Segoe UI Variable Display", 32f * s, FontStyle.Bold, GraphicsUnit.Pixel))
+            // Outer 1px Border (#464646)
+            using (var borderPen = new Pen(Color.FromArgb(70, 70, 70), 1f * s))
             {
-                g.DrawString("Clickra", titleFont, Brushes.White, 36 * s, 28 * s);
+                g.DrawRectangle(borderPen, 0.5f, 0.5f, clientW - 1f, clientH - 1f);
             }
 
-            // Subtitle
+            // Title 'Clickra' (Color 255, 255, 255, 20px Bold)
+            using (var titleFont = new Font(_currentFontName, 20f * s, FontStyle.Bold, GraphicsUnit.Pixel))
+            using (var titleBrush = new SolidBrush(Color.FromArgb(255, 255, 255)))
+            {
+                g.DrawString("Clickra", titleFont, titleBrush, 36 * s, 36 * s);
+            }
+
+            // Subtitle (Color 160, 160, 160, 14.67px)
             if (!string.IsNullOrWhiteSpace(_currentSubtitle) && _currentSubtitle != "Clickra")
             {
-                Color subColor = _currentKind switch
-                {
-                    NativeDialogKind.Error => Color.FromArgb(255, 90, 70),
-                    NativeDialogKind.Warning => Color.FromArgb(255, 185, 0),
-                    _ => Color.FromArgb(160, 160, 160)
-                };
                 using (var subFont = new Font(_currentFontName, 14.67f * s, GraphicsUnit.Pixel))
-                using (var subBrush = new SolidBrush(subColor))
+                using (var subBrush = new SolidBrush(Color.FromArgb(160, 160, 160)))
                 {
                     g.DrawString(_currentSubtitle, subFont, subBrush, 36 * s, 72 * s);
                 }
@@ -214,14 +233,14 @@ public static class NativeDialogs
 
             if (_currentKind == NativeDialogKind.Error)
             {
-                Color errColor = Color.FromArgb(255, 90, 70);
+                var errColor = Color.FromArgb(239, 68, 68);
                 using var errBrush = new SolidBrush(errColor);
-                using var headerFont = new Font(_currentFontName, 18f * s, FontStyle.Bold, GraphicsUnit.Pixel);
+                using var headerFont = new Font(_currentFontName, 15f * s, FontStyle.Bold, GraphicsUnit.Pixel);
 
                 VectorIcons.DrawFailureCross(g, 36 * s, 134 * s, 16 * s, errColor, 2f * s);
                 string headerText = !string.IsNullOrWhiteSpace(_currentHeader)
                     ? _currentHeader
-                    : Localization.T("progress_header_failed", _currentLanguage);
+                    : _currentSubtitle;
                 g.DrawString(headerText, headerFont, errBrush, 58 * s, 131 * s);
 
                 using var msgFont = new Font(_currentFontName, 14f * s, GraphicsUnit.Pixel);
@@ -231,9 +250,9 @@ public static class NativeDialogs
             }
             else if (_currentKind == NativeDialogKind.Warning)
             {
-                Color warnColor = Color.FromArgb(255, 185, 0);
+                var warnColor = Color.FromArgb(234, 179, 8);
                 using var warnBrush = new SolidBrush(warnColor);
-                using var headerFont = new Font(_currentFontName, 18f * s, FontStyle.Bold, GraphicsUnit.Pixel);
+                using var headerFont = new Font(_currentFontName, 15f * s, FontStyle.Bold, GraphicsUnit.Pixel);
 
                 VectorIcons.DrawWarningTriangle(g, 36 * s, 134 * s, 16 * s, warnColor, 2f * s);
                 string headerText = !string.IsNullOrWhiteSpace(_currentHeader)
@@ -266,7 +285,7 @@ public static class NativeDialogs
     [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
     private static IntPtr EditSubclassProc(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam)
     {
-        IntPtr oldProc = GetProp(hwnd, "ClickraOldWndProc");
+        IntPtr oldProc = GetProp(hwnd, PropOldWndProc);
         if (msg == 0x0100) // WM_KEYDOWN
         {
             int key = (int)wParam.ToInt64() & 0xFFFF;
@@ -292,29 +311,49 @@ public static class NativeDialogs
         return CallWindowProc(oldProc, hwnd, msg, wParam, lParam);
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S6640", Justification = "NativeAOT Win32 window procedure callbacks require unmanaged function pointers.")]
     private static unsafe void SubclassButton(IntPtr btn)
     {
         if (btn == IntPtr.Zero) return;
         IntPtr oldProc = GetWindowLongPtr(btn, -4);
-        SetProp(btn, "ClickraOldBtnProc", oldProc);
+        SetProp(btn, PropOldBtnProc, oldProc);
         SetWindowLongPtr(btn, -4, (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr, IntPtr, IntPtr>)&ButtonSubclassProc);
     }
 
     private static void UnsubclassButton(IntPtr btn)
     {
         if (btn == IntPtr.Zero) return;
-        IntPtr oldProc = GetProp(btn, "ClickraOldBtnProc");
+        IntPtr oldProc = GetProp(btn, PropOldBtnProc);
         if (oldProc != IntPtr.Zero)
         {
             SetWindowLongPtr(btn, -4, oldProc);
-            RemoveProp(btn, "ClickraOldBtnProc");
+            RemoveProp(btn, PropOldBtnProc);
+        }
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S6640", Justification = "NativeAOT Win32 window procedure callbacks require unmanaged function pointers.")]
+    private static unsafe void SubclassEdit(IntPtr hEdit)
+    {
+        IntPtr oldProc = GetWindowLongPtr(hEdit, -4);
+        SetProp(hEdit, PropOldWndProc, oldProc);
+        SetWindowLongPtr(hEdit, -4, (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr, IntPtr, IntPtr>)&EditSubclassProc);
+    }
+
+    private static void UnsubclassEdit(IntPtr hEdit)
+    {
+        if (hEdit == IntPtr.Zero) return;
+        IntPtr currentProc = GetProp(hEdit, PropOldWndProc);
+        if (currentProc != IntPtr.Zero)
+        {
+            SetWindowLongPtr(hEdit, -4, currentProc);
+            RemoveProp(hEdit, PropOldWndProc);
         }
     }
 
     [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
     private static IntPtr ButtonSubclassProc(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam)
     {
-        IntPtr oldProc = GetProp(hwnd, "ClickraOldBtnProc");
+        IntPtr oldProc = GetProp(hwnd, PropOldBtnProc);
         if (msg == 0x0100) // WM_KEYDOWN
         {
             int key = (int)wParam.ToInt64() & 0xFFFF;
@@ -341,172 +380,39 @@ public static class NativeDialogs
         return CallWindowProc(oldProc, hwnd, msg, wParam, lParam);
     }
 
-    private static unsafe void ShowModal(
-        IntPtr parentHwnd,
-        string subtitle,
-        string prompt,
-        NativeDialogKind kind,
-        float dpiScale,
-        string language,
-        string? header = null,
-        RECT? centerRect = null,
-        string? initialValue = null,
-        bool isPassword = false,
-        string? okText = null,
-        string? cancelText = null)
+    private static void ShowModal(in ModalDialogOptions options)
     {
         EnsureClassRegistered();
         _resultText = null;
         _confirmed = false;
-        _currentKind = kind;
+        _currentKind = options.Kind;
 
-        float s = dpiScale > 0 ? dpiScale : 1.0f;
+        float s = options.DpiScale > 0 ? options.DpiScale : 1.0f;
         _currentDpiScale = s;
-        _currentSubtitle = subtitle ?? "";
-        _currentHeader = header ?? "";
-        _currentPrompt = prompt ?? "";
-        _currentLanguage = language ?? "zh-Hant";
+        _currentSubtitle = options.Subtitle ?? "";
+        _currentHeader = options.Header ?? "";
+        _currentPrompt = options.Prompt ?? "";
+        _currentLanguage = options.Language ?? "zh-Hant";
         _currentFontName = LocalizedUiFontSelector.GetTextFontName(_currentLanguage);
 
-        _parentHwnd = parentHwnd;
-        _parentWasEnabled = parentHwnd != IntPtr.Zero && IsWindowEnabled(parentHwnd);
+        _parentHwnd = options.ParentHwnd;
+        _parentWasEnabled = options.ParentHwnd != IntPtr.Zero && IsWindowEnabled(options.ParentHwnd);
 
-        int clientW = (int)(520 * s);
-        int clientH = (int)(265 * s);
-
-        var rect = new RECT { left = 0, top = 0, right = clientW, bottom = clientH };
-        AdjustWindowRectEx(ref rect, WS_OVERLAPPED_FIXED, false, 0);
-        int winW = rect.right - rect.left;
-        int winH = rect.bottom - rect.top;
-
-        int x = CW_USEDEFAULT;
-        int y = CW_USEDEFAULT;
-        if (parentHwnd != IntPtr.Zero && GetWindowRect(parentHwnd, out RECT parentRect))
-        {
-            x = parentRect.left + ((parentRect.right - parentRect.left) - winW) / 2;
-            y = parentRect.top + ((parentRect.bottom - parentRect.top) - winH) / 2;
-        }
-        else if (centerRect.HasValue && centerRect.Value.right > centerRect.Value.left)
-        {
-            RECT cr = centerRect.Value;
-            x = cr.left + ((cr.right - cr.left) - winW) / 2;
-            y = cr.top + ((cr.bottom - cr.top) - winH) / 2;
-        }
-
-        IntPtr hInstance = GetModuleHandle(null);
-        IntPtr dlg = CreateWindowEx(
-            0,
-            "ClickraPromptModalWnd",
-            "Clickra",
-            WS_OVERLAPPED_FIXED,
-            x,
-            y,
-            winW,
-            winH,
-            parentHwnd,
-            IntPtr.Zero,
-            hInstance,
-            IntPtr.Zero);
-
-        _hDialog = dlg;
-
-        // DWM Dark Mode
-        int darkMode = 1;
-        DwmSetWindowAttribute(dlg, DWMWA_DARK_MODE, ref darkMode, sizeof(int));
-
-        // Clickra App Icon
-        if (_hIcon == IntPtr.Zero)
-        {
-            string exePath = Environment.ProcessPath ?? "";
-            if (!string.IsNullOrEmpty(exePath))
-            {
-                _hIcon = ExtractIcon(IntPtr.Zero, exePath, 0);
-            }
-        }
-        if (_hIcon != IntPtr.Zero)
-        {
-            SendMessageW(dlg, 0x0080, (IntPtr)0, _hIcon); // ICON_BIG
-            SendMessageW(dlg, 0x0080, (IntPtr)1, _hIcon); // ICON_SMALL
-        }
-
-        if (_hFontChild == IntPtr.Zero)
-        {
-            _hFontChild = CreateFontW((int)(14.5 * s), 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 0, 0, _currentFontName);
-        }
-
-        string resolvedOkText = okText ?? Localization.T("dialog_ok", _currentLanguage);
-        string resolvedCancelText = cancelText ?? Localization.T("dialog_cancel", _currentLanguage);
-
-        if (kind == NativeDialogKind.Text)
-        {
-            uint editStyle = 0x40000000 | 0x10000000 | 0x00800000 | 0x00010000 | 0x0080; // WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | ES_AUTOHSCROLL
-            if (isPassword) editStyle |= 0x0020; // ES_PASSWORD
-            _hEdit = CreateWindowEx(0, "EDIT", initialValue ?? "", editStyle, (int)(36 * s), (int)(165 * s), (int)(448 * s), (int)(28 * s), dlg, (IntPtr)IdEdit, hInstance, IntPtr.Zero);
-            SendMessageW(_hEdit, 0x0030, _hFontChild, (IntPtr)1);
-
-            IntPtr oldEditProc = GetWindowLongPtr(_hEdit, -4);
-            SetProp(_hEdit, "ClickraOldWndProc", oldEditProc);
-            SetWindowLongPtr(_hEdit, -4, (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr, IntPtr, IntPtr>)&EditSubclassProc);
-
-            _hBtnOk = CreateWindowEx(0, "BUTTON", resolvedOkText, 0x40000000 | 0x10000000 | 0x00010000 | 0x0001, (int)(280 * s), (int)(210 * s), (int)(90 * s), (int)(30 * s), dlg, (IntPtr)IdOk, hInstance, IntPtr.Zero);
-            _hBtnCancel = CreateWindowEx(0, "BUTTON", resolvedCancelText, 0x40000000 | 0x10000000 | 0x00010000, (int)(394 * s), (int)(210 * s), (int)(90 * s), (int)(30 * s), dlg, (IntPtr)IdCancel, hInstance, IntPtr.Zero);
-            SendMessageW(_hBtnOk, 0x0030, _hFontChild, (IntPtr)1);
-            SendMessageW(_hBtnCancel, 0x0030, _hFontChild, (IntPtr)1);
-        }
-        else if (kind == NativeDialogKind.Confirm)
-        {
-            _hEdit = IntPtr.Zero;
-            _hBtnOk = CreateWindowEx(0, "BUTTON", resolvedOkText, 0x40000000 | 0x10000000 | 0x00010000 | 0x0001, (int)(280 * s), (int)(210 * s), (int)(90 * s), (int)(30 * s), dlg, (IntPtr)IdOk, hInstance, IntPtr.Zero);
-            _hBtnCancel = CreateWindowEx(0, "BUTTON", resolvedCancelText, 0x40000000 | 0x10000000 | 0x00010000, (int)(394 * s), (int)(210 * s), (int)(90 * s), (int)(30 * s), dlg, (IntPtr)IdCancel, hInstance, IntPtr.Zero);
-            SendMessageW(_hBtnOk, 0x0030, _hFontChild, (IntPtr)1);
-            SendMessageW(_hBtnCancel, 0x0030, _hFontChild, (IntPtr)1);
-        }
-        else // Alert
-        {
-            _hEdit = IntPtr.Zero;
-            _hBtnCancel = IntPtr.Zero;
-            _hBtnOk = CreateWindowEx(0, "BUTTON", resolvedOkText, 0x40000000 | 0x10000000 | 0x00010000 | 0x0001, (int)(394 * s), (int)(210 * s), (int)(90 * s), (int)(30 * s), dlg, (IntPtr)IdOk, hInstance, IntPtr.Zero);
-            SendMessageW(_hBtnOk, 0x0030, _hFontChild, (IntPtr)1);
-        }
-
-        SubclassButton(_hBtnOk);
-        SubclassButton(_hBtnCancel);
+        IntPtr dlg = CreateDialogWindow(options, s);
+        ApplyDialogThemeAndIcon(dlg);
+        CreateDialogControls(dlg, options, s);
 
         ShowWindow(dlg, 5); // SW_SHOW
-
-        if (_hEdit != IntPtr.Zero)
-        {
-            SetFocus(_hEdit);
-            SendMessageW(_hEdit, 0x00B1, IntPtr.Zero, (IntPtr)(-1));
-        }
-        else if (_hBtnOk != IntPtr.Zero)
-        {
-            SetFocus(_hBtnOk);
-        }
+        FocusDefaultControl();
 
         if (_parentHwnd != IntPtr.Zero && _parentWasEnabled)
         {
             EnableWindow(_parentHwnd, false);
         }
 
-        while (_hDialog != IntPtr.Zero && GetMessage(out MSG msg, IntPtr.Zero, 0, 0) > 0)
-        {
-            if (!IsDialogMessageW(_hDialog, ref msg))
-            {
-                TranslateMessage(ref msg);
-                DispatchMessage(ref msg);
-            }
-        }
+        RunModalLoop(dlg);
 
-        if (_hEdit != IntPtr.Zero)
-        {
-            IntPtr currentProc = GetProp(_hEdit, "ClickraOldWndProc");
-            if (currentProc != IntPtr.Zero)
-            {
-                SetWindowLongPtr(_hEdit, -4, currentProc);
-                RemoveProp(_hEdit, "ClickraOldWndProc");
-            }
-        }
+        UnsubclassEdit(_hEdit);
         UnsubclassButton(_hBtnOk);
         UnsubclassButton(_hBtnCancel);
 
@@ -517,17 +423,138 @@ public static class NativeDialogs
         }
     }
 
+    private static IntPtr CreateDialogWindow(in ModalDialogOptions options, float s)
+    {
+        int clientW = (int)(520 * s);
+        int clientH = (int)(265 * s);
+
+        var rect = new RECT { left = 0, top = 0, right = clientW, bottom = clientH };
+        AdjustWindowRectEx(ref rect, WS_OVERLAPPED_FIXED, false, 0);
+        int winW = rect.right - rect.left;
+        int winH = rect.bottom - rect.top;
+
+        int x = CW_USEDEFAULT;
+        int y = CW_USEDEFAULT;
+        if (options.ParentHwnd != IntPtr.Zero && GetWindowRect(options.ParentHwnd, out RECT parentRect))
+        {
+            x = parentRect.left + ((parentRect.right - parentRect.left) - winW) / 2;
+            y = parentRect.top + ((parentRect.bottom - parentRect.top) - winH) / 2;
+        }
+        else if (options.CenterRect.HasValue && options.CenterRect.Value.right > options.CenterRect.Value.left)
+        {
+            RECT cr = options.CenterRect.Value;
+            x = cr.left + ((cr.right - cr.left) - winW) / 2;
+            y = cr.top + ((cr.bottom - cr.top) - winH) / 2;
+        }
+
+        IntPtr hInstance = GetModuleHandle(null);
+        return CreateWindowEx(
+            0,
+            "ClickraPromptModalWnd",
+            "Clickra",
+            WS_OVERLAPPED_FIXED,
+            x,
+            y,
+            winW,
+            winH,
+            options.ParentHwnd,
+            IntPtr.Zero,
+            hInstance,
+            IntPtr.Zero);
+    }
+
+    private static void ApplyDialogThemeAndIcon(IntPtr dlg)
+    {
+        int darkMode = 1;
+        DwmSetWindowAttribute(dlg, DWMWA_DARK_MODE, ref darkMode, sizeof(int));
+
+        if (_hIcon == IntPtr.Zero)
+        {
+            string exePath = Environment.ProcessPath ?? "";
+            if (!string.IsNullOrEmpty(exePath))
+            {
+                _hIcon = ExtractIcon(IntPtr.Zero, exePath, 0);
+            }
+        }
+        if (_hIcon != IntPtr.Zero)
+        {
+            SendMessageW(dlg, 0x0080, (IntPtr)0, _hIcon);
+            SendMessageW(dlg, 0x0080, (IntPtr)1, _hIcon);
+        }
+    }
+
+    private static void CreateDialogControls(IntPtr dlg, in ModalDialogOptions options, float s)
+    {
+        if (_hFontChild == IntPtr.Zero)
+        {
+            _hFontChild = CreateFontW((int)(14.5 * s), 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 0, 0, _currentFontName);
+        }
+
+        string resolvedOkText = options.OkText ?? Localization.T("dialog_ok", _currentLanguage);
+        string resolvedCancelText = options.CancelText ?? Localization.T("dialog_cancel", _currentLanguage);
+        IntPtr hInstance = GetModuleHandle(null);
+
+        if (options.Kind == NativeDialogKind.Text)
+        {
+            uint editStyle = 0x40000000 | 0x10000000 | 0x00800000 | 0x00010000 | 0x0080;
+            if (options.IsPassword) editStyle |= 0x0020;
+            _hEdit = CreateWindowEx(0, EditClassName, options.InitialValue ?? "", editStyle, (int)(36 * s), (int)(165 * s), (int)(448 * s), (int)(28 * s), dlg, (IntPtr)IdEdit, hInstance, IntPtr.Zero);
+            SendMessageW(_hEdit, 0x0030, _hFontChild, (IntPtr)1);
+            SubclassEdit(_hEdit);
+
+            _hBtnOk = CreateWindowEx(0, ButtonClassName, resolvedOkText, 0x40000000 | 0x10000000 | 0x00010000 | 0x0001, (int)(280 * s), (int)(210 * s), (int)(90 * s), (int)(30 * s), dlg, (IntPtr)IdOk, hInstance, IntPtr.Zero);
+            _hBtnCancel = CreateWindowEx(0, ButtonClassName, resolvedCancelText, 0x40000000 | 0x10000000 | 0x00010000, (int)(394 * s), (int)(210 * s), (int)(90 * s), (int)(30 * s), dlg, (IntPtr)IdCancel, hInstance, IntPtr.Zero);
+            SendMessageW(_hBtnOk, 0x0030, _hFontChild, (IntPtr)1);
+            SendMessageW(_hBtnCancel, 0x0030, _hFontChild, (IntPtr)1);
+        }
+        else if (options.Kind == NativeDialogKind.Confirm)
+        {
+            _hEdit = IntPtr.Zero;
+            _hBtnOk = CreateWindowEx(0, ButtonClassName, resolvedOkText, 0x40000000 | 0x10000000 | 0x00010000 | 0x0001, (int)(280 * s), (int)(210 * s), (int)(90 * s), (int)(30 * s), dlg, (IntPtr)IdOk, hInstance, IntPtr.Zero);
+            _hBtnCancel = CreateWindowEx(0, ButtonClassName, resolvedCancelText, 0x40000000 | 0x10000000 | 0x00010000, (int)(394 * s), (int)(210 * s), (int)(90 * s), (int)(30 * s), dlg, (IntPtr)IdCancel, hInstance, IntPtr.Zero);
+            SendMessageW(_hBtnOk, 0x0030, _hFontChild, (IntPtr)1);
+            SendMessageW(_hBtnCancel, 0x0030, _hFontChild, (IntPtr)1);
+        }
+        else
+        {
+            _hEdit = IntPtr.Zero;
+            _hBtnCancel = IntPtr.Zero;
+            _hBtnOk = CreateWindowEx(0, ButtonClassName, resolvedOkText, 0x40000000 | 0x10000000 | 0x00010000 | 0x0001, (int)(394 * s), (int)(210 * s), (int)(90 * s), (int)(30 * s), dlg, (IntPtr)IdOk, hInstance, IntPtr.Zero);
+            SendMessageW(_hBtnOk, 0x0030, _hFontChild, (IntPtr)1);
+        }
+
+        SubclassButton(_hBtnOk);
+        SubclassButton(_hBtnCancel);
+    }
+
+    private static void FocusDefaultControl()
+    {
+        if (_hEdit != IntPtr.Zero)
+        {
+            SetFocus(_hEdit);
+            SendMessageW(_hEdit, 0x00B1, IntPtr.Zero, (IntPtr)(-1));
+        }
+        else if (_hBtnOk != IntPtr.Zero)
+        {
+            SetFocus(_hBtnOk);
+        }
+    }
+
+    private static void RunModalLoop(IntPtr dlg)
+    {
+        while (IsWindow(dlg) && GetMessage(out MSG msg, IntPtr.Zero, 0, 0) > 0)
+        {
+            if (!IsDialogMessageW(dlg, ref msg))
+            {
+                TranslateMessage(ref msg);
+                DispatchMessage(ref msg);
+            }
+        }
+    }
+
     /// <summary>
     /// Displays a modal text prompt dialog matching Clickra's password input window layout and branding.
     /// </summary>
-    /// <param name="parentHwnd">Owner window handle.</param>
-    /// <param name="subtitle">Secondary title line below 'Clickra' (e.g. setting name or '輸入 PDF 密碼').</param>
-    /// <param name="prompt">Instruction text above the input box.</param>
-    /// <param name="initialValue">Initial text content inside the input field.</param>
-    /// <param name="isPassword">Whether input should be masked with password dots.</param>
-    /// <param name="dpiScale">DPI scaling factor.</param>
-    /// <param name="language">Language code for localized font selection.</param>
-    /// <returns>The confirmed text if OK was clicked; null if cancelled or closed.</returns>
     public static string? PromptText(
         IntPtr parentHwnd,
         string subtitle,
@@ -537,29 +564,21 @@ public static class NativeDialogs
         float dpiScale,
         string language)
     {
-        ShowModal(
-            parentHwnd: parentHwnd,
-            subtitle: subtitle,
-            prompt: prompt,
-            kind: NativeDialogKind.Text,
-            dpiScale: dpiScale,
-            language: language,
-            initialValue: initialValue,
-            isPassword: isPassword);
+        ShowModal(new ModalDialogOptions(
+            ParentHwnd: parentHwnd,
+            Subtitle: subtitle,
+            Prompt: prompt,
+            Kind: NativeDialogKind.Text,
+            DpiScale: dpiScale,
+            Language: language,
+            InitialValue: initialValue,
+            IsPassword: isPassword));
         return _resultText;
     }
 
     /// <summary>
     /// Displays a modal confirmation dialog with OK and Cancel buttons.
     /// </summary>
-    /// <param name="parentHwnd">Owner window handle.</param>
-    /// <param name="subtitle">Secondary title line below 'Clickra' (optional).</param>
-    /// <param name="prompt">Confirmation message text.</param>
-    /// <param name="dpiScale">DPI scaling factor.</param>
-    /// <param name="language">Language code for localized font and button labels.</param>
-    /// <param name="okText">Custom OK button label (optional).</param>
-    /// <param name="cancelText">Custom Cancel button label (optional).</param>
-    /// <returns>True if confirmed (OK), false if cancelled or closed.</returns>
     public static bool Confirm(
         IntPtr parentHwnd,
         string subtitle,
@@ -569,27 +588,21 @@ public static class NativeDialogs
         string? okText = null,
         string? cancelText = null)
     {
-        ShowModal(
-            parentHwnd: parentHwnd,
-            subtitle: subtitle,
-            prompt: prompt,
-            kind: NativeDialogKind.Confirm,
-            dpiScale: dpiScale,
-            language: language,
-            okText: okText,
-            cancelText: cancelText);
+        ShowModal(new ModalDialogOptions(
+            ParentHwnd: parentHwnd,
+            Subtitle: subtitle,
+            Prompt: prompt,
+            Kind: NativeDialogKind.Confirm,
+            DpiScale: dpiScale,
+            Language: language,
+            OkText: okText,
+            CancelText: cancelText));
         return _confirmed;
     }
 
     /// <summary>
     /// Displays a modal information/warning/error alert dialog with a single OK button.
     /// </summary>
-    /// <param name="parentHwnd">Owner window handle.</param>
-    /// <param name="subtitle">Secondary title line below 'Clickra' (optional).</param>
-    /// <param name="prompt">Alert message text.</param>
-    /// <param name="dpiScale">DPI scaling factor.</param>
-    /// <param name="language">Language code for localized font and button labels.</param>
-    /// <param name="okText">Custom OK button label (optional).</param>
     public static void Alert(
         IntPtr parentHwnd,
         string subtitle,
@@ -598,14 +611,14 @@ public static class NativeDialogs
         string language,
         string? okText = null)
     {
-        ShowModal(
-            parentHwnd: parentHwnd,
-            subtitle: subtitle,
-            prompt: prompt,
-            kind: NativeDialogKind.Alert,
-            dpiScale: dpiScale,
-            language: language,
-            okText: okText);
+        ShowModal(new ModalDialogOptions(
+            ParentHwnd: parentHwnd,
+            Subtitle: subtitle,
+            Prompt: prompt,
+            Kind: NativeDialogKind.Alert,
+            DpiScale: dpiScale,
+            Language: language,
+            OkText: okText));
     }
 
     /// <summary>
@@ -618,19 +631,17 @@ public static class NativeDialogs
         float dpiScale,
         string language,
         string? header = null,
-        string? okText = null,
         RECT? centerRect = null)
     {
-        ShowModal(
-            parentHwnd: parentHwnd,
-            subtitle: subtitle,
-            prompt: prompt,
-            kind: NativeDialogKind.Warning,
-            dpiScale: dpiScale,
-            language: language,
-            header: header,
-            centerRect: centerRect,
-            okText: okText);
+        ShowModal(new ModalDialogOptions(
+            ParentHwnd: parentHwnd,
+            Subtitle: subtitle,
+            Prompt: prompt,
+            Kind: NativeDialogKind.Warning,
+            DpiScale: dpiScale,
+            Language: language,
+            Header: header,
+            CenterRect: centerRect));
     }
 
     /// <summary>
@@ -643,7 +654,6 @@ public static class NativeDialogs
         float dpiScale,
         string language,
         string? header = null,
-        string? okText = null,
         RECT? centerRect = null)
     {
         string displayPrompt = prompt ?? "";
@@ -651,15 +661,14 @@ public static class NativeDialogs
         {
             displayPrompt = Localization.T("error_user_aborted", language);
         }
-        ShowModal(
-            parentHwnd: parentHwnd,
-            subtitle: string.IsNullOrWhiteSpace(subtitle) ? Localization.T("progress_sub_failed", language) : subtitle,
-            prompt: displayPrompt,
-            kind: NativeDialogKind.Error,
-            dpiScale: dpiScale,
-            language: language,
-            header: string.IsNullOrWhiteSpace(header) ? Localization.T("progress_header_failed", language) : header,
-            centerRect: centerRect,
-            okText: okText);
+        ShowModal(new ModalDialogOptions(
+            ParentHwnd: parentHwnd,
+            Subtitle: string.IsNullOrWhiteSpace(subtitle) ? Localization.T("progress_sub_failed", language) : subtitle,
+            Prompt: displayPrompt,
+            Kind: NativeDialogKind.Error,
+            DpiScale: dpiScale,
+            Language: language,
+            Header: string.IsNullOrWhiteSpace(header) ? Localization.T("progress_header_failed", language) : header,
+            CenterRect: centerRect));
     }
 }
