@@ -113,7 +113,7 @@ namespace Clickra.UI
             switch (msg)
             {
                 case WM_USER_SHOW_PASSWORD_INPUT: return HandleShowPasswordInput(hwnd);
-                case WM_USER_HIDE_PASSWORD_INPUT: return HandleHidePasswordInput(hwnd);
+                case WM_USER_HIDE_PASSWORD_INPUT: return HandleHidePasswordInput();
                 case 0x0100: // WM_KEYDOWN
                     {
                         IntPtr? keyResult = HandleKeyDown(hwnd, w);
@@ -121,7 +121,7 @@ namespace Clickra.UI
                     }
                     break;
                 case 0x0133: return HandleCtlColorEdit(w); // WM_CTLCOLOREDIT
-                case 0x0111: return HandleCommand(hwnd, w); // WM_COMMAND
+                case 0x0111: return HandleCommand(); // WM_COMMAND
                 case 0x020A: return HandleMouseWheel(hwnd, w, l); // WM_MOUSEWHEEL
                 case WM_USER_INVALIDATE: return HandleInvalidate(hwnd, w);
                 case 0x0200: return HandleMouseMove(hwnd, l); // WM_MOUSEMOVE
@@ -158,7 +158,7 @@ namespace Clickra.UI
         }
 
         /// <summary>Hides the password input panel.</summary>
-        private IntPtr HandleHidePasswordInput(IntPtr hwnd)
+        private static IntPtr HandleHidePasswordInput()
         {
             return IntPtr.Zero;
         }
@@ -212,7 +212,7 @@ namespace Clickra.UI
         }
 
         /// <summary>Dispatches button commands (no-op since dialogs handle their own commands).</summary>
-        private static IntPtr HandleCommand(IntPtr hwnd, IntPtr w)
+        private static IntPtr HandleCommand()
         {
             return IntPtr.Zero;
         }

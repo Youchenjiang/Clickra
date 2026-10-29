@@ -255,23 +255,27 @@ namespace Clickra.UI
 
             Marshal.FreeHGlobal(hClass);
 
-            if (!string.IsNullOrWhiteSpace(_failureToAlert))
+            ShowPendingFailureAlert(hadRect ? progressRect : null);
+        }
+
+        private void ShowPendingFailureAlert(RECT? centerRect)
+        {
+            if (string.IsNullOrWhiteSpace(_failureToAlert)) return;
+
+            string lang = SettingsPresentationController.Shared.Language;
+            string displayErrMsg = _failureToAlert;
+            if (displayErrMsg.Equals("User Aborted", StringComparison.OrdinalIgnoreCase))
             {
-                string lang = SettingsPresentationController.Shared.Language;
-                string displayErrMsg = _failureToAlert;
-                if (displayErrMsg.Equals("User Aborted", StringComparison.OrdinalIgnoreCase))
-                {
-                    displayErrMsg = Loc("error_user_aborted");
-                }
-                NativeDialogs.Error(
-                    IntPtr.Zero,
-                    Loc("progress_sub_failed"),
-                    displayErrMsg,
-                    _dpiScale,
-                    lang,
-                    Loc("progress_header_failed"),
-                    centerRect: hadRect ? progressRect : null);
+                displayErrMsg = Loc("error_user_aborted");
             }
+            NativeDialogs.Error(
+                IntPtr.Zero,
+                Loc("progress_sub_failed"),
+                displayErrMsg,
+                _dpiScale,
+                lang,
+                Loc("progress_header_failed"),
+                centerRect: centerRect);
         }
 
         private static bool IsMarkdownCommand(string command) =>
