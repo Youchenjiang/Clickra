@@ -23,8 +23,8 @@ public sealed class VisualSplitModel
     /// <summary>
     /// Creates a visual split model initialized with the page count of the specified PDF file.
     /// </summary>
-    public static VisualSplitModel FromFile(string filePath) =>
-        new(Math.Max(1, PdfPageCountQuery.Get(filePath)));
+    public static VisualSplitModel FromFile(string filePath, string? password = null) =>
+        new(Math.Max(1, PdfPageCountQuery.Get(filePath, password)));
 
     public VisualSplitModel(int totalPages)
     {

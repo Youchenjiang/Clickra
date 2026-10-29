@@ -1,5 +1,6 @@
 using Clickra.Core.Application;
 using Clickra.Core.Modules.PdfSplit.Processing;
+using PdfSharp.Pdf.IO;
 
 namespace Clickra.Core.Modules.PdfSplit.Application;
 
@@ -67,16 +68,52 @@ public sealed class SplitPdfUseCase : PerFileConversionUseCaseBase
         if (string.IsNullOrWhiteSpace(targetPages))
             throw new OperationCanceledException(cancellationToken);
 
-        var processor = new PdfSplitProcessor();
-        var options = new Dictionary<string, object> { { "pages", targetPages } };
-        await Task.Run(
-            () => processor.Process(
-                new List<string> { plan.Inputs[index] },
-                plan.Outputs[index],
-                options,
-                (current, total, message) =>
-                    ReportFileProgress(plan, index, progress, current, message),
-                cancellationToken),
-            cancellationToken);
+        string password = "";
+        if (plan.NormalizedOptions.TryGetValue("password", out var pwdObj) && pwdObj is string pwdStr)
+        {
+            password = pwdStr;
+        }
+
+        bool isRetry = false;
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                var processor = new PdfSplitProcessor();
+                var options = new Dictionary<string, object> { { "pages", targetPages } };
+                if (!string.IsNullOrEmpty(password))
+                {
+                    options["password"] = password;
+                }
+
+                await Task.Run(
+                    () => processor.Process(
+                        new List<string> { plan.Inputs[index] },
+                        plan.Outputs[index],
+                        options,
+                        (current, total, message) =>
+                            ReportFileProgress(plan, index, progress, current, message),
+                        cancellationToken),
+                    cancellationToken);
+                return;
+            }
+            catch (PdfReaderException ex) when (IsPasswordError(ex))
+            {
+                string? supplied = await interaction.RequestPasswordAsync(
+                    index,
+                    plan.Inputs[index],
+                    isRetry,
+                    cancellationToken);
+                if (supplied is null)
+                    throw new OperationCanceledException(cancellationToken);
+                password = supplied;
+                isRetry = true;
+            }
+        }
     }
+
+    private static bool IsPasswordError(Exception ex) =>
+        ex is PdfReaderException &&
+        ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
 }

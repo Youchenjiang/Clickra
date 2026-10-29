@@ -38,13 +38,20 @@ public class PdfSplitProcessor : SingleFileProcessorBase
         {
             pagesSpec = pStr.Trim();
         }
+        string password = "";
+        if (options?.TryGetValue("password", out var pwdObj) == true && pwdObj is string pwdStr)
+        {
+            password = pwdStr;
+        }
 
         int progressBase = ProgressCalculator.GetProgressBase(fileIndex);
         int totalProgressMax = ProgressCalculator.GetProgressMax(totalFiles);
 
         onProgress?.Invoke(progressBase + 10, totalProgressMax, "正在讀取 PDF 檔案...");
 
-        using var inDoc = PdfReader.Open(fullPath, PdfDocumentOpenMode.Import);
+        using var inDoc = string.IsNullOrEmpty(password)
+            ? PdfReader.Open(fullPath, PdfDocumentOpenMode.Import)
+            : PdfReader.Open(fullPath, password, PdfDocumentOpenMode.Import);
         int pageCount = inDoc.PageCount;
         if (pageCount == 0)
         {
@@ -160,17 +167,40 @@ public class PdfSplitProcessor : SingleFileProcessorBase
     /// file cannot be opened.
     /// </summary>
     /// <param name="fullPath">Path of the PDF file.</param>
+    /// <param name="password">Optional password for encrypted PDFs.</param>
     /// <returns>The page count, or 0 on failure.</returns>
-    public static int GetPageCount(string fullPath)
+    public static int GetPageCount(string fullPath, string? password = null)
     {
         try
         {
-            using var inDoc = PdfReader.Open(fullPath, PdfDocumentOpenMode.Import);
+            using var inDoc = string.IsNullOrEmpty(password)
+                ? PdfReader.Open(fullPath, PdfDocumentOpenMode.Import)
+                : PdfReader.Open(fullPath, password, PdfDocumentOpenMode.Import);
             return inDoc.PageCount;
         }
         catch
         {
             return 0;
+        }
+    }
+
+    /// <summary>
+    /// Returns true when the PDF at <paramref name="fullPath"/> is encrypted and requires a password.
+    /// </summary>
+    public static bool IsPasswordProtected(string fullPath)
+    {
+        try
+        {
+            using var inDoc = PdfReader.Open(fullPath, PdfDocumentOpenMode.Import);
+            return false;
+        }
+        catch (PdfReaderException ex) when (ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 
