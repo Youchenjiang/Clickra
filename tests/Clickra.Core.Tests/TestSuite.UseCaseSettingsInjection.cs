@@ -142,11 +142,19 @@ static partial class TestSuite
                 new Dictionary<string, object>
                 {
                     [TranslatePdfUseCase.TargetLanguageOptionKey] = "ja",
+                    [TranslatePdfUseCase.EngineOptionKey] = "custom-ai",
+                    [TranslatePdfUseCase.AiEndpointOptionKey] = "http://localhost:11434/v1",
+                    [TranslatePdfUseCase.AiApiKeyOptionKey] = "test-key",
+                    [TranslatePdfUseCase.AiModelOptionKey] = "llama3",
                     [ExecutionLocalizationOptions.LanguageKey] = "en",
                     [ProcessorExecutionOptions.DataDirectoryKey] = "C:\\CustomData"
                 });
             ConversionPlan plan = useCase.Plan(requestWithOptions);
             Assert.Equal("ja", (string)plan.NormalizedOptions[TranslatePdfUseCase.TargetLanguageOptionKey]);
+            Assert.Equal("custom-ai", (string)plan.NormalizedOptions[TranslatePdfUseCase.EngineOptionKey]);
+            Assert.Equal("http://localhost:11434/v1", (string)plan.NormalizedOptions[TranslatePdfUseCase.AiEndpointOptionKey]);
+            Assert.Equal("test-key", (string)plan.NormalizedOptions[TranslatePdfUseCase.AiApiKeyOptionKey]);
+            Assert.Equal("llama3", (string)plan.NormalizedOptions[TranslatePdfUseCase.AiModelOptionKey]);
             Assert.Equal("en", (string)plan.NormalizedOptions[ExecutionLocalizationOptions.LanguageKey]);
             Assert.Equal("C:\\CustomData", (string)plan.NormalizedOptions[ProcessorExecutionOptions.DataDirectoryKey]);
 
@@ -155,6 +163,10 @@ static partial class TestSuite
                 new[] { "paper.pdf" });
             ConversionPlan defaultPlan = useCase.Plan(requestWithoutOptions);
             Assert.Equal(SettingsController.TranslationTargetLanguage, (string)defaultPlan.NormalizedOptions[TranslatePdfUseCase.TargetLanguageOptionKey]);
+            Assert.Equal(SettingsController.TranslateEngine, (string)defaultPlan.NormalizedOptions[TranslatePdfUseCase.EngineOptionKey]);
+            Assert.Equal(SettingsController.TranslateAiEndpoint, (string)defaultPlan.NormalizedOptions[TranslatePdfUseCase.AiEndpointOptionKey]);
+            Assert.Equal(SettingsController.TranslateAiApiKey, (string)defaultPlan.NormalizedOptions[TranslatePdfUseCase.AiApiKeyOptionKey]);
+            Assert.Equal(SettingsController.TranslateAiModel, (string)defaultPlan.NormalizedOptions[TranslatePdfUseCase.AiModelOptionKey]);
             Assert.Equal(SettingsController.Language, (string)defaultPlan.NormalizedOptions[ExecutionLocalizationOptions.LanguageKey]);
         });
 

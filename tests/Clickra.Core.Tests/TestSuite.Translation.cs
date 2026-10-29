@@ -296,13 +296,13 @@ static partial class TestSuite
                     "Synthetic CJK output did not model the higher information density of CJK text.");
             }));
 
-        runner.Run("Translation engine defaults to Google with MyMemory fallback", () =>
+        runner.Run("Translation engine defaults to Google Free and supports Custom AI", () =>
             WithEnvVar(TranslationEngineEnvVar, null, () =>
             {
-                Assert.Equal("google-free+mymemory", TranslationEngineFactory.Create().Name);
+                Assert.Equal("google-free", TranslationEngineFactory.Create().Name);
 
-                Environment.SetEnvironmentVariable(TranslationEngineEnvVar, "mymemory");
-                Assert.Equal("mymemory", TranslationEngineFactory.Create().Name);
+                Environment.SetEnvironmentVariable(TranslationEngineEnvVar, "custom-ai");
+                Assert.Equal("custom-ai", TranslationEngineFactory.Create().Name);
 
                 Environment.SetEnvironmentVariable(TranslationEngineEnvVar, "google");
                 Assert.Equal("google-free", TranslationEngineFactory.Create().Name);
@@ -1137,24 +1137,6 @@ static partial class TestSuite
             int indexMatching = PdfBypassedParagraphRenderer.FindFormulaSubsequence(allLetters, formulaLettersMatching);
             Assert.True(indexMatching == 0, $"Expected 0, got {indexMatching}");
         });
-
-        if (string.Equals(Environment.GetEnvironmentVariable("CLICKRA_RUN_TRANSLATION_SMOKE"), "1", StringComparison.Ordinal))
-        {
-            runner.Run("MyMemory translator smoke test", () =>
-            {
-                var translator = new MyMemoryTranslator();
-                string translated = translator.TranslateAsync(
-                        "This vulnerability allows remote attackers to execute arbitrary code.",
-                        "zh-TW",
-                        CancellationToken.None)
-                    .GetAwaiter()
-                    .GetResult();
-
-                Assert.True(
-                    translated.Contains('攻') || translated.Contains('弱') || translated.Contains('漏'),
-                    $"Unexpected MyMemory translation: {translated}");
-            });
-        }
     }
 
     private sealed class RecordingTranslationEngine(

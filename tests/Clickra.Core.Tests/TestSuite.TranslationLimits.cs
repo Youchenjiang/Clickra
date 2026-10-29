@@ -19,55 +19,47 @@ static partial class TestSuite
 
     private static void RegisterProviderLimitTests(TestRunner runner)
     {
-        runner.Run("MyMemory requests carry no shared contact e-mail", () =>
+        runner.Run("OpenAI translator normalizes endpoint URL variants", () =>
         {
-            Uri uri = MyMemoryTranslator.BuildRequestUri(SampleHelloWorld, TargetLanguageZhTw);
-            Assert.True(!uri.Query.Contains("de=", StringComparison.OrdinalIgnoreCase),
-                $"MyMemory request must not send a shared e-mail: {uri}");
-            Assert.True(uri.Query.Contains("langpair=en%7Czh-TW", StringComparison.Ordinal),
-                $"Unexpected MyMemory language pair: {uri}");
+            Assert.Equal("https://api.openai.com/v1/chat/completions", OpenAiTranslator.NormalizeEndpoint(null));
+            Assert.Equal("https://api.openai.com/v1/chat/completions", OpenAiTranslator.NormalizeEndpoint(""));
+            Assert.Equal("https://api.openai.com/v1/chat/completions", OpenAiTranslator.NormalizeEndpoint("https://api.openai.com/v1"));
+            Assert.Equal("https://api.openai.com/v1/chat/completions", OpenAiTranslator.NormalizeEndpoint("https://api.openai.com/v1/"));
+            Assert.Equal("https://api.openai.com/v1/chat/completions", OpenAiTranslator.NormalizeEndpoint("https://api.openai.com/v1/chat/completions"));
+            Assert.Equal("http://localhost:11434/v1/chat/completions", OpenAiTranslator.NormalizeEndpoint("http://localhost:11434/v1"));
         });
 
-        runner.Run("MyMemory source language inference prevents en|en and identifies CJK/JA/KO", () =>
+        runner.Run("OpenAI translator parses valid chat completion response and strips code fences", () =>
         {
-            Assert.Equal("en", MyMemoryTranslator.DetectSourceLanguage(SampleHelloWorld, TargetLanguageZhTw) ?? "");
-            Assert.Equal("ja", MyMemoryTranslator.DetectSourceLanguage("こんにちは世界", TargetLanguageZhTw) ?? "");
-            Assert.Equal("ko", MyMemoryTranslator.DetectSourceLanguage("안녕하세요 세계", TargetLanguageZhTw) ?? "");
-            Assert.Equal("zh", MyMemoryTranslator.DetectSourceLanguage("測試中文段落", "en") ?? "");
-            Assert.Equal(TargetLanguageZhCn, MyMemoryTranslator.DetectSourceLanguage("測試中文段落", TargetLanguageZhTw) ?? "");
-            Assert.Equal(TargetLanguageZhTw, MyMemoryTranslator.DetectSourceLanguage("测试中文段落", TargetLanguageZhCn) ?? "");
-            Assert.Equal("ru", MyMemoryTranslator.DetectSourceLanguage("Привет мир", "en") ?? "");
-            Assert.Equal("el", MyMemoryTranslator.DetectSourceLanguage("Γειά σου", "en") ?? "");
-            Assert.Equal("ar", MyMemoryTranslator.DetectSourceLanguage("مرحبا بالعالم", "en") ?? "");
-            Assert.True(MyMemoryTranslator.DetectSourceLanguage("12345 67890", TargetLanguageZhTw) == null,
-                "Non-letter text must have no inferable source language.");
+            string normalJson = "{\"choices\":[{\"message\":{\"content\":\"你好世界\"}}]}";
+            Assert.Equal("你好世界", OpenAiTranslator.ParseResponse(normalJson, "Hello world"));
 
-            Uri uriEn = MyMemoryTranslator.BuildRequestUri("測試中文段落", "en");
-            Assert.True(uriEn.Query.Contains("langpair=zh%7Cen", StringComparison.Ordinal),
-                $"CJK to English must pair zh|en instead of en|en: {uriEn}");
+            string fencedJson = "{\"choices\":[{\"message\":{\"content\":\"```markdown\\n你好世界\\n```\"}}]}";
+            Assert.Equal("你好世界", OpenAiTranslator.ParseResponse(fencedJson, "Hello world"));
 
-            Uri uriJa = MyMemoryTranslator.BuildRequestUri("こんにちは世界", TargetLanguageZhTw);
-            Assert.True(uriJa.Query.Contains("langpair=ja%7Czh-TW", StringComparison.Ordinal),
-                $"Japanese to Chinese must pair ja|zh-TW: {uriJa}");
+            string errorJson = "{\"error\":{\"message\":\"Invalid key\"}}";
+            Assert.Throws<InvalidOperationException>(() => OpenAiTranslator.ParseResponse(errorJson, "Hello"));
+
+            string emptyJson = "{\"choices\":[]}";
+            Assert.Throws<InvalidOperationException>(() => OpenAiTranslator.ParseResponse(emptyJson, "Hello"));
         });
 
-        runner.Run("MyMemory quota warning is rejected instead of rendered", () =>
+        runner.Run("OpenAI translator parses batch JSON array responses", () =>
         {
-            Assert.Throws<TranslationQuotaExceededException>(() => MyMemoryTranslator.ParseResponse(
-                "{\"responseData\":{\"translatedText\":\"" + MyMemoryQuotaWarning + "\"},\"quotaFinished\":false,\"responseStatus\":429}",
-                SampleHelloWorld));
-            Assert.Throws<TranslationQuotaExceededException>(() => MyMemoryTranslator.ParseResponse(
-                "{\"responseData\":{\"translatedText\":\"你好\"},\"quotaFinished\":true,\"responseStatus\":200}",
-                SampleHello));
-            Assert.Throws<TranslationRateLimitException>(() => MyMemoryTranslator.ParseResponse(
-                "{\"responseData\":{\"translatedText\":\"slow down\"},\"responseStatus\":429}",
-                SampleHello));
-            Assert.Throws<InvalidOperationException>(() => MyMemoryTranslator.ParseResponse(
-                "{\"responseData\":{\"translatedText\":\"INVALID LANGUAGE PAIR\"},\"responseStatus\":\"403\"}",
-                SampleHello));
-            Assert.Equal("你好", MyMemoryTranslator.ParseResponse(
-                "{\"responseData\":{\"translatedText\":\"你好\"},\"quotaFinished\":false,\"responseStatus\":200}",
-                SampleHello));
+            var valid = OpenAiTranslator.ParseJsonArray("[\"一\", \"二\", \"三\"]", 3);
+            Assert.True(valid != null && valid.Count == 3, "Valid JSON array of 3 items should parse successfully");
+            Assert.Equal("一", valid![0]);
+            Assert.Equal("二", valid[1]);
+            Assert.Equal("三", valid[2]);
+
+            var fenced = OpenAiTranslator.ParseJsonArray("```json\n[\"一\", \"二\"]\n```", 2);
+            Assert.True(fenced != null && fenced.Count == 2, "Markdown fenced JSON array should parse successfully");
+
+            var countMismatch = OpenAiTranslator.ParseJsonArray("[\"一\"]", 2);
+            Assert.True(countMismatch == null, "Count mismatch should return null");
+
+            var nonJson = OpenAiTranslator.ParseJsonArray("Just text", 1);
+            Assert.True(nonJson == null, "Non-JSON response should return null");
         });
 
         runner.Run("Translation guard rejects a provider quota warning", () =>
