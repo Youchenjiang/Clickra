@@ -1,6 +1,6 @@
 # Microsoft Store 목록 - 한국어
 
-다음은 Microsoft 파트너 센터 (Partner Center)에 직접 복사하여 붙여넣을 수 있는 전체 정보입니다.
+다음은 Microsoft 파트너 센터 (Partner Center)에 직접 복사하여 붙여넣을 수 있는 전체 정보입니다 (v3.15.0.0 기준).
 
 ---
 
@@ -15,10 +15,11 @@ Clickra는 Windows 파일 탐색기를 위한 네이티브 우클릭 확장 프�
 소스 코드: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 사용자 지정 AI 논문 번역 엔진 지원
-- 암호화된 PDF 사전 보호 및 빠른 암호 해제
-- 한국어, 영어, 번체, 간체, 일본어 5개 국어 완전 지원
-- 동적 텍스트 설정 및 API 키 보안 마스킹
+- Gemini 및 OpenAI API를 지원하는 사용자 지정 AI 논문 번역 엔진
+- 암호화된 PDF 사전 보호 및 시각적 분할기 암호 해제·미리보기 지원
+- 접근성을 지원하는 새로운 네이티브 다크 테마 벡터 대화 상자
+- 한국어, 영어, 번체, 간체, 일본어 5개 국어 완전 현지화
+- 요청 제한 및 자동 재시도를 처리하는 강력한 논문 번역 복원력
 
 ## Product Features
 *(최대 20개, 글머리 기호로 표시)*
