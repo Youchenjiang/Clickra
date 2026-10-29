@@ -43,7 +43,7 @@ public sealed partial class VisualSplitterControl : UserControl
     private int _renderSeq;
     private bool _suppressSelection;
     private PdfDocument? _pdfDoc;
-    private string? _password;
+    private readonly string? _password;
 
     // Inline preview zoom (mirrors the CLI: factor 1.0 = fit, clamped to 8x).
     private float _zoomFactor = 1f;
