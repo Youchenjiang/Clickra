@@ -43,16 +43,20 @@ public sealed partial class VisualSplitterControl : UserControl
     private int _renderSeq;
     private bool _suppressSelection;
     private PdfDocument? _pdfDoc;
+    private string? _password;
 
     // Inline preview zoom (mirrors the CLI: factor 1.0 = fit, clamped to 8x).
     private float _zoomFactor = 1f;
 
-    public VisualSplitterControl(string pdfPath)
+    public VisualSplitterControl(string pdfPath, string? password = null)
     {
         InitializeComponent();
 
         _pdfPath = pdfPath;
-        _splitModel = VisualSplitModel.FromFile(pdfPath);
+        _password = password;
+        _splitModel = string.IsNullOrEmpty(password)
+            ? VisualSplitModel.FromFile(pdfPath)
+            : VisualSplitModel.FromFile(pdfPath, password);
         SyncModelState();
 
         string L(string key) => Localization.T(key, SettingsPresentationController.Shared.Language);
@@ -159,7 +163,9 @@ public sealed partial class VisualSplitterControl : UserControl
         try
         {
             var file = await StorageFile.GetFileFromPathAsync(_pdfPath);
-            _pdfDoc = await PdfDocument.LoadFromFileAsync(file);
+            _pdfDoc = string.IsNullOrEmpty(_password)
+                ? await PdfDocument.LoadFromFileAsync(file)
+                : await PdfDocument.LoadFromFileAsync(file, _password);
         }
         catch
         {
@@ -350,7 +356,7 @@ public sealed partial class VisualSplitterControl : UserControl
             // Windows PDF renderer unavailable (e.g. encrypted file): fall back to the
             // shared Core word-overlay renderer.
             string fontName = PdfPageThumbnailRenderer.GetTextFontName(SettingsPresentationController.Shared.Language);
-            var bmp = await Task.Run(() => PdfPageThumbnailRenderer.RenderPageFromFile(_pdfPath, page, RenderWidth, fontName));
+            var bmp = await Task.Run(() => PdfPageThumbnailRenderer.RenderPageFromFile(_pdfPath, page, RenderWidth, fontName, _password));
             source = bmp == null ? null : await ToBitmapImageAsync(bmp);
             bmp?.Dispose();
         }
