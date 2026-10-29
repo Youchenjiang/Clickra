@@ -151,26 +151,8 @@ namespace Clickra.UI
                 return;
             }
 
-            if (ConversionUseCases.TryGet(command, out IConversionUseCase? useCase))
-            {
-                string lang = SettingsPresentationController.Shared.Language;
-                var request = new ConversionRequest(
-                    command,
-                    files,
-                    new Dictionary<string, object> { [ConversionRequest.LanguageOptionKey] = lang });
-                ConversionValidationResult validation = useCase!.Validate(request);
-                if (!validation.IsValid)
-                {
-                    NativeDialogs.Error(
-                        IntPtr.Zero,
-                        Loc("progress_sub_failed"),
-                        validation.Error ?? Loc("progress_sub_failed"),
-                        _dpiScale,
-                        lang,
-                        Loc("progress_header_failed"));
-                    return;
-                }
-            }
+            if (!ValidateCommandInputs(command, files))
+                return;
 
             // 清除先前右鍵操作殘留的 ClickraShell surrogate（dllhost，帶套件身分），
             // 避免解除安裝時被「應用程式仍在執行」擋住。
@@ -279,6 +261,30 @@ namespace Clickra.UI
             Marshal.FreeHGlobal(hClass);
 
             ShowPendingFailureAlert(hadRect ? progressRect : null);
+        }
+
+        private bool ValidateCommandInputs(string command, List<string> files)
+        {
+            if (!ConversionUseCases.TryGet(command, out IConversionUseCase? useCase))
+                return true;
+
+            string lang = SettingsPresentationController.Shared.Language;
+            var request = new ConversionRequest(
+                command,
+                files,
+                new Dictionary<string, object> { [ConversionRequest.LanguageOptionKey] = lang });
+            ConversionValidationResult validation = useCase!.Validate(request);
+            if (validation.IsValid)
+                return true;
+
+            NativeDialogs.Error(
+                IntPtr.Zero,
+                Loc("progress_sub_failed"),
+                validation.Error ?? Loc("progress_sub_failed"),
+                _dpiScale,
+                lang,
+                Loc("progress_header_failed"));
+            return false;
         }
 
         private void ShowPendingFailureAlert(RECT? centerRect)
