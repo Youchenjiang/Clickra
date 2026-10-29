@@ -17,6 +17,7 @@ namespace Clickra.UI
         private const string UserAbortedMessage = "User Aborted";
 
         private string? _inputPassword = null;
+        private string? _lastResolvedPassword = null;
         private bool _passwordCancelled = false;
         private volatile bool _isPromptingPassword = false;
         private string _passwordPromptFilename = "";
@@ -146,6 +147,22 @@ namespace Clickra.UI
         /// <summary>Launches the Native visual splitter and returns the selected page specification.</summary>
         private string PromptVisualSplitPages(IntPtr hwnd, string filePath)
         {
+            string? password = null;
+            if (Clickra.Core.Modules.PdfSplit.Processing.PdfSplitProcessor.IsPasswordProtected(filePath))
+            {
+                bool isRetry = false;
+                while (true)
+                {
+                    password = ResolveDecryptPassword(hwnd, filePath, isRetry);
+                    if (Clickra.Core.Modules.PdfSplit.Processing.PdfSplitProcessor.GetPageCount(filePath, password) > 0)
+                    {
+                        _lastResolvedPassword = password;
+                        break;
+                    }
+                    isRetry = true;
+                }
+            }
+
             lock (_stateLock)
             {
                 _isPromptingPassword = true;
@@ -154,7 +171,7 @@ namespace Clickra.UI
                 _passwordPromptIsRetry = false;
                 _inputPassword = null;
                 _passwordCancelled = false;
-                InitializeVisualSplitter(filePath);
+                InitializeVisualSplitter(filePath, password);
             }
             _progressPresentation.WaitForInput();
 
@@ -183,6 +200,11 @@ namespace Clickra.UI
         /// OperationCanceledException when the prompt is cancelled.</summary>
         private string ResolveDecryptPassword(IntPtr hwnd, string filePath, bool isRetry)
         {
+            if (!isRetry && !string.IsNullOrEmpty(_lastResolvedPassword))
+            {
+                return _lastResolvedPassword;
+            }
+            _lastResolvedPassword = null;
             lock (_stateLock)
             {
                 _isPromptingPassword = true;
@@ -210,6 +232,7 @@ namespace Clickra.UI
             {
                 throw new OperationCanceledException(Localization.T("error_user_aborted", SettingsPresentationController.Shared.Language));
             }
+            _lastResolvedPassword = input;
             return input ?? "";
         }
 

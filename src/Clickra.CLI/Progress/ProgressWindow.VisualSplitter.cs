@@ -49,6 +49,8 @@ public partial class ProgressWindow
 
     /// <summary>Path of the PDF being split.</summary>
     private string _visualSplitFilePath = "";
+    /// <summary>Password for encrypted PDFs, or null.</summary>
+    private string? _visualSplitPassword = null;
     /// <summary>High-resolution render currently shown in the zoom lightbox, or null.</summary>
     private Bitmap? _visualSplitZoomBmp = null;
     /// <summary>Page number the current zoom render belongs to (-1 when none).</summary>
@@ -93,14 +95,17 @@ public partial class ProgressWindow
     /// count, caches page thumbnails, seeds the initial custom segments (halves of the
     /// document) and resets preview/zoom state.
     /// </summary>
-    private void InitializeVisualSplitter(string filePath)
+    private void InitializeVisualSplitter(string filePath, string? password = null)
     {
         _visualSplitFilePath = filePath;
-        _visualSplitModel = VisualSplitModel.FromFile(filePath);
+        _visualSplitPassword = password;
+        _visualSplitModel = string.IsNullOrEmpty(password)
+            ? VisualSplitModel.FromFile(filePath)
+            : VisualSplitModel.FromFile(filePath, password);
         _visualSplitTotalPages = _visualSplitModel.TotalPages;
         SyncVisualSplitStateFromModel();
 
-        CachePdfPageThumbnails(filePath);
+        CachePdfPageThumbnails(filePath, password);
         _visualSplitIsZoomed = false;
         _visualSplitZoomFactor = 1f;
         _visualSplitZoomPanX = 0f;
@@ -113,7 +118,7 @@ public partial class ProgressWindow
     /// stores them in the thumbnail cache keyed by 1-based page number, disposing the
     /// previous cache first.
     /// </summary>
-    private void CachePdfPageThumbnails(string filePath)
+    private void CachePdfPageThumbnails(string filePath, string? password = null)
     {
         _visualSplitThumbnailGeneration++;
         foreach (var kvp in _visualSplitPageThumbnails)
@@ -131,7 +136,7 @@ public partial class ProgressWindow
             {
                 try
                 {
-                    var pageBmp = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, p, 660, fontName);
+                    var pageBmp = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, p, 660, fontName, password);
                     if (pageBmp != null)
                         _visualSplitPageThumbnails[p] = pageBmp;
                 }
@@ -174,7 +179,7 @@ public partial class ProgressWindow
             lock (_stateLock)
                 if (!IsVisualSplitThumbnailCurrent(generation)) return;
 
-            bitmap = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, page, 660, GetThumbnailFontName());
+            bitmap = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, page, 660, GetThumbnailFontName(), _visualSplitPassword);
             if (!TryCacheVisualSplitThumbnail(page, generation, bitmap)) return;
             bitmap = null; // Ownership has moved into the cache.
             if (_hwnd != IntPtr.Zero)
@@ -265,7 +270,7 @@ public partial class ProgressWindow
             try
             {
                 if (pageNum < 1) return;
-                var bmp = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, pageNum, targetW, fontName);
+                var bmp = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, pageNum, targetW, fontName, _visualSplitPassword);
                 if (bmp == null) return;
 
                 lock (_stateLock)
@@ -651,8 +656,16 @@ public partial class ProgressWindow
         g.DrawRectangle(badgePen, badgeX, badgeY, badgeW, badgeH);
 
         using var badgeTextBrush = new SolidBrush(Color.FromArgb(120, 240, 140));
-        string truncOutName = UIHelper.TruncateText(g, outName, tipFont, badgeW - 55 * s, s);
-        g.DrawString(Loc("pdf_split_badge_format", truncOutName, cnt), tipFont, badgeTextBrush, badgeX + 4 * s, badgeY + 2 * s);
+        string sampleSuffix = Loc("pdf_split_badge_format", "", cnt);
+        float extraW = g.MeasureString(sampleSuffix, tipFont).Width;
+        float maxNameW = Math.Max(20 * s, badgeW - extraW - 10 * s);
+        string truncOutName = UIHelper.TruncateText(g, outName, tipFont, maxNameW, s);
+        string badgeText = Loc("pdf_split_badge_format", truncOutName, cnt);
+
+        var oldClip = g.Clip;
+        g.SetClip(new RectangleF(badgeX, badgeY, badgeW, badgeH));
+        g.DrawString(badgeText, tipFont, badgeTextBrush, badgeX + 4 * s, badgeY + 2 * s);
+        g.Clip = oldClip;
 
         int previewIndex = Math.Clamp(_visualSplitCurrentPreviewPageIndex, 0, cnt - 1);
         int currentPageNum = activeSeg.Start + previewIndex;
