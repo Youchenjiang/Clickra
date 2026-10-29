@@ -347,6 +347,13 @@ public sealed partial class TaskProgressPage : Page
     private async Task<string?> PromptSplitAsync(int fileIndex, string pdfPath)
     {
         if (_parkRequested) throw ConversionExecutionController.CreateParkSignal(_parkReason, fileIndex);
+        string? password = null;
+        if (Clickra.Core.Modules.PdfSplit.Processing.PdfSplitProcessor.IsPasswordProtected(pdfPath))
+        {
+            password = await PromptPasswordAsync(fileIndex);
+            if (password is null) return null;
+        }
+
         _promptActive = true;
         _progressPresentation.WaitForInput();
         try
@@ -361,7 +368,7 @@ public sealed partial class TaskProgressPage : Page
                 ProgressCardHost.Visibility = Visibility.Collapsed;
                 _preSplitSize = Window?.AppWindow.Size ?? CompactWindowSize;
                 ResizeHost(SplitWindowSize);
-                return SplitOverlay.ShowForAsync(pdfPath);
+                return SplitOverlay.ShowForAsync(pdfPath, password);
             });
             if (_parkRequested) throw ConversionExecutionController.CreateParkSignal(_parkReason, fileIndex);
             return result;

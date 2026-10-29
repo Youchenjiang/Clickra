@@ -1,5 +1,6 @@
 using Clickra.Core;
 using Clickra.Core.Application;
+using Clickra.Core.Modules.PdfDecrypt.Application;
 using Clickra.Core.Processors;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
@@ -8,6 +9,8 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
+    private const string DecryptTestLanguage = "zh-TW";
+
     public static void RegisterPdfDecryptTests(TestRunner runner)
     {
         runner.Run("PDF decrypt removes protection with the correct password", () =>
@@ -32,7 +35,7 @@ static partial class TestSuite
                     new Dictionary<string, object>
                     {
                         ["password"] = password,
-                        [ExecutionLocalizationOptions.LanguageKey] = "zh-TW"
+                        [ExecutionLocalizationOptions.LanguageKey] = DecryptTestLanguage
                     });
 
                 Assert.True(File.Exists(output), "Expected decrypted PDF to be written.");
@@ -50,6 +53,8 @@ static partial class TestSuite
         runner.Run("Decrypt use case owns planning and password retry", TestDecryptUseCaseOwnsWorkflow);
         runner.Run("Decrypt use case honors an explicit output directory", TestDecryptUseCaseHonorsOutputDirectory);
         runner.Run("Decrypt use case can run without task tracking", TestDecryptUseCaseCanRunWithoutTaskTracking);
+        runner.Run("IsEncrypted detects encrypted and unencrypted PDFs", TestIsEncryptedDetection);
+        runner.Run("Encrypted PDF processing throws localized error across pipelines", TestEncryptedPdfThrowsLocalizedErrors);
     }
 
     private static void TestDecryptUseCaseCanRunWithoutTaskTracking()
@@ -204,5 +209,113 @@ static partial class TestSuite
     private static void TryDeleteDecryptFixture(string path)
     {
         try { if (File.Exists(path)) File.Delete(path); } catch { /* Ignored: best-effort test fixture cleanup. */ }
+    }
+
+    private static void TestIsEncryptedDetection()
+    {
+        string encryptedPath = Path.Combine(Path.GetTempPath(), $"clickra-enc-test-{Guid.NewGuid():N}.pdf");
+        string unencryptedPath = Path.Combine(Path.GetTempPath(), $"clickra-unenc-test-{Guid.NewGuid():N}.pdf");
+        try
+        {
+            using (var doc = new PdfDocument())
+            {
+                doc.AddPage();
+                doc.SecuritySettings.UserPassword = "test";
+                doc.Save(encryptedPath);
+            }
+            using (var doc = new PdfDocument())
+            {
+                doc.AddPage();
+                doc.Save(unencryptedPath);
+            }
+
+            Assert.True(Clickra.Core.Modules.PdfDecrypt.Processing.PdfDecryptProcessor.IsEncrypted(encryptedPath),
+                "Expected encrypted PDF to be detected as encrypted.");
+            Assert.False(Clickra.Core.Modules.PdfDecrypt.Processing.PdfDecryptProcessor.IsEncrypted(unencryptedPath),
+                "Expected unencrypted PDF to be detected as not encrypted.");
+            Assert.False(Clickra.Core.Modules.PdfDecrypt.Processing.PdfDecryptProcessor.IsEncrypted("non-existent-file-path.pdf"),
+                "Expected non-existent file to be detected as not encrypted.");
+        }
+        finally
+        {
+            TryDeleteDecryptFixture(encryptedPath);
+            TryDeleteDecryptFixture(unencryptedPath);
+        }
+    }
+
+    private static void TestEncryptedPdfThrowsLocalizedErrors()
+    {
+        string encryptedPath = Path.Combine(Path.GetTempPath(), $"clickra-enc-err-{Guid.NewGuid():N}.pdf");
+        string outCompress = Path.Combine(Path.GetTempPath(), $"clickra-enc-comp-{Guid.NewGuid():N}.pdf");
+        string outMerge = Path.Combine(Path.GetTempPath(), $"clickra-enc-merge-{Guid.NewGuid():N}.pdf");
+        string outTranslate = Path.Combine(Path.GetTempPath(), $"clickra-enc-trans-{Guid.NewGuid():N}.pdf");
+        try
+        {
+            using (var doc = new PdfDocument())
+            {
+                doc.AddPage();
+                doc.SecuritySettings.UserPassword = "test";
+                doc.Save(encryptedPath);
+            }
+
+            var compOptions = new Dictionary<string, object>
+            {
+                [ExecutionLocalizationOptions.LanguageKey] = DecryptTestLanguage
+            };
+            var compProcessor = new Clickra.Core.Modules.PdfCompression.Processing.PdfCompressionProcessor();
+            var exComp = Assert.Throws<PdfEncryptedException>(() =>
+            {
+                compProcessor.Process(new List<string> { encryptedPath }, outCompress, compOptions);
+            });
+            Assert.True(exComp.Message.Contains(Localization.T("pdf_err_encrypted_compress", DecryptTestLanguage)),
+                "Expected localized compression encryption error.");
+            Assert.True(exComp.ResourceKey == "pdf_err_encrypted_compress", "Expected resource key match.");
+
+            var mergeProcessor = new Clickra.Core.Modules.PdfMerge.Processing.PdfMergeProcessor();
+            var exMerge = Assert.Throws<PdfEncryptedException>(() =>
+            {
+                mergeProcessor.Process(new List<string> { encryptedPath }, outMerge, compOptions);
+            });
+            Assert.True(exMerge.Message.Contains(Localization.T("pdf_err_encrypted_merge", DecryptTestLanguage)),
+                "Expected localized merge encryption error.");
+            Assert.True(exMerge.ResourceKey == "pdf_err_encrypted_merge", "Expected resource key match.");
+
+            var transOptions = new Dictionary<string, object>
+            {
+                ["targetLang"] = "en",
+                [ExecutionLocalizationOptions.LanguageKey] = DecryptTestLanguage
+            };
+            var transProcessor = new Clickra.Core.Modules.PdfTranslation.Execution.PdfTranslateProcessor();
+            var exTrans = Assert.Throws<PdfEncryptedException>(() =>
+            {
+                transProcessor.Process(new List<string> { encryptedPath }, outTranslate, transOptions);
+            });
+            Assert.True(exTrans.Message.Contains(Localization.T("pdf_err_encrypted_translate", DecryptTestLanguage)),
+                "Expected localized translation encryption error.");
+            Assert.True(exTrans.ResourceKey == "pdf_err_encrypted_translate", "Expected resource key match.");
+
+            // Test Preflight Validate on UseCases
+            var compUseCase = new Clickra.Core.Modules.PdfCompression.Application.CompressPdfUseCase();
+            var compVal = compUseCase.Validate(new ConversionRequest("compress-pdf", new[] { encryptedPath }, compOptions));
+            Assert.False(compVal.IsValid, "Expected compress preflight to fail on encrypted file.");
+            Assert.True(compVal.Error == Localization.T("pdf_err_encrypted_compress", DecryptTestLanguage), "Expected localized compress preflight error.");
+
+            var mergeUseCase = new Clickra.Core.Modules.PdfMerge.Application.MergePdfUseCase();
+            var mergeVal = mergeUseCase.Validate(new ConversionRequest("merge-pdf", new[] { encryptedPath, encryptedPath }, compOptions));
+            Assert.False(mergeVal.IsValid, "Expected merge preflight to fail on encrypted file.");
+            Assert.True(mergeVal.Error == Localization.T("pdf_err_encrypted_merge", DecryptTestLanguage), "Expected localized merge preflight error.");
+
+            var transUseCase = new Clickra.Core.Modules.PdfTranslation.Application.TranslatePdfUseCase();
+            var transVal = transUseCase.Validate(new ConversionRequest("translate-pdf", new[] { encryptedPath }, transOptions));
+            Assert.False(transVal.IsValid, "Expected translate preflight to fail on encrypted file.");
+            Assert.True(transVal.Error == Localization.T("pdf_err_encrypted_translate", DecryptTestLanguage), "Expected localized translate preflight error.");
+        }
+        finally
+        {
+            TryDeleteDecryptFixture(encryptedPath);
+            TryDeleteDecryptFixture(outCompress);
+            TryDeleteDecryptFixture(outMerge);
+            TryDeleteDecryptFixture(outTranslate);
+        }
     }
 }

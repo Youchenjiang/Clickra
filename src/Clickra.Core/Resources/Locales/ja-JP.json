@@ -457,5 +457,8 @@
   "diag_email_version": "Clickra バージョン: {0}",
   "diag_email_time": "日時: {0}",
   "diag_email_problem_desc": "[問題の説明]",
-  "diag_email_problem_placeholder": "（ここに発生した問題の詳細をご記入ください...）"
+  "diag_email_problem_placeholder": "（ここに発生した問題の詳細をご記入ください...）",
+  "pdf_err_encrypted_translate": "このPDFファイルはパスワードで保護されているか暗号化されています。「パスワード解除」で保護を解除してから翻訳してください。",
+  "pdf_err_encrypted_compress": "このPDFファイルはパスワードで保護されているか暗号化されています。「パスワード解除」で保護を解除してから圧縮してください。",
+  "pdf_err_encrypted_merge": "このPDFファイルはパスワードで保護されているか暗号化されています。「パスワード解除」で保護を解除してから結合してください。"
 }

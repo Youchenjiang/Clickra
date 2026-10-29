@@ -13,6 +13,8 @@ public sealed record ConversionRequest(
     bool TrackTaskLifecycle = true,
     ITaskLifecycleRepository? TaskLifecycleRepository = null)
 {
+    public const string LanguageOptionKey = "ui_language";
+
     /// <summary>Backwards-compatible constructor for existing compiled binaries.</summary>
     public ConversionRequest(
         string command,

@@ -87,14 +87,17 @@ public static class PdfPageThumbnailRenderer
     /// built-in PDF engine first (real text, vector graphics and images), falling back
     /// to the PdfPig word overlay when the engine cannot open the file (e.g. encrypted
     /// PDFs).</summary>
-    public static Bitmap? RenderPageFromFile(string filePath, int pageNumber, int targetWidth, string fontName)
+    public static Bitmap? RenderPageFromFile(string filePath, int pageNumber, int targetWidth, string fontName, string? password = null)
     {
-        var real = TryRenderWithWindowsPdf(filePath, pageNumber, targetWidth);
+        var real = TryRenderWithWindowsPdf(filePath, pageNumber, targetWidth, password);
         if (real != null) return real;
 
         try
         {
-            using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(filePath);
+            var parsingOptions = string.IsNullOrEmpty(password) ? null : new UglyToad.PdfPig.ParsingOptions { Password = password };
+            using var pigDoc = parsingOptions != null
+                ? UglyToad.PdfPig.PdfDocument.Open(filePath, parsingOptions)
+                : UglyToad.PdfPig.PdfDocument.Open(filePath);
             if (pageNumber < 1 || pageNumber > pigDoc.NumberOfPages) return null;
             return RenderPage(pigDoc.GetPage(pageNumber), targetWidth, fontName);
         }
@@ -105,12 +108,14 @@ public static class PdfPageThumbnailRenderer
 
     /// <summary>Renders one 1-based page with the Windows built-in PDF engine at the
     /// given target width, or null when the engine cannot open or render the page.</summary>
-    private static Bitmap? TryRenderWithWindowsPdf(string filePath, int pageNumber, int targetWidth)
+    private static Bitmap? TryRenderWithWindowsPdf(string filePath, int pageNumber, int targetWidth, string? password = null)
     {
         try
         {
             var file = Windows.Storage.StorageFile.GetFileFromPathAsync(filePath).AsTask().GetAwaiter().GetResult();
-            var doc = Windows.Data.Pdf.PdfDocument.LoadFromFileAsync(file).AsTask().GetAwaiter().GetResult();
+            var doc = string.IsNullOrEmpty(password)
+                ? Windows.Data.Pdf.PdfDocument.LoadFromFileAsync(file).AsTask().GetAwaiter().GetResult()
+                : Windows.Data.Pdf.PdfDocument.LoadFromFileAsync(file, password).AsTask().GetAwaiter().GetResult();
             if (pageNumber < 1 || pageNumber > (int)doc.PageCount) return null;
 
             using var stream = new Windows.Storage.Streams.InMemoryRandomAccessStream();

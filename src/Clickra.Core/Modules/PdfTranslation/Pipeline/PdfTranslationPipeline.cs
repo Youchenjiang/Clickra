@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Clickra.Core.Application;
+using Clickra.Core.Modules.PdfDecrypt.Application;
 using Clickra.Core.Modules.PdfTranslation.Model;
 using Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
 using Clickra.Core.Modules.PdfTranslation.Translation;
@@ -71,7 +73,7 @@ public static class PdfTranslationPipeline
             CancellationToken operationToken = deadlineCts.Token;
 
             onProgress?.Invoke(10, 100, Localization.T("pdf_progress_analyzing", language));
-            using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(inputPath);
+            using var pigDoc = OpenPigDocument(inputPath, language);
             sourcePages = pigDoc.NumberOfPages;
             var pageParagraphs = new List<List<PdfParagraph>>();
 
@@ -262,4 +264,21 @@ public static class PdfTranslationPipeline
     // so older reflection-based tests continue to exercise the same rule.
     private static bool IsLikelyBarChartAxisLabel(PdfParagraph para) =>
         PdfChartLabelClassifier.IsLikelyBarChartAxisLabel(para);
+
+    private static UglyToad.PdfPig.PdfDocument OpenPigDocument(string inputPath, string language)
+    {
+        const string encryptedTranslateErrorKey = "pdf_err_encrypted_translate";
+        try
+        {
+            return UglyToad.PdfPig.PdfDocument.Open(inputPath);
+        }
+        catch (UglyToad.PdfPig.Exceptions.PdfDocumentEncryptedException ex)
+        {
+            throw new PdfEncryptedException(encryptedTranslateErrorKey, inputPath, Localization.T(encryptedTranslateErrorKey, language), ex);
+        }
+        catch (Exception ex) when (ex is not PdfEncryptedException && (ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("encrypted", StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new PdfEncryptedException(encryptedTranslateErrorKey, inputPath, Localization.T(encryptedTranslateErrorKey, language), ex);
+        }
+    }
 }

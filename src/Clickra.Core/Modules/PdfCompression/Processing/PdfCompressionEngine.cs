@@ -2,7 +2,10 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Collections.Generic;
+using Clickra.Core.Application;
 using Clickra.Core.Modules.PdfCompression.Application;
+using Clickra.Core.Modules.PdfDecrypt.Application;
+using Clickra.Core.Processors;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 
@@ -54,7 +57,7 @@ public sealed class NativePdfCompressionEngine : IPdfCompressionEngine
             var settings = PdfCompressionSettings.Parse(options);
 
             onProgress?.Invoke(15, 100, "正在讀取 PDF...");
-            using var source = PdfReader.Open(inputPath, PdfDocumentOpenMode.Import);
+            using var source = OpenSourceDocument(inputPath, options);
             using var output = new PdfDocument();
 
             CopyDocumentInfo(source, output, settings.Level);
@@ -152,5 +155,18 @@ public sealed class NativePdfCompressionEngine : IPdfCompressionEngine
             : value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
         return $"{valueStr} {units[unitIndex]}";
+    }
+
+    private static PdfDocument OpenSourceDocument(string inputPath, Dictionary<string, object>? options)
+    {
+        try
+        {
+            return PdfReader.Open(inputPath, PdfDocumentOpenMode.Import);
+        }
+        catch (PdfReaderException ex) when (ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("encrypted", StringComparison.OrdinalIgnoreCase))
+        {
+            string lang = ExecutionLocalizationOptions.ReadLanguage(options);
+            throw new PdfEncryptedException("pdf_err_encrypted_compress", inputPath, Localization.T("pdf_err_encrypted_compress", lang), ex);
+        }
     }
 }

@@ -18,6 +18,9 @@ public abstract class ConversionUseCaseBase : IConversionUseCase
     protected virtual ConversionValidationResult ValidateOptions(ConversionRequest request) =>
         ConversionValidationResult.Success();
 
+    protected virtual ConversionValidationResult ValidateInputs(ConversionRequest request) =>
+        ConversionValidationResult.Success();
+
     public ConversionValidationResult Validate(ConversionRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -29,9 +32,14 @@ public abstract class ConversionUseCaseBase : IConversionUseCase
         string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(Command);
         string? invalid = request.InputFiles.FirstOrDefault(path =>
             !allowed.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase));
-        return invalid is null
-            ? ValidateOptions(request)
-            : ConversionValidationResult.Failure(UnsupportedInputError(invalid));
+        if (invalid is not null)
+            return ConversionValidationResult.Failure(UnsupportedInputError(invalid));
+
+        var inputValidation = ValidateInputs(request);
+        if (!inputValidation.IsValid)
+            return inputValidation;
+
+        return ValidateOptions(request);
     }
 
     protected (Stopwatch Stopwatch, ConversionTaskLifecycle? Lifecycle) StartExecution(

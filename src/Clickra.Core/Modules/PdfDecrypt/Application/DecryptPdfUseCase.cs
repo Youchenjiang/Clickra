@@ -19,6 +19,17 @@ public sealed class DecryptPdfUseCase : PerFileConversionUseCaseBase
     protected override string UnsupportedInputError(string path) => $"Unsupported decrypt input '{path}'.";
     protected override string GetOutputFileName(string input) =>
         Path.GetFileNameWithoutExtension(input) + "_decrypted.pdf";
+
+    protected override ConversionValidationResult ValidateInputs(ConversionRequest request)
+    {
+        if (request.InputFiles.Any(f => File.Exists(f) && !PdfDecryptProcessor.IsEncrypted(f)))
+        {
+            string lang = ExecutionLocalizationOptions.ReadLanguage(request.Options);
+            return ConversionValidationResult.Failure(Localization.T("pdf_not_encrypted", lang));
+        }
+
+        return ConversionValidationResult.Success();
+    }
     public override IReadOnlySet<ConversionCapability> Capabilities =>
         new HashSet<ConversionCapability> { ConversionCapability.Password };
 
@@ -45,12 +56,12 @@ public sealed class DecryptPdfUseCase : PerFileConversionUseCaseBase
         object? executionState,
         CancellationToken cancellationToken)
     {
-        string password = "";
-        bool isRetry = false;
-        while (true)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            try
+        await ExecuteWithPasswordRetryAsync(
+            index,
+            plan,
+            interaction,
+            null,
+            async password =>
             {
                 var processor = new PdfDecryptProcessor();
                 var options = new Dictionary<string, object>
@@ -68,21 +79,9 @@ public sealed class DecryptPdfUseCase : PerFileConversionUseCaseBase
                             ReportFileProgress(plan, index, progress, current, message),
                         cancellationToken),
                     cancellationToken);
-                return;
-            }
-            catch (PdfReaderException ex) when (IsPasswordError(ex))
-            {
-                string? supplied = await interaction.RequestPasswordAsync(
-                    index,
-                    plan.Inputs[index],
-                    isRetry,
-                    cancellationToken);
-                if (supplied is null)
-                    throw new OperationCanceledException(cancellationToken);
-                password = supplied;
-                isRetry = true;
-            }
-        }
+            },
+            IsPasswordError,
+            cancellationToken);
     }
 
     private static bool IsPasswordError(Exception ex) =>

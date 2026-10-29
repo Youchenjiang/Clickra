@@ -507,8 +507,16 @@ public sealed partial class MainPage : Page
             var callbacks = new ConversionExecutionCallbacks(
                 PasswordPrompt: (index, inputPath, isRetry, token) =>
                     DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L)),
-                SplitPrompt: (index, inputPath, token) =>
-                    DispatcherQueue.EnqueueAsync(() => SplitOverlay.ShowForAsync(inputPath)));
+                SplitPrompt: async (index, inputPath, token) =>
+                {
+                    string? password = null;
+                    if (Clickra.Core.Modules.PdfSplit.Processing.PdfSplitProcessor.IsPasswordProtected(inputPath))
+                    {
+                        password = await DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L));
+                        if (password is null) return null;
+                    }
+                    return await DispatcherQueue.EnqueueAsync(() => SplitOverlay.ShowForAsync(inputPath, password));
+                });
             var progress = new Progress<TaskProgressReport>(state => SetProgress(state.Percent, state.Message));
             ConversionExecutionPresentationResult result = await execution.ExecutePreparedAsync(
                 callbacks,

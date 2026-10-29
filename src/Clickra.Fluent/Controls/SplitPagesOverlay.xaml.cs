@@ -32,13 +32,13 @@ public sealed partial class SplitPagesOverlay : UserControl
     /// returns a task that completes with the chosen page-range spec, or null when
     /// cancelled. The overlay hides itself when the task completes.
     /// </summary>
-    public async Task<string?> ShowForAsync(string pdfPath)
+    public async Task<string?> ShowForAsync(string pdfPath, string? password = null)
     {
         Visibility = Visibility.Visible;
         try
         {
             _tcs = new TaskCompletionSource<string?>();
-            SplitterHost.Child = new VisualSplitterControl(pdfPath);
+            SplitterHost.Child = new VisualSplitterControl(pdfPath, password);
             OverlayFile.Text = Path.GetFileName(pdfPath);
             return await _tcs.Task;
         }

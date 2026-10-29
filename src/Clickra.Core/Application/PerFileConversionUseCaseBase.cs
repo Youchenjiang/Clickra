@@ -125,4 +125,37 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
             (index * 100) + current,
             plan.Inputs.Count * 100,
             message));
+
+    protected static async Task ExecuteWithPasswordRetryAsync(
+        int index,
+        ConversionPlan plan,
+        IConversionInteraction interaction,
+        string? initialPassword,
+        Func<string?, Task> executeAction,
+        Func<Exception, bool> isPasswordError,
+        CancellationToken cancellationToken)
+    {
+        string? password = initialPassword;
+        bool isRetry = false;
+        while (true)
+        {
+            try
+            {
+                await executeAction(password);
+                return;
+            }
+            catch (Exception ex) when (isPasswordError(ex))
+            {
+                string? supplied = await interaction.RequestPasswordAsync(
+                    index,
+                    plan.Inputs[index],
+                    isRetry,
+                    cancellationToken);
+                if (supplied is null)
+                    throw new OperationCanceledException(cancellationToken);
+                password = supplied;
+                isRetry = true;
+            }
+        }
+    }
 }

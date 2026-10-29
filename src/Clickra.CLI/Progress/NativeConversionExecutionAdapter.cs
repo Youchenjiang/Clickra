@@ -201,7 +201,7 @@ internal sealed class NativeConversionExecutionAdapter
             TrackTaskLifecycle: true,
             planOptions: new ExecutionPlanOptions(_existingTaskId, true, _startIndex));
         var interaction = new DelegateConversionInteraction(
-            (_, _, _, _) => Task.FromResult<string?>(null),
+            (_, inputPath, isRetry, _) => Task.FromResult<string?>(_resolveDecryptPassword(inputPath, isRetry)),
             (_, inputPath, _) => Task.FromResult<string?>(_promptSplitPages(inputPath)),
             (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
         var progress = CreatePdfProgress(files, progressCallback, "cli_progress_splitting_pdf_stage");

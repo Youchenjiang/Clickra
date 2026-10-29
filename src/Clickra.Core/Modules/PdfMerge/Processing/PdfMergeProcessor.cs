@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using Clickra.Core.Application;
+using Clickra.Core.Modules.PdfDecrypt.Application;
 using Clickra.Core.Processors;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
@@ -31,7 +33,17 @@ public class PdfMergeProcessor : MultiFileProcessorBase
     protected override void ProcessFile(string filePath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
     {
         onProgress?.Invoke((fileIndex * 100) + 50, totalFiles * 100, $"正在合併: {Path.GetFileName(filePath)} ({fileIndex + 1}/{totalFiles})...");
-        using var inDoc = PdfReader.Open(filePath, PdfDocumentOpenMode.Import);
+        PdfDocument inDoc;
+        try
+        {
+            inDoc = PdfReader.Open(filePath, PdfDocumentOpenMode.Import);
+        }
+        catch (PdfReaderException ex) when (ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("encrypted", StringComparison.OrdinalIgnoreCase))
+        {
+            string lang = ExecutionLocalizationOptions.ReadLanguage(options);
+            throw new PdfEncryptedException("pdf_err_encrypted_merge", filePath, Localization.T("pdf_err_encrypted_merge", lang), ex);
+        }
+        using (inDoc)
         for (int j = 0; j < inDoc.PageCount; j++)
         {
             cancellationToken.ThrowIfCancellationRequested();
