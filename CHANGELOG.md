@@ -1,5 +1,17 @@
 # Changelog
 
+## [v3.15.0.0] - 2026-10-30
+
+- **自定義 AI 論文翻譯引擎 (Custom AI Paper Translator)**：支援 OpenAI 相容 API 規格之雲端模型（包含 Google Gemini API 與自建 LLM），可自訂 API 端點與模型名稱，並提供金鑰安全遮罩、動態文字設定控制項與單次請求覆蓋能力。
+- **加密 PDF 安全防護與快速解密 (Encrypted PDF Guard & Decryption)**：轉檔前自動偵測加密狀態，防護非預期覆寫；視覺化 PDF 分割器全面支援加密預覽與記憶體安全密碼解鎖。
+- **原生 Win32 向量對話框與無障礙支援 (Native Dialogs & A11y)**：全面取代系統 MessageBox，以純 GDI+ 向量繪製深色主題對話框（確認、警示、提示、密碼輸入），具備流暢鍵盤巡覽與 UI Automation 無障礙名稱。
+- **五國語言嵌入式架構 (Embedded Locale JSON)**：將語系字典抽離為嵌入式 JSON 資源，完整支援繁體中文、簡體中文、英文、日文、韓文五國語言，顯著降低 NativeAOT 記憶體開銷。
+- **核心用例架構重組 (Conversion Use Cases Migration)**：全面淘汰舊版 Runner，PDF、圖片、Office 文書與 Markdown 轉換統一由 `IConversionUseCase` 目錄管理，轉換發起時進行不可變設定快照。
+- **翻譯強韌度與配額退避 (Translation Rate Limits & Retries)**：支援 HTTP 429 配額超限自動重試、Google 驗證頁面識別與 MyMemory 語言與文字腳本推斷，長篇翻譯更穩定。
+- **原生排版與高 DPI 命中優化 (High-DPI Layout & Visual Splitter)**：修復 Win32 Dashboard 在 150%/200% 縮放下下拉選單錯位與底部吸附欄命中問題，修復視覺化 PDF 分割器縮圖與燈箱縮放。
+- **平行化建置與工程治理 (Parallel CI & PR Governance)**：NativeAOT 建置全面平行化，CI 時間縮減 40% 以上；導入統一 `pr_tool.py` 治理工具，落實嚴格架構守門與審查清單防護。
+- **Microsoft Store 清單現代化 (Store Listings Polish)**：消除全形縮排與過濾括號 Bug，改採流暢兩段式簡練敘述，並完整揭露 Office 雙引擎與網路翻譯行為。
+
 ## [v3.14.0.0] - 2026-10-09
 
 - **Markdown 文件轉換 (Markdown → PDF / Word)**：新增 Markdown 轉 PDF 與 Word，支援標題、清單、引用、程式碼區塊、表格、連結與本機圖片，並整合 CLI、Native Dashboard、Fluent 與 Explorer 右鍵選單。

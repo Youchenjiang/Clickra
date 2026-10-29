@@ -1,6 +1,6 @@
 # Microsoft Store 清单 - 中文 (简体)
 
-以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息。
+以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.15.0.0。
 
 ---
 
@@ -15,10 +15,11 @@ Clickra 是一款专为 Windows 资源管理器打造的原生右键扩展工具
 源代码：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 支持自定义 AI 论文翻译引擎
-- 加密 PDF 安全防护与快速解密
-- 完整繁中、简中、英、日、韩五国语言
-- 界面动态文本设置与密钥隐藏
+- 支持自定义 AI 论文翻译引擎，可串接 Gemini 与 OpenAI API
+- 全面加密 PDF 安全防护，可视化分割器支持密码解锁与预览
+- 全新原生暗黑矢量对话框，具备无障碍巡览与快捷键支持
+- 完整繁中、简中、英、日、韩五国语言本地化体验
+- 论文翻译容错强化，智能处理网络限流与自动重试
 
 ## Product Features
 *(最多 20 个，以项目符号显示)*

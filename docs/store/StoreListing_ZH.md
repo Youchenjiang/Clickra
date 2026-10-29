@@ -1,6 +1,6 @@
 # Microsoft Store 清單 - 中文 (台灣)
 
-以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊。
+以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.15.0.0。
 
 ---
 
@@ -15,10 +15,11 @@ Clickra 是一款專為 Windows 檔案總管打造的原生右鍵擴充工具。
 原始碼：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 支援自定義 AI 論文翻譯引擎
-- 加密 PDF 安全防護與快速解密
-- 完整繁中、簡中、英、日、韓五國語言
-- 介面動態文字設定與金鑰隱藏
+- 支援自定義 AI 論文翻譯引擎，可串接 Gemini 與 OpenAI API
+- 全面加密 PDF 安全防護，視覺化分割器支援密碼解鎖與預覽
+- 全新原生暗黑向量對話框，具備無障礙巡覽與快捷鍵支援
+- 完整繁中、簡中、英、日、韓五國語言在地化體驗
+- 論文翻譯容錯強化，智慧處理網路限流與自動重試
 
 ## Product Features
 *(最多 20 個，以項目符號顯示)*

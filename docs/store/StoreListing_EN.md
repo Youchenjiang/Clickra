@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.15.0.0.
 
 ---
 
@@ -15,10 +15,11 @@ Core document operations run completely offline on your local PC to keep your da
 Source Code: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- Custom AI translation engine support
-- Encrypted PDF guard and fast decryption
-- Full 5-language localization (EN, ZH-TW, ZH-CN, JA, KO)
-- Dynamic settings with secure API key masking
+- Custom AI paper translation supporting Gemini and OpenAI APIs
+- Comprehensive encrypted PDF protection with password unlock in visual splitter
+- New native dark-themed vector dialogs with full accessibility support
+- Complete 5-language localization: EN, ZH-TW, ZH-CN, JA, KO
+- Translation resiliency with automatic rate limit backoff and retries
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
