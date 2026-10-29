@@ -128,6 +128,91 @@ static partial class TestSuite
 
         runner.Run("Split use case owns planning and page interaction", TestSplitUseCaseOwnsWorkflow);
         runner.Run("Split use case accepts headless page ranges without interaction", TestSplitUseCaseAcceptsFixedPages);
+        runner.Run("PDF split detects password protection and extracts pages with password", () =>
+        {
+            string input = Path.Combine(Path.GetTempPath(), $"clickra-split-enc-{Guid.NewGuid():N}.pdf");
+            string output = Path.Combine(Path.GetTempPath(), $"clickra-split-enc-out-{Guid.NewGuid():N}.pdf");
+            const string password = "clickra-split-pass";
+
+            try
+            {
+                using (var doc = new PdfDocument())
+                {
+                    doc.AddPage();
+                    doc.AddPage();
+                    doc.SecuritySettings.UserPassword = password;
+                    doc.SecuritySettings.OwnerPassword = "clickra-owner-pass";
+                    doc.Save(input);
+                }
+
+                Assert.True(PdfSplitProcessor.IsPasswordProtected(input), "Encrypted PDF must report IsPasswordProtected = true.");
+                Assert.True(PdfPageCountQuery.Get(input) == 0, "Querying page count without password must return 0.");
+                Assert.True(PdfPageCountQuery.Get(input, password) == 2, "Querying page count with password must return 2.");
+
+                var model = VisualSplitModel.FromFile(input, password);
+                Assert.True(model.TotalPages == 2, "VisualSplitModel must reflect the unlocked page count.");
+
+                new PdfSplitProcessor().Process(
+                    new List<string> { input },
+                    output,
+                    new Dictionary<string, object>
+                    {
+                        ["pages"] = "1",
+                        ["password"] = password
+                    });
+
+                Assert.True(File.Exists(output), "Output split PDF must exist.");
+                using var outDoc = PdfReader.Open(output, PdfDocumentOpenMode.Import);
+                Assert.True(outDoc.PageCount == 1, "Output PDF must contain the split page.");
+            }
+            finally
+            {
+                DeleteTempFiles(input, output);
+            }
+        });
+
+        runner.Run("Split use case prompts for password on encrypted PDF", () =>
+        {
+            string input = Path.Combine(Path.GetTempPath(), $"clickra-split-enc-uc-{Guid.NewGuid():N}.pdf");
+            string outputDir = Path.Combine(Path.GetTempPath(), $"clickra-split-enc-uc-out-{Guid.NewGuid():N}");
+            const string password = "clickra-split-uc-pass";
+
+            try
+            {
+                Directory.CreateDirectory(outputDir);
+                using (var doc = new PdfDocument())
+                {
+                    doc.AddPage();
+                    doc.AddPage();
+                    doc.SecuritySettings.UserPassword = password;
+                    doc.SecuritySettings.OwnerPassword = "clickra-owner-pass";
+                    doc.Save(input);
+                }
+
+                var useCase = new SplitPdfUseCase();
+                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                    SplitPdfUseCase.CommandName,
+                    new[] { input },
+                    OutputOverride: outputDir,
+                    TrackTaskLifecycle: false));
+
+                var interaction = new SplitPagesInteraction("1", password);
+                ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null)
+                    .GetAwaiter()
+                    .GetResult();
+
+                Assert.True(result.Status == ConversionResultStatus.Succeeded,
+                    $"Expected split success, got {result.Status}: {result.Error}");
+                Assert.True(interaction.Requests == 1, "Must request page spec.");
+                Assert.True(interaction.PasswordRequests == 1, "Must request password when encrypted.");
+                Assert.True(File.Exists(plan.Outputs[0]), "Split output file must exist.");
+            }
+            finally
+            {
+                DeleteTempFiles(input);
+                try { Directory.Delete(outputDir, recursive: true); } catch { }
+            }
+        });
         RegisterSplitFailureTests(runner);
     }
 
@@ -187,16 +272,20 @@ static partial class TestSuite
             plan.Outputs.Single());
     }
 
-    private sealed class SplitPagesInteraction(string pages) : IConversionInteraction
+    private sealed class SplitPagesInteraction(string pages, string? password = null) : IConversionInteraction
     {
         public int Requests { get; private set; }
+        public int PasswordRequests { get; private set; }
 
         public Task<string?> RequestPasswordAsync(
             int fileIndex,
             string inputPath,
             bool isRetry,
-            CancellationToken cancellationToken) =>
-            throw new NotSupportedException();
+            CancellationToken cancellationToken)
+        {
+            PasswordRequests++;
+            return Task.FromResult<string?>(password);
+        }
 
         public Task<string?> RequestSplitPagesAsync(
             int fileIndex,
