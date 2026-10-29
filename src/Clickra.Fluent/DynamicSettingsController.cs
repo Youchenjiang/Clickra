@@ -1,4 +1,5 @@
 using Clickra.Core;
+using Clickra.Core.Modules.Settings.Application;
 using Clickra.Core.Modules.Settings.Model;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -110,6 +111,9 @@ internal sealed class DynamicSettingsController
                 case SettingEditorKind.Choice:
                     SyncChoice(control);
                     break;
+                case SettingEditorKind.Text:
+                    SyncText(control);
+                    break;
                 default:
                     // Ignore unsupported editor kinds until a matching control is implemented.
                     break;
@@ -149,6 +153,7 @@ internal sealed class DynamicSettingsController
             SettingEditorKind.Slider => CreateSlider(descriptor, stack),
             SettingEditorKind.Number => (CreateNumber(descriptor, stack), null),
             SettingEditorKind.Choice => (CreateChoice(descriptor, stack), null),
+            SettingEditorKind.Text => (CreateText(descriptor, stack), null),
             _ => (null, null),
         };
 
@@ -252,6 +257,39 @@ internal sealed class DynamicSettingsController
         return comboBox;
     }
 
+    private FrameworkElement CreateText(SettingDescriptor descriptor, StackPanel stack)
+    {
+        bool isPassword = string.Equals(descriptor.Key, SettingsContract.TranslateAiApiKey, StringComparison.OrdinalIgnoreCase);
+        if (isPassword)
+        {
+            var passwordBox = new PasswordBox
+            {
+                MinWidth = 260,
+                Password = SettingsPresentationController.Shared.ReadText(descriptor)
+            };
+            passwordBox.PasswordChanged += (_, _) =>
+            {
+                if (_isLoading()) return;
+                SettingsPresentationController.Shared.WriteText(descriptor, passwordBox.Password);
+            };
+            stack.Children.Add(passwordBox);
+            return passwordBox;
+        }
+
+        var textBox = new TextBox
+        {
+            MinWidth = 260,
+            Text = SettingsPresentationController.Shared.ReadText(descriptor)
+        };
+        textBox.TextChanged += (_, _) =>
+        {
+            if (_isLoading()) return;
+            SettingsPresentationController.Shared.WriteText(descriptor, textBox.Text);
+        };
+        stack.Children.Add(textBox);
+        return textBox;
+    }
+
     private static void SyncToggle(DynamicSettingControl control)
     {
         if (control.InputControl is ToggleSwitch toggle)
@@ -297,6 +335,18 @@ internal sealed class DynamicSettingsController
                 comboBox.SelectedIndex = i;
                 return;
             }
+        }
+    }
+
+    private static void SyncText(DynamicSettingControl control)
+    {
+        if (control.InputControl is TextBox textBox)
+        {
+            textBox.Text = SettingsPresentationController.Shared.ReadText(control.Descriptor);
+        }
+        else if (control.InputControl is PasswordBox passwordBox)
+        {
+            passwordBox.Password = SettingsPresentationController.Shared.ReadText(control.Descriptor);
         }
     }
 

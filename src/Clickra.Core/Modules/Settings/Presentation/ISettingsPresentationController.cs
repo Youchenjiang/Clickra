@@ -13,6 +13,10 @@ public interface ISettingsPresentationController
 
     string Language { get; set; }
     string TranslationTargetLanguage { get; set; }
+    string TranslateEngine { get; set; }
+    string TranslateAiEndpoint { get; set; }
+    string TranslateAiApiKey { get; set; }
+    string TranslateAiModel { get; set; }
     bool QuietMode { get; set; }
     bool NotificationsEnabled { get; set; }
     string LibreOfficePath { get; set; }
@@ -39,9 +43,11 @@ public interface ISettingsPresentationController
     bool ReadBool(SettingDescriptor descriptor);
     int ReadInt(SettingDescriptor descriptor);
     string ReadChoice(SettingDescriptor descriptor);
+    string ReadText(SettingDescriptor descriptor);
     void WriteBool(SettingDescriptor descriptor, bool value);
     void WriteInt(SettingDescriptor descriptor, int value);
     void WriteChoice(SettingDescriptor descriptor, string value);
+    void WriteText(SettingDescriptor descriptor, string value);
     void EnsureFresh();
     string GetPdfCompressionSliderLabelKey(int sliderValue);
 

@@ -66,6 +66,30 @@ public sealed class SettingsPresentationController : ISettingsPresentationContro
         set => SettingsController.TranslationTargetLanguage = value;
     }
 
+    public string TranslateEngine
+    {
+        get => SettingsController.TranslateEngine;
+        set => SettingsController.TranslateEngine = value;
+    }
+
+    public string TranslateAiEndpoint
+    {
+        get => SettingsController.TranslateAiEndpoint;
+        set => SettingsController.TranslateAiEndpoint = value;
+    }
+
+    public string TranslateAiApiKey
+    {
+        get => SettingsController.TranslateAiApiKey;
+        set => SettingsController.TranslateAiApiKey = value;
+    }
+
+    public string TranslateAiModel
+    {
+        get => SettingsController.TranslateAiModel;
+        set => SettingsController.TranslateAiModel = value;
+    }
+
     public bool QuietMode
     {
         get => SettingsController.QuietMode;
@@ -179,6 +203,12 @@ public sealed class SettingsPresentationController : ISettingsPresentationContro
         return SettingsController.ReadText(descriptor.Key);
     }
 
+    public string ReadText(SettingDescriptor descriptor)
+    {
+        RequireEditor(descriptor, SettingEditorKind.Text);
+        return SettingsController.ReadText(descriptor.Key);
+    }
+
     public void WriteBool(SettingDescriptor descriptor, bool value)
     {
         RequireEditor(descriptor, SettingEditorKind.Toggle);
@@ -202,6 +232,12 @@ public sealed class SettingsPresentationController : ISettingsPresentationContro
             throw new ArgumentOutOfRangeException(nameof(value), value, $"Value is not registered for setting '{descriptor.Key}'.");
         }
         SettingsController.WriteText(descriptor.Key, value);
+    }
+
+    public void WriteText(SettingDescriptor descriptor, string value)
+    {
+        RequireEditor(descriptor, SettingEditorKind.Text);
+        SettingsController.WriteText(descriptor.Key, value ?? string.Empty);
     }
     public void EnsureFresh() => SettingsController.EnsureFresh();
 

@@ -81,7 +81,8 @@ static partial class TestSuite
             "Language", "OutputDir", "QuietMode", "Notification",
             "OfficeEngine", "LibreOfficePath", "LibreOfficeRemovalPendingRestart", "LibreOfficeInstalledByClickra",
             "LibreOfficeManagedProductCode", "LibreOfficeManagedSofficePath",
-            "TranslateTargetLang", "PdfCompressImageLevel", "PdfCompressStripFonts", "PdfCompressMinifyContent",
+            "TranslateTargetLang", "TranslateEngine", "TranslateAiEndpoint", "TranslateAiApiKey", "TranslateAiModel",
+            "PdfCompressImageLevel", "PdfCompressStripFonts", "PdfCompressMinifyContent",
             "ImageCompressLevel", "ImageCompressMaxDimension", "ParkedTaskRetention"
         };
         string[] actual = keys.OrderBy(k => k, StringComparer.Ordinal).ToArray();
@@ -103,6 +104,10 @@ static partial class TestSuite
         Assert.Equal("true", ClickraStorage.GetSetting(ClickraSettings.Notification));
         Assert.Equal("auto", ClickraStorage.GetSetting(ClickraSettings.OfficeEngine));
         Assert.Equal(LanguageZhTw, ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang));
+        Assert.Equal("google", ClickraStorage.GetSetting(ClickraSettings.TranslateEngine));
+        Assert.Equal("https://api.openai.com/v1", ClickraStorage.GetSetting(ClickraSettings.TranslateAiEndpoint));
+        Assert.Equal("", ClickraStorage.GetSetting(ClickraSettings.TranslateAiApiKey));
+        Assert.Equal("gpt-4o-mini", ClickraStorage.GetSetting(ClickraSettings.TranslateAiModel));
         Assert.Equal("1", ClickraStorage.GetSetting(ClickraSettings.PdfCompressImageLevel));
         Assert.Equal("0", ClickraStorage.GetSetting(ClickraSettings.ImageCompressMaxDimension));
 

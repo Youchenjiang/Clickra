@@ -33,6 +33,10 @@ public static class ClickraSettings
 
     // ─── PDF ───────────────────────────────────────────────────────────────
     public const string TranslateTargetLang = "TranslateTargetLang";
+    public const string TranslateEngine = "TranslateEngine";
+    public const string TranslateAiEndpoint = "TranslateAiEndpoint";
+    public const string TranslateAiApiKey = "TranslateAiApiKey";
+    public const string TranslateAiModel = "TranslateAiModel";
     public const string PdfCompressImageLevel = "PdfCompressImageLevel";
     public const string PdfCompressStripFonts = "PdfCompressStripFonts";
     public const string PdfCompressMinifyContent = "PdfCompressMinifyContent";
@@ -51,6 +55,10 @@ public static class ClickraSettings
     public const string DefaultOutputDirSource = "source";
     public const string DefaultOfficeEngineAuto = "auto";
     public const string DefaultTranslateTargetLang = "zh-TW";
+    public const string DefaultTranslateEngine = "google";
+    public const string DefaultTranslateAiEndpoint = "https://api.openai.com/v1";
+    public const string DefaultTranslateAiApiKey = "";
+    public const string DefaultTranslateAiModel = "gpt-4o-mini";
     public const string DefaultPdfCompressLevel = "1";
     public const string DefaultImageCompressLevel = "1";
     public const string DefaultImageCompressMaxDimension = "0";
@@ -71,6 +79,8 @@ public static class ClickraSettings
     public const string OutputDirDownloads = "downloads";
     public const string OfficeEngineMicrosoft = "microsoft";
     public const string OfficeEngineLibreOffice = "libreoffice";
+    public const string TranslateEngineGoogle = "google";
+    public const string TranslateEngineCustomAi = "custom-ai";
 
     /// <summary>登錄表本體：每個設定恰好一列，鍵不重複。</summary>
     public static readonly IReadOnlyList<ClickraSetting> All = new[]
@@ -86,6 +96,10 @@ public static class ClickraSettings
         new ClickraSetting(LibreOfficeManagedProductCode, DefaultEmpty, "Clickra 目前獲授權管理的 LibreOffice MSI ProductCode"),
         new ClickraSetting(LibreOfficeManagedSofficePath, DefaultEmpty, "Clickra 目前獲授權管理的 LibreOffice soffice.exe 路徑"),
         new ClickraSetting(TranslateTargetLang, DefaultTranslateTargetLang, "PDF 翻譯目標語言"),
+        new ClickraSetting(TranslateEngine, DefaultTranslateEngine, $"PDF 翻譯引擎：{TranslateEngineGoogle} / {TranslateEngineCustomAi}"),
+        new ClickraSetting(TranslateAiEndpoint, DefaultTranslateAiEndpoint, "自訂 AI 翻譯 API 端點"),
+        new ClickraSetting(TranslateAiApiKey, DefaultTranslateAiApiKey, "自訂 AI 翻譯 API 金鑰"),
+        new ClickraSetting(TranslateAiModel, DefaultTranslateAiModel, "自訂 AI 翻譯模型名稱"),
         new ClickraSetting(PdfCompressImageLevel, DefaultPdfCompressLevel, "PDF 圖片壓縮等級 0-2（1 = 平衡）"),
         new ClickraSetting(PdfCompressStripFonts, ValueFalse, "壓縮 PDF 時移除嵌入字型"),
         new ClickraSetting(PdfCompressMinifyContent, ValueTrue, "壓縮 PDF 時最佳化結構"),
