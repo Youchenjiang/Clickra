@@ -1,6 +1,6 @@
-# Microsoft Store Listing - Korean (Korea)
+# Microsoft Store 목록 - 한국어
 
-Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.14.0.0용 스토어 등록 정보입니다.
+다음은 Microsoft 파트너 센터 (Partner Center)에 직접 복사하여 붙여넣을 수 있는 전체 정보입니다.
 
 ---
 
@@ -8,64 +8,45 @@ Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.14.0.0용 스�
 Clickra
 
 ## Description
-[시스템 요구 사항] "문서를 PDF로 변환" 기능은 Microsoft Office가 설치되어 있으면 Office를 사용할 수 있습니다. Office가 없는 경우 Clickra에서 LibreOffice를 무료 로컬 변환 엔진으로 다운로드하고 관리할 수 있습니다.
+Clickra는 Windows 파일 탐색기용 우클릭 변환 및 PDF 생산성 도구입니다.
 
-Clickra는 Windows 10 및 Windows 11용 고성능 네이티브 우클릭 메뉴 생산성 도구입니다. 파일 탐색기 컨텍스트 메뉴에 자연스럽게 통합되어, 무거운 프로그램을 열지 않고도 주요 파일 작업을 빠르게 실행할 수 있습니다.
+파일을 마우스 우클릭하여 즉시 처리할 수 있습니다:
+• 문서 to PDF: Word, Excel, PowerPoint
+• PDF 도구: 압축, 암호 해제, 분할, 병합
+• 이미지 도구: 형식 변환, 세로 연결, PDF 묶기
+• Markdown: PDF 또는 Word로 변환
+• 논문 번역: 수식과 서식을 보존하는 PDF 번역
 
-주요 기능:
- - 네이티브 대시보드: 변환, 설정, PDF／Office 엔진 상태를 한곳에서 확인하며 높은 DPI에서도 간결하게 유지되는 반응형 다크 테마 화면.
- - Office to PDF: Word (.doc/.docx), Excel (.xls/.xlsx), PowerPoint (.ppt/.pptx) 파일을 고품질 PDF로 조용히 변환.
- - LibreOffice 대체 엔진: Microsoft Office가 없는 환경에서도 Clickra에서 LibreOffice를 내려받거나 검증된 기존 시스템 설치를 명시적으로 Clickra 관리 대상으로 전환하여 로컬 변환 엔진으로 사용.
- - Markdown to PDF／Word: Markdown 문서를 PDF 또는 DOCX로 변환하며 제목, 목록, 인용, 코드 블록, 표, 링크, 로컬 이미지를 지원.
- - Markdown 레이아웃 템플릿: Default, Minimal, Academic 스타일을 선택하거나 Word 문서를 PDF와 DOCX의 공통 레이아웃 원본으로 가져오기.
- - PDF 로컬 압축: C#/GDI+ 엔진을 활용하여 중복 폰트 제거, 스트림 간소화, 저해상도 이미지 압축 우회 등으로 화질 저하를 방지하며 PDF를 로컬에서 강력하게 압축.
- - PDF 암호 제거: 암호로 보호된 PDF를 우클릭 메뉴에서 복호화하고 암호 없는 PDF를 생성.
- - PDF 병합: 여러 PDF를 선택해 빠르게 하나의 파일로 병합.
- - 비주얼 PDF 분할: 페이지 미리보기 다이얼로그로 PDF를 분할. 사용자 지정 세그먼트, 페이지별 분할, 고정 페이지 수의 3가지 모드, 인라인 확대와 "이 페이지에서 분할" 빠른 작업.
- - PDF 번역 하이phenation 연결: 소스 줄에서 잘린 기술 식별자를 자동으로 재결합 (예: "Cop-peliaSim" → "CoppeliaSim")하고 CJK 글꼴 스케일링을 조정하여 가독성을 향상.
- - 컨텍스트 메뉴 아이콘: 모든 변환 명령이 Windows 11 및 클래식 우클릭 메뉴에 현지화된 아이콘을 표시.
- - 보류 작업 보관: 변환을 안전하게 일시 중지하고 보관 기간을 설정하며, 정리 전에 남은 시간과 만료 알림을 확인할 수 있습니다.
- - 진행 및 트레이 제어: 최소화한 변환을 시스템 트레이에서 복원하거나 취소할 수 있고, 진행 및 분할 컨트롤은 현지화된 벡터 UI로 통일됩니다.
- - 이미지 to PDF: JPG/PNG/WebP 이미지를 PDF 문서로 변환.
- - 이미지 형식 변환 및 압축: Explorer에서 PNG, JPG, WebP, GIF, HEIC 형식 변환과 이미지 압축을 직접 실행.
- - 이미지 세로 병합: 여러 이미지를 하나의 긴 이미지로 결합.
+모든 파일은 100% PC 로컬에서 오프라인으로 처리되며 외부로 전송되지 않습니다.
+무료, 오픈 소스, 백그라운드 상주 없음.
 
-Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, Markdown 변환, PDF 압축, PDF 병합, 이미지 작업 등 대부분의 기능은 로컬 PC에서 처리되며 Markdown 렌더링과 템플릿 가져오기는 원격 이미지를 내려받지 않습니다. 선택형 PDF 번역을 사용할 때만 텍스트가 보안 연결을 통해 전송됩니다.
-
-🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
+소스 코드: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - Markdown to PDF／Word: CLI, Native Dashboard, Fluent, Explorer에서 .md／.markdown 파일을 PDF 또는 DOCX로 변환할 수 있습니다.
- - 공통 Markdown 레이아웃: Default, Minimal, Academic 스타일과 Word 문서 가져오기를 PDF와 DOCX에 공통으로 사용할 수 있습니다.
- - 로컬 우선 Markdown 처리: 변환 전에 템플릿을 다시 검증하며 Markdown의 원격 이미지는 다운로드하지 않습니다.
- - Explorer 이미지 작업 완성: PNG, JPG, WebP, GIF, HEIC 형식 변환과 이미지 압축을 Clickra 우클릭 메뉴에서 일관되게 사용할 수 있습니다.
+- 사용자 지정 AI 논문 번역 엔진 지원
+- 암호화된 PDF 사전 보호 및 빠른 암호 해제
+- 한국어, 영어, 번체, 간체, 일본어 5개 국어 완전 지원
+- 동적 텍스트 설정 및 API 키 보안 마스킹
 
 ## Product Features
-*(Max 20, displayed as bullet points)*
- - PDF 및 Office 엔진 상태를 확인하는 네이티브 대시보드
- - Word/Excel/PPT to PDF 원클릭 변환
- - Microsoft Office가 없을 때 LibreOffice 대체 엔진 및 검증된 기존 설치 관리 지원
- - 로컬 PDF 압축 및 최적화 지원
- - Small, Balanced, High Quality 3개 프리셋으로 PDF 압축 레벨 조절
- - PDF 암호 원클릭 제거
- - 진행 창 안의 안전한 암호 입력
- - 비주얼 PDF 분할 (페이지 미리보기 및 3가지 분할 모드)
- - 컨텍스트 메뉴의 모든 변환 명령에 아이콘 표시
- - JPG/PNG/WebP 이미지 일괄 PDF 변환
- - PNG, JPG, WebP, GIF, HEIC 이미지 형식 변환
- - Markdown to PDF／Word 변환(내장 스타일 또는 Word 템플릿)
- - 이미지 세로 병합
- - 빠른 다중 PDF 병합
- - NativeAOT 셸 통합 기반의 빠른 컨텍스트 메뉴 응답
- - 높은 DPI에 맞춘 반응형 Native Convert／Settings 작업 영역
- - 최소화한 변환의 시스템 트레이 복원 및 취소
- - 보류 변환 보관 기간, 남은 시간 및 만료 알림
- - LibreOffice 검증 관리 및 fail-closed 제거 보호
- - 안전한 로컬 처리(선택형 PDF 번역만 클라우드 번역 사용)
+*(최대 20개, 글머리 기호로 표시)*
+- 파일 탐색기 우클릭 메뉴 네이티브 통합
+- Word, Excel, PowerPoint 원클릭 PDF 변환
+- 효율적인 로컬 PDF 압축
+- PDF 암호 해제 및 암호화 파일 보호
+- 페이지 썸네일 미리보기를 지원하는 시각적 PDF 분할
+- 여러 PDF 파일 원클릭 병합
+- 수식 보존 PDF 논문 번역
+- Markdown to PDF 및 Word 변환
+- 이미지 형식 변환 (JPG/PNG/WebP/GIF/HEIC)
+- 세로 이미지 연결 및 이미지 PDF 묶기
+- 100% 로컬 오프라인 처리로 개인정보 보호
+- NativeAOT 컴파일로 빠른 시작, 백그라운드 메모리 점유 없음
+- 한국어, 영어, 번체, 간체, 일본어 5개 언어 완전 지원
 
 ---
 
-### Supplemental Fields
+### 보충 항목 (Supplemental Fields)
 
 ## Short title
 Clickra
@@ -74,21 +55,21 @@ Clickra
 Clickra
 
 ## Short description
-Clickra는 Office, Markdown, PDF, 이미지 작업을 지원하는 고성능 네이티브 우클릭 메뉴 도구입니다. Markdown to PDF／Word, Word 템플릿, 높은 DPI용 반응형 화면과 트레이 제어를 제공하며 로컬 처리를 우선합니다.
+Clickra는 Office to PDF, PDF 압축/병합/분할/해제, 이미지, Markdown 처리를 지원하는 Windows 우클릭 도구로, 100% 로컬 오프라인 처리됩니다.
 
 ---
 
-### Other Information
+### 기타 정보 (Other Information)
 
 ## Keywords
-*(Max 7)*
- - Context Menu
- - PDF Merge
- - PDF Decrypt
- - PPT to PDF
- - Word to PDF
- - Excel to PDF
- - Image to PDF
+*(최대 7개)*
+- 우클릭
+- PDF병합
+- PDF암호
+- PDF압축
+- Word to PDF
+- PPT to PDF
+- 이미지 to PDF
 
 ## Copyright and trademark info
 © 2026 Youchen Jiang. All rights reserved.

@@ -1,6 +1,6 @@
-# Microsoft Store 清单 - 中文（简体）
+# Microsoft Store 清单 - 中文 (简体)
 
-以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.14.0.0。
+以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息。
 
 ---
 
@@ -8,60 +8,41 @@
 Clickra
 
 ## Description
-【系统要求】"文档转 PDF"功能可使用本机 Microsoft Office；如果未安装 Office，也可由 Clickra 下载并管理 LibreOffice 作为免费的本机备用引擎。
+Clickra 是一款 Windows 资源管理器的右键转档与 PDF 工具。
 
-Clickra 是一款面向 Windows 10 与 Windows 11 的高速原生右键菜单工具集。它可以无缝集成到文件资源管理器的右键菜单中，无需打开笨重的软件，就能快速完成常用文件处理。
+直接在文件上点击右键即可处理：
+• 文档转 PDF：Word、Excel、PPT
+• PDF 工具：压缩、解密、分割、合并
+• 图片工具：格式互转、拼接长图、转 PDF
+• Markdown：转换为 PDF 或 Word
+• 论文翻译：保留排版与公式的 PDF 翻译
 
-核心功能：
-　　原生仪表板：响应式深色界面，整合转换、设置与 PDF／Office 引擎状态，在高 DPI 显示器上保持紧凑布局。
-　　文档转 PDF：支持 Word (.doc/.docx)、Excel (.xls/.xlsx) 与 PowerPoint (.ppt/.pptx) 静默转换为 PDF。
-　　LibreOffice 备用引擎：未安装 Microsoft Office 时，可由 Clickra 下载 LibreOffice，或明确接管已验证的现有系统安装，作为免费的本机转换引擎。
-　　Markdown 转 PDF／Word：将 Markdown 文档转换为 PDF 或 DOCX，支持标题、列表、引用、代码块、表格、链接与本机图片。
-　　Markdown 排版模板：可选择 Default、Minimal、Academic 样式，或导入 Word 文档作为 PDF 与 DOCX 共用的排版来源。
-　　PDF 本机压缩：一键在本机高效压缩 PDF，自动精减流、大字体剥离并跳过小图。
-　　PDF 去除密码：直接从右键菜单解密受密码保护的 PDF，并生成无密码版本。
-　　快速 PDF 合并：选择多个 PDF 后，一键合并为单个文件。
-　　可视化 PDF 分割：以可视化页面预览对话框分割 PDF，支持自定义分段、单页拆分与固定页数三种模式，内建缩放灯箱与"在此页切开"快速按钮。
-　　PDF 翻译连字修复：自动重组跨行被断开的技术术语连字（如 Cop-peliaSim → CoppeliaSim），并调整 CJK 字体缩放比例以提升可读性。
-　　右键菜单图标：所有转档指令现在在 Windows 11 及传统右键菜单中显示本地化图标。
-　　暂存任务保留：安全暂停转换、自定义保留时间，并在清理前显示剩余时间与到期提醒。
-　　进度与系统托盘控制：最小化后可从系统托盘恢复或取消转换，进度与分割器控件也统一采用本地化矢量界面。
-　　图片转 PDF：将多张图片 (JPG/PNG/WebP) 快速封装为 PDF。
-　　图片格式转换与压缩：可直接从 Explorer 将图片转换为 PNG、JPG、WebP、GIF、HEIC，或执行图片压缩。
-　　图片拼接：将多张图片垂直合成为一张长图。
+所有文件均 100% 在本机电脑离线处理，文件绝不外传。
+免费、开源、无广告，无后台常驻。
 
-Clickra 尊重您的隐私。大多数处理流程（文档转 PDF、Markdown 转换、PDF 压缩、PDF 合并与图片处理等）都在本机完成；Markdown 渲染与模板导入不会下载远程图片。仅可选的 PDF 翻译功能会通过安全连接发送文本进行处理。
-
-🔗 开源项目主页：https://github.com/Youchenjiang/Clickra
+源代码：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- Markdown 转 PDF 与 Word：可从 CLI、Native Dashboard、Fluent 或 Explorer 将 .md／.markdown 转换为 PDF 或 DOCX。
-- 共用 Markdown 排版：提供 Default、Minimal、Academic 样式，也可导入 Word 文档作为 PDF 与 DOCX 共用的排版来源。
-- 本机优先的 Markdown 处理：转换前会重新验证模板，并且不会下载 Markdown 中的远程图片。
-- Explorer 图片操作补齐：PNG、JPG、WebP、GIF、HEIC 格式转换与图片压缩现在都能从 Clickra 右键菜单一致使用。
+- 支持自定义 AI 论文翻译引擎
+- 加密 PDF 安全防护与快速解密
+- 完整繁中、简中、英、日、韩五国语言
+- 界面动态文本设置与密钥隐藏
 
 ## Product Features
 *(最多 20 个，以项目符号显示)*
-- 原生仪表板监测 PDF 与 Office 引擎状态
-- 支持 Word/Excel/PPT 一键转 PDF
-- 未安装 Microsoft Office 时可使用 LibreOffice 备用引擎，并支持验证后接管现有安装
-- 支持一键 PDF 文件本机高保真压缩功能
-- 3 段 PDF 压缩预设滑杆：Small、Balanced、High Quality
-- PDF 一键去除密码
-- 进度窗口内嵌安全密码输入
-- 可视化 PDF 分割，支持页面缩图与三种分割模式
-- 右键菜单图标，所有转档指令显示本地化图标
-- 图片 (JPG/PNG/WebP) 批量转 PDF
-- 图片格式转换，支持输出 PNG、JPG、WebP、GIF 与 HEIC
-- Markdown 转 PDF／Word，支持内置样式与导入 Word 模板
-- 图片垂直拼接
-- 快速多文件 PDF 合并
-- NativeAOT Shell 集成，保持右键菜单快速响应
-- 面向高 DPI 的响应式 Native Convert／Settings 工作区
-- 系统托盘恢复与取消最小化中的转换
-- 暂存转换保留控制、剩余时间与到期提醒
-- LibreOffice 验证式接管与 fail-closed 卸载保护
-- 安全的本机处理（仅可选 PDF 翻译使用云端翻译服务）
+- 资源管理器右键原生集成，即点即用
+- Word、Excel、PowerPoint 转 PDF
+- 本地 PDF 智能压缩与体积精简
+- PDF 密码安全解密与防护
+- 可视化 PDF 分割与多页预览
+- 多个 PDF 文件快速合并
+- PDF 论文翻译（支持公式保护与自定义 AI 引擎）
+- Markdown 转 PDF 与 Word
+- 图片格式互转 (JPG/PNG/WebP/GIF/HEIC)
+- 图片垂直长图拼接与封装 PDF
+- 100% 本机端离线处理，捍卫文件隐私
+- 原生 AOT 编译，极速启动、零后台占用
+- 完整繁中、简中、英、日、韩五国语言界面
 
 ---
 
@@ -74,20 +55,20 @@ Clickra
 Clickra
 
 ## Short description
-Clickra 是一款高速原生右键菜单工具，支持文档、Markdown、PDF 与图片处理，包括 Markdown 转 PDF／Word、Word 模板排版、高 DPI 响应式工作区与系统托盘控制，并优先在本机处理。
+Clickra 是一款 Windows 资源管理器的右键转档与 PDF 工具，支持 Office 转 PDF、PDF 压缩/分割/合并/解密、图片与 Markdown 处理，100% 本机离线、免费开源。
 
 ---
 
-### Other Information
+### 其他信息 (Other Information)
 
 ## Keywords
 *(最多 7 个)*
 - 右键菜单
 - PDF合并
 - PDF密码
-- PPT转PDF
+- PDF压缩
 - Word转PDF
-- Excel转PDF
+- PPT转PDF
 - 图片转PDF
 
 ## Copyright and trademark info
