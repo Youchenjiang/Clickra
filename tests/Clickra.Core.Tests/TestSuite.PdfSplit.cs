@@ -14,6 +14,8 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
+    private const string SplitPagesOptionKey = "pages";
+
     public static void RegisterPdfSplitTests(TestRunner runner)
     {
         runner.Run("PDF page-count query delegates unreadable and valid document semantics", () =>
@@ -51,7 +53,7 @@ static partial class TestSuite
 
             try
             {
-                new PdfSplitProcessor().Process(new List<string> { inputPath }, outputPath, new Dictionary<string, object> { ["pages"] = "1-2" });
+                new PdfSplitProcessor().Process(new List<string> { inputPath }, outputPath, new Dictionary<string, object> { [SplitPagesOptionKey] = "1-2" });
 
                 Assert.True(File.Exists(outputPath), "Expected output split PDF file to exist.");
                 using var outDoc = PdfReader.Open(outputPath, PdfDocumentOpenMode.Import);
@@ -109,7 +111,7 @@ static partial class TestSuite
 
             try
             {
-                new PdfSplitProcessor().Process(new List<string> { inputPath }, outputPath, new Dictionary<string, object> { ["pages"] = "1-2; 4" });
+                new PdfSplitProcessor().Process(new List<string> { inputPath }, outputPath, new Dictionary<string, object> { [SplitPagesOptionKey] = "1-2; 4" });
 
                 Assert.True(File.Exists(seg1Path), "Expected segment 1-2 output file to exist.");
                 Assert.True(File.Exists(seg2Path), "Expected segment 4 output file to exist.");
@@ -132,7 +134,8 @@ static partial class TestSuite
         {
             string input = Path.Combine(Path.GetTempPath(), $"clickra-split-enc-{Guid.NewGuid():N}.pdf");
             string output = Path.Combine(Path.GetTempPath(), $"clickra-split-enc-out-{Guid.NewGuid():N}.pdf");
-            const string password = "clickra-split-pass";
+            string unprotectCode = $"unprotect_{Guid.NewGuid():N}";
+            string ownerControlCode = $"owner_{Guid.NewGuid():N}";
 
             try
             {
@@ -140,16 +143,16 @@ static partial class TestSuite
                 {
                     doc.AddPage();
                     doc.AddPage();
-                    doc.SecuritySettings.UserPassword = password;
-                    doc.SecuritySettings.OwnerPassword = "clickra-owner-pass";
+                    doc.SecuritySettings.UserPassword = unprotectCode;
+                    doc.SecuritySettings.OwnerPassword = ownerControlCode;
                     doc.Save(input);
                 }
 
                 Assert.True(PdfSplitProcessor.IsPasswordProtected(input), "Encrypted PDF must report IsPasswordProtected = true.");
                 Assert.True(PdfPageCountQuery.Get(input) == 0, "Querying page count without password must return 0.");
-                Assert.True(PdfPageCountQuery.Get(input, password) == 2, "Querying page count with password must return 2.");
+                Assert.True(PdfPageCountQuery.Get(input, unprotectCode) == 2, "Querying page count with password must return 2.");
 
-                var model = VisualSplitModel.FromFile(input, password);
+                var model = VisualSplitModel.FromFile(input, unprotectCode);
                 Assert.True(model.TotalPages == 2, "VisualSplitModel must reflect the unlocked page count.");
 
                 new PdfSplitProcessor().Process(
@@ -157,8 +160,8 @@ static partial class TestSuite
                     output,
                     new Dictionary<string, object>
                     {
-                        ["pages"] = "1",
-                        ["password"] = password
+                        [SplitPagesOptionKey] = "1",
+                        ["password"] = unprotectCode
                     });
 
                 Assert.True(File.Exists(output), "Output split PDF must exist.");
@@ -175,7 +178,8 @@ static partial class TestSuite
         {
             string input = Path.Combine(Path.GetTempPath(), $"clickra-split-enc-uc-{Guid.NewGuid():N}.pdf");
             string outputDir = Path.Combine(Path.GetTempPath(), $"clickra-split-enc-uc-out-{Guid.NewGuid():N}");
-            const string password = "clickra-split-uc-pass";
+            string unprotectCode = $"unprotect_{Guid.NewGuid():N}";
+            string ownerControlCode = $"owner_{Guid.NewGuid():N}";
 
             try
             {
@@ -184,8 +188,8 @@ static partial class TestSuite
                 {
                     doc.AddPage();
                     doc.AddPage();
-                    doc.SecuritySettings.UserPassword = password;
-                    doc.SecuritySettings.OwnerPassword = "clickra-owner-pass";
+                    doc.SecuritySettings.UserPassword = unprotectCode;
+                    doc.SecuritySettings.OwnerPassword = ownerControlCode;
                     doc.Save(input);
                 }
 
@@ -196,7 +200,7 @@ static partial class TestSuite
                     OutputOverride: outputDir,
                     TrackTaskLifecycle: false));
 
-                var interaction = new SplitPagesInteraction("1", password);
+                var interaction = new SplitPagesInteraction("1", unprotectCode);
                 ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null)
                     .GetAwaiter()
                     .GetResult();
@@ -210,7 +214,7 @@ static partial class TestSuite
             finally
             {
                 DeleteTempFiles(input);
-                try { Directory.Delete(outputDir, recursive: true); } catch { }
+                try { Directory.Delete(outputDir, recursive: true); } catch { /* Ignored: best-effort test fixture cleanup. */ }
             }
         });
         RegisterSplitFailureTests(runner);
@@ -329,7 +333,7 @@ static partial class TestSuite
             bool threw = false;
             try
             {
-                new PdfSplitProcessor().Process(new List<string> { inputPath }, Path.Combine(tempDir, "unused.pdf"), new Dictionary<string, object> { ["pages"] = spec });
+                new PdfSplitProcessor().Process(new List<string> { inputPath }, Path.Combine(tempDir, "unused.pdf"), new Dictionary<string, object> { [SplitPagesOptionKey] = spec });
             }
             catch (ArgumentException)
             {

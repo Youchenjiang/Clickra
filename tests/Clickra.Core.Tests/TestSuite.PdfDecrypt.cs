@@ -9,6 +9,8 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
+    private const string DecryptTestLanguage = "zh-TW";
+
     public static void RegisterPdfDecryptTests(TestRunner runner)
     {
         runner.Run("PDF decrypt removes protection with the correct password", () =>
@@ -33,7 +35,7 @@ static partial class TestSuite
                     new Dictionary<string, object>
                     {
                         ["password"] = password,
-                        [ExecutionLocalizationOptions.LanguageKey] = "zh-TW"
+                        [ExecutionLocalizationOptions.LanguageKey] = DecryptTestLanguage
                     });
 
                 Assert.True(File.Exists(output), "Expected decrypted PDF to be written.");
@@ -258,14 +260,14 @@ static partial class TestSuite
 
             var compOptions = new Dictionary<string, object>
             {
-                [ExecutionLocalizationOptions.LanguageKey] = "zh-TW"
+                [ExecutionLocalizationOptions.LanguageKey] = DecryptTestLanguage
             };
             var compProcessor = new Clickra.Core.Modules.PdfCompression.Processing.PdfCompressionProcessor();
             var exComp = Assert.Throws<PdfEncryptedException>(() =>
             {
                 compProcessor.Process(new List<string> { encryptedPath }, outCompress, compOptions);
             });
-            Assert.True(exComp.Message.Contains(Localization.T("pdf_err_encrypted_compress", "zh-TW")),
+            Assert.True(exComp.Message.Contains(Localization.T("pdf_err_encrypted_compress", DecryptTestLanguage)),
                 "Expected localized compression encryption error.");
             Assert.True(exComp.ResourceKey == "pdf_err_encrypted_compress", "Expected resource key match.");
 
@@ -274,21 +276,21 @@ static partial class TestSuite
             {
                 mergeProcessor.Process(new List<string> { encryptedPath }, outMerge, compOptions);
             });
-            Assert.True(exMerge.Message.Contains(Localization.T("pdf_err_encrypted_merge", "zh-TW")),
+            Assert.True(exMerge.Message.Contains(Localization.T("pdf_err_encrypted_merge", DecryptTestLanguage)),
                 "Expected localized merge encryption error.");
             Assert.True(exMerge.ResourceKey == "pdf_err_encrypted_merge", "Expected resource key match.");
 
             var transOptions = new Dictionary<string, object>
             {
                 ["targetLang"] = "en",
-                [ExecutionLocalizationOptions.LanguageKey] = "zh-TW"
+                [ExecutionLocalizationOptions.LanguageKey] = DecryptTestLanguage
             };
             var transProcessor = new Clickra.Core.Modules.PdfTranslation.Execution.PdfTranslateProcessor();
             var exTrans = Assert.Throws<PdfEncryptedException>(() =>
             {
                 transProcessor.Process(new List<string> { encryptedPath }, outTranslate, transOptions);
             });
-            Assert.True(exTrans.Message.Contains(Localization.T("pdf_err_encrypted_translate", "zh-TW")),
+            Assert.True(exTrans.Message.Contains(Localization.T("pdf_err_encrypted_translate", DecryptTestLanguage)),
                 "Expected localized translation encryption error.");
             Assert.True(exTrans.ResourceKey == "pdf_err_encrypted_translate", "Expected resource key match.");
 
@@ -296,17 +298,17 @@ static partial class TestSuite
             var compUseCase = new Clickra.Core.Modules.PdfCompression.Application.CompressPdfUseCase();
             var compVal = compUseCase.Validate(new ConversionRequest("compress-pdf", new[] { encryptedPath }, compOptions));
             Assert.False(compVal.IsValid, "Expected compress preflight to fail on encrypted file.");
-            Assert.True(compVal.Error == Localization.T("pdf_err_encrypted_compress", "zh-TW"), "Expected localized compress preflight error.");
+            Assert.True(compVal.Error == Localization.T("pdf_err_encrypted_compress", DecryptTestLanguage), "Expected localized compress preflight error.");
 
             var mergeUseCase = new Clickra.Core.Modules.PdfMerge.Application.MergePdfUseCase();
             var mergeVal = mergeUseCase.Validate(new ConversionRequest("merge-pdf", new[] { encryptedPath, encryptedPath }, compOptions));
             Assert.False(mergeVal.IsValid, "Expected merge preflight to fail on encrypted file.");
-            Assert.True(mergeVal.Error == Localization.T("pdf_err_encrypted_merge", "zh-TW"), "Expected localized merge preflight error.");
+            Assert.True(mergeVal.Error == Localization.T("pdf_err_encrypted_merge", DecryptTestLanguage), "Expected localized merge preflight error.");
 
             var transUseCase = new Clickra.Core.Modules.PdfTranslation.Application.TranslatePdfUseCase();
             var transVal = transUseCase.Validate(new ConversionRequest("translate-pdf", new[] { encryptedPath }, transOptions));
             Assert.False(transVal.IsValid, "Expected translate preflight to fail on encrypted file.");
-            Assert.True(transVal.Error == Localization.T("pdf_err_encrypted_translate", "zh-TW"), "Expected localized translate preflight error.");
+            Assert.True(transVal.Error == Localization.T("pdf_err_encrypted_translate", DecryptTestLanguage), "Expected localized translate preflight error.");
         }
         finally
         {
