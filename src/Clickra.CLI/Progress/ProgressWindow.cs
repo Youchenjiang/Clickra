@@ -10,6 +10,7 @@ using System.Drawing.Text;
 using System.Drawing.Drawing2D;
 using Clickra.Core;
 using Clickra.Core.Modules.HistoryTasks.Application;
+using Clickra.Core.Application;
 
 using static Clickra.UI.Native.Win32;
 
@@ -140,10 +141,35 @@ namespace Clickra.UI
         /// message loop while the processing runs on a background thread.</summary>
         private void ShowInstance(string command, List<string> files, string? existingTaskId = null, int startIndex = 0)
         {
+            uint dpi = 96;
+            try { dpi = GetDpiForSystem(); } catch {}
+            _dpiScale = dpi / 96.0f;
+
             if (files == null || files.Count == 0)
             {
-                NativeDialogs.Warning(IntPtr.Zero, Loc("cli_err_no_input_title"), Loc("cli_err_no_input"), 1.0f, SettingsPresentationController.Shared.Language);
+                NativeDialogs.Warning(IntPtr.Zero, Loc("cli_err_no_input_title"), Loc("cli_err_no_input"), _dpiScale, SettingsPresentationController.Shared.Language);
                 return;
+            }
+
+            if (ConversionUseCases.TryGet(command, out IConversionUseCase? useCase))
+            {
+                string lang = SettingsPresentationController.Shared.Language;
+                var request = new ConversionRequest(
+                    command,
+                    files,
+                    new Dictionary<string, object> { [ConversionRequest.LanguageOptionKey] = lang });
+                ConversionValidationResult validation = useCase!.Validate(request);
+                if (!validation.IsValid)
+                {
+                    NativeDialogs.Error(
+                        IntPtr.Zero,
+                        Loc("progress_sub_failed"),
+                        validation.Error ?? Loc("progress_sub_failed"),
+                        _dpiScale,
+                        lang,
+                        Loc("progress_header_failed"));
+                    return;
+                }
             }
 
             // 清除先前右鍵操作殘留的 ClickraShell surrogate（dllhost，帶套件身分），
@@ -173,9 +199,6 @@ namespace Clickra.UI
             if (_isPromptingMarkdownOptions)
                 _progressPresentation.WaitForInput();
 
-            uint dpi = 96;
-            try { dpi = GetDpiForSystem(); } catch {}
-            _dpiScale = dpi / 96.0f;
 
             if (_darkBrush == IntPtr.Zero) _darkBrush = CreateSolidBrush(0x00202020);
             if (_editBgBrush == IntPtr.Zero) _editBgBrush = CreateSolidBrush(0x002D2D2D);
