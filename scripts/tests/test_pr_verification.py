@@ -8,7 +8,7 @@ import pr_verification
 
 
 class VerificationTests(unittest.TestCase):
-    def test_new_code_duplication_is_reported_without_new_zero_policy(self):
+    def test_new_code_duplication_enforces_zero_tolerance(self):
         pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
               "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
                                     for name in pr_verification.REQUIRED]}
@@ -16,6 +16,10 @@ class VerificationTests(unittest.TestCase):
                    "quality_gate": {"status": "OK", "conditions": []}}
         report = {"counts": {"unresolved": 0}, "sonar": {"total": 0},
                   "sonar_quality": quality}
+        result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
+        self.assertFalse(result["ready"])
+        self.assertIn("SonarQube new code duplication is 0.2% (must be 0.0%)", result["problems"])
+        quality["metrics"]["new_duplicated_lines_density"] = "0.0"
         result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
         self.assertTrue(result["ready"])
         self.assertEqual(quality, result["sonar_quality"])

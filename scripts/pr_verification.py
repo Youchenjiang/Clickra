@@ -103,8 +103,16 @@ def summarize(pr, report, *, remote_sha):
     sonar_count = report["sonar"]["total"]
     problems = _pr_problems(pr, remote_sha) + _finding_problems(report, groups, required)
     quality = report.get("sonar_quality")
-    if quality is not None and quality["quality_gate"]["status"] != "OK":
-        problems.append("SonarQube quality gate not passed")
+    if quality is not None:
+        if quality.get("quality_gate", {}).get("status") != "OK":
+            problems.append("SonarQube quality gate not passed")
+        dup = quality.get("metrics", {}).get("new_duplicated_lines_density")
+        if dup is not None:
+            try:
+                if float(dup) > 0.0:
+                    problems.append(f"SonarQube new code duplication is {dup}% (must be 0.0%)")
+            except (ValueError, TypeError):
+                pass
     unresolved_details = [
         {"id": t["id"], "path": t["path"], "line": t["line"], "outdated": t["outdated"]}
         for t in report.get("threads", []) if not t.get("resolved")
