@@ -19,6 +19,17 @@ public sealed class DecryptPdfUseCase : PerFileConversionUseCaseBase
     protected override string UnsupportedInputError(string path) => $"Unsupported decrypt input '{path}'.";
     protected override string GetOutputFileName(string input) =>
         Path.GetFileNameWithoutExtension(input) + "_decrypted.pdf";
+
+    protected override ConversionValidationResult ValidateInputs(ConversionRequest request)
+    {
+        if (request.InputFiles.Any(f => File.Exists(f) && !PdfDecryptProcessor.IsEncrypted(f)))
+        {
+            string lang = ExecutionLocalizationOptions.ReadLanguage(request.Options);
+            return ConversionValidationResult.Failure(Localization.T("pdf_not_encrypted", lang));
+        }
+
+        return ConversionValidationResult.Success();
+    }
     public override IReadOnlySet<ConversionCapability> Capabilities =>
         new HashSet<ConversionCapability> { ConversionCapability.Password };
 

@@ -457,5 +457,8 @@
   "diag_email_version": "Clickra 버전: {0}",
   "diag_email_time": "시간: {0}",
   "diag_email_problem_desc": "[문제 설명]",
-  "diag_email_problem_placeholder": "(여기에 발생한 문제를 작성해 주세요...)"
+  "diag_email_problem_placeholder": "(여기에 발생한 문제를 작성해 주세요...)",
+  "pdf_err_encrypted_translate": "이 PDF 파일은 암호로 보호되어 있거나 암호화되어 있습니다. 번역하기 전에 '암호 해제' 기능을 사용하여 암호를 제거하십시오.",
+  "pdf_err_encrypted_compress": "이 PDF 파일은 암호로 보호되어 있거나 암호화되어 있습니다. 압축하기 전에 '암호 해제' 기능을 사용하여 암호를 제거하십시오.",
+  "pdf_err_encrypted_merge": "이 PDF 파일은 암호로 보호되어 있거나 암호화되어 있습니다. 병합하기 전에 '암호 해제' 기능을 사용하여 암호를 제거하십시오."
 }

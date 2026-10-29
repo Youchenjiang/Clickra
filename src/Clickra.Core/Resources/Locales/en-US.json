@@ -457,5 +457,8 @@
   "diag_email_version": "Clickra Version: {0}",
   "diag_email_time": "Time: {0}",
   "diag_email_problem_desc": "[Problem Description]",
-  "diag_email_problem_placeholder": "(Please describe the issue you encountered here...)"
+  "diag_email_problem_placeholder": "(Please describe the issue you encountered here...)",
+  "pdf_err_encrypted_translate": "This PDF document is encrypted or password-protected. Please remove the password using 'Decrypt PDF' before translating.",
+  "pdf_err_encrypted_compress": "This PDF document is encrypted or password-protected. Please remove the password using 'Decrypt PDF' before compressing.",
+  "pdf_err_encrypted_merge": "This PDF document is encrypted or password-protected. Please remove the password using 'Decrypt PDF' before merging."
 }

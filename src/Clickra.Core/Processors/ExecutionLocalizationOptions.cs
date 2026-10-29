@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
+using Clickra.Core.Application;
 
 namespace Clickra.Core.Processors;
 
 internal static class ExecutionLocalizationOptions
 {
-    public const string LanguageKey = "ui_language";
+    public const string LanguageKey = ConversionRequest.LanguageOptionKey;
 
     public static string ReadLanguage(IReadOnlyDictionary<string, object>? options) =>
         options is not null && options.TryGetValue(LanguageKey, out object? value)

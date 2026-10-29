@@ -1,5 +1,6 @@
 using Clickra.Core.Modules.Settings.Application;
 using Clickra.Core.Application;
+using Clickra.Core.Modules.PdfDecrypt.Application;
 using Clickra.Core.Modules.PdfTranslation.Execution;
 using Clickra.Core.Processors;
 
@@ -25,6 +26,17 @@ public sealed class TranslatePdfUseCase : PerFileConversionUseCaseBase
 
     protected override string GetOutputFileName(string input) =>
         Path.GetFileNameWithoutExtension(input) + "_translated.pdf";
+
+    protected override ConversionValidationResult ValidateInputs(ConversionRequest request)
+    {
+        if (request.InputFiles.Any(f => File.Exists(f) && PdfEncryptionQuery.IsEncrypted(f)))
+        {
+            string lang = ExecutionLocalizationOptions.ReadLanguage(request.Options);
+            return ConversionValidationResult.Failure(Localization.T("pdf_err_encrypted_translate", lang));
+        }
+
+        return ConversionValidationResult.Success();
+    }
 
     protected override ConversionValidationResult ValidateOptions(ConversionRequest request)
     {

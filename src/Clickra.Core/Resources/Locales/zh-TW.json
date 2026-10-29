@@ -457,5 +457,8 @@
   "diag_email_version": "Clickra 版本: {0}",
   "diag_email_time": "時間: {0}",
   "diag_email_problem_desc": "[問題描述]",
-  "diag_email_problem_placeholder": "（請在此處填寫您遇到的問題...）"
+  "diag_email_problem_placeholder": "（請在此處填寫您遇到的問題...）",
+  "pdf_err_encrypted_translate": "此 PDF 檔案受密碼保護或已加密，請先使用「解除密碼」功能移除密碼後再進行翻譯。",
+  "pdf_err_encrypted_compress": "此 PDF 檔案受密碼保護或已加密，請先使用「解除密碼」功能移除密碼後再進行壓縮。",
+  "pdf_err_encrypted_merge": "此 PDF 檔案受密碼保護或已加密，請先使用「解除密碼」功能移除密碼後再進行合併。"
 }

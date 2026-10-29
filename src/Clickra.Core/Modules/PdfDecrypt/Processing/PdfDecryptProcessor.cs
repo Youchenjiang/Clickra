@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using Clickra.Core.Processors;
 using PdfSharp.Pdf;
@@ -9,6 +10,29 @@ namespace Clickra.Core.Modules.PdfDecrypt.Processing;
 
 public class PdfDecryptProcessor : SingleFileProcessorBase
 {
+    /// <summary>
+    /// Checks whether the specified PDF file has encryption or password protection.
+    /// Returns false if the file can be opened and has no security handler.
+    /// </summary>
+    public static bool IsEncrypted(string filePath)
+    {
+        if (!File.Exists(filePath)) return false;
+        try
+        {
+            using var doc = PdfReader.Open(filePath, PdfDocumentOpenMode.Import);
+            return doc.SecurityHandler != null && doc.SecurityHandler.Elements.Count > 0;
+        }
+        catch (PdfReaderException ex) when (ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase)
+            || ex.Message.Contains("encrypted", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     protected override string GetOutputSuffix() => "_decrypted.pdf";
 
     protected override void ProcessSingleFile(string fullPath, string targetOutputPath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
