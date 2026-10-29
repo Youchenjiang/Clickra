@@ -8,17 +8,9 @@
 Clickra
 
 ## Description
-Clickra は、Windows のエクスプローラー向け右クリック変換・PDF ツールです。
+Clickra は、Windows のエクスプローラー向けに設計されたネイティブな右クリック拡張ツールです。ファイルを右クリックするだけで、Office 文書の PDF 変換、PDF の圧縮・分割・結合・パスワード解除、画像の形式変換や結合、Markdown 変換を素早く実行できます。
 
-ファイルを右クリックするだけで直接処理できます：
-• 文書から PDF：Word、Excel、PowerPoint
-• PDF ツール：圧縮、パスワード解除、分割、結合
-• 画像ツール：形式変換、縦長画像結合、PDF 化
-• Markdown：PDF または Word への変換
-• 論文翻訳：レイアウトと数式を保持する PDF 翻訳
-
-すべてのファイルは 100% PC ローカルでオフライン処理され、外部に送信されません。
-完全無料、オープンソース、バックグラウンド常駐なし。
+主要なファイル処理はすべてローカル環境でオフライン実行されるため、プライバシーが安全に保護されます（論文翻訳機能のみオンライン通信を使用します）。無料・オープンソース、NativeAOT による高速起動で、バックグラウンド常駐サービスもありません。
 
 ソースコード：https://github.com/Youchenjiang/Clickra
 
@@ -32,21 +24,18 @@ Clickra は、Windows のエクスプローラー向け右クリック変換・P
 *(最多 20 個，以項目符號顯示)*
 - Windows エクスプローラー右クリックメニューにネイティブ統合
 - Word、Excel、PowerPoint をワンクリックで PDF 変換
-- 高品質なローカル PDF 圧縮
-- PDF パスワード解除と保護
+- ローカル Microsoft Office および LibreOffice 備援エンジンのサポート
+- 高品質なローカル PDF 智慧圧縮
+- PDF パスワード解除と事前保護
 - ページサムネイル付きビジュアル PDF 分割
 - 複数 PDF ファイルの高速結合
 - 数式保護対応の PDF 論文翻訳
 - Markdown から PDF／Word への変換
-- 画像形式変換 (JPG/PNG/WebP/GIF/HEIC)
+- 画像形式変換：JPG、PNG、WebP、GIF、HEIC
 - 長い画像の結合と画像から PDF へのパッケージ化
-- 100% ローカルオフライン処理でプライバシーを保護
-- NativeAOT コンパイルによる高速起動、バックグラウンド負荷ゼロ
+- 主要な処理はローカルオフライン実行でプライバシーを保護
+- NativeAOT コンパイルによる高速起動、常駐サービスなし
 - 日本語、英語、繁中、簡中、韓国語の 5 言語完全対応
-
----
-
-### 補足項目 (Supplemental Fields)
 
 ## Short title
 Clickra
@@ -55,11 +44,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra は Windows エクスプローラー用の右クリック変換・PDF ツールです。Office 変換、PDF 圧縮/結合/分割/解除、画像、Markdown に対応し、100% ローカル処理です。
-
----
-
-### その他 (Other Information)
+Clickra は Windows エクスプローラー用の右クリック変換・PDF ツールです。Office 変換、PDF 圧縮/結合/分割/解除、画像、Markdown に対応し、主要処理はローカル実行です。
 
 ## Keywords
 *(最多 7 個)*

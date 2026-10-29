@@ -8,17 +8,9 @@
 Clickra
 
 ## Description
-Clickra는 Windows 파일 탐색기용 우클릭 변환 및 PDF 생산성 도구입니다.
+Clickra는 Windows 파일 탐색기를 위한 네이티브 우클릭 확장 프로그램입니다. 파일을 마우스 우클릭하여 Office 문서의 PDF 변환, PDF 압축·분할·병합·암호 해제, 이미지 변환 및 세로 연결, Markdown 변환을 빠르게 실행할 수 있습니다.
 
-파일을 마우스 우클릭하여 즉시 처리할 수 있습니다:
-• 문서 to PDF: Word, Excel, PowerPoint
-• PDF 도구: 압축, 암호 해제, 분할, 병합
-• 이미지 도구: 형식 변환, 세로 연결, PDF 묶기
-• Markdown: PDF 또는 Word로 변환
-• 논문 번역: 수식과 서식을 보존하는 PDF 번역
-
-모든 파일은 100% PC 로컬에서 오프라인으로 처리되며 외부로 전송되지 않습니다.
-무료, 오픈 소스, 백그라운드 상주 없음.
+핵심 파일 처리는 외부 전송 없이 로컬에서 오프라인으로 안전하게 완료됩니다 (선택적 PDF 논문 번역 기능만 네트워크를 사용합니다). 무료 오픈 소스 소프트웨어이며 빠른 시작 속도와 상주 서비스 없는 깔끔한 실행 환경을 제공합니다.
 
 소스 코드: https://github.com/Youchenjiang/Clickra
 
@@ -32,21 +24,18 @@ Clickra는 Windows 파일 탐색기용 우클릭 변환 및 PDF 생산성 도구
 *(최대 20개, 글머리 기호로 표시)*
 - 파일 탐색기 우클릭 메뉴 네이티브 통합
 - Word, Excel, PowerPoint 원클릭 PDF 변환
+- 로컬 Microsoft Office 및 LibreOffice 엔진 지원
 - 효율적인 로컬 PDF 압축
 - PDF 암호 해제 및 암호화 파일 보호
 - 페이지 썸네일 미리보기를 지원하는 시각적 PDF 분할
 - 여러 PDF 파일 원클릭 병합
 - 수식 보존 PDF 논문 번역
 - Markdown to PDF 및 Word 변환
-- 이미지 형식 변환 (JPG/PNG/WebP/GIF/HEIC)
+- 이미지 형식 변환: JPG, PNG, WebP, GIF, HEIC
 - 세로 이미지 연결 및 이미지 PDF 묶기
-- 100% 로컬 오프라인 처리로 개인정보 보호
-- NativeAOT 컴파일로 빠른 시작, 백그라운드 메모리 점유 없음
+- 핵심 작업 로컬 오프라인 처리로 개인정보 보호
+- NativeAOT 컴파일로 빠른 시작, 상주 서비스 없음
 - 한국어, 영어, 번체, 간체, 일본어 5개 언어 완전 지원
-
----
-
-### 보충 항목 (Supplemental Fields)
 
 ## Short title
 Clickra
@@ -55,11 +44,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra는 Office to PDF, PDF 압축/병합/분할/해제, 이미지, Markdown 처리를 지원하는 Windows 우클릭 도구로, 100% 로컬 오프라인 처리됩니다.
-
----
-
-### 기타 정보 (Other Information)
+Clickra는 Office to PDF, PDF 압축/병합/분할/해제, 이미지, Markdown 처리를 지원하는 Windows 우클릭 도구로, 핵심 작업은 로컬 오프라인 처리됩니다.
 
 ## Keywords
 *(최대 7개)*

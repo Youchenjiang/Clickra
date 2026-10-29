@@ -8,17 +8,9 @@
 Clickra
 
 ## Description
-Clickra 是一款 Windows 资源管理器的右键转档与 PDF 工具。
+Clickra 是一款专为 Windows 资源管理器打造的原生右键扩展工具。只需在文件上右键单击，即可快速完成文档转 PDF、PDF 压缩与分割合并、密码解密、图片格式互转及长图拼接，以及 Markdown 文档转换。
 
-直接在文件上点击右键即可处理：
-• 文档转 PDF：Word、Excel、PPT
-• PDF 工具：压缩、解密、分割、合并
-• 图片工具：格式互转、拼接长图、转 PDF
-• Markdown：转换为 PDF 或 Word
-• 论文翻译：保留排版与公式的 PDF 翻译
-
-所有文件均 100% 在本机电脑离线处理，文件绝不外传。
-免费、开源、无广告，无后台常驻。
+核心文档处理全程在本地电脑离线运行，保障数据隐私；亦提供可选的 PDF 论文翻译功能，可完整保留原始排版与公式。免费开源、原生启动极速，且无开机后台常驻服务。
 
 源代码：https://github.com/Youchenjiang/Clickra
 
@@ -32,21 +24,18 @@ Clickra 是一款 Windows 资源管理器的右键转档与 PDF 工具。
 *(最多 20 个，以项目符号显示)*
 - 资源管理器右键原生集成，即点即用
 - Word、Excel、PowerPoint 转 PDF
+- 支持本机 Microsoft Office 与 LibreOffice 双引擎
 - 本地 PDF 智能压缩与体积精简
 - PDF 密码安全解密与防护
 - 可视化 PDF 分割与多页预览
 - 多个 PDF 文件快速合并
-- PDF 论文翻译（支持公式保护与自定义 AI 引擎）
+- PDF 论文翻译，支持公式保护与自定义 AI 引擎
 - Markdown 转 PDF 与 Word
-- 图片格式互转 (JPG/PNG/WebP/GIF/HEIC)
+- 图片格式互转：JPG、PNG、WebP、GIF、HEIC
 - 图片垂直长图拼接与封装 PDF
-- 100% 本机端离线处理，捍卫文件隐私
-- 原生 AOT 编译，极速启动、零后台占用
+- 核心操作本地端离线处理，捍卫文件隐私
+- 原生 AOT 编译，极速启动且无常驻服务
 - 完整繁中、简中、英、日、韩五国语言界面
-
----
-
-### 补充字段 (Supplemental Fields)
 
 ## Short title
 Clickra
@@ -55,11 +44,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra 是一款 Windows 资源管理器的右键转档与 PDF 工具，支持 Office 转 PDF、PDF 压缩/分割/合并/解密、图片与 Markdown 处理，100% 本机离线、免费开源。
-
----
-
-### 其他信息 (Other Information)
+Clickra 是一款 Windows 资源管理器的右键转档与 PDF 工具，支持 Office 转 PDF、PDF 压缩/分割/合并/解密、图片与 Markdown 处理，核心操作本地离线、免费开源。
 
 ## Keywords
 *(最多 7 个)*
