@@ -113,7 +113,7 @@ namespace Clickra.UI
             switch (msg)
             {
                 case WM_USER_SHOW_PASSWORD_INPUT: return HandleShowPasswordInput(hwnd);
-                case WM_USER_HIDE_PASSWORD_INPUT: return HandleHidePasswordInput(hwnd);
+                case WM_USER_HIDE_PASSWORD_INPUT: return HandleHidePasswordInput();
                 case 0x0100: // WM_KEYDOWN
                     {
                         IntPtr? keyResult = HandleKeyDown(hwnd, w);
@@ -121,7 +121,7 @@ namespace Clickra.UI
                     }
                     break;
                 case 0x0133: return HandleCtlColorEdit(w); // WM_CTLCOLOREDIT
-                case 0x0111: return HandleCommand(hwnd, w); // WM_COMMAND
+                case 0x0111: return HandleCommand(); // WM_COMMAND
                 case 0x020A: return HandleMouseWheel(hwnd, w, l); // WM_MOUSEWHEEL
                 case WM_USER_INVALIDATE: return HandleInvalidate(hwnd, w);
                 case 0x0200: return HandleMouseMove(hwnd, l); // WM_MOUSEMOVE
@@ -151,15 +151,15 @@ namespace Clickra.UI
             if (_isPromptingVisualSplitter)
             {
                 ResizeWindowForVisualSplitter(hwnd, true);
+                return IntPtr.Zero;
             }
-            ShowPasswordInputControls(hwnd);
+            ShowPasswordInputDialog(hwnd);
             return IntPtr.Zero;
         }
 
         /// <summary>Hides the password input panel.</summary>
-        private IntPtr HandleHidePasswordInput(IntPtr hwnd)
+        private static IntPtr HandleHidePasswordInput()
         {
-            HidePasswordInputControls(hwnd);
             return IntPtr.Zero;
         }
 
@@ -211,10 +211,9 @@ namespace Clickra.UI
             return _editBgBrush;
         }
 
-        /// <summary>Dispatches password-prompt button commands (OK / Cancel).</summary>
-        private IntPtr HandleCommand(IntPtr hwnd, IntPtr w)
+        /// <summary>Dispatches button commands (no-op since dialogs handle their own commands).</summary>
+        private static IntPtr HandleCommand()
         {
-            HandlePasswordInputCommand(hwnd, w);
             return IntPtr.Zero;
         }
 
@@ -733,9 +732,7 @@ namespace Clickra.UI
             if (needsConfirmation)
             {
                 string text = Localization.T("progress_cancel_confirm", SettingsPresentationController.Shared.Language);
-                string caption = "Clickra";
-                int btn = MessageBox(hwnd, text, caption, 0x24 | 0x30); // MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2
-                if (btn != 6) // 6 is IDYES
+                if (!NativeDialogs.Confirm(hwnd, "Clickra", text, _dpiScale, SettingsPresentationController.Shared.Language))
                 {
                     return IntPtr.Zero; // Ignore close
                 }

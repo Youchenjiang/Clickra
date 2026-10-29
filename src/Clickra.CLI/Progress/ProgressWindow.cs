@@ -35,9 +35,6 @@ namespace Clickra.UI
         private bool _processingStarted = false;
         private Action<bool>? _markdownDecision;
         private bool _markdownDecisionResolved = false;
-        private IntPtr _hwndEdit = IntPtr.Zero;
-        private IntPtr _hwndBtnOk = IntPtr.Zero;
-        private IntPtr _hwndBtnCancel = IntPtr.Zero;
         private IntPtr _editBgBrush = IntPtr.Zero;
         private IntPtr _darkBrush = IntPtr.Zero;
         private IntPtr _hFont = IntPtr.Zero;
@@ -62,6 +59,7 @@ namespace Clickra.UI
         private bool _completed => _progressPresentation.State.Status == TaskProgressPresentationStatus.Succeeded;
         private bool _hasError => _progressPresentation.State.Status is TaskProgressPresentationStatus.Failed or TaskProgressPresentationStatus.Canceled;
         private string _errorMessage => _progressPresentation.State.Error;
+        private string? _failureToAlert = null;
         private IntPtr _hwnd = IntPtr.Zero;
 
         private double _currentDispWidth = 0;
@@ -144,7 +142,7 @@ namespace Clickra.UI
         {
             if (files == null || files.Count == 0)
             {
-                MessageBox(IntPtr.Zero, Loc("cli_err_no_input"), Loc("cli_err_no_input_title"), 0x30); // MB_ICONWARNING
+                NativeDialogs.Warning(IntPtr.Zero, Loc("cli_err_no_input_title"), Loc("cli_err_no_input"), 1.0f, SettingsPresentationController.Shared.Language);
                 return;
             }
 
@@ -250,9 +248,34 @@ namespace Clickra.UI
             if (!_isPromptingMarkdownOptions)
                 StartProcessingThread(_hwnd);
 
+            RECT progressRect = default;
+            bool hadRect = GetWindowRect(_hwnd, out progressRect);
+
             RunMessageLoop(_hwnd);
 
             Marshal.FreeHGlobal(hClass);
+
+            ShowPendingFailureAlert(hadRect ? progressRect : null);
+        }
+
+        private void ShowPendingFailureAlert(RECT? centerRect)
+        {
+            if (string.IsNullOrWhiteSpace(_failureToAlert)) return;
+
+            string lang = SettingsPresentationController.Shared.Language;
+            string displayErrMsg = _failureToAlert;
+            if (displayErrMsg.Equals("User Aborted", StringComparison.OrdinalIgnoreCase))
+            {
+                displayErrMsg = Loc("error_user_aborted");
+            }
+            NativeDialogs.Error(
+                IntPtr.Zero,
+                Loc("progress_sub_failed"),
+                displayErrMsg,
+                _dpiScale,
+                lang,
+                Loc("progress_header_failed"),
+                centerRect: centerRect);
         }
 
         private static bool IsMarkdownCommand(string command) =>
@@ -300,9 +323,6 @@ namespace Clickra.UI
         /// <summary>Destroys child controls, disposes GDI+ resources and removes the tray icon.</summary>
         private void CleanupResources()
         {
-            if (_hwndEdit != IntPtr.Zero) { DestroyWindow(_hwndEdit); _hwndEdit = IntPtr.Zero; }
-            if (_hwndBtnOk != IntPtr.Zero) { DestroyWindow(_hwndBtnOk); _hwndBtnOk = IntPtr.Zero; }
-            if (_hwndBtnCancel != IntPtr.Zero) { DestroyWindow(_hwndBtnCancel); _hwndBtnCancel = IntPtr.Zero; }
 
             try { _titleFont?.Dispose(); _titleFont = null; } catch { }
             try { _subFont?.Dispose(); _subFont = null; } catch { }

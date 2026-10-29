@@ -112,11 +112,19 @@ namespace Clickra.UI.Native
         [DllImport("user32.dll")] public static extern bool GetCursorPos(out Point lpPoint);
         [DllImport("user32.dll")] public static extern bool ScreenToClient(IntPtr hWnd, ref Point lpPoint);
         [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+        [DllImport("user32.dll", EntryPoint = "GetWindowRect")] private static extern bool GetWindowRectNative(IntPtr hWnd, out RECT lpRect);
+        /// <summary>Retrieves the dimensions of the bounding rectangle of the specified window.</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static bool GetWindowRect(IntPtr hWnd, out RECT lpRect) => GetWindowRectNative(hWnd, out lpRect);
 
         [DllImport("gdi32.dll")] public static extern IntPtr CreateSolidBrush(uint crColor);
         [DllImport("gdi32.dll")] public static extern bool DeleteObject(IntPtr hObject);
         [DllImport("gdi32.dll", EntryPoint = "SetTextColor")] public static extern uint SetTextColor(IntPtr hdc, uint crColor);
         [DllImport("gdi32.dll", EntryPoint = "SetBkColor")] public static extern uint SetBkColor(IntPtr hdc, uint crColor);
+        [DllImport("gdi32.dll", EntryPoint = "SetBkMode")] private static extern int SetBkModeNative(IntPtr hdc, int iBkMode);
+        /// <summary>Sets the background mix mode of the specified device context.</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static int SetBkMode(IntPtr hdc, int iBkMode) => SetBkModeNative(hdc, iBkMode);
         [DllImport("gdi32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr CreateFontW(int cHeight, int cWidth, int cEscapement, int cOrientation, int cWeight, uint bItalic, uint bUnderline, uint bStrikeOut, uint iCharSet, uint iOutPrecision, uint iClipPrecision, uint iQuality, uint iPitchAndFamily, string pszFaceName);
 
         [DllImport("shell32.dll", EntryPoint = "Shell_NotifyIconW", CharSet = CharSet.Unicode)] public static extern bool Shell_NotifyIcon(uint dwMessage, ref NOTIFYICONDATAW lpData);

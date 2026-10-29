@@ -91,7 +91,11 @@ namespace Clickra.UI
                 string errorMsg = wasCanceled ? UserAbortedMessage : ex.Message;
 
                 if (wasCanceled) _progressPresentation.Cancel(errorMsg);
-                else _progressPresentation.Fail(errorMsg);
+                else
+                {
+                    _progressPresentation.Fail(errorMsg);
+                    _failureToAlert = errorMsg;
+                }
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }
@@ -130,7 +134,10 @@ namespace Clickra.UI
             else if (result.Status == ConversionResultStatus.Parked)
                 _progressPresentation.Park(errorMsg);
             else
+            {
                 _progressPresentation.Fail(errorMsg);
+                _failureToAlert = errorMsg;
+            }
             PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
             ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
             PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE

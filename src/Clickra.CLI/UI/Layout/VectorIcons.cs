@@ -51,6 +51,24 @@ public static class VectorIcons
         g.DrawLine(pen, x + size * 0.8f, y + size * 0.2f, x + size * 0.2f, y + size * 0.8f);
     }
 
+    /// <summary>Draws a vector warning triangle with exclamation mark without font dependency.</summary>
+    public static void DrawWarningTriangle(Graphics g, float x, float y, float size, Color color, float strokeWidth)
+    {
+        using var pen = new Pen(color, strokeWidth) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+        using var path = new GraphicsPath();
+        path.AddPolygon(new[]
+        {
+            new PointF(x + size * 0.5f, y + size * 0.1f),
+            new PointF(x + size * 0.95f, y + size * 0.9f),
+            new PointF(x + size * 0.05f, y + size * 0.9f)
+        });
+        path.StartFigure();
+        path.AddLine(x + size * 0.5f, y + size * 0.38f, x + size * 0.5f, y + size * 0.62f);
+        path.StartFigure();
+        path.AddLine(x + size * 0.5f, y + size * 0.76f, x + size * 0.5f, y + size * 0.78f);
+        g.DrawPath(pen, path);
+    }
+
     /// <summary>Draws a centered vector plus sign (+) without font dependency.</summary>
     public static void DrawPlus(Graphics g, float centerX, float centerY, float halfSize, Color color, float strokeWidth)
     {
