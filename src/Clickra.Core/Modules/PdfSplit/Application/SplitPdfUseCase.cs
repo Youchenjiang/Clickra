@@ -68,17 +68,16 @@ public sealed class SplitPdfUseCase : PerFileConversionUseCaseBase
         if (string.IsNullOrWhiteSpace(targetPages))
             throw new OperationCanceledException(cancellationToken);
 
-        string password = "";
-        if (plan.NormalizedOptions.TryGetValue("password", out var pwdObj) && pwdObj is string pwdStr)
-        {
-            password = pwdStr;
-        }
+        string? initialPassword = plan.NormalizedOptions.TryGetValue("password", out var pwdObj) && pwdObj is string pwdStr
+            ? pwdStr
+            : null;
 
-        bool isRetry = false;
-        while (true)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            try
+        await ExecuteWithPasswordRetryAsync(
+            index,
+            plan,
+            interaction,
+            initialPassword,
+            async password =>
             {
                 var processor = new PdfSplitProcessor();
                 var options = new Dictionary<string, object> { { "pages", targetPages } };
@@ -96,21 +95,9 @@ public sealed class SplitPdfUseCase : PerFileConversionUseCaseBase
                             ReportFileProgress(plan, index, progress, current, message),
                         cancellationToken),
                     cancellationToken);
-                return;
-            }
-            catch (PdfReaderException ex) when (IsPasswordError(ex))
-            {
-                string? supplied = await interaction.RequestPasswordAsync(
-                    index,
-                    plan.Inputs[index],
-                    isRetry,
-                    cancellationToken);
-                if (supplied is null)
-                    throw new OperationCanceledException(cancellationToken);
-                password = supplied;
-                isRetry = true;
-            }
-        }
+            },
+            IsPasswordError,
+            cancellationToken);
     }
 
     private static bool IsPasswordError(Exception ex) =>

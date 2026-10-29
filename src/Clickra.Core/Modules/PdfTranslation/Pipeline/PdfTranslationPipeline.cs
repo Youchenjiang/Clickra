@@ -267,17 +267,18 @@ public static class PdfTranslationPipeline
 
     private static UglyToad.PdfPig.PdfDocument OpenPigDocument(string inputPath, string language)
     {
+        const string encryptedTranslateErrorKey = "pdf_err_encrypted_translate";
         try
         {
             return UglyToad.PdfPig.PdfDocument.Open(inputPath);
         }
         catch (UglyToad.PdfPig.Exceptions.PdfDocumentEncryptedException ex)
         {
-            throw new PdfEncryptedException("pdf_err_encrypted_translate", inputPath, Localization.T("pdf_err_encrypted_translate", language), ex);
+            throw new PdfEncryptedException(encryptedTranslateErrorKey, inputPath, Localization.T(encryptedTranslateErrorKey, language), ex);
         }
         catch (Exception ex) when (ex is not PdfEncryptedException && (ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("encrypted", StringComparison.OrdinalIgnoreCase)))
         {
-            throw new PdfEncryptedException("pdf_err_encrypted_translate", inputPath, Localization.T("pdf_err_encrypted_translate", language), ex);
+            throw new PdfEncryptedException(encryptedTranslateErrorKey, inputPath, Localization.T(encryptedTranslateErrorKey, language), ex);
         }
     }
 }
