@@ -16,16 +16,17 @@ static partial class TestSuite
     private const string TargetLanguageZhCn = "zh-CN";
     private const string SampleHelloWorld = "Hello world";
     private const string SampleHello = "Hello";
+    private const string DefaultOpenAiEndpoint = "https://api.openai.com/v1/chat/completions";
 
     private static void RegisterProviderLimitTests(TestRunner runner)
     {
         runner.Run("OpenAI translator normalizes endpoint URL variants", () =>
         {
-            Assert.Equal("https://api.openai.com/v1/chat/completions", OpenAiTranslator.NormalizeEndpoint(null));
-            Assert.Equal("https://api.openai.com/v1/chat/completions", OpenAiTranslator.NormalizeEndpoint(""));
-            Assert.Equal("https://api.openai.com/v1/chat/completions", OpenAiTranslator.NormalizeEndpoint("https://api.openai.com/v1"));
-            Assert.Equal("https://api.openai.com/v1/chat/completions", OpenAiTranslator.NormalizeEndpoint("https://api.openai.com/v1/"));
-            Assert.Equal("https://api.openai.com/v1/chat/completions", OpenAiTranslator.NormalizeEndpoint("https://api.openai.com/v1/chat/completions"));
+            Assert.Equal(DefaultOpenAiEndpoint, OpenAiTranslator.NormalizeEndpoint(null));
+            Assert.Equal(DefaultOpenAiEndpoint, OpenAiTranslator.NormalizeEndpoint(""));
+            Assert.Equal(DefaultOpenAiEndpoint, OpenAiTranslator.NormalizeEndpoint("https://api.openai.com/v1"));
+            Assert.Equal(DefaultOpenAiEndpoint, OpenAiTranslator.NormalizeEndpoint("https://api.openai.com/v1/"));
+            Assert.Equal(DefaultOpenAiEndpoint, OpenAiTranslator.NormalizeEndpoint(DefaultOpenAiEndpoint));
             Assert.Equal("http://localhost:11434/v1/chat/completions", OpenAiTranslator.NormalizeEndpoint("http://localhost:11434/v1"));
         });
 
