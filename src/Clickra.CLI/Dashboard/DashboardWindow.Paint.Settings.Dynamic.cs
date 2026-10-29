@@ -157,9 +157,15 @@ namespace Clickra.UI;
 
             string rawValue = SettingsPresentationController.Shared.ReadText(descriptor);
             bool isPassword = string.Equals(descriptor.Key, SettingsContract.TranslateAiApiKey, StringComparison.OrdinalIgnoreCase);
-            string displayValue = isPassword
-                ? (string.IsNullOrEmpty(rawValue) ? "(Not set)" : "••••••••••••")
-                : (string.IsNullOrEmpty(rawValue) ? "(Empty)" : ShortPath(rawValue, 40));
+            string displayValue;
+            if (isPassword)
+            {
+                displayValue = string.IsNullOrEmpty(rawValue) ? "(Not set)" : "••••••••••••";
+            }
+            else
+            {
+                displayValue = string.IsNullOrEmpty(rawValue) ? "(Empty)" : ShortPath(rawValue, 40);
+            }
 
             float s = _dpiScale;
             var measureFont = _subFont ?? SystemFonts.DefaultFont;
