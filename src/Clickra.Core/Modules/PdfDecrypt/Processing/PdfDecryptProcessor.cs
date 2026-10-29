@@ -37,20 +37,12 @@ public class PdfDecryptProcessor : SingleFileProcessorBase
 
     protected override void ProcessSingleFile(string fullPath, string targetOutputPath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
     {
-        string password = "";
-        if (options?.TryGetValue("password", out var pwdObj) == true && pwdObj is string pwdStr)
-        {
-            password = pwdStr;
-        }
-
         int progressBase = ProgressCalculator.GetProgressBase(fileIndex);
         int totalProgressMax = ProgressCalculator.GetProgressMax(totalFiles);
 
         onProgress?.Invoke(progressBase + 20, totalProgressMax, "正在讀取 PDF 檔案...");
 
-        using var inDoc = string.IsNullOrEmpty(password)
-            ? PdfReader.Open(fullPath, PdfDocumentOpenMode.Import)
-            : PdfReader.Open(fullPath, password, PdfDocumentOpenMode.Import);
+        using var inDoc = OpenInputDocument(fullPath, options);
 
         if (inDoc.SecurityHandler == null || inDoc.SecurityHandler.Elements.Count == 0)
         {
@@ -74,5 +66,13 @@ public class PdfDecryptProcessor : SingleFileProcessorBase
         onProgress?.Invoke(progressBase + 95, totalProgressMax, "正在儲存檔案...");
         outDoc.Save(targetOutputPath);
         onProgress?.Invoke(progressBase + 100, totalProgressMax, "密碼已成功移除！");
+    }
+
+    private static PdfDocument OpenInputDocument(string fullPath, Dictionary<string, object>? options)
+    {
+        string? password = options?.TryGetValue("password", out var pwdObj) == true ? pwdObj as string : null;
+        return string.IsNullOrEmpty(password)
+            ? PdfReader.Open(fullPath, PdfDocumentOpenMode.Import)
+            : PdfReader.Open(fullPath, password, PdfDocumentOpenMode.Import);
     }
 }
