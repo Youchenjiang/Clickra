@@ -197,11 +197,7 @@ namespace Clickra.UI
             _bgBrush ??= new SolidBrush(Color.FromArgb(45, 45, 45));
 
             int clientW = (int)(520 * _dpiScale);
-            int logicalClientHeight = _isPromptingMarkdownOptions
-                ? MarkdownOptionsClientHeight
-                : _isPromptingPrintOptions
-                ? PrintOptionsClientHeight
-                : GetStandardClientHeight();
+            int logicalClientHeight = GetInitialClientHeight();
             int clientH = (int)(logicalClientHeight * _dpiScale);
 
             if (_bufferBmp == null)
@@ -325,7 +321,34 @@ namespace Clickra.UI
         private static bool IsPrintCommand(string command) =>
             command.Equals(PrintPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase);
 
-        private int GetStandardClientHeight() => _isPromptingVisualSplitter ? 420 : _isPromptingPrintOptions ? PrintOptionsClientHeight : 280;
+        private int GetStandardClientHeight()
+        {
+            if (_isPromptingVisualSplitter) return 420;
+            if (_isPromptingPrintOptions) return PrintOptionsClientHeight;
+            return 280;
+        }
+
+        private int GetInitialClientHeight()
+        {
+            if (_isPromptingMarkdownOptions) return MarkdownOptionsClientHeight;
+            if (_isPromptingPrintOptions) return PrintOptionsClientHeight;
+            return GetStandardClientHeight();
+        }
+
+        internal void ResizeClientSurface(IntPtr hwnd, int clientW, int clientH)
+        {
+            _bufferGraphics?.Dispose();
+            _bufferBmp?.Dispose();
+            _bufferBmp = new Bitmap(clientW, clientH);
+            _bufferGraphics = Graphics.FromImage(_bufferBmp);
+            _bufferGraphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            _bufferGraphics.SmoothingMode = SmoothingMode.AntiAlias;
+
+            var rect = new RECT { left = 0, top = 0, right = clientW, bottom = clientH };
+            AdjustWindowRectEx(ref rect, WS_OVERLAPPED_FIXED, false, 0);
+            SetWindowPos(hwnd, IntPtr.Zero, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0002 | 0x0004);
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+        }
 
         private void ResolvePrintDecision(bool startPrinting)
         {

@@ -260,17 +260,6 @@ namespace Clickra.UI;
             float s = _dpiScale;
             int clientW = (int)(520 * s);
             int clientH = (int)((expand ? MarkdownOptionsClientHeight : 280) * s);
-
-            _bufferGraphics?.Dispose();
-            _bufferBmp?.Dispose();
-            _bufferBmp = new Bitmap(clientW, clientH);
-            _bufferGraphics = Graphics.FromImage(_bufferBmp);
-            _bufferGraphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-            _bufferGraphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-
-            var rect = new RECT { left = 0, top = 0, right = clientW, bottom = clientH };
-            AdjustWindowRectEx(ref rect, WS_OVERLAPPED_FIXED, false, 0);
-            SetWindowPos(hwnd, IntPtr.Zero, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0002 | 0x0004);
-            InvalidateRect(hwnd, IntPtr.Zero, false);
+            ResizeClientSurface(hwnd, clientW, clientH);
         }
     }

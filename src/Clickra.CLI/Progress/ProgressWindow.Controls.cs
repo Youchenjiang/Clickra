@@ -180,51 +180,61 @@ namespace Clickra.UI
             int key = w.ToInt32();
             if (_isPromptingPrintOptions)
             {
-                if (_openDropdown != PrintDropdownType.None)
-                {
-                    if (key == 0x1B) // Esc closes dropdown
-                    {
-                        _openDropdown = PrintDropdownType.None;
-                        _hoveredDropdownIndex = -1;
-                        InvalidateRect(hwnd, IntPtr.Zero, false);
-                        return IntPtr.Zero;
-                    }
-                }
-
-                if (_printIsZoomed)
-                {
-                    if (key == 0x1B || key == 0x20 || key == 0x0D) // Esc / Space / Enter
-                    {
-                        ClosePrintZoom(hwnd);
-                    }
-                    else if (key == 0x6B || key == 0xBB) // numpad + / =
-                    {
-                        SetPrintZoomFactor(ZoomFactorStep(_printZoomFactor, +1), PrintZoomImgLeft + (PrintZoomImgW / 2f), PrintZoomImgTop + (PrintZoomImgH / 2f));
-                        InvalidateRect(hwnd, IntPtr.Zero, true);
-                    }
-                    else if (key == 0x6D || key == 0xBD) // numpad - / -
-                    {
-                        SetPrintZoomFactor(ZoomFactorStep(_printZoomFactor, -1), PrintZoomImgLeft + (PrintZoomImgW / 2f), PrintZoomImgTop + (PrintZoomImgH / 2f));
-                        InvalidateRect(hwnd, IntPtr.Zero, true);
-                    }
-                    else if (key == 0x30 || key == 0x60) // 0 / numpad 0 → fit
-                    {
-                        _printZoomFactor = 1f;
-                        _printZoomPanX = 0f;
-                        _printZoomPanY = 0f;
-                        InvalidateRect(hwnd, IntPtr.Zero, true);
-                    }
-                    return IntPtr.Zero;
-                }
-                else if (key == 0x20) // Space → open zoom
-                {
-                    OpenPrintZoom(hwnd);
-                    return IntPtr.Zero;
-                }
+                return HandlePrintKeyDown(hwnd, key);
             }
 
             if (!_isPromptingVisualSplitter) return null;
 
+            return HandleVisualSplitterKeyDown(hwnd, key);
+        }
+
+        private IntPtr? HandlePrintKeyDown(IntPtr hwnd, int key)
+        {
+            if (_openDropdown != PrintDropdownType.None && key == 0x1B) // Esc closes dropdown
+            {
+                _openDropdown = PrintDropdownType.None;
+                _hoveredDropdownIndex = -1;
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+                return IntPtr.Zero;
+            }
+
+            if (_printIsZoomed)
+            {
+                if (key == 0x1B || key == 0x20 || key == 0x0D) // Esc / Space / Enter
+                {
+                    ClosePrintZoom(hwnd);
+                }
+                else if (key == 0x6B || key == 0xBB) // numpad + / =
+                {
+                    SetPrintZoomFactor(ZoomFactorStep(_printZoomFactor, +1), PrintZoomImgLeft + (PrintZoomImgW / 2f), PrintZoomImgTop + (PrintZoomImgH / 2f));
+                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                }
+                else if (key == 0x6D || key == 0xBD) // numpad - / -
+                {
+                    SetPrintZoomFactor(ZoomFactorStep(_printZoomFactor, -1), PrintZoomImgLeft + (PrintZoomImgW / 2f), PrintZoomImgTop + (PrintZoomImgH / 2f));
+                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                }
+                else if (key == 0x30 || key == 0x60) // 0 / numpad 0 → fit
+                {
+                    _printZoomFactor = 1f;
+                    _printZoomPanX = 0f;
+                    _printZoomPanY = 0f;
+                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                }
+                return IntPtr.Zero;
+            }
+
+            if (key == 0x20) // Space → open zoom
+            {
+                OpenPrintZoom(hwnd);
+                return IntPtr.Zero;
+            }
+
+            return null;
+        }
+
+        private IntPtr? HandleVisualSplitterKeyDown(IntPtr hwnd, int key)
+        {
             if (_visualSplitIsZoomed)
             {
                 if (key == 0x1B || key == 0x20 || key == 0x0D) // Esc / Space / Enter
@@ -279,41 +289,55 @@ namespace Clickra.UI
             int scrollDir = delta > 0 ? -1 : 1;
             if (_isPromptingPrintOptions)
             {
-                if (_openDropdown != PrintDropdownType.None)
-                {
-                    int maxVisible = GetOpenDropdownMaxVisible();
-                    var items = GetOpenDropdownItems();
-                    int maxScroll = Math.Max(0, items.Count - maxVisible);
-                    if (maxScroll > 0)
-                    {
-                        _dropdownScrollOffset = Math.Max(0, Math.Min(maxScroll, _dropdownScrollOffset + scrollDir));
-                        InvalidateRect(hwnd, IntPtr.Zero, false);
-                    }
-                    return IntPtr.Zero;
-                }
-
-                if (_printIsZoomed)
-                {
-                    int sx = (short)(l.ToInt64() & 0xFFFF);
-                    int sy = (short)((l.ToInt64() >> 16) & 0xFFFF);
-                    var pt = new Point(sx, sy);
-                    ScreenToClient(hwnd, ref pt);
-                    SetPrintZoomFactor(ZoomFactorStep(_printZoomFactor, delta > 0 ? +1 : -1), pt.X / _dpiScale, pt.Y / _dpiScale);
-                    InvalidateRect(hwnd, IntPtr.Zero, true);
-                    return IntPtr.Zero;
-                }
+                return HandlePrintMouseWheel(hwnd, delta, scrollDir, l);
             }
             if (_isPromptingVisualSplitter && _visualSplitIsZoomed)
             {
-                // Wheel zooms in the lightbox, anchored at the cursor.
+                return HandleVisualSplitterMouseWheel(hwnd, delta, l);
+            }
+            return HandleDefaultScrollWheel(hwnd, scrollDir);
+        }
+
+        private IntPtr HandlePrintMouseWheel(IntPtr hwnd, int delta, int scrollDir, IntPtr l)
+        {
+            if (_openDropdown != PrintDropdownType.None)
+            {
+                int maxVisible = GetOpenDropdownMaxVisible();
+                var items = GetOpenDropdownItems();
+                int maxScroll = Math.Max(0, items.Count - maxVisible);
+                if (maxScroll > 0)
+                {
+                    _dropdownScrollOffset = Math.Max(0, Math.Min(maxScroll, _dropdownScrollOffset + scrollDir));
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                }
+                return IntPtr.Zero;
+            }
+
+            if (_printIsZoomed)
+            {
                 int sx = (short)(l.ToInt64() & 0xFFFF);
                 int sy = (short)((l.ToInt64() >> 16) & 0xFFFF);
                 var pt = new Point(sx, sy);
                 ScreenToClient(hwnd, ref pt);
-                SetVisualSplitZoomFactor(VisualSplitModel.ZoomFactorAfter(_visualSplitZoomFactor, delta > 0 ? +1 : -1), pt.X / _dpiScale, pt.Y / _dpiScale);
+                SetPrintZoomFactor(ZoomFactorStep(_printZoomFactor, delta > 0 ? +1 : -1), pt.X / _dpiScale, pt.Y / _dpiScale);
                 InvalidateRect(hwnd, IntPtr.Zero, true);
-                return IntPtr.Zero;
             }
+            return IntPtr.Zero;
+        }
+
+        private IntPtr HandleVisualSplitterMouseWheel(IntPtr hwnd, int delta, IntPtr l)
+        {
+            int sx = (short)(l.ToInt64() & 0xFFFF);
+            int sy = (short)((l.ToInt64() >> 16) & 0xFFFF);
+            var pt = new Point(sx, sy);
+            ScreenToClient(hwnd, ref pt);
+            SetVisualSplitZoomFactor(VisualSplitModel.ZoomFactorAfter(_visualSplitZoomFactor, delta > 0 ? +1 : -1), pt.X / _dpiScale, pt.Y / _dpiScale);
+            InvalidateRect(hwnd, IntPtr.Zero, true);
+            return IntPtr.Zero;
+        }
+
+        private IntPtr HandleDefaultScrollWheel(IntPtr hwnd, int scrollDir)
+        {
             lock (_stateLock)
             {
                 if (!_completed && !_hasError)
@@ -344,68 +368,88 @@ namespace Clickra.UI
 
             if (_isPromptingPrintOptions)
             {
-                if (_openDropdown != PrintDropdownType.None)
-                {
-                    var popupRect = GetOpenDropdownPopupRect();
-                    int oldHovered = _hoveredDropdownIndex;
-                    if (popupRect.ContainsInclusive(mouseX, mouseY))
-                    {
-                        int listTop = popupRect.Y + 3;
-                        int clickedRow = (mouseY - listTop) / PrintDropdownItemHeight;
-                        int itemIdx = _dropdownScrollOffset + clickedRow;
-                        var items = GetOpenDropdownItems();
-                        if (itemIdx >= 0 && itemIdx < items.Count && mouseY >= listTop)
-                        {
-                            _hoveredDropdownIndex = itemIdx;
-                        }
-                        else
-                        {
-                            _hoveredDropdownIndex = -1;
-                        }
-                    }
-                    else
-                    {
-                        _hoveredDropdownIndex = -1;
-                    }
-
-                    if (oldHovered != _hoveredDropdownIndex)
-                    {
-                        InvalidateRect(hwnd, IntPtr.Zero, false);
-                    }
-                    return IntPtr.Zero;
-                }
-
-                if (_printIsZoomed && _printZoomDragging)
-                {
-                    _printZoomPanX += mouseX - _printZoomDragLastX;
-                    _printZoomPanY += mouseY - _printZoomDragLastY;
-                    _printZoomDragLastX = mouseX;
-                    _printZoomDragLastY = mouseY;
-                    ClampPrintZoomPan();
-                    InvalidateRect(hwnd, IntPtr.Zero, false);
-                    return IntPtr.Zero;
-                }
-
-                var elem = GetPrintElementAt(mouseX, mouseY);
-                if (elem != _hoveredPrintElement)
-                {
-                    _hoveredPrintElement = elem;
-                    InvalidateRect(hwnd, IntPtr.Zero, false);
-                }
-                return IntPtr.Zero;
+                return HandlePrintMouseMove(hwnd, mouseX, mouseY);
             }
 
             if (_isPromptingVisualSplitter && _visualSplitIsZoomed && _visualSplitZoomDragging)
             {
-                _visualSplitZoomPanX += mouseX - _visualSplitZoomDragLastX;
-                _visualSplitZoomPanY += mouseY - _visualSplitZoomDragLastY;
-                _visualSplitZoomDragLastX = mouseX;
-                _visualSplitZoomDragLastY = mouseY;
-                ClampVisualSplitZoomPan();
+                return HandleVisualSplitterDrag(hwnd, mouseX, mouseY);
+            }
+
+            return HandleDefaultMouseMove(hwnd, mouseX, mouseY);
+        }
+
+        private IntPtr HandlePrintMouseMove(IntPtr hwnd, int mouseX, int mouseY)
+        {
+            if (_openDropdown != PrintDropdownType.None)
+            {
+                return HandleDropdownMouseMove(hwnd, mouseX, mouseY);
+            }
+
+            if (_printIsZoomed && _printZoomDragging)
+            {
+                _printZoomPanX += mouseX - _printZoomDragLastX;
+                _printZoomPanY += mouseY - _printZoomDragLastY;
+                _printZoomDragLastX = mouseX;
+                _printZoomDragLastY = mouseY;
+                ClampPrintZoomPan();
                 InvalidateRect(hwnd, IntPtr.Zero, false);
                 return IntPtr.Zero;
             }
 
+            var elem = GetPrintElementAt(mouseX, mouseY);
+            if (elem != _hoveredPrintElement)
+            {
+                _hoveredPrintElement = elem;
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            return IntPtr.Zero;
+        }
+
+        private IntPtr HandleDropdownMouseMove(IntPtr hwnd, int mouseX, int mouseY)
+        {
+            var popupRect = GetOpenDropdownPopupRect();
+            int oldHovered = _hoveredDropdownIndex;
+            if (popupRect.ContainsInclusive(mouseX, mouseY))
+            {
+                int listTop = popupRect.Y + 3;
+                int clickedRow = (mouseY - listTop) / PrintDropdownItemHeight;
+                int itemIdx = _dropdownScrollOffset + clickedRow;
+                var items = GetOpenDropdownItems();
+                if (itemIdx >= 0 && itemIdx < items.Count && mouseY >= listTop)
+                {
+                    _hoveredDropdownIndex = itemIdx;
+                }
+                else
+                {
+                    _hoveredDropdownIndex = -1;
+                }
+            }
+            else
+            {
+                _hoveredDropdownIndex = -1;
+            }
+
+            if (oldHovered != _hoveredDropdownIndex)
+            {
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            return IntPtr.Zero;
+        }
+
+        private IntPtr HandleVisualSplitterDrag(IntPtr hwnd, int mouseX, int mouseY)
+        {
+            _visualSplitZoomPanX += mouseX - _visualSplitZoomDragLastX;
+            _visualSplitZoomPanY += mouseY - _visualSplitZoomDragLastY;
+            _visualSplitZoomDragLastX = mouseX;
+            _visualSplitZoomDragLastY = mouseY;
+            ClampVisualSplitZoomPan();
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+            return IntPtr.Zero;
+        }
+
+        private IntPtr HandleDefaultMouseMove(IntPtr hwnd, int mouseX, int mouseY)
+        {
             lock (_stateLock)
             {
                 if (!_completed && !_hasError)
@@ -481,9 +525,9 @@ namespace Clickra.UI
             }
             if (_isPromptingPrintOptions)
             {
-                if (_printIsZoomed)
+                if (_printIsZoomed && HandlePrintZoomClick(hwnd, mouseX, mouseY))
                 {
-                    if (HandlePrintZoomClick(hwnd, mouseX, mouseY)) return IntPtr.Zero;
+                    return IntPtr.Zero;
                 }
                 _pressedPrintElement = GetPrintElementAt(mouseX, mouseY);
                 HandlePrintOptionsClick(hwnd, mouseX, mouseY);
