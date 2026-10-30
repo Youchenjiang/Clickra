@@ -3,6 +3,16 @@ using Clickra.Core.Processors;
 namespace Clickra.Core.Modules.PdfPrint.Application;
 
 /// <summary>
+/// Specifies duplex printing mode.
+/// </summary>
+public enum PrintDuplexMode
+{
+    Simplex = 0,
+    DuplexLongEdge = 1,
+    DuplexShortEdge = 2
+}
+
+/// <summary>
 /// Execution parameters for printing a PDF file.
 /// </summary>
 public sealed record PrintPdfOptions(
@@ -13,7 +23,9 @@ public sealed record PrintPdfOptions(
     bool FitToPage = true,
     string? Language = null,
     bool DarkenText = false,
-    double DarkenGamma = 2.2
+    double DarkenGamma = 2.2,
+    PrintDuplexMode Duplex = PrintDuplexMode.Simplex,
+    string? PaperSize = null
 )
 {
     public const string PrinterNameKey = "printer";
@@ -23,6 +35,8 @@ public sealed record PrintPdfOptions(
     public const string FitToPageKey = "fit_to_page";
     public const string DarkenTextKey = "darken_text";
     public const string DarkenGammaKey = "darken_gamma";
+    public const string DuplexKey = "duplex";
+    public const string PaperSizeKey = "paper_size";
 
     public static PrintPdfOptions FromDictionary(IReadOnlyDictionary<string, object>? dict)
     {
@@ -37,7 +51,20 @@ public sealed record PrintPdfOptions(
         bool darken = dict.TryGetValue(DarkenTextKey, out var dk) && bool.TryParse(dk?.ToString(), out bool dkVal) && dkVal;
         double gamma = dict.TryGetValue(DarkenGammaKey, out var gm) && double.TryParse(gm?.ToString(), out double gmVal) && gmVal > 0.1 ? gmVal : 2.2;
 
-        return new PrintPdfOptions(printer, pages, copies, dpi, fit, lang, darken, gamma);
+        PrintDuplexMode duplex = PrintDuplexMode.Simplex;
+        if (dict.TryGetValue(DuplexKey, out var dx) && dx != null)
+        {
+            string dxStr = dx.ToString()!;
+            if (Enum.TryParse<PrintDuplexMode>(dxStr, true, out var parsedDx))
+                duplex = parsedDx;
+            else if (dxStr.Equals("long", StringComparison.OrdinalIgnoreCase) || dxStr.Equals("vertical", StringComparison.OrdinalIgnoreCase))
+                duplex = PrintDuplexMode.DuplexLongEdge;
+            else if (dxStr.Equals("short", StringComparison.OrdinalIgnoreCase) || dxStr.Equals("horizontal", StringComparison.OrdinalIgnoreCase))
+                duplex = PrintDuplexMode.DuplexShortEdge;
+        }
+        string? paper = dict.TryGetValue(PaperSizeKey, out var pSz) ? pSz?.ToString() : null;
+
+        return new PrintPdfOptions(printer, pages, copies, dpi, fit, lang, darken, gamma, duplex, paper);
     }
 
     public Dictionary<string, object> ToDictionary()
@@ -50,6 +77,8 @@ public sealed record PrintPdfOptions(
         dict[FitToPageKey] = FitToPage;
         if (DarkenText) dict[DarkenTextKey] = true;
         if (Math.Abs(DarkenGamma - 2.2) > 0.01) dict[DarkenGammaKey] = DarkenGamma;
+        if (Duplex != PrintDuplexMode.Simplex) dict[DuplexKey] = Duplex.ToString();
+        if (!string.IsNullOrWhiteSpace(PaperSize)) dict[PaperSizeKey] = PaperSize;
         if (!string.IsNullOrWhiteSpace(Language)) dict[ExecutionLocalizationOptions.LanguageKey] = Language;
         return dict;
     }
