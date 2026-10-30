@@ -37,6 +37,7 @@ public partial class ProgressWindow
     private bool _printDarken;
 
     private PdfPreviewModel _printPreviewModel = new(1);
+    private readonly IPrinterDiscoveryService _printerDiscovery = new SystemPrinterDiscoveryService();
     private readonly Dictionary<int, Bitmap> _printThumbnails = new();
     private readonly HashSet<int> _printPendingThumbnails = new();
 
@@ -70,15 +71,24 @@ public partial class ProgressWindow
     {
         try
         {
-            var discovery = new SystemPrinterDiscoveryService();
-            _installedPrinters = discovery.GetInstalledPrinters().ToList();
+            _installedPrinters = _printerDiscovery.GetInstalledPrinters().ToList();
             if (_installedPrinters.Count == 0)
             {
-                _installedPrinters.Add(discovery.GetDefaultPrinter() ?? "Default Printer");
+                _installedPrinters.Add(_printerDiscovery.GetDefaultPrinter() ?? "Default Printer");
             }
-            _printPrinterName = discovery.GetDefaultPrinter() ?? _installedPrinters[0];
+            _printPrinterName = _printerDiscovery.GetDefaultPrinter() ?? _installedPrinters[0];
             _printPrinterIndex = Math.Max(0, _installedPrinters.FindIndex(p => string.Equals(p, _printPrinterName, StringComparison.OrdinalIgnoreCase)));
-            RefreshPrinterCapabilities(discovery);
+            RefreshPrinterCapabilities(_printerDiscovery);
+
+            var printersToWarm = _installedPrinters.ToList();
+            Task.Run(() =>
+            {
+                foreach (string printer in printersToWarm)
+                {
+                    _printerDiscovery.GetSupportedPaperSizes(printer);
+                    _printerDiscovery.CanDuplex(printer);
+                }
+            });
         }
         catch
         {
@@ -364,7 +374,7 @@ public partial class ProgressWindow
             {
                 _printPrinterIndex = (_printPrinterIndex - 1 + _installedPrinters.Count) % _installedPrinters.Count;
                 _printPrinterName = _installedPrinters[_printPrinterIndex];
-                RefreshPrinterCapabilities(new SystemPrinterDiscoveryService());
+                RefreshPrinterCapabilities(_printerDiscovery);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
             return true;
@@ -375,7 +385,7 @@ public partial class ProgressWindow
             {
                 _printPrinterIndex = (_printPrinterIndex + 1) % _installedPrinters.Count;
                 _printPrinterName = _installedPrinters[_printPrinterIndex];
-                RefreshPrinterCapabilities(new SystemPrinterDiscoveryService());
+                RefreshPrinterCapabilities(_printerDiscovery);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
             return true;

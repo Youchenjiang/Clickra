@@ -125,7 +125,9 @@ namespace Clickra.UI
                 case 0x020A: return HandleMouseWheel(hwnd, w, l); // WM_MOUSEWHEEL
                 case WM_USER_INVALIDATE: return HandleInvalidate(hwnd, w);
                 case 0x0200: return HandleMouseMove(hwnd, l); // WM_MOUSEMOVE
-                case 0x0201: return HandleLButtonDown(hwnd, l); // WM_LBUTTONDOWN
+                case 0x0201: // WM_LBUTTONDOWN
+                case 0x0203: // WM_LBUTTONDBLCLK
+                    return HandleLButtonDown(hwnd, l);
                 case 0x0202: return HandleLButtonUp(hwnd); // WM_LBUTTONUP
                 case WM_TRAYICON: return HandleTrayIcon(hwnd, l);
                 case 0x0112: // WM_SYSCOMMAND
@@ -346,8 +348,9 @@ namespace Clickra.UI
             {
                 return IntPtr.Zero;
             }
-            if (_isPromptingPrintOptions && HandlePrintOptionsClick(hwnd, mouseX, mouseY))
+            if (_isPromptingPrintOptions)
             {
+                HandlePrintOptionsClick(hwnd, mouseX, mouseY);
                 return IntPtr.Zero;
             }
             if (_isPromptingVisualSplitter && HandleVisualSplitterClick(hwnd, mouseX, mouseY))
