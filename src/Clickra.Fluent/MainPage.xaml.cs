@@ -153,6 +153,9 @@ public sealed partial class MainPage : Page
         SetActiveColumns(page.PdfCommandGrid, narrow ? 2 : 6);
         SetActiveColumns(page.ImageCommandGrid, narrow ? 2 : 4);
 
+        int pdfCols = narrow ? 2 : 6;
+        int imgCols = narrow ? 2 : 4;
+
         if (narrow)
         {
             SetGridCell(page.BtnWord2Pdf, 0, 0);
@@ -160,46 +163,35 @@ public sealed partial class MainPage : Page
             SetGridCell(page.BtnPpt2Pdf, 1, 0, 2);
             SetGridCell(page.BtnMd2Pdf, 2, 0);
             SetGridCell(page.BtnMd2Word, 2, 1);
-
-            SetGridCell(page.BtnMergePdf, 0, 0);
-            SetGridCell(page.BtnCompressPdf, 0, 1);
-            SetGridCell(page.BtnTranslatePdf, 1, 0);
-            SetGridCell(page.BtnDecryptPdf, 1, 1);
-            SetGridCell(page.BtnSplitPdf, 2, 0);
-            SetGridCell(page.BtnPrintPdf, 2, 1);
-
-            SetGridCell(page.BtnImg2Pdf, 0, 0);
-            SetGridCell(page.BtnImgMerge, 0, 1);
-            SetGridCell(page.BtnImgStitch, 1, 0);
-            SetGridCell(page.BtnImgToPng, 1, 1);
-            SetGridCell(page.BtnImgToJpg, 2, 0);
-            SetGridCell(page.BtnImgToWebp, 2, 1);
-            SetGridCell(page.BtnImgToGif, 3, 0);
-            SetGridCell(page.BtnImgToHeic, 3, 1);
-            return;
+        }
+        else
+        {
+            SetGridCell(page.BtnWord2Pdf, 0, 0);
+            SetGridCell(page.BtnExcel2Pdf, 0, 1);
+            SetGridCell(page.BtnPpt2Pdf, 0, 2);
+            SetGridCell(page.BtnMd2Pdf, 1, 0, 2);
+            SetGridCell(page.BtnMd2Word, 1, 2);
         }
 
-        SetGridCell(page.BtnWord2Pdf, 0, 0);
-        SetGridCell(page.BtnExcel2Pdf, 0, 1);
-        SetGridCell(page.BtnPpt2Pdf, 0, 2);
-        SetGridCell(page.BtnMd2Pdf, 1, 0, 2);
-        SetGridCell(page.BtnMd2Word, 1, 2);
+        ArrangeSequentialGrid(new FrameworkElement[]
+        {
+            page.BtnMergePdf, page.BtnCompressPdf, page.BtnTranslatePdf,
+            page.BtnDecryptPdf, page.BtnSplitPdf, page.BtnPrintPdf
+        }, pdfCols);
 
-        SetGridCell(page.BtnMergePdf, 0, 0);
-        SetGridCell(page.BtnCompressPdf, 0, 1);
-        SetGridCell(page.BtnTranslatePdf, 0, 2);
-        SetGridCell(page.BtnDecryptPdf, 0, 3);
-        SetGridCell(page.BtnSplitPdf, 0, 4);
-        SetGridCell(page.BtnPrintPdf, 0, 5);
+        ArrangeSequentialGrid(new FrameworkElement[]
+        {
+            page.BtnImg2Pdf, page.BtnImgMerge, page.BtnImgStitch, page.BtnImgToPng,
+            page.BtnImgToJpg, page.BtnImgToWebp, page.BtnImgToGif, page.BtnImgToHeic
+        }, imgCols);
+    }
 
-        SetGridCell(page.BtnImg2Pdf, 0, 0);
-        SetGridCell(page.BtnImgMerge, 0, 1);
-        SetGridCell(page.BtnImgStitch, 0, 2);
-        SetGridCell(page.BtnImgToPng, 0, 3);
-        SetGridCell(page.BtnImgToJpg, 1, 0);
-        SetGridCell(page.BtnImgToWebp, 1, 1);
-        SetGridCell(page.BtnImgToGif, 1, 2);
-        SetGridCell(page.BtnImgToHeic, 1, 3);
+    private static void ArrangeSequentialGrid(FrameworkElement[] elements, int columns)
+    {
+        for (int i = 0; i < elements.Length; i++)
+        {
+            SetGridCell(elements[i], i / columns, i % columns);
+        }
     }
 
     private static void SetActiveColumns(Grid grid, int activeColumns)
