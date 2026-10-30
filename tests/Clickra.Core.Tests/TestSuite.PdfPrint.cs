@@ -10,7 +10,7 @@ static partial class TestSuite
     private sealed class MockPrinterDiscoveryService : IPrinterDiscoveryService
     {
         private readonly List<string> _printers = new();
-        private string? _defaultPrinter;
+        private readonly string? _defaultPrinter;
         private readonly List<string> _paperSizes = new() { "A4", "Letter" };
         private readonly bool _canDuplex;
 
