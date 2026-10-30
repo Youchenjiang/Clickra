@@ -28,6 +28,9 @@ public static class PrintOptionsLayout
     public const int FitToPageY = 282;
     public const int FitToPageHeight = 22;
 
+    public const int DarkenY = 312;
+    public const int DarkenHeight = 22;
+
     // Right preview column
     public const int PreviewLeft = 256;
     public const int PreviewTop = 100;

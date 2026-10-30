@@ -35,7 +35,8 @@ namespace Clickra
             string PagesOption,
             string? PrinterOption = null,
             int CopiesOption = 1,
-            bool FitToPageOption = true);
+            bool FitToPageOption = true,
+            bool DarkenOption = false);
 
         static void ShowWarning(string msg, string title) =>
             NativeDialogs.Warning(IntPtr.Zero, title, msg, 1.0f, SettingsPresentationController.Shared.Language);
@@ -224,7 +225,7 @@ namespace Clickra
                         () => HandleDecryptPdfQuiet(files, options.OutputDir));
                 case "print-pdf":
                     return DispatchPdfCase(command, files, options.Quiet, 1,
-                        () => HandlePrintPdfQuiet(files, options.PrinterOption, options.PagesOption, options.CopiesOption, options.FitToPageOption));
+                        () => HandlePrintPdfQuiet(files, options.PrinterOption, options.PagesOption, options.CopiesOption, options.FitToPageOption, options.DarkenOption));
                 default:
                     return false;
             }
@@ -270,7 +271,8 @@ namespace Clickra
             string? printerOption,
             string pagesOption,
             int copiesOption,
-            bool fitToPageOption)
+            bool fitToPageOption,
+            bool darkenOption)
         {
             var options = new PrintPdfOptions(
                 printerOption,
@@ -278,7 +280,9 @@ namespace Clickra
                 copiesOption,
                 200,
                 fitToPageOption,
-                SettingsPresentationController.Shared.Language).ToDictionary();
+                SettingsPresentationController.Shared.Language,
+                darkenOption,
+                2.2).ToDictionary();
 
             RunQuietUseCase(
                 PrintPdfUseCase.CommandName,

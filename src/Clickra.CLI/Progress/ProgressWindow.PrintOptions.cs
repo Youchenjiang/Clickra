@@ -30,6 +30,7 @@ public partial class ProgressWindow
     private string _printPageRange = "all";
     private int _printCopies = 1;
     private bool _printFitToPage = true;
+    private bool _printDarken;
 
     private PdfPreviewModel _printPreviewModel = new(1);
     private readonly Dictionary<int, Bitmap> _printThumbnails = new();
@@ -91,6 +92,10 @@ public partial class ProgressWindow
             try
             {
                 bmp = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, page, 456, fontName);
+                if (bmp != null && _printDarken)
+                {
+                    PdfContrastEnhancer.Enhance(bmp, 2.2);
+                }
             }
             catch
             {
@@ -154,7 +159,11 @@ public partial class ProgressWindow
         var fitRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.FitToPageY, PrintOptionsLayout.LeftColumnWidth, PrintOptionsLayout.FitToPageHeight);
         DrawPrintCheckbox(g, s, fitRect, Loc("print_options_fit"), _printFitToPage);
 
-        // 5. Preview Area
+        // 5. Darken Text Checkbox
+        var darkenRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.DarkenY, PrintOptionsLayout.LeftColumnWidth, PrintOptionsLayout.DarkenHeight);
+        DrawPrintCheckbox(g, s, darkenRect, Loc("print_options_darken"), _printDarken);
+
+        // 6. Preview Area
         var previewAreaRect = ScalePrintRect(PrintOptionsLayout.PreviewArea, s);
         using var previewBgBrush = new SolidBrush(Color.FromArgb(32, 32, 32));
         using var previewBorderPen = new Pen(Color.FromArgb(64, 64, 64), 1f * s);
@@ -364,6 +373,20 @@ public partial class ProgressWindow
             return true;
         }
 
+        var darkenRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.DarkenY, PrintOptionsLayout.LeftColumnWidth, PrintOptionsLayout.DarkenHeight);
+        if (darkenRect.ContainsInclusive(mouseX, mouseY))
+        {
+            _printDarken = !_printDarken;
+            lock (_printThumbnails)
+            {
+                _printThumbnails.Clear();
+                _printPendingThumbnails.Clear();
+            }
+            RequestPrintPreviewThumbnail(_printPreviewModel.CurrentPageNumber);
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+            return true;
+        }
+
         if (PrintOptionsLayout.PrevPageButton.ContainsInclusive(mouseX, mouseY))
         {
             if (_printPreviewModel.CanNavigatePrevious)
@@ -407,7 +430,9 @@ public partial class ProgressWindow
             _printCopies,
             200,
             _printFitToPage,
-            SettingsPresentationController.Shared.Language).ToDictionary();
+            SettingsPresentationController.Shared.Language,
+            _printDarken,
+            2.2).ToDictionary();
 
         ResolvePrintDecision(true);
         _isPromptingPrintOptions = false;

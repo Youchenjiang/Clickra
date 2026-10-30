@@ -38,7 +38,8 @@ internal static class ClickraStartup
             out string pagesOption,
             out string? printerOption,
             out int copiesOption,
-            out bool fitToPageOption);
+            out bool fitToPageOption,
+            out bool darkenOption);
 
         if (argList.Count < 2)
         {
@@ -77,7 +78,8 @@ internal static class ClickraStartup
                 pagesOption,
                 printerOption,
                 copiesOption,
-                fitToPageOption);
+                fitToPageOption,
+                darkenOption);
             ClickraCli.DispatchCommandSwitch(command, files, dispatchOptions);
         }
         catch (Exception ex)
@@ -131,7 +133,8 @@ internal static class ClickraStartup
         out string pagesOption,
         out string? printerOption,
         out int copiesOption,
-        out bool fitToPageOption)
+        out bool fitToPageOption,
+        out bool darkenOption)
     {
         bool quietByDefault = SettingsController.QuietMode;
         quiet = quietByDefault;
@@ -148,6 +151,8 @@ internal static class ClickraStartup
         copiesOption = int.TryParse(copiesStr, out int cVal) ? Math.Max(1, cVal) : 1;
         fitToPageOption = !argList.Contains("--no-fit");
         if (argList.Contains("--no-fit")) argList.Remove("--no-fit");
+        darkenOption = argList.Contains("--darken");
+        if (darkenOption) argList.Remove("--darken");
     }
 
     /// <summary>Prints the CLI usage text to the console.</summary>
@@ -161,6 +166,7 @@ internal static class ClickraStartup
         Console.WriteLine("         --pages <range> / -p <range>  (Page range for print/split)");
         Console.WriteLine("         --printer <name> / -m <name>  (Printer name for PDF print)");
         Console.WriteLine("         --copies <count> / -c <count> (Number of print copies)");
+        Console.WriteLine("         --darken           (Darken text and enhance contrast for print)");
         Console.WriteLine(CommandSummary);
         Console.WriteLine("Deployment: Clickra --deploy <target_dir>");
     }
