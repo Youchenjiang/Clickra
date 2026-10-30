@@ -435,7 +435,7 @@ public partial class ProgressWindow
             using var sheetPen = new Pen(Color.FromArgb(170, 175, 185), 1f * s);
             g.DrawRectangle(sheetPen, sheetX, sheetY, sheetW, sheetH);
 
-            var pageBounds = CalculatePageDrawBounds(bmp, sheetX, sheetY, sheetW, sheetH, _printFitToPage, _pdfPageWidthPt, _pdfPageHeightPt, targetPaperW, targetPaperH);
+            var pageBounds = CalculatePageDrawBounds(bmp, new RectangleF(sheetX, sheetY, sheetW, sheetH), _printFitToPage, _pdfPageWidthPt, _pdfPageHeightPt, new SizeF(targetPaperW, targetPaperH));
 
             var oldClip = g.Clip;
             g.SetClip(new RectangleF(sheetX, sheetY, sheetW, sheetH));
@@ -857,77 +857,59 @@ public partial class ProgressWindow
         g.FillPath(thumbBrush, thumbPath);
     }
 
-    private bool HandleOpenDropdownClick(IntPtr hwnd, int mouseX, int mouseY)
+    private void HandleOpenDropdownClick(IntPtr hwnd, int mouseX, int mouseY)
     {
-        var popupRect = GetOpenDropdownPopupRect();
-        if (popupRect.ContainsInclusive(mouseX, mouseY))
+        if (TrySelectDropdownItem(hwnd, mouseX, mouseY) ||
+            TryHandleDropdownToggles(hwnd, mouseX, mouseY))
         {
-            int listTop = popupRect.Y + 3;
-            int clickedRow = (mouseY - listTop) / PrintDropdownItemHeight;
-            int itemIdx = _dropdownScrollOffset + clickedRow;
-            var items = GetOpenDropdownItems();
-
-            if (itemIdx >= 0 && itemIdx < items.Count)
-            {
-                switch (_openDropdown)
-                {
-                    case PrintDropdownType.Printer:
-                        _printPrinterIndex = itemIdx;
-                        _printPrinterName = _installedPrinters[itemIdx];
-                        RefreshPrinterCapabilities(_printerDiscovery);
-                        break;
-
-                    case PrintDropdownType.PaperSize:
-                        _paperSizeIndex = itemIdx;
-                        break;
-
-                    case PrintDropdownType.Duplex:
-                        _duplexIndex = Math.Clamp(itemIdx, 0, 2);
-                        break;
-                }
-            }
-
-            _openDropdown = PrintDropdownType.None;
-            _hoveredDropdownIndex = -1;
-            InvalidateRect(hwnd, IntPtr.Zero, false);
-            return true;
-        }
-
-        // If clicked on another dropdown combo button, or the same one:
-        if (PrintOptionsLayout.PrinterComboRect.ContainsInclusive(mouseX, mouseY))
-        {
-            _openDropdown = _openDropdown == PrintDropdownType.Printer ? PrintDropdownType.None : PrintDropdownType.Printer;
-            _dropdownScrollOffset = 0;
-            _hoveredDropdownIndex = _printPrinterIndex;
-            InvalidateRect(hwnd, IntPtr.Zero, false);
-            return true;
-        }
-        if (PrintOptionsLayout.PaperComboRect.ContainsInclusive(mouseX, mouseY))
-        {
-            _openDropdown = _openDropdown == PrintDropdownType.PaperSize ? PrintDropdownType.None : PrintDropdownType.PaperSize;
-            int maxVis = GetOpenDropdownMaxVisible();
-            _dropdownScrollOffset = Math.Max(0, Math.Min(_paperSizeIndex, _supportedPaperSizes.Count - maxVis));
-            _hoveredDropdownIndex = _paperSizeIndex;
-            InvalidateRect(hwnd, IntPtr.Zero, false);
-            return true;
-        }
-        if (PrintOptionsLayout.DuplexComboRect.ContainsInclusive(mouseX, mouseY))
-        {
-            if (_printerCanDuplex)
-            {
-                _openDropdown = _openDropdown == PrintDropdownType.Duplex ? PrintDropdownType.None : PrintDropdownType.Duplex;
-                _dropdownScrollOffset = 0;
-                _hoveredDropdownIndex = _duplexIndex;
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            return true;
+            return;
         }
 
         // Clicked outside popup: dismiss
         _openDropdown = PrintDropdownType.None;
         _hoveredDropdownIndex = -1;
         InvalidateRect(hwnd, IntPtr.Zero, false);
+    }
+
+    private bool TrySelectDropdownItem(IntPtr hwnd, int mouseX, int mouseY)
+    {
+        var popupRect = GetOpenDropdownPopupRect();
+        if (!popupRect.ContainsInclusive(mouseX, mouseY)) return false;
+
+        int listTop = popupRect.Y + 3;
+        int clickedRow = (mouseY - listTop) / PrintDropdownItemHeight;
+        int itemIdx = _dropdownScrollOffset + clickedRow;
+        var items = GetOpenDropdownItems();
+
+        if (itemIdx >= 0 && itemIdx < items.Count)
+        {
+            ApplyDropdownSelection(itemIdx);
+        }
+
+        _openDropdown = PrintDropdownType.None;
+        _hoveredDropdownIndex = -1;
+        InvalidateRect(hwnd, IntPtr.Zero, false);
         return true;
+    }
+
+    private void ApplyDropdownSelection(int itemIdx)
+    {
+        switch (_openDropdown)
+        {
+            case PrintDropdownType.Printer:
+                _printPrinterIndex = itemIdx;
+                _printPrinterName = _installedPrinters[itemIdx];
+                RefreshPrinterCapabilities(_printerDiscovery);
+                break;
+
+            case PrintDropdownType.PaperSize:
+                _paperSizeIndex = itemIdx;
+                break;
+
+            case PrintDropdownType.Duplex:
+                _duplexIndex = Math.Clamp(itemIdx, 0, 2);
+                break;
+        }
     }
 
     private static PrintElement GetPrintElementAt(int mouseX, int mouseY)
@@ -964,55 +946,61 @@ public partial class ProgressWindow
             return;
         }
 
-        if (TryHandleDropdownToggles(hwnd, mouseX, mouseY) ||
+        _ = TryHandleDropdownToggles(hwnd, mouseX, mouseY) ||
             TryHandleRangeAndCopies(hwnd, mouseX, mouseY) ||
             TryHandleCheckboxAndPreviewClicks(hwnd, mouseX, mouseY) ||
-            TryHandlePaginationAndActions(hwnd, mouseX, mouseY))
-        {
-            return;
-        }
+            TryHandlePaginationAndActions(hwnd, mouseX, mouseY);
     }
 
     private bool TryHandleDropdownToggles(IntPtr hwnd, int mouseX, int mouseY)
     {
         if (PrintOptionsLayout.PrinterComboRect.ContainsInclusive(mouseX, mouseY))
-        {
-            if (_installedPrinters.Count > 0)
-            {
-                _openDropdown = _openDropdown == PrintDropdownType.Printer ? PrintDropdownType.None : PrintDropdownType.Printer;
-                _dropdownScrollOffset = 0;
-                _hoveredDropdownIndex = _printPrinterIndex;
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            return true;
-        }
+            return TogglePrinterDropdown(hwnd);
 
         if (PrintOptionsLayout.PaperComboRect.ContainsInclusive(mouseX, mouseY))
-        {
-            if (_supportedPaperSizes.Count > 0)
-            {
-                _openDropdown = _openDropdown == PrintDropdownType.PaperSize ? PrintDropdownType.None : PrintDropdownType.PaperSize;
-                int maxVis = 7;
-                _dropdownScrollOffset = Math.Max(0, Math.Min(_paperSizeIndex, _supportedPaperSizes.Count - maxVis));
-                _hoveredDropdownIndex = _paperSizeIndex;
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            return true;
-        }
+            return TogglePaperDropdown(hwnd);
 
         if (PrintOptionsLayout.DuplexComboRect.ContainsInclusive(mouseX, mouseY))
-        {
-            if (_printerCanDuplex)
-            {
-                _openDropdown = _openDropdown == PrintDropdownType.Duplex ? PrintDropdownType.None : PrintDropdownType.Duplex;
-                _dropdownScrollOffset = 0;
-                _hoveredDropdownIndex = _duplexIndex;
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            return true;
-        }
+            return ToggleDuplexDropdown(hwnd);
 
         return false;
+    }
+
+    private bool TogglePrinterDropdown(IntPtr hwnd)
+    {
+        if (_installedPrinters.Count > 0)
+        {
+            _openDropdown = _openDropdown == PrintDropdownType.Printer ? PrintDropdownType.None : PrintDropdownType.Printer;
+            _dropdownScrollOffset = 0;
+            _hoveredDropdownIndex = _printPrinterIndex;
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+        }
+        return true;
+    }
+
+    private bool TogglePaperDropdown(IntPtr hwnd)
+    {
+        if (_supportedPaperSizes.Count > 0)
+        {
+            _openDropdown = _openDropdown == PrintDropdownType.PaperSize ? PrintDropdownType.None : PrintDropdownType.PaperSize;
+            int maxVis = GetOpenDropdownMaxVisible();
+            _dropdownScrollOffset = Math.Max(0, Math.Min(_paperSizeIndex, _supportedPaperSizes.Count - maxVis));
+            _hoveredDropdownIndex = _paperSizeIndex;
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+        }
+        return true;
+    }
+
+    private bool ToggleDuplexDropdown(IntPtr hwnd)
+    {
+        if (_printerCanDuplex)
+        {
+            _openDropdown = _openDropdown == PrintDropdownType.Duplex ? PrintDropdownType.None : PrintDropdownType.Duplex;
+            _dropdownScrollOffset = 0;
+            _hoveredDropdownIndex = _duplexIndex;
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+        }
+        return true;
     }
 
     private bool TryHandleRangeAndCopies(IntPtr hwnd, int mouseX, int mouseY)
@@ -1384,7 +1372,7 @@ public partial class ProgressWindow
         // PDF Page drawing onto sheet
         if (bmp != null)
         {
-            var pageBounds = CalculatePageDrawBounds(bmp, sheetX, sheetY, sheetW, sheetH, _printFitToPage, _pdfPageWidthPt, _pdfPageHeightPt, targetPaperW, targetPaperH);
+            var pageBounds = CalculatePageDrawBounds(bmp, new RectangleF(sheetX, sheetY, sheetW, sheetH), _printFitToPage, _pdfPageWidthPt, _pdfPageHeightPt, new SizeF(targetPaperW, targetPaperH));
             g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
             g.DrawImage(bmp, pageBounds.X, pageBounds.Y, pageBounds.Width, pageBounds.Height);
         }
@@ -1424,18 +1412,20 @@ public partial class ProgressWindow
 
     private static RectangleF CalculatePageDrawBounds(
         Bitmap bmp,
-        float sheetX, float sheetY, float sheetW, float sheetH,
+        RectangleF sheetRect,
         bool fitToPage,
         float pdfPageWidthPt, float pdfPageHeightPt,
-        float targetPaperW, float targetPaperH)
+        SizeF targetPaperSize)
     {
         float pageDrawW;
         float pageDrawH;
+        float targetPaperW = Math.Max(1f, targetPaperSize.Width);
+        float targetPaperH = Math.Max(1f, targetPaperSize.Height);
         if (fitToPage)
         {
-            float margin = Math.Min(sheetW, sheetH) * 0.03f;
-            float printAreaW = sheetW - (margin * 2f);
-            float printAreaH = sheetH - (margin * 2f);
+            float margin = Math.Min(sheetRect.Width, sheetRect.Height) * 0.03f;
+            float printAreaW = sheetRect.Width - (margin * 2f);
+            float printAreaH = sheetRect.Height - (margin * 2f);
             float fitScale = Math.Min(printAreaW / bmp.Width, printAreaH / bmp.Height);
             pageDrawW = bmp.Width * fitScale;
             pageDrawH = bmp.Height * fitScale;
@@ -1444,12 +1434,12 @@ public partial class ProgressWindow
         {
             float scaleX = pdfPageWidthPt / targetPaperW;
             float scaleY = pdfPageHeightPt / targetPaperH;
-            pageDrawW = sheetW * scaleX;
-            pageDrawH = sheetH * scaleY;
+            pageDrawW = sheetRect.Width * scaleX;
+            pageDrawH = sheetRect.Height * scaleY;
         }
 
-        float pageDrawX = sheetX + ((sheetW - pageDrawW) / 2f);
-        float pageDrawY = sheetY + ((sheetH - pageDrawH) / 2f);
+        float pageDrawX = sheetRect.X + ((sheetRect.Width - pageDrawW) / 2f);
+        float pageDrawY = sheetRect.Y + ((sheetRect.Height - pageDrawH) / 2f);
         return new RectangleF(pageDrawX, pageDrawY, pageDrawW, pageDrawH);
     }
 }
