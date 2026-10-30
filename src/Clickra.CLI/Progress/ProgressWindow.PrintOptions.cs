@@ -231,6 +231,8 @@ public partial class ProgressWindow
     private void PaintPrintOptions(Graphics g, float s)
     {
         if (_msgFont is null || _tipFont is null) return;
+        Font msgFont = _msgFont;
+        Font tipFont = _tipFont;
 
         using var bodyBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
         using var mutedBrush = new SolidBrush(Color.FromArgb(145, 145, 145));
@@ -311,30 +313,33 @@ public partial class ProgressWindow
         }
 
         // 2. Card Header
+        using (var headerBg = new SolidBrush(Color.FromArgb(28, 30, 36)))
+        {
+            g.FillRectangle(headerBg, headerRect);
+        }
         using (var headerBottomPen = new Pen(Color.FromArgb(44, 46, 54), 1f * s))
         {
             g.DrawLine(headerBottomPen, headerRect.Left, headerRect.Bottom, headerRect.Right, headerRect.Bottom);
         }
 
-        // Card Header Left: Document title / filename (or "PDF")
-        string docTitle = _files.Count > 0 ? Path.GetFileName(_files[0]) : "PDF";
-        using (var docTitleBrush = new SolidBrush(Color.FromArgb(215, 220, 230)))
+        // Card Header Left: "即時預覽" (Live Preview)
+        string previewTitle = Loc("print_options_preview");
+        using (var previewTitleBrush = new SolidBrush(Color.FromArgb(220, 225, 235)))
         using (var titleFormat = new StringFormat
         {
             Alignment = StringAlignment.Near,
             LineAlignment = StringAlignment.Center,
-            Trimming = StringTrimming.EllipsisCharacter,
             FormatFlags = StringFormatFlags.NoWrap
         })
         {
-            var titleRect = new RectangleF(headerRect.Left + (10f * s), headerRect.Top, headerRect.Width - (110f * s), headerRect.Height);
-            g.DrawString(docTitle, _tipFont, docTitleBrush, titleRect, titleFormat);
+            var titleRect = new RectangleF(headerRect.Left + (12f * s), headerRect.Top, headerRect.Width - (130f * s), headerRect.Height);
+            g.DrawString(previewTitle, msgFont, previewTitleBrush, titleRect, titleFormat);
         }
 
         // Card Header Right: Paper Size specification pill
         var paperDim = PaperSizeRegistry.GetDimensions(currentPaperText);
         string paperInfo = $"{paperDim.DisplayName} · {paperDim.WidthMm:0}×{paperDim.HeightMm:0} mm";
-        var paperInfoSize = g.MeasureString(paperInfo, _tipFont);
+        var paperInfoSize = g.MeasureString(paperInfo, tipFont);
         float pillW = paperInfoSize.Width + (12f * s);
         float pillH = 18f * s;
         float pillX = headerRect.Right - pillW - (8f * s);
@@ -349,7 +354,7 @@ public partial class ProgressWindow
         {
             g.FillPath(pillBg, pillPath);
             g.DrawPath(pillBorder, pillPath);
-            g.DrawString(paperInfo, _tipFont, pillTextBrush, paperPillRect, pillFormat);
+            g.DrawString(paperInfo, tipFont, pillTextBrush, paperPillRect, pillFormat);
         }
 
         // 3. Card Viewport (Paper Canvas)
@@ -425,19 +430,26 @@ public partial class ProgressWindow
         bool isZoomPillHovered = _hoveredPrintElement == PrintElement.PreviewArea;
         var zoomPillRect = ScalePrintRect(PrintOptionsLayout.ZoomPillRect, s);
         using (var zoomPath = UIHelper.GetRoundedRectPath(zoomPillRect, zoomPillRect.Height / 2f))
-        using (var zoomBg = new SolidBrush(isZoomPillHovered ? Color.FromArgb(230, 38, 44, 58) : Color.FromArgb(170, 24, 26, 32)))
+        using (var zoomBg = new SolidBrush(isZoomPillHovered ? Color.FromArgb(235, 38, 44, 58) : Color.FromArgb(180, 24, 26, 32)))
         using (var zoomBorder = new Pen(isZoomPillHovered ? UIHelper.GetSystemColorizationColor() : Color.FromArgb(70, 75, 88), 1f * s))
-        using (var zoomTextBrush = new SolidBrush(isZoomPillHovered ? Color.White : Color.FromArgb(190, 195, 205)))
+        using (var zoomTextBrush = new SolidBrush(isZoomPillHovered ? Color.White : Color.FromArgb(195, 200, 210)))
         {
             g.FillPath(zoomBg, zoomPath);
             g.DrawPath(zoomBorder, zoomPath);
             float iconX = zoomPillRect.Left + (11f * s);
             float iconY = zoomPillRect.Top + (zoomPillRect.Height / 2f);
             VectorIcons.DrawMagnifier(g, iconX, iconY, 10f * s, zoomTextBrush.Color, 1.4f * s);
-            g.DrawString(Loc("pdf_split_zoom_tag"), _tipFont, zoomTextBrush, zoomPillRect.Left + (18f * s), zoomPillRect.Top + (2f * s));
+
+            var textRect = new RectangleF(zoomPillRect.Left + (18f * s), zoomPillRect.Top, zoomPillRect.Width - (20f * s), zoomPillRect.Height);
+            using var textFormat = new StringFormat { LineAlignment = StringAlignment.Center };
+            g.DrawString(Loc("pdf_split_zoom_tag"), tipFont, zoomTextBrush, textRect, textFormat);
         }
 
         // 5. Card Footer: Integrated Navigation Bar
+        using (var footerBg = new SolidBrush(Color.FromArgb(28, 30, 36)))
+        {
+            g.FillRectangle(footerBg, footerRect);
+        }
         using (var footerTopPen = new Pen(Color.FromArgb(44, 46, 54), 1f * s))
         {
             g.DrawLine(footerTopPen, footerRect.Left, footerRect.Top, footerRect.Right, footerRect.Top);
@@ -450,12 +462,19 @@ public partial class ProgressWindow
         using (var pageFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
         {
             string pageText = Loc("print_options_page_indicator", _printPreviewModel.CurrentPageNumber, _printPreviewModel.TotalPages);
-            g.DrawString(pageText, _msgFont, bodyBrush, ScalePrintRect(PrintOptionsLayout.PageTextRect, s), pageFormat);
+            g.DrawString(pageText, msgFont, bodyBrush, ScalePrintRect(PrintOptionsLayout.PageTextRect, s), pageFormat);
         }
 
         DrawPrintButton(g, s, PrintOptionsLayout.NextPageButton, ">", false, enabled: _printPreviewModel.CanNavigateNext,
             hovered: _hoveredPrintElement == PrintElement.NextPage,
             pressed: _pressedPrintElement == PrintElement.NextPage);
+
+        // Re-stroke outer card rounded border so sub-panel fills don't square off corners
+        using (var cardBorderPen = new Pen(Color.FromArgb(52, 56, 66), 1f * s))
+        using (var cardPath = UIHelper.GetRoundedRectPath(cardRect, 6 * s))
+        {
+            g.DrawPath(cardBorderPen, cardPath);
+        }
 
         // 7. Separator & Action Buttons
         using var sepPen = new Pen(Color.FromArgb(50, 52, 60), 1f * s);

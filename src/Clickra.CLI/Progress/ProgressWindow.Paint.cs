@@ -99,7 +99,7 @@ namespace Clickra.UI
                 g.DrawString(subText, _subFont, subBrush, 36 * s, 72 * s);
             }
 
-            if (_linePen != null)
+            if (_linePen != null && !_isPromptingVisualSplitter && !_isPromptingPrintOptions)
                 g.DrawLine(_linePen, 36 * s, 110 * s, 484 * s, 110 * s);
         }
 
