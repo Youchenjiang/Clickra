@@ -73,5 +73,44 @@ static partial class TestSuite
             Assert.True(plan.NormalizedOptions.ContainsKey(PrintPdfOptions.PrinterNameKey), "Default printer must be present.");
             Assert.Equal("Default Laser", plan.NormalizedOptions[PrintPdfOptions.PrinterNameKey]?.ToString() ?? "");
         });
+
+        runner.Run("PDF contrast enhancer: blue pen boost darkens blue ink and bleaches background", () =>
+        {
+            // Verify blue pen luminance boost
+            int normalLum = Clickra.Core.Rendering.PdfContrastEnhancer.CalculateLuminance(150, 150, 150);
+            Assert.Equal(150, normalLum);
+
+            // Blue ink (R=40, G=40, B=180): b > r + 10 and b > 100 -> blue boost active
+            int blueLum = Clickra.Core.Rendering.PdfContrastEnhancer.CalculateLuminance(40, 40, 180);
+            float expectedWithoutBoost = (0.299f * 40) + (0.587f * 40) + (0.114f * 180);
+            Assert.True(blueLum < expectedWithoutBoost, "Blue boost must darken perceived luminance for ballpoint pen ink.");
+
+            // Create 50x50 test image: 90% near-white background (240), 10% faint pencil/ink (140)
+            using var bmp = new System.Drawing.Bitmap(50, 50, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g = System.Drawing.Graphics.FromImage(bmp))
+            {
+                g.Clear(System.Drawing.Color.FromArgb(240, 240, 240));
+            }
+            // Draw faint ink on 10% of pixels
+            for (int y = 0; y < 5; y++)
+            {
+                for (int x = 0; x < 50; x++)
+                {
+                    bmp.SetPixel(x, y, System.Drawing.Color.FromArgb(140, 140, 140));
+                }
+            }
+
+            Clickra.Core.Rendering.PdfContrastEnhancer.Enhance(bmp, gamma: 2.2);
+
+            // Background at bottom (x=25, y=25) must be bleached to white (255)
+            var bgPixel = bmp.GetPixel(25, 25);
+            Assert.Equal(255, bgPixel.R);
+            Assert.Equal(255, bgPixel.G);
+            Assert.Equal(255, bgPixel.B);
+
+            // Faint ink at top (x=25, y=2) must be darkened below its original 140
+            var textPixel = bmp.GetPixel(25, 2);
+            Assert.True(textPixel.R < 100, $"Text ink was not darkened enough: actual {textPixel.R}");
+        });
     }
 }
