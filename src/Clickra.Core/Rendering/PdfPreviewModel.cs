@@ -24,6 +24,10 @@ public class PdfPreviewModel
 
     public int CurrentPageIndex => CurrentPageNumber - 1;
 
+    public bool CanNavigatePrevious => CurrentPageNumber > 1;
+
+    public bool CanNavigateNext => CurrentPageNumber < TotalPages;
+
     public virtual bool Navigate(int delta)
     {
         int next = Math.Clamp(CurrentPageNumber + delta, 1, TotalPages);
