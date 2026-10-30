@@ -24,6 +24,7 @@ $icons = @(
     @{ Name = "menu-translate-pdf.ico";Color = "#007C91"; Kind = "Translate" },
     @{ Name = "menu-decrypt-pdf.ico";  Color = "#C47F00"; Kind = "Unlock" },
     @{ Name = "menu-split-pdf.ico";    Color = "#B83232"; Kind = "Split" },
+    @{ Name = "menu-print-pdf.ico";    Color = "#4666B0"; Kind = "Print" },
     @{ Name = "menu-md2pdf.ico";       Color = "#6048A4"; Kind = "Letter"; Letter = "MD" }
 )
 
@@ -129,7 +130,7 @@ function New-IconFrame([int]$size, $definition) {
                 $cjkFont = [System.Drawing.Font]::new("Microsoft JhengHei", 25, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
                 try {
                     $graphics.DrawString("A", $latinFont, $whiteBrush, 7, 20)
-                    $graphics.DrawString("文", $cjkFont, $whiteBrush, 31, 17)
+                    $graphics.DrawString([char]0x6587, $cjkFont, $whiteBrush, 31, 17)
                     $graphics.DrawLine($thinWhitePen, 13, 18, 48, 18)
                     $graphics.DrawLine($thinWhitePen, 43, 13, 48, 18)
                 }
@@ -160,6 +161,37 @@ function New-IconFrame([int]$size, $definition) {
                 $graphics.DrawLine($whitePen, 39, 32, 55, 32)
                 $graphics.DrawLine($whitePen, 49, 26, 55, 32)
                 $graphics.DrawLine($whitePen, 49, 38, 55, 32)
+            }
+            "Print" {
+                # Top paper sheet (input feed)
+                $graphics.FillRectangle($whiteBrush, 20, 11, 24, 14)
+                $graphics.DrawRectangle($thinWhitePen, 20, 11, 24, 14)
+
+                # Central printer body
+                $graphics.FillRectangle($whiteBrush, 11, 23, 42, 19)
+
+                $slotBrush = [System.Drawing.SolidBrush]::new([System.Drawing.ColorTranslator]::FromHtml($definition.Color))
+                $slotPen = New-Pen $definition.Color 2
+                try {
+                    # Top paper lines
+                    $graphics.DrawLine($slotPen, 25, 16, 39, 16)
+                    $graphics.DrawLine($slotPen, 25, 20, 35, 20)
+
+                    # Output slot cutout in printer body
+                    $graphics.FillRectangle($slotBrush, 17, 34, 30, 8)
+                    # Power / status LED
+                    $graphics.FillEllipse($slotBrush, 45, 27, 4, 4)
+
+                    # Output paper emerging
+                    $graphics.FillRectangle($whiteBrush, 20, 36, 24, 16)
+                    $graphics.DrawRectangle($thinWhitePen, 20, 36, 24, 16)
+                    $graphics.DrawLine($slotPen, 24, 42, 40, 42)
+                    $graphics.DrawLine($slotPen, 24, 46, 36, 46)
+                }
+                finally {
+                    $slotPen.Dispose()
+                    $slotBrush.Dispose()
+                }
             }
         }
 
