@@ -21,7 +21,7 @@ public abstract class ConversionUseCaseBase : IConversionUseCase
     protected virtual ConversionValidationResult ValidateInputs(ConversionRequest request) =>
         ConversionValidationResult.Success();
 
-    public ConversionValidationResult Validate(ConversionRequest request)
+    public virtual ConversionValidationResult Validate(ConversionRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (!request.Command.Equals(Command, StringComparison.OrdinalIgnoreCase))

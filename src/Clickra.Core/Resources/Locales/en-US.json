@@ -473,5 +473,6 @@
   "diag_email_problem_placeholder": "(Please describe the issue you encountered here...)",
   "pdf_err_encrypted_translate": "This PDF document is encrypted or password-protected. Please remove the password using 'Decrypt PDF' before translating.",
   "pdf_err_encrypted_compress": "This PDF document is encrypted or password-protected. Please remove the password using 'Decrypt PDF' before compressing.",
-  "pdf_err_encrypted_merge": "This PDF document is encrypted or password-protected. Please remove the password using 'Decrypt PDF' before merging."
-}
+  "pdf_err_encrypted_merge": "This PDF document is encrypted or password-protected. Please remove the password using 'Decrypt PDF' before merging.",
+  "pdf_err_encrypted_print": "This PDF document is encrypted or password-protected. Please remove the password using 'Decrypt PDF' before printing."
+}

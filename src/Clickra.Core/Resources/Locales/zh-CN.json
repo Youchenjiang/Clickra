@@ -473,5 +473,6 @@
   "diag_email_problem_placeholder": "（请在此处填写您遇到的问题...）",
   "pdf_err_encrypted_translate": "此 PDF 文件受密码保护或已加密，请先使用「解除密码」功能移除密码后再进行翻译。",
   "pdf_err_encrypted_compress": "此 PDF 文件受密码保护或已加密，请先使用「解除密码」功能移除密码后再进行压缩。",
-  "pdf_err_encrypted_merge": "此 PDF 文件受密码保护或已加密，请先使用「解除密码」功能移除密码后再进行合并。"
-}
+  "pdf_err_encrypted_merge": "此 PDF 文件受密码保护或已加密，请先使用「解除密码」功能移除密码后再进行合并。",
+  "pdf_err_encrypted_print": "此 PDF 文件受密码保护或已加密，请先使用「解除密码」功能移除密码后再进行打印。"
+}
