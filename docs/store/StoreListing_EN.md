@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.15.0.0.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.16.0.0.
 
 ---
 
@@ -15,11 +15,11 @@ Core document operations run completely offline on your local PC to keep your da
 Source Code: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- Custom AI paper translation supporting Gemini and OpenAI APIs
-- Comprehensive encrypted PDF protection with password unlock in visual splitter
-- New native dark-themed vector dialogs with full accessibility support
-- Complete 5-language localization: EN, ZH-TW, ZH-CN, JA, KO
-- Translation resiliency with automatic rate limit backoff and retries
+- Direct PDF streaming printing with Windows Explorer right-click integration
+- Interactive dark-themed print dialog with live sheet preview and paper dimensions
+- Support for duplex printing (simplex, long-edge, short-edge) with printer capability detection
+- Fit-to-page auto scaling and contrast enhancement for crisp document output
+- Fullscreen lightbox zoom and pan navigation for high-detail page inspection
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
