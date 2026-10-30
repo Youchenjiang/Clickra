@@ -11,17 +11,22 @@ static partial class TestSuite
     {
         private readonly List<string> _printers = new();
         private string? _defaultPrinter;
+        private readonly List<string> _paperSizes = new() { "A4", "Letter" };
+        private readonly bool _canDuplex;
 
-        public MockPrinterDiscoveryService(IEnumerable<string> printers, string? defaultPrinter = null)
+        public MockPrinterDiscoveryService(IEnumerable<string> printers, string? defaultPrinter = null, bool canDuplex = true)
         {
             _printers.AddRange(printers);
             _defaultPrinter = defaultPrinter ?? _printers.FirstOrDefault();
+            _canDuplex = canDuplex;
         }
 
         public IReadOnlyList<string> GetInstalledPrinters() => _printers;
         public string? GetDefaultPrinter() => _defaultPrinter;
         public bool IsPrinterInstalled(string printerName) =>
             _printers.Any(p => string.Equals(p, printerName, StringComparison.OrdinalIgnoreCase));
+        public IReadOnlyList<string> GetSupportedPaperSizes(string? printerName = null) => _paperSizes;
+        public bool CanDuplex(string? printerName = null) => _canDuplex;
     }
 
     public static void RegisterPdfPrintTests(TestRunner runner)
@@ -111,6 +116,36 @@ static partial class TestSuite
             // Faint ink at top (x=25, y=2) must be darkened below its original 140
             var textPixel = bmp.GetPixel(25, 2);
             Assert.True(textPixel.R < 100, $"Text ink was not darkened enough: actual {textPixel.R}");
+        });
+
+        runner.Run("PDF print: options parse and serialize duplex and paper size correctly", () =>
+        {
+            var dict = new Dictionary<string, object>
+            {
+                [PrintPdfOptions.DuplexKey] = "long",
+                [PrintPdfOptions.PaperSizeKey] = "A4"
+            };
+            var opts = PrintPdfOptions.FromDictionary(dict);
+            Assert.True(opts.Duplex == PrintDuplexMode.DuplexLongEdge, "Expected DuplexLongEdge");
+            Assert.Equal("A4", opts.PaperSize ?? "");
+
+            var dictOut = opts.ToDictionary();
+            Assert.Equal("DuplexLongEdge", dictOut[PrintPdfOptions.DuplexKey]?.ToString() ?? "");
+            Assert.Equal("A4", dictOut[PrintPdfOptions.PaperSizeKey]?.ToString() ?? "");
+
+            var dictShort = new Dictionary<string, object>
+            {
+                [PrintPdfOptions.DuplexKey] = "short"
+            };
+            var optsShort = PrintPdfOptions.FromDictionary(dictShort);
+            Assert.True(optsShort.Duplex == PrintDuplexMode.DuplexShortEdge, "Expected DuplexShortEdge");
+
+            var dictSimplex = new Dictionary<string, object>
+            {
+                [PrintPdfOptions.DuplexKey] = "simplex"
+            };
+            var optsSimplex = PrintPdfOptions.FromDictionary(dictSimplex);
+            Assert.True(optsSimplex.Duplex == PrintDuplexMode.Simplex, "Expected Simplex");
         });
     }
 }
