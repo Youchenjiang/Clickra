@@ -217,13 +217,14 @@
                                 <StackPanel Spacing="8">
                                     <TextBlock x:Name="PdfCommandLabel" Text="PDF" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                     <Grid x:Name="PdfCommandGrid" ColumnSpacing="8" RowSpacing="8">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                         <Button x:Name="BtnMergePdf" Content="Merge PDF" Tag="merge-pdf" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnCompressPdf" Grid.Column="1" Content="Compress PDF" Tag="compress-pdf" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnTranslatePdf" Grid.Column="2" Content="Translate PDF" Tag="translate-pdf" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnDecryptPdf" Grid.Column="3" Content="Decrypt PDF" Tag="decrypt-pdf" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnSplitPdf" Grid.Column="4" Content="Split PDF" Tag="split-pdf" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnPrintPdf" Grid.Column="5" Content="Print PDF" Tag="print-pdf" HorizontalAlignment="Stretch"/>
                                     </Grid>
                                 </StackPanel>
                                 <StackPanel Spacing="8">
