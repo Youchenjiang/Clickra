@@ -124,7 +124,8 @@ public static class PdfPageThumbnailRenderer
                .AsTask().GetAwaiter().GetResult();
 
             using var ms = stream.AsStreamForRead();
-            return new Bitmap(ms);
+            using var temp = new Bitmap(ms);
+            return new Bitmap(temp);
         }
         catch { /* Ignored: falls back to the overlay renderer. */ }
         return null;
