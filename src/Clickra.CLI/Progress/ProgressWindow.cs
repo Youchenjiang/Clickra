@@ -188,6 +188,44 @@ namespace Clickra.UI
                 InitializePrintOptions();
 
 
+            int clientW = (int)(520 * _dpiScale);
+            int logicalClientHeight = GetInitialClientHeight();
+            int clientH = (int)(logicalClientHeight * _dpiScale);
+
+            EnsureDrawingResources(clientW, clientH);
+
+            string className = "ClickraProgressWnd";
+            IntPtr hClass = Marshal.StringToHGlobalUni(className);
+
+            CreateProgressWindow(className, hClass, clientW, clientH);
+
+            ShowWindow(_hwnd, 5);
+            SetTimer(_hwnd, (IntPtr)1, 16, IntPtr.Zero); // 16ms 約 60fps
+
+            if (!_isPromptingMarkdownOptions)
+            {
+                if (!_isPromptingPrintOptions)
+                {
+                    StartProcessingThread(_hwnd);
+                }
+                else
+                {
+                    // Print options dialog is active; background processing waits for user confirmation
+                }
+            }
+
+            RECT progressRect = default;
+            bool hadRect = GetWindowRect(_hwnd, out progressRect);
+
+            RunMessageLoop(_hwnd);
+
+            Marshal.FreeHGlobal(hClass);
+
+            ShowPendingFailureAlert(hadRect ? progressRect : null);
+        }
+
+        private void EnsureDrawingResources(int clientW, int clientH)
+        {
             if (_darkBrush == IntPtr.Zero) _darkBrush = CreateSolidBrush(0x00202020);
             if (_editBgBrush == IntPtr.Zero) _editBgBrush = CreateSolidBrush(0x002D2D2D);
 
@@ -196,10 +234,6 @@ namespace Clickra.UI
             _borderPen ??= new Pen(Color.FromArgb(70, 70, 70), 1f * _dpiScale);
             _bgBrush ??= new SolidBrush(Color.FromArgb(45, 45, 45));
 
-            int clientW = (int)(520 * _dpiScale);
-            int logicalClientHeight = GetInitialClientHeight();
-            int clientH = (int)(logicalClientHeight * _dpiScale);
-
             if (_bufferBmp == null)
             {
                 _bufferBmp = new Bitmap(clientW, clientH);
@@ -207,10 +241,10 @@ namespace Clickra.UI
                 _bufferGraphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
                 _bufferGraphics.SmoothingMode = SmoothingMode.AntiAlias;
             }
+        }
 
-            string className = "ClickraProgressWnd";
-            IntPtr hClass = Marshal.StringToHGlobalUni(className);
-
+        private void CreateProgressWindow(string className, IntPtr hClass, int clientW, int clientH)
+        {
             var wc = new WNDCLASSEX
             {
                 cbSize = (uint)Marshal.SizeOf<WNDCLASSEX>(),
@@ -250,25 +284,8 @@ namespace Clickra.UI
                     SendMessageW(_hwnd, 0x0080, (IntPtr)1, hIcon); // ICON_SMALL
                 }
             }
-
-            ShowWindow(_hwnd, 5);
-            SetTimer(_hwnd, (IntPtr)1, 16, IntPtr.Zero); // 16ms 約 60fps
-
-            if (!_isPromptingMarkdownOptions)
-            {
-                if (!_isPromptingPrintOptions)
-                    StartProcessingThread(_hwnd);
-            }
-
-            RECT progressRect = default;
-            bool hadRect = GetWindowRect(_hwnd, out progressRect);
-
-            RunMessageLoop(_hwnd);
-
-            Marshal.FreeHGlobal(hClass);
-
-            ShowPendingFailureAlert(hadRect ? progressRect : null);
         }
+
 
         private bool ValidateCommandInputs(string command, List<string> files)
         {
