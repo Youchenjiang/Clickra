@@ -84,6 +84,11 @@ public sealed class PdfPrintProcessor
                 {
                     if (pageBmp != null)
                     {
+                        if (options.DarkenText)
+                        {
+                            PdfContrastEnhancer.Enhance(pageBmp, options.DarkenGamma);
+                        }
+
                         if (options.FitToPage)
                         {
                             e.Graphics?.DrawImage(pageBmp, e.PageBounds);

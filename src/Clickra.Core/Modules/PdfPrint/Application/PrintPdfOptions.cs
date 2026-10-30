@@ -11,7 +11,9 @@ public sealed record PrintPdfOptions(
     int Copies = 1,
     int Dpi = 200,
     bool FitToPage = true,
-    string? Language = null
+    string? Language = null,
+    bool DarkenText = false,
+    double DarkenGamma = 2.2
 )
 {
     public const string PrinterNameKey = "printer";
@@ -19,6 +21,8 @@ public sealed record PrintPdfOptions(
     public const string CopiesKey = "copies";
     public const string DpiKey = "dpi";
     public const string FitToPageKey = "fit_to_page";
+    public const string DarkenTextKey = "darken_text";
+    public const string DarkenGammaKey = "darken_gamma";
 
     public static PrintPdfOptions FromDictionary(IReadOnlyDictionary<string, object>? dict)
     {
@@ -30,8 +34,10 @@ public sealed record PrintPdfOptions(
         int dpi = dict.TryGetValue(DpiKey, out var d) && int.TryParse(d?.ToString(), out int dVal) ? Math.Clamp(dVal, 72, 600) : 200;
         bool fit = !dict.TryGetValue(FitToPageKey, out var f) || !bool.TryParse(f?.ToString(), out bool fVal) || fVal;
         string? lang = dict.TryGetValue(ExecutionLocalizationOptions.LanguageKey, out var l) ? l?.ToString() : null;
+        bool darken = dict.TryGetValue(DarkenTextKey, out var dk) && bool.TryParse(dk?.ToString(), out bool dkVal) && dkVal;
+        double gamma = dict.TryGetValue(DarkenGammaKey, out var gm) && double.TryParse(gm?.ToString(), out double gmVal) && gmVal > 0.1 ? gmVal : 2.2;
 
-        return new PrintPdfOptions(printer, pages, copies, dpi, fit, lang);
+        return new PrintPdfOptions(printer, pages, copies, dpi, fit, lang, darken, gamma);
     }
 
     public Dictionary<string, object> ToDictionary()
@@ -42,6 +48,8 @@ public sealed record PrintPdfOptions(
         dict[CopiesKey] = Copies;
         dict[DpiKey] = Dpi;
         dict[FitToPageKey] = FitToPage;
+        if (DarkenText) dict[DarkenTextKey] = true;
+        if (Math.Abs(DarkenGamma - 2.2) > 0.01) dict[DarkenGammaKey] = DarkenGamma;
         if (!string.IsNullOrWhiteSpace(Language)) dict[ExecutionLocalizationOptions.LanguageKey] = Language;
         return dict;
     }
