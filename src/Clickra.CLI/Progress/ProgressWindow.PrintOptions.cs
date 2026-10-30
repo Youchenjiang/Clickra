@@ -269,58 +269,92 @@ public partial class ProgressWindow
 
         // 4. Page Range Row
         DrawPrintLabel(g, s, Loc("print_options_range"), PrintOptionsLayout.RangeLabelY, bodyBrush);
-        var allPagesRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.RangeInputY, 68, PrintOptionsLayout.RangeInputHeight);
-        var customPagesRect = new LayoutRect(PrintOptionsLayout.LeftColumnX + 74, PrintOptionsLayout.RangeInputY, PrintOptionsLayout.LeftColumnWidth - 74, PrintOptionsLayout.RangeInputHeight);
-
         bool isAll = string.Equals(_printPageRange, "all", StringComparison.OrdinalIgnoreCase);
-        DrawPrintButton(g, s, allPagesRect, Loc("print_options_range_all"), isAll,
+        DrawPrintButton(g, s, PrintOptionsLayout.RangeAllRect, Loc("print_options_range_all"), isAll,
             hovered: _hoveredPrintElement == PrintElement.RangeAll,
             pressed: _pressedPrintElement == PrintElement.RangeAll);
-        DrawPrintButton(g, s, customPagesRect, isAll ? Loc("print_options_range_custom") : _printPageRange, !isAll,
+        DrawPrintButton(g, s, PrintOptionsLayout.RangeCustomRect, isAll ? Loc("print_options_range_custom") : _printPageRange, !isAll,
             hovered: _hoveredPrintElement == PrintElement.RangeCustom,
             pressed: _pressedPrintElement == PrintElement.RangeCustom);
 
-        // 5. Copies Row
+        // 5. Copies Row (Full Width Aligned)
         DrawPrintLabel(g, s, Loc("print_options_copies"), PrintOptionsLayout.CopiesLabelY, bodyBrush);
-        var minusCopiesRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.CopiesInputY, 32, PrintOptionsLayout.CopiesInputHeight);
-        var copiesDisplayRect = new LayoutRect(PrintOptionsLayout.LeftColumnX + 36, PrintOptionsLayout.CopiesInputY, 56, PrintOptionsLayout.CopiesInputHeight);
-        var plusCopiesRect = new LayoutRect(PrintOptionsLayout.LeftColumnX + 96, PrintOptionsLayout.CopiesInputY, 32, PrintOptionsLayout.CopiesInputHeight);
-
-        DrawPrintButton(g, s, minusCopiesRect, "-", false, enabled: _printCopies > 1,
+        DrawPrintButton(g, s, PrintOptionsLayout.CopiesMinusRect, "-", false, enabled: _printCopies > 1,
             hovered: _hoveredPrintElement == PrintElement.MinusCopies,
             pressed: _pressedPrintElement == PrintElement.MinusCopies);
-        DrawPrintDisplayBox(g, s, copiesDisplayRect, _printCopies.ToString());
-        DrawPrintButton(g, s, plusCopiesRect, "+", false, enabled: _printCopies < 99,
+        DrawPrintDisplayBox(g, s, PrintOptionsLayout.CopiesDisplayRect, _printCopies.ToString());
+        DrawPrintButton(g, s, PrintOptionsLayout.CopiesPlusRect, "+", false, enabled: _printCopies < 99,
             hovered: _hoveredPrintElement == PrintElement.PlusCopies,
             pressed: _pressedPrintElement == PrintElement.PlusCopies);
 
         // 6. Fit to Page Checkbox
-        var fitRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.FitToPageY, PrintOptionsLayout.LeftColumnWidth, PrintOptionsLayout.FitToPageHeight);
-        DrawPrintCheckbox(g, s, fitRect, Loc("print_options_fit"), _printFitToPage,
+        DrawPrintCheckbox(g, s, PrintOptionsLayout.FitToPageRect, Loc("print_options_fit"), _printFitToPage,
             hovered: _hoveredPrintElement == PrintElement.FitToPage);
 
         // 7. Darken Text Checkbox
-        var darkenRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.DarkenY, PrintOptionsLayout.LeftColumnWidth, PrintOptionsLayout.DarkenHeight);
-        DrawPrintCheckbox(g, s, darkenRect, Loc("print_options_darken"), _printDarken,
+        DrawPrintCheckbox(g, s, PrintOptionsLayout.DarkenRect, Loc("print_options_darken"), _printDarken,
             hovered: _hoveredPrintElement == PrintElement.Darken);
 
-        // 6. Preview Area
-        var previewAreaRect = ScalePrintRect(PrintOptionsLayout.PreviewArea, s);
-        using var previewBgBrush = new SolidBrush(Color.FromArgb(24, 24, 24));
-        bool isPreviewHovered = _hoveredPrintElement == PrintElement.PreviewArea;
-        using var previewBorderPen = new Pen(isPreviewHovered ? Color.FromArgb(90, 140, 210) : Color.FromArgb(64, 64, 64), 1f * s);
-        g.FillRectangle(previewBgBrush, previewAreaRect);
-        g.DrawRectangle(previewBorderPen, previewAreaRect.X, previewAreaRect.Y, previewAreaRect.Width, previewAreaRect.Height);
+        // --- Right Column: Unified Preview Card Panel ---
+        var cardRect = ScalePrintRect(PrintOptionsLayout.PreviewCardRect, s);
+        var headerRect = ScalePrintRect(PrintOptionsLayout.CardHeaderRect, s);
+        var viewportRect = ScalePrintRect(PrintOptionsLayout.PreviewArea, s);
+        var footerRect = ScalePrintRect(PrintOptionsLayout.CardFooterRect, s);
 
+        // 1. Card Outer Shell: Rounded rectangle, subtle background & border
+        using (var cardPath = UIHelper.GetRoundedRectPath(cardRect, 6 * s))
+        using (var cardBgBrush = new SolidBrush(Color.FromArgb(24, 25, 29)))
+        using (var cardBorderPen = new Pen(Color.FromArgb(52, 56, 66), 1f * s))
+        {
+            g.FillPath(cardBgBrush, cardPath);
+            g.DrawPath(cardBorderPen, cardPath);
+        }
+
+        // 2. Card Header
+        using (var headerBottomPen = new Pen(Color.FromArgb(44, 46, 54), 1f * s))
+        {
+            g.DrawLine(headerBottomPen, headerRect.Left, headerRect.Bottom, headerRect.Right, headerRect.Bottom);
+        }
+
+        // Card Header Left: Document title / filename (or "PDF")
+        string docTitle = _files.Count > 0 ? Path.GetFileName(_files[0]) : "PDF";
+        using (var docTitleBrush = new SolidBrush(Color.FromArgb(215, 220, 230)))
+        using (var titleFormat = new StringFormat
+        {
+            Alignment = StringAlignment.Near,
+            LineAlignment = StringAlignment.Center,
+            Trimming = StringTrimming.EllipsisCharacter,
+            FormatFlags = StringFormatFlags.NoWrap
+        })
+        {
+            var titleRect = new RectangleF(headerRect.Left + (10f * s), headerRect.Top, headerRect.Width - (110f * s), headerRect.Height);
+            g.DrawString(docTitle, _tipFont, docTitleBrush, titleRect, titleFormat);
+        }
+
+        // Card Header Right: Paper Size specification pill
         var paperDim = PaperSizeRegistry.GetDimensions(currentPaperText);
         string paperInfo = $"{paperDim.DisplayName} · {paperDim.WidthMm:0}×{paperDim.HeightMm:0} mm";
-        using var tagTextBrush = new SolidBrush(Color.FromArgb(190, 200, 215));
-        g.DrawString(paperInfo, _tipFont, tagTextBrush, previewAreaRect.X + (8f * s), previewAreaRect.Y + (5f * s));
+        var paperInfoSize = g.MeasureString(paperInfo, _tipFont);
+        float pillW = paperInfoSize.Width + (12f * s);
+        float pillH = 18f * s;
+        float pillX = headerRect.Right - pillW - (8f * s);
+        float pillY = headerRect.Top + ((headerRect.Height - pillH) / 2f);
+        var paperPillRect = new RectangleF(pillX, pillY, pillW, pillH);
 
-        string zoomTag = $"[{Loc("pdf_split_zoom_tag")}]";
-        using var zoomTagBrush = new SolidBrush(isPreviewHovered ? Color.FromArgb(130, 195, 255) : Color.FromArgb(140, 140, 140));
-        using var rightAlign = new StringFormat { Alignment = StringAlignment.Far };
-        g.DrawString(zoomTag, _tipFont, zoomTagBrush, previewAreaRect.Right - (8f * s), previewAreaRect.Bottom - (18f * s), rightAlign);
+        using (var pillPath = UIHelper.GetRoundedRectPath(paperPillRect, 3 * s))
+        using (var pillBg = new SolidBrush(Color.FromArgb(36, 40, 48)))
+        using (var pillBorder = new Pen(Color.FromArgb(62, 68, 80), 1f * s))
+        using (var pillTextBrush = new SolidBrush(Color.FromArgb(185, 195, 210)))
+        using (var pillFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+        {
+            g.FillPath(pillBg, pillPath);
+            g.DrawPath(pillBorder, pillPath);
+            g.DrawString(paperInfo, _tipFont, pillTextBrush, paperPillRect, pillFormat);
+        }
+
+        // 3. Card Viewport (Paper Canvas)
+        using var viewportBgBrush = new SolidBrush(Color.FromArgb(18, 19, 22));
+        g.FillRectangle(viewportBgBrush, viewportRect);
 
         int curPage = _printPreviewModel.CurrentPageNumber;
         Bitmap? bmp;
@@ -335,13 +369,13 @@ public partial class ProgressWindow
             float targetPaperW = isLandscape ? Math.Max(paperDim.WidthPt, paperDim.HeightPt) : Math.Min(paperDim.WidthPt, paperDim.HeightPt);
             float targetPaperH = isLandscape ? Math.Min(paperDim.WidthPt, paperDim.HeightPt) : Math.Max(paperDim.WidthPt, paperDim.HeightPt);
 
-            float maxSheetW = previewAreaRect.Width - (24f * s);
-            float maxSheetH = previewAreaRect.Height - (42f * s);
+            float maxSheetW = viewportRect.Width - (24f * s);
+            float maxSheetH = viewportRect.Height - (28f * s);
             float sheetScale = Math.Min(maxSheetW / targetPaperW, maxSheetH / targetPaperH);
             float sheetW = targetPaperW * sheetScale;
             float sheetH = targetPaperH * sheetScale;
-            float sheetX = previewAreaRect.X + ((previewAreaRect.Width - sheetW) / 2f);
-            float sheetY = previewAreaRect.Y + (20f * s) + ((maxSheetH - sheetH) / 2f);
+            float sheetX = viewportRect.X + ((viewportRect.Width - sheetW) / 2f);
+            float sheetY = viewportRect.Y + ((viewportRect.Height - sheetH) / 2f);
 
             // Sheet shadow
             using var shadowBrush = new SolidBrush(Color.FromArgb(90, 0, 0, 0));
@@ -384,22 +418,47 @@ public partial class ProgressWindow
         else
         {
             using var centerFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            g.DrawString(Loc("print_options_loading"), _tipFont, mutedBrush, previewAreaRect, centerFormat);
+            g.DrawString(Loc("print_options_loading"), _tipFont, mutedBrush, viewportRect, centerFormat);
         }
 
-        // 6. Navigation below preview
+        // 4. Zoom Pill Badge at bottom-right of Viewport
+        bool isZoomPillHovered = _hoveredPrintElement == PrintElement.PreviewArea;
+        var zoomPillRect = ScalePrintRect(PrintOptionsLayout.ZoomPillRect, s);
+        using (var zoomPath = UIHelper.GetRoundedRectPath(zoomPillRect, zoomPillRect.Height / 2f))
+        using (var zoomBg = new SolidBrush(isZoomPillHovered ? Color.FromArgb(230, 38, 44, 58) : Color.FromArgb(170, 24, 26, 32)))
+        using (var zoomBorder = new Pen(isZoomPillHovered ? UIHelper.GetSystemColorizationColor() : Color.FromArgb(70, 75, 88), 1f * s))
+        using (var zoomTextBrush = new SolidBrush(isZoomPillHovered ? Color.White : Color.FromArgb(190, 195, 205)))
+        {
+            g.FillPath(zoomBg, zoomPath);
+            g.DrawPath(zoomBorder, zoomPath);
+            float iconX = zoomPillRect.Left + (11f * s);
+            float iconY = zoomPillRect.Top + (zoomPillRect.Height / 2f);
+            VectorIcons.DrawMagnifier(g, iconX, iconY, 10f * s, zoomTextBrush.Color, 1.4f * s);
+            g.DrawString(Loc("pdf_split_zoom_tag"), _tipFont, zoomTextBrush, zoomPillRect.Left + (18f * s), zoomPillRect.Top + (2f * s));
+        }
+
+        // 5. Card Footer: Integrated Navigation Bar
+        using (var footerTopPen = new Pen(Color.FromArgb(44, 46, 54), 1f * s))
+        {
+            g.DrawLine(footerTopPen, footerRect.Left, footerRect.Top, footerRect.Right, footerRect.Top);
+        }
+
         DrawPrintButton(g, s, PrintOptionsLayout.PrevPageButton, "<", false, enabled: _printPreviewModel.CanNavigatePrevious,
             hovered: _hoveredPrintElement == PrintElement.PrevPage,
             pressed: _pressedPrintElement == PrintElement.PrevPage);
-        using var pageFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-        string pageText = Loc("print_options_page_indicator", _printPreviewModel.CurrentPageNumber, _printPreviewModel.TotalPages);
-        g.DrawString(pageText, _msgFont, bodyBrush, ScalePrintRect(PrintOptionsLayout.PageTextRect, s), pageFormat);
+
+        using (var pageFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+        {
+            string pageText = Loc("print_options_page_indicator", _printPreviewModel.CurrentPageNumber, _printPreviewModel.TotalPages);
+            g.DrawString(pageText, _msgFont, bodyBrush, ScalePrintRect(PrintOptionsLayout.PageTextRect, s), pageFormat);
+        }
+
         DrawPrintButton(g, s, PrintOptionsLayout.NextPageButton, ">", false, enabled: _printPreviewModel.CanNavigateNext,
             hovered: _hoveredPrintElement == PrintElement.NextPage,
             pressed: _pressedPrintElement == PrintElement.NextPage);
 
         // 7. Separator & Action Buttons
-        using var sepPen = new Pen(Color.FromArgb(58, 58, 58), 1f * s);
+        using var sepPen = new Pen(Color.FromArgb(50, 52, 60), 1f * s);
         g.DrawLine(sepPen, 36 * s, PrintOptionsLayout.SeparatorY * s, 484 * s, PrintOptionsLayout.SeparatorY * s);
         DrawPrintButton(g, s, PrintOptionsLayout.ConfirmButton, Loc("print_options_confirm"), true,
             hovered: _hoveredPrintElement == PrintElement.Confirm,
@@ -812,23 +871,14 @@ public partial class ProgressWindow
         if (PrintOptionsLayout.PaperComboRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.PaperCombo;
         if (PrintOptionsLayout.DuplexComboRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.DuplexCombo;
 
-        var allPagesRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.RangeInputY, 68, PrintOptionsLayout.RangeInputHeight);
-        var customPagesRect = new LayoutRect(PrintOptionsLayout.LeftColumnX + 74, PrintOptionsLayout.RangeInputY, PrintOptionsLayout.LeftColumnWidth - 74, PrintOptionsLayout.RangeInputHeight);
+        if (PrintOptionsLayout.RangeAllRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.RangeAll;
+        if (PrintOptionsLayout.RangeCustomRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.RangeCustom;
 
-        if (allPagesRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.RangeAll;
-        if (customPagesRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.RangeCustom;
+        if (PrintOptionsLayout.CopiesMinusRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.MinusCopies;
+        if (PrintOptionsLayout.CopiesPlusRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.PlusCopies;
 
-        var minusCopiesRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.CopiesInputY, 32, PrintOptionsLayout.CopiesInputHeight);
-        var plusCopiesRect = new LayoutRect(PrintOptionsLayout.LeftColumnX + 96, PrintOptionsLayout.CopiesInputY, 32, PrintOptionsLayout.CopiesInputHeight);
-
-        if (minusCopiesRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.MinusCopies;
-        if (plusCopiesRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.PlusCopies;
-
-        var fitRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.FitToPageY, PrintOptionsLayout.LeftColumnWidth, PrintOptionsLayout.FitToPageHeight);
-        if (fitRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.FitToPage;
-
-        var darkenRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.DarkenY, PrintOptionsLayout.LeftColumnWidth, PrintOptionsLayout.DarkenHeight);
-        if (darkenRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.Darken;
+        if (PrintOptionsLayout.FitToPageRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.FitToPage;
+        if (PrintOptionsLayout.DarkenRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.Darken;
 
         if (PrintOptionsLayout.PreviewArea.ContainsInclusive(mouseX, mouseY)) return PrintElement.PreviewArea;
 
@@ -885,16 +935,13 @@ public partial class ProgressWindow
             return true;
         }
 
-        var allPagesRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.RangeInputY, 68, PrintOptionsLayout.RangeInputHeight);
-        var customPagesRect = new LayoutRect(PrintOptionsLayout.LeftColumnX + 74, PrintOptionsLayout.RangeInputY, PrintOptionsLayout.LeftColumnWidth - 74, PrintOptionsLayout.RangeInputHeight);
-
-        if (allPagesRect.ContainsInclusive(mouseX, mouseY))
+        if (PrintOptionsLayout.RangeAllRect.ContainsInclusive(mouseX, mouseY))
         {
             _printPageRange = "all";
             InvalidateRect(hwnd, IntPtr.Zero, false);
             return true;
         }
-        if (customPagesRect.ContainsInclusive(mouseX, mouseY))
+        if (PrintOptionsLayout.RangeCustomRect.ContainsInclusive(mouseX, mouseY))
         {
             string defaultPrompt = string.Equals(_printPageRange, "all", StringComparison.OrdinalIgnoreCase)
                 ? $"1-{_printPreviewModel.TotalPages}"
@@ -915,10 +962,7 @@ public partial class ProgressWindow
             return true;
         }
 
-        var minusCopiesRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.CopiesInputY, 32, PrintOptionsLayout.CopiesInputHeight);
-        var plusCopiesRect = new LayoutRect(PrintOptionsLayout.LeftColumnX + 96, PrintOptionsLayout.CopiesInputY, 32, PrintOptionsLayout.CopiesInputHeight);
-
-        if (minusCopiesRect.ContainsInclusive(mouseX, mouseY))
+        if (PrintOptionsLayout.CopiesMinusRect.ContainsInclusive(mouseX, mouseY))
         {
             if (_printCopies > 1)
             {
@@ -927,7 +971,7 @@ public partial class ProgressWindow
             }
             return true;
         }
-        if (plusCopiesRect.ContainsInclusive(mouseX, mouseY))
+        if (PrintOptionsLayout.CopiesPlusRect.ContainsInclusive(mouseX, mouseY))
         {
             if (_printCopies < 99)
             {
@@ -937,16 +981,14 @@ public partial class ProgressWindow
             return true;
         }
 
-        var fitRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.FitToPageY, PrintOptionsLayout.LeftColumnWidth, PrintOptionsLayout.FitToPageHeight);
-        if (fitRect.ContainsInclusive(mouseX, mouseY))
+        if (PrintOptionsLayout.FitToPageRect.ContainsInclusive(mouseX, mouseY))
         {
             _printFitToPage = !_printFitToPage;
             InvalidateRect(hwnd, IntPtr.Zero, false);
             return true;
         }
 
-        var darkenRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.DarkenY, PrintOptionsLayout.LeftColumnWidth, PrintOptionsLayout.DarkenHeight);
-        if (darkenRect.ContainsInclusive(mouseX, mouseY))
+        if (PrintOptionsLayout.DarkenRect.ContainsInclusive(mouseX, mouseY))
         {
             _printDarken = !_printDarken;
             lock (_printThumbnails)
