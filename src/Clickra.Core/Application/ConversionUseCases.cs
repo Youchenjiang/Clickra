@@ -5,6 +5,7 @@ using Clickra.Core.Modules.Office.Application;
 using Clickra.Core.Modules.PdfCompression.Application;
 using Clickra.Core.Modules.PdfDecrypt.Application;
 using Clickra.Core.Modules.PdfMerge.Application;
+using Clickra.Core.Modules.PdfPrint.Application;
 using Clickra.Core.Modules.PdfSplit.Application;
 using Clickra.Core.Modules.PdfTranslation.Application;
 
@@ -32,6 +33,7 @@ public static class ConversionUseCases
             new MarkdownToPdfUseCase(),
             new MarkdownToWordUseCase(),
             new PptToPdfUseCase(),
+            new PrintPdfUseCase(),
             new SplitPdfUseCase(),
             new TranslatePdfUseCase(),
             new WordToPdfUseCase()

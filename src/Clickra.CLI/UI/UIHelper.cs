@@ -109,6 +109,14 @@ namespace Clickra.UI
             return Color.FromArgb(255, Math.Min(255, r), Math.Min(255, g), Math.Min(255, b));
         }
 
+        public static Color Darken(Color c, float amount)
+        {
+            int r = (int)(c.R * (1f - amount));
+            int g = (int)(c.G * (1f - amount));
+            int b = (int)(c.B * (1f - amount));
+            return Color.FromArgb(255, Math.Max(0, r), Math.Max(0, g), Math.Max(0, b));
+        }
+
         public static Color GetSystemColorizationColor()
         {
             try

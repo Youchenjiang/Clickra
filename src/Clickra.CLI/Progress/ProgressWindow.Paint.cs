@@ -44,7 +44,7 @@ namespace Clickra.UI
                     : presentation.Error;
                 dispW = _currentDispWidth; shimOff = _shimmerOffset;
                 tot = presentation.Total; cur = presentation.Current;
-                isPrompting = _isPromptingPassword || _isPromptingVisualSplitter || _isPromptingMarkdownOptions;
+                isPrompting = _isPromptingPassword || _isPromptingVisualSplitter || _isPromptingMarkdownOptions || _isPromptingPrintOptions;
                 promptFile = _passwordPromptFilename;
                 isRetry = _passwordPromptIsRetry;
             }
@@ -88,6 +88,7 @@ namespace Clickra.UI
                     ? Loc("cmd_md_to_word")
                     : Loc("cmd_md_to_pdf");
                 else if (_isPromptingVisualSplitter) subText = Loc("progress_sub_visual_splitter");
+                else if (_isPromptingPrintOptions) subText = Loc("progress_sub_print_options");
                 else subText = isPrompting ? Loc("pdf_password_title") : Loc("progress_sub_running");
 
                 Color subColor;
@@ -98,7 +99,7 @@ namespace Clickra.UI
                 g.DrawString(subText, _subFont, subBrush, 36 * s, 72 * s);
             }
 
-            if (_linePen != null)
+            if (_linePen != null && !_isPromptingVisualSplitter && !_isPromptingPrintOptions)
                 g.DrawLine(_linePen, 36 * s, 110 * s, 484 * s, 110 * s);
         }
 
@@ -157,6 +158,10 @@ namespace Clickra.UI
             else if (_isPromptingMarkdownOptions)
             {
                 PaintMarkdownOptions(g, s);
+            }
+            else if (_isPromptingPrintOptions)
+            {
+                PaintPrintOptions(g, s);
             }
             else if (_msgFont != null)
             {

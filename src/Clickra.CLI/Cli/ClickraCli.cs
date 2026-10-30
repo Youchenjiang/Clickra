@@ -13,6 +13,7 @@ using Clickra.Core.Modules.Markdown.Application;
 using Clickra.Core.Modules.PdfCompression.Application;
 using Clickra.Core.Modules.PdfDecrypt.Application;
 using Clickra.Core.Modules.PdfMerge.Application;
+using Clickra.Core.Modules.PdfPrint.Application;
 using Clickra.Core.Modules.PdfSplit.Application;
 using Clickra.Core.Modules.PdfTranslation.Application;
 using Clickra.Core.Processors;
@@ -31,7 +32,13 @@ namespace Clickra
             string? OutputDirOverride,
             bool HasCliLevel,
             string CompressionLevel,
-            string PagesOption);
+            string PagesOption,
+            string? PrinterOption = null,
+            int CopiesOption = 1,
+            bool FitToPageOption = true,
+            bool DarkenOption = false,
+            string? DuplexOption = null,
+            string? PaperSizeOption = null);
 
         static void ShowWarning(string msg, string title) =>
             NativeDialogs.Warning(IntPtr.Zero, title, msg, 1.0f, SettingsPresentationController.Shared.Language);
@@ -129,7 +136,7 @@ namespace Clickra
         {
             if (DispatchOfficeCommand(command, files, options.Quiet)) return;
             if (DispatchMarkdownCommand(command, files, options.Quiet, options.OutputDir, options.OutputDirOverride)) return;
-            if (DispatchPdfCommand(command, files, options.Quiet, options.OutputDir, options.HasCliLevel, options.CompressionLevel, options.PagesOption)) return;
+            if (DispatchPdfCommand(command, files, options)) return;
             if (DispatchImageCommand(command, files, options.Quiet, options.OutputDir, options.OutputDirOverride)) return;
 
             Console.WriteLine(Loc("cli_err_prefix") + Loc("cli_err_unknown_command", command));
@@ -195,33 +202,32 @@ namespace Clickra
         private static void HandleOfficeToPdfQuiet(string command, IReadOnlyList<string> files)
             => RunQuietUseCase(command, files, null, outputDir: null);
 
-        /// <summary>Handles PDF commands (merge, compress, split, translate, decrypt).</summary>
+        /// <summary>Handles PDF commands (merge, compress, split, translate, decrypt, print).</summary>
         private static bool DispatchPdfCommand(
             string command,
             List<string> files,
-            bool quiet,
-            string outputDir,
-            bool hasCliLevel,
-            string compressionLevel,
-            string pagesOption)
+            DispatchOptions options)
         {
             switch (command)
             {
                 case "merge-pdf":
-                    return DispatchPdfCase(command, files, quiet, 2,
-                        () => HandleMergePdfQuiet(files, outputDir));
+                    return DispatchPdfCase(command, files, options.Quiet, 2,
+                        () => HandleMergePdfQuiet(files, options.OutputDir));
                 case "compress-pdf":
-                    return DispatchPdfCase(command, files, quiet, 1,
-                        () => HandleCompressPdfQuiet(files, outputDir, hasCliLevel, compressionLevel));
+                    return DispatchPdfCase(command, files, options.Quiet, 1,
+                        () => HandleCompressPdfQuiet(files, options.OutputDir, options.HasCliLevel, options.CompressionLevel));
                 case "split-pdf":
-                    return DispatchPdfCase(command, files, quiet, 1,
-                        () => HandleSplitPdfQuiet(files, outputDir, pagesOption));
+                    return DispatchPdfCase(command, files, options.Quiet, 1,
+                        () => HandleSplitPdfQuiet(files, options.OutputDir, options.PagesOption));
                 case "translate-pdf":
-                    return DispatchPdfCase(command, files, quiet, 1,
-                        () => HandleTranslatePdfQuiet(files, outputDir));
+                    return DispatchPdfCase(command, files, options.Quiet, 1,
+                        () => HandleTranslatePdfQuiet(files, options.OutputDir));
                 case "decrypt-pdf":
-                    return DispatchPdfCase(command, files, quiet, 1,
-                        () => HandleDecryptPdfQuiet(files, outputDir));
+                    return DispatchPdfCase(command, files, options.Quiet, 1,
+                        () => HandleDecryptPdfQuiet(files, options.OutputDir));
+                case "print-pdf":
+                    return DispatchPdfCase(command, files, options.Quiet, 1,
+                        () => HandlePrintPdfQuiet(files, options));
                 default:
                     return false;
             }
@@ -259,6 +265,39 @@ namespace Clickra
                 outputDir,
                 interaction,
                 new QuietSplitObserver(files));
+        }
+
+        /// <summary>Runs the print-pdf command in quiet mode, streaming to the specified printer.</summary>
+        private static void HandlePrintPdfQuiet(List<string> files, DispatchOptions cliOptions)
+        {
+            PrintDuplexMode duplex = PrintDuplexMode.Simplex;
+            if (!string.IsNullOrWhiteSpace(cliOptions.DuplexOption))
+            {
+                if (Enum.TryParse<PrintDuplexMode>(cliOptions.DuplexOption, true, out var parsedDx))
+                    duplex = parsedDx;
+                else if (cliOptions.DuplexOption.Equals("long", StringComparison.OrdinalIgnoreCase) || cliOptions.DuplexOption.Equals("vertical", StringComparison.OrdinalIgnoreCase))
+                    duplex = PrintDuplexMode.DuplexLongEdge;
+                else if (cliOptions.DuplexOption.Equals("short", StringComparison.OrdinalIgnoreCase) || cliOptions.DuplexOption.Equals("horizontal", StringComparison.OrdinalIgnoreCase))
+                    duplex = PrintDuplexMode.DuplexShortEdge;
+            }
+
+            var options = new PrintPdfOptions(
+                cliOptions.PrinterOption,
+                cliOptions.PagesOption,
+                cliOptions.CopiesOption,
+                200,
+                cliOptions.FitToPageOption,
+                SettingsPresentationController.Shared.Language,
+                cliOptions.DarkenOption,
+                2.2,
+                duplex,
+                cliOptions.PaperSizeOption).ToDictionary();
+
+            RunQuietUseCase(
+                PrintPdfUseCase.CommandName,
+                files,
+                options,
+                StoragePathController.GetOutputDirectory(files[0]));
         }
 
         /// <summary>Handles image conversion, merge and stitching commands.</summary>

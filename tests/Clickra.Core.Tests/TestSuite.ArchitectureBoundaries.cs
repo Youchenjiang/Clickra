@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Clickra.Core.Application;
+using Clickra.Core.Modules.PdfPrint.Application;
 using Clickra.Shared;
 
 namespace Clickra.Core.Tests;
@@ -1658,6 +1659,7 @@ static partial class TestSuite
         IConversionUseCase merge = ConversionUseCases.GetRequired(MergePdfUseCase.CommandName);
         IConversionUseCase markdownPdf = ConversionUseCases.GetRequired(MarkdownToPdfUseCase.CommandName);
         IConversionUseCase markdownWord = ConversionUseCases.GetRequired(MarkdownToWordUseCase.CommandName);
+        IConversionUseCase print = ConversionUseCases.GetRequired(PrintPdfUseCase.CommandName);
         IConversionUseCase split = ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName);
         IConversionUseCase translate = ConversionUseCases.GetRequired(TranslatePdfUseCase.CommandName);
         IConversionUseCase excel = ConversionUseCases.GetRequired(ExcelToPdfUseCase.CommandName);
@@ -1696,6 +1698,8 @@ static partial class TestSuite
             "md2pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(markdownWord is MarkdownToWordUseCase,
             "md2word must resolve through the product-wide application use-case catalog.");
+        Assert.True(print is PrintPdfUseCase,
+            "print-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(split is SplitPdfUseCase,
             "split-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(translate is TranslatePdfUseCase,

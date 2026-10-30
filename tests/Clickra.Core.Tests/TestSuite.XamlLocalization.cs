@@ -99,21 +99,21 @@ static partial class TestSuite
         string[] expectedTags =
         {
             "compress-pdf", "decrypt-pdf", "excel2pdf", "img-merge", "img-stitch", "img-to-gif", "img-to-heic", "img-to-jpg",
-            "img-to-png", "img-to-webp", "img2pdf", "md2pdf", "md2word", "merge-pdf", "ppt2pdf", "split-pdf", "translate-pdf", "word2pdf"
+            "img-to-png", "img-to-webp", "img2pdf", "md2pdf", "md2word", "merge-pdf", "ppt2pdf", "print-pdf", "split-pdf", "translate-pdf", "word2pdf"
         };
 
         Assert.True(actualTags.SequenceEqual(expectedTags),
-            "The Fluent convert workspace must expose exactly the registered 18 command buttons. " +
+            "The Fluent convert workspace must expose exactly the registered 19 command buttons. " +
             $"Expected: [{string.Join(", ", expectedTags)}]; actual: [{string.Join(", ", actualTags)}].");
         Assert.Equal(3, CountGridColumns(FindNamedXamlElement(xaml, "OfficeCommandGrid")));
-        Assert.Equal(5, CountGridColumns(FindNamedXamlElement(xaml, "PdfCommandGrid")));
+        Assert.Equal(6, CountGridColumns(FindNamedXamlElement(xaml, "PdfCommandGrid")));
         Assert.Equal(4, CountGridColumns(FindNamedXamlElement(xaml, "ImageCommandGrid")));
 
         string codeBehind = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml.cs"));
         Assert.True(codeBehind.Contains("SetActiveColumns(page.OfficeCommandGrid, narrow ? 2 : 3);", StringComparison.Ordinal),
             "Office commands must reflow from three wide columns to two narrow columns.");
-        Assert.True(codeBehind.Contains("SetActiveColumns(page.PdfCommandGrid, narrow ? 2 : 5);", StringComparison.Ordinal),
-            "PDF commands must reflow from five wide columns to two narrow columns.");
+        Assert.True(codeBehind.Contains("SetActiveColumns(page.PdfCommandGrid, narrow ? 2 : 6);", StringComparison.Ordinal),
+            "PDF commands must reflow from six wide columns to two narrow columns.");
         Assert.True(codeBehind.Contains("SetActiveColumns(page.ImageCommandGrid, narrow ? 2 : 4);", StringComparison.Ordinal),
             "Image commands must reflow from four wide columns to two narrow columns.");
     }

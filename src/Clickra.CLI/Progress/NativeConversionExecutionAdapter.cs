@@ -11,6 +11,7 @@ using Clickra.Core.Modules.Office.Application;
 using Clickra.Core.Modules.PdfCompression.Application;
 using Clickra.Core.Modules.PdfDecrypt.Application;
 using Clickra.Core.Modules.PdfMerge.Application;
+using Clickra.Core.Modules.PdfPrint.Application;
 using Clickra.Core.Modules.PdfSplit.Application;
 using Clickra.Core.Modules.PdfTranslation.Application;
 using Clickra.Core.Processors;
@@ -64,6 +65,11 @@ internal sealed class NativeConversionExecutionAdapter
         if (command.Equals(CompressPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
         {
             RunCompress(files, progressCallback);
+            return true;
+        }
+        if (command.Equals(PrintPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+        {
+            RunPrint(files, progressCallback);
             return true;
         }
         if (command.Equals(Img2PdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
@@ -222,6 +228,43 @@ internal sealed class NativeConversionExecutionAdapter
             result,
             SplitPdfUseCase.CommandName,
             Localization.T("cli_progress_splitting_pdf_done"),
+            true);
+    }
+
+    private void RunPrint(List<string> files, Action<int, int, string> progressCallback)
+    {
+        _ = ConversionUseCases.GetRequired(PrintPdfUseCase.CommandName);
+        ConversionPlan plan = ConversionExecutionService.Plan(
+            PrintPdfUseCase.CommandName,
+            files,
+            options: _commandOptions,
+            outputOverride: _outputDirOverride,
+            TrackTaskLifecycle: true,
+            planOptions: new ExecutionPlanOptions(_existingTaskId, true, _startIndex));
+
+        var interaction = new DelegateConversionInteraction(
+            (_, _, _, _) => Task.FromResult<string?>(null),
+            (_, _, _) => Task.FromResult<string?>(null),
+            (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+
+        var progress = CreatePdfProgress(files, progressCallback, "cli_progress_printing_pdf_stage");
+
+        ConversionResult result = ConversionExecutionService.Execute(
+            plan,
+            interaction,
+            progress,
+            new FileStageExecutionObserver(
+                _taskStarted,
+                files,
+                progressCallback,
+                10,
+                "cli_progress_printing_pdf"),
+            _cancellationToken);
+
+        _completeResult(
+            result,
+            PrintPdfUseCase.CommandName,
+            Localization.T("cli_progress_printing_pdf_done"),
             true);
     }
 

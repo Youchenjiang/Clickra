@@ -10,6 +10,7 @@ using System.Drawing.Text;
 using System.Drawing.Drawing2D;
 using Clickra.Core;
 using Clickra.Core.Modules.HistoryTasks.Application;
+using Clickra.Core.Modules.PdfPrint.Application;
 using Clickra.Core.Application;
 
 using static Clickra.UI.Native.Win32;
@@ -176,12 +177,55 @@ namespace Clickra.UI
                 _isPromptingMarkdownOptions = existingTaskId is null
                     && _commandOptions is null
                     && IsMarkdownCommand(command);
+                _isPromptingPrintOptions = existingTaskId is null
+                    && _commandOptions is null
+                    && IsPrintCommand(command);
                 _markdownTemplateStatus = Loc("md_options_template_none");
             }
-            if (_isPromptingMarkdownOptions)
+            if (_isPromptingMarkdownOptions || _isPromptingPrintOptions)
                 _progressPresentation.WaitForInput();
+            if (_isPromptingPrintOptions)
+                InitializePrintOptions();
 
 
+            int clientW = (int)(520 * _dpiScale);
+            int logicalClientHeight = GetInitialClientHeight();
+            int clientH = (int)(logicalClientHeight * _dpiScale);
+
+            EnsureDrawingResources(clientW, clientH);
+
+            string className = "ClickraProgressWnd";
+            IntPtr hClass = Marshal.StringToHGlobalUni(className);
+
+            CreateProgressWindow(className, hClass, clientW, clientH);
+
+            ShowWindow(_hwnd, 5);
+            SetTimer(_hwnd, (IntPtr)1, 16, IntPtr.Zero); // 16ms 約 60fps
+
+            if (!_isPromptingMarkdownOptions)
+            {
+                if (!_isPromptingPrintOptions)
+                {
+                    StartProcessingThread(_hwnd);
+                }
+                else
+                {
+                    // Print options dialog is active; background processing waits for user confirmation
+                }
+            }
+
+            RECT progressRect = default;
+            bool hadRect = GetWindowRect(_hwnd, out progressRect);
+
+            RunMessageLoop(_hwnd);
+
+            Marshal.FreeHGlobal(hClass);
+
+            ShowPendingFailureAlert(hadRect ? progressRect : null);
+        }
+
+        private void EnsureDrawingResources(int clientW, int clientH)
+        {
             if (_darkBrush == IntPtr.Zero) _darkBrush = CreateSolidBrush(0x00202020);
             if (_editBgBrush == IntPtr.Zero) _editBgBrush = CreateSolidBrush(0x002D2D2D);
 
@@ -190,12 +234,6 @@ namespace Clickra.UI
             _borderPen ??= new Pen(Color.FromArgb(70, 70, 70), 1f * _dpiScale);
             _bgBrush ??= new SolidBrush(Color.FromArgb(45, 45, 45));
 
-            int clientW = (int)(520 * _dpiScale);
-            int logicalClientHeight = _isPromptingMarkdownOptions
-                ? MarkdownOptionsClientHeight
-                : GetStandardClientHeight();
-            int clientH = (int)(logicalClientHeight * _dpiScale);
-
             if (_bufferBmp == null)
             {
                 _bufferBmp = new Bitmap(clientW, clientH);
@@ -203,10 +241,10 @@ namespace Clickra.UI
                 _bufferGraphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
                 _bufferGraphics.SmoothingMode = SmoothingMode.AntiAlias;
             }
+        }
 
-            string className = "ClickraProgressWnd";
-            IntPtr hClass = Marshal.StringToHGlobalUni(className);
-
+        private void CreateProgressWindow(string className, IntPtr hClass, int clientW, int clientH)
+        {
             var wc = new WNDCLASSEX
             {
                 cbSize = (uint)Marshal.SizeOf<WNDCLASSEX>(),
@@ -246,22 +284,8 @@ namespace Clickra.UI
                     SendMessageW(_hwnd, 0x0080, (IntPtr)1, hIcon); // ICON_SMALL
                 }
             }
-
-            ShowWindow(_hwnd, 5);
-            SetTimer(_hwnd, (IntPtr)1, 16, IntPtr.Zero); // 16ms 約 60fps
-
-            if (!_isPromptingMarkdownOptions)
-                StartProcessingThread(_hwnd);
-
-            RECT progressRect = default;
-            bool hadRect = GetWindowRect(_hwnd, out progressRect);
-
-            RunMessageLoop(_hwnd);
-
-            Marshal.FreeHGlobal(hClass);
-
-            ShowPendingFailureAlert(hadRect ? progressRect : null);
         }
+
 
         private bool ValidateCommandInputs(string command, List<string> files)
         {
@@ -311,7 +335,44 @@ namespace Clickra.UI
             command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase)
             || command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
 
-        private int GetStandardClientHeight() => _isPromptingVisualSplitter ? 420 : 280;
+        private static bool IsPrintCommand(string command) =>
+            command.Equals(PrintPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase);
+
+        private int GetStandardClientHeight()
+        {
+            if (_isPromptingVisualSplitter) return 420;
+            if (_isPromptingPrintOptions) return PrintOptionsClientHeight;
+            return 280;
+        }
+
+        private int GetInitialClientHeight()
+        {
+            if (_isPromptingMarkdownOptions) return MarkdownOptionsClientHeight;
+            if (_isPromptingPrintOptions) return PrintOptionsClientHeight;
+            return GetStandardClientHeight();
+        }
+
+        internal void ResizeClientSurface(IntPtr hwnd, int clientW, int clientH)
+        {
+            _bufferGraphics?.Dispose();
+            _bufferBmp?.Dispose();
+            _bufferBmp = new Bitmap(clientW, clientH);
+            _bufferGraphics = Graphics.FromImage(_bufferBmp);
+            _bufferGraphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            _bufferGraphics.SmoothingMode = SmoothingMode.AntiAlias;
+
+            var rect = new RECT { left = 0, top = 0, right = clientW, bottom = clientH };
+            AdjustWindowRectEx(ref rect, WS_OVERLAPPED_FIXED, false, 0);
+            SetWindowPos(hwnd, IntPtr.Zero, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0002 | 0x0004);
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+        }
+
+        private void ResolvePrintDecision(bool startPrinting)
+        {
+            if (_printDecisionResolved) return;
+            _printDecisionResolved = true;
+            _printDecision?.Invoke(startPrinting);
+        }
 
         private void StartProcessingThread(IntPtr hwnd)
         {

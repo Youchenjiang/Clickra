@@ -47,6 +47,7 @@ public sealed class ConvertWorkspaceController
         new("translate-pdf", "cmd_translate_pdf", PdfGroup, 1, false),
         new("decrypt-pdf", "cmd_decrypt_pdf", PdfGroup, 1, false),
         new("split-pdf", "cmd_split_pdf", PdfGroup, 1, false),
+        new("print-pdf", "cmd_print_pdf", PdfGroup, 1, false),
         new("img2pdf", "cmd_img_to_pdf", ImageGroup, 2, false),
         new("img-merge", "cmd_merge_img", ImageGroup, 2, false),
         new("img-stitch", "cmd_stitch_img", ImageGroup, 2, false),

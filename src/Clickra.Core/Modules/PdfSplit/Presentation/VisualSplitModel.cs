@@ -1,21 +1,23 @@
 using System;
 using System.Collections.Generic;
 using Clickra.Core.Modules.PdfSplit.Application;
+using Clickra.Core.Rendering;
 
 namespace Clickra.Core.Modules.PdfSplit.Presentation;
 
 /// <summary>
 /// Pure state model shared by the Win32 and WinUI visual PDF splitters.
 /// UI surfaces own rendering and input wiring; segment state transitions live here.
+/// Delegates zoom and core page calculation semantics to <see cref="PdfPreviewModel"/>.
 /// </summary>
 public sealed class VisualSplitModel
 {
     public const int ModeCustom = 0;
     public const int ModeEachPage = 1;
     public const int ModeFixedPages = 2;
-    public const float ZoomMinFactor = 1f;
-    public const float ZoomMaxFactor = 8f;
-    public const float ZoomStepFactor = 1.25f;
+    public const float ZoomMinFactor = PdfPreviewModel.ZoomMinFactor;
+    public const float ZoomMaxFactor = PdfPreviewModel.ZoomMaxFactor;
+    public const float ZoomStepFactor = PdfPreviewModel.ZoomStepFactor;
 
     private readonly List<(int Start, int End)> _segments = new();
     private readonly List<(int Start, int End)> _customSegments = new();
@@ -192,17 +194,14 @@ public sealed class VisualSplitModel
     public string BuildSpec() =>
         PdfSplitSpecBuilder.BuildSegmentSpec(Mode, PagesPerSegment, TotalPages, _segments);
 
-    public static float ClampZoomFactor(float factor) =>
-        Math.Clamp(factor, ZoomMinFactor, ZoomMaxFactor);
+    public static float ClampZoomFactor(float factor) => PdfPreviewModel.ClampZoomFactor(factor);
 
-    public static float ZoomFactorAfter(float factor, int direction) =>
-        ClampZoomFactor(factor * (direction >= 0 ? ZoomStepFactor : 1f / ZoomStepFactor));
+    public static float ZoomFactorAfter(float factor, int direction) => PdfPreviewModel.ZoomFactorAfter(factor, direction);
 
-    public static int ZoomPercent(float factor) =>
-        (int)Math.Round(ClampZoomFactor(factor) * 100f);
+    public static int ZoomPercent(float factor) => PdfPreviewModel.ZoomPercent(factor);
 
     public static int ZoomRenderWidth(float factor, int baseWidth, int minWidth, int maxWidth) =>
-        (int)Math.Clamp(baseWidth * ClampZoomFactor(factor), minWidth, maxWidth);
+        PdfPreviewModel.ZoomRenderWidth(factor, baseWidth, minWidth, maxWidth);
 
     private void ApplyMode(int mode)
     {

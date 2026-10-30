@@ -127,4 +127,55 @@ public static class VectorIcons
         };
         g.DrawLines(pen, pts);
     }
+
+    /// <summary>Draws a centered vector chevron pointing down (v) without font dependency.</summary>
+    public static void DrawChevronDown(Graphics g, float centerX, float centerY, float halfSize, Color color, float strokeWidth)
+    {
+        using var pen = new Pen(color, strokeWidth)
+        {
+            StartCap = LineCap.Round,
+            EndCap = LineCap.Round,
+            LineJoin = LineJoin.Round
+        };
+        PointF[] pts = new[]
+        {
+            new PointF(centerX - halfSize, centerY - halfSize * 0.5f),
+            new PointF(centerX, centerY + halfSize * 0.5f),
+            new PointF(centerX + halfSize, centerY - halfSize * 0.5f)
+        };
+        g.DrawLines(pen, pts);
+    }
+
+    /// <summary>Draws a centered vector chevron pointing up (^) without font dependency.</summary>
+    public static void DrawChevronUp(Graphics g, float centerX, float centerY, float halfSize, Color color, float strokeWidth)
+    {
+        using var pen = new Pen(color, strokeWidth)
+        {
+            StartCap = LineCap.Round,
+            EndCap = LineCap.Round,
+            LineJoin = LineJoin.Round
+        };
+        PointF[] pts = new[]
+        {
+            new PointF(centerX - halfSize, centerY + halfSize * 0.5f),
+            new PointF(centerX, centerY - halfSize * 0.5f),
+            new PointF(centerX + halfSize, centerY + halfSize * 0.5f)
+        };
+        g.DrawLines(pen, pts);
+    }
+
+    /// <summary>Draws a vector magnifying glass search/zoom icon without font dependency.</summary>
+    public static void DrawMagnifier(Graphics g, float centerX, float centerY, float size, Color color, float strokeWidth)
+    {
+        using var pen = new Pen(color, strokeWidth)
+        {
+            StartCap = LineCap.Round,
+            EndCap = LineCap.Round
+        };
+        float r = size * 0.32f;
+        float cx = centerX - (size * 0.12f);
+        float cy = centerY - (size * 0.12f);
+        g.DrawEllipse(pen, cx - r, cy - r, r * 2f, r * 2f);
+        g.DrawLine(pen, cx + (r * 0.707f), cy + (r * 0.707f), centerX + (size * 0.45f), centerY + (size * 0.45f));
+    }
 }
