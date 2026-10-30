@@ -61,4 +61,9 @@ public static class PrintOptionsLayout
     public const int ActionY = 414;
     public static LayoutRect ConfirmButton => new(296, ActionY, 100, 30);
     public static LayoutRect CancelButton => new(404, ActionY, 80, 30);
+
+    // Zoom modal geometry (logical px)
+    public static LayoutRect ZoomModal => new(24, 20, 472, 420);
+    public static LayoutRect ZoomButton(int i) => new(i switch { 0 => 376, 1 => 410, _ => 444 }, 406, i == 2 ? 44 : 28, 22);
+    public static LayoutRect ZoomCloseButton => new(414, 28, 70, 22);
 }

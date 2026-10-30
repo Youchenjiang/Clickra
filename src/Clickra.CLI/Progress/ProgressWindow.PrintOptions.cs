@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Modules.PdfPrint.Application;
 using Clickra.Core.Modules.PdfPrint.Ports;
+using Clickra.Core.Modules.PdfPrint.Processing;
 using Clickra.Core.Processors;
 using Clickra.Core.Rendering;
 using Clickra.UI.Layout;
@@ -36,6 +37,22 @@ public partial class ProgressWindow
     private bool _printFitToPage = true;
     private bool _printDarken;
 
+    private float _pdfPageWidthPt = 595.28f;
+    private float _pdfPageHeightPt = 841.89f;
+
+    private bool _printIsZoomed;
+    private float _printZoomFactor = 1f;
+    private float _printZoomPanX;
+    private float _printZoomPanY;
+    private bool _printZoomDragging;
+    private int _printZoomDragLastX;
+    private int _printZoomDragLastY;
+
+    private const float PrintZoomImgLeft = 40f;
+    private const float PrintZoomImgTop = 56f;
+    private const float PrintZoomImgW = 440f;
+    private const float PrintZoomImgH = 340f;
+
     private PdfPreviewModel _printPreviewModel = new(1);
     private enum PrintElement
     {
@@ -55,6 +72,7 @@ public partial class ProgressWindow
         PlusCopies,
         FitToPage,
         Darken,
+        PreviewArea,
         PrevPage,
         NextPage,
         Confirm,
@@ -135,6 +153,9 @@ public partial class ProgressWindow
             {
                 using var doc = PdfDocument.Open(_files[0]);
                 totalPages = Math.Max(1, doc.NumberOfPages);
+                var p1 = doc.GetPage(1);
+                _pdfPageWidthPt = (float)p1.Width;
+                _pdfPageHeightPt = (float)p1.Height;
             }
             catch
             {
@@ -163,6 +184,15 @@ public partial class ProgressWindow
             Bitmap? bmp = null;
             try
             {
+                using (var doc = PdfDocument.Open(filePath))
+                {
+                    if (page >= 1 && page <= doc.NumberOfPages)
+                    {
+                        var p = doc.GetPage(page);
+                        _pdfPageWidthPt = (float)p.Width;
+                        _pdfPageHeightPt = (float)p.Height;
+                    }
+                }
                 bmp = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, page, 456, fontName);
                 if (bmp != null && _printDarken)
                 {
@@ -296,10 +326,21 @@ public partial class ProgressWindow
 
         // 6. Preview Area
         var previewAreaRect = ScalePrintRect(PrintOptionsLayout.PreviewArea, s);
-        using var previewBgBrush = new SolidBrush(Color.FromArgb(32, 32, 32));
-        using var previewBorderPen = new Pen(Color.FromArgb(64, 64, 64), 1f * s);
+        using var previewBgBrush = new SolidBrush(Color.FromArgb(24, 24, 24));
+        bool isPreviewHovered = _hoveredPrintElement == PrintElement.PreviewArea;
+        using var previewBorderPen = new Pen(isPreviewHovered ? Color.FromArgb(90, 140, 210) : Color.FromArgb(64, 64, 64), 1f * s);
         g.FillRectangle(previewBgBrush, previewAreaRect);
         g.DrawRectangle(previewBorderPen, previewAreaRect.X, previewAreaRect.Y, previewAreaRect.Width, previewAreaRect.Height);
+
+        var paperDim = PaperSizeRegistry.GetDimensions(currentPaperText);
+        string paperInfo = $"{paperDim.DisplayName} · {paperDim.WidthMm:0}×{paperDim.HeightMm:0} mm";
+        using var tagTextBrush = new SolidBrush(Color.FromArgb(190, 200, 215));
+        g.DrawString(paperInfo, _tipFont, tagTextBrush, previewAreaRect.X + (8f * s), previewAreaRect.Y + (5f * s));
+
+        string zoomTag = $"[{Loc("pdf_split_zoom_tag")}]";
+        using var zoomTagBrush = new SolidBrush(isPreviewHovered ? Color.FromArgb(130, 195, 255) : Color.FromArgb(140, 140, 140));
+        using var rightAlign = new StringFormat { Alignment = StringAlignment.Far };
+        g.DrawString(zoomTag, _tipFont, zoomTagBrush, previewAreaRect.Right - (8f * s), previewAreaRect.Bottom - (18f * s), rightAlign);
 
         int curPage = _printPreviewModel.CurrentPageNumber;
         Bitmap? bmp;
@@ -310,15 +351,55 @@ public partial class ProgressWindow
 
         if (bmp != null)
         {
-            float pad = 6f * s;
-            float maxW = previewAreaRect.Width - (pad * 2);
-            float maxH = previewAreaRect.Height - (pad * 2);
-            float scale = Math.Min(maxW / bmp.Width, maxH / bmp.Height);
-            float drawW = bmp.Width * scale;
-            float drawH = bmp.Height * scale;
-            float drawX = previewAreaRect.X + ((previewAreaRect.Width - drawW) / 2f);
-            float drawY = previewAreaRect.Y + ((previewAreaRect.Height - drawH) / 2f);
-            g.DrawImage(bmp, drawX, drawY, drawW, drawH);
+            bool isLandscape = _pdfPageWidthPt > _pdfPageHeightPt || bmp.Width > bmp.Height;
+            float targetPaperW = isLandscape ? Math.Max(paperDim.WidthPt, paperDim.HeightPt) : Math.Min(paperDim.WidthPt, paperDim.HeightPt);
+            float targetPaperH = isLandscape ? Math.Min(paperDim.WidthPt, paperDim.HeightPt) : Math.Max(paperDim.WidthPt, paperDim.HeightPt);
+
+            float maxSheetW = previewAreaRect.Width - (24f * s);
+            float maxSheetH = previewAreaRect.Height - (42f * s);
+            float sheetScale = Math.Min(maxSheetW / targetPaperW, maxSheetH / targetPaperH);
+            float sheetW = targetPaperW * sheetScale;
+            float sheetH = targetPaperH * sheetScale;
+            float sheetX = previewAreaRect.X + ((previewAreaRect.Width - sheetW) / 2f);
+            float sheetY = previewAreaRect.Y + (20f * s) + ((maxSheetH - sheetH) / 2f);
+
+            // Sheet shadow
+            using var shadowBrush = new SolidBrush(Color.FromArgb(90, 0, 0, 0));
+            g.FillRectangle(shadowBrush, sheetX + (3f * s), sheetY + (3f * s), sheetW, sheetH);
+
+            // Sheet canvas
+            using var sheetBrush = new SolidBrush(Color.White);
+            g.FillRectangle(sheetBrush, sheetX, sheetY, sheetW, sheetH);
+            using var sheetPen = new Pen(Color.FromArgb(170, 175, 185), 1f * s);
+            g.DrawRectangle(sheetPen, sheetX, sheetY, sheetW, sheetH);
+
+            float pageDrawX, pageDrawY, pageDrawW, pageDrawH;
+            if (_printFitToPage)
+            {
+                float margin = Math.Min(sheetW, sheetH) * 0.03f;
+                float printAreaW = sheetW - (margin * 2f);
+                float printAreaH = sheetH - (margin * 2f);
+                float fitScale = Math.Min(printAreaW / bmp.Width, printAreaH / bmp.Height);
+                pageDrawW = bmp.Width * fitScale;
+                pageDrawH = bmp.Height * fitScale;
+                pageDrawX = sheetX + ((sheetW - pageDrawW) / 2f);
+                pageDrawY = sheetY + ((sheetH - pageDrawH) / 2f);
+            }
+            else
+            {
+                float scaleX = _pdfPageWidthPt / targetPaperW;
+                float scaleY = _pdfPageHeightPt / targetPaperH;
+                pageDrawW = sheetW * scaleX;
+                pageDrawH = sheetH * scaleY;
+                pageDrawX = sheetX + ((sheetW - pageDrawW) / 2f);
+                pageDrawY = sheetY + ((sheetH - pageDrawH) / 2f);
+            }
+
+            var oldClip = g.Clip;
+            g.SetClip(new RectangleF(sheetX, sheetY, sheetW, sheetH));
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            g.DrawImage(bmp, pageDrawX, pageDrawY, pageDrawW, pageDrawH);
+            g.Clip = oldClip;
         }
         else
         {
@@ -346,6 +427,11 @@ public partial class ProgressWindow
         DrawPrintButton(g, s, PrintOptionsLayout.CancelButton, Loc("dialog_cancel"), false,
             hovered: _hoveredPrintElement == PrintElement.Cancel,
             pressed: _pressedPrintElement == PrintElement.Cancel);
+
+        if (_printIsZoomed)
+        {
+            PaintPrintZoomOverlay(g, s);
+        }
     }
 
     private void DrawPrintLabel(Graphics g, float s, string text, int y, Brush brush)
@@ -501,6 +587,8 @@ public partial class ProgressWindow
 
         var darkenRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.DarkenY, PrintOptionsLayout.LeftColumnWidth, PrintOptionsLayout.DarkenHeight);
         if (darkenRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.Darken;
+
+        if (PrintOptionsLayout.PreviewArea.ContainsInclusive(mouseX, mouseY)) return PrintElement.PreviewArea;
 
         if (PrintOptionsLayout.PrevPageButton.ContainsInclusive(mouseX, mouseY)) return PrintElement.PrevPage;
         if (PrintOptionsLayout.NextPageButton.ContainsInclusive(mouseX, mouseY)) return PrintElement.NextPage;
@@ -660,6 +748,12 @@ public partial class ProgressWindow
             return true;
         }
 
+        if (PrintOptionsLayout.PreviewArea.ContainsInclusive(mouseX, mouseY))
+        {
+            OpenPrintZoom(hwnd);
+            return true;
+        }
+
         if (PrintOptionsLayout.PrevPageButton.ContainsInclusive(mouseX, mouseY))
         {
             if (_printPreviewModel.CanNavigatePrevious)
@@ -745,5 +839,264 @@ public partial class ProgressWindow
         AdjustWindowRectEx(ref rect, WS_OVERLAPPED_FIXED, false, 0);
         SetWindowPos(hwnd, IntPtr.Zero, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0002 | 0x0004);
         InvalidateRect(hwnd, IntPtr.Zero, false);
+    }
+
+    public void OpenPrintZoom(IntPtr hwnd)
+    {
+        _printIsZoomed = true;
+        _printZoomFactor = 1f;
+        _printZoomPanX = 0f;
+        _printZoomPanY = 0f;
+        _printZoomDragging = false;
+        InvalidateRect(hwnd, IntPtr.Zero, true);
+    }
+
+    public void ClosePrintZoom(IntPtr hwnd)
+    {
+        _printIsZoomed = false;
+        _printZoomFactor = 1f;
+        _printZoomPanX = 0f;
+        _printZoomPanY = 0f;
+        _printZoomDragging = false;
+        InvalidateRect(hwnd, IntPtr.Zero, true);
+    }
+
+    private void SetPrintZoomFactor(float newFactor, float anchorX, float anchorY)
+    {
+        float oldFactor = _printZoomFactor;
+        _printZoomFactor = Math.Clamp(newFactor, 1f, 5f);
+        if (Math.Abs(_printZoomFactor - oldFactor) > 0.001f)
+        {
+            float ratio = _printZoomFactor / oldFactor;
+            _printZoomPanX = anchorX - (ratio * (anchorX - _printZoomPanX));
+            _printZoomPanY = anchorY - (ratio * (anchorY - _printZoomPanY));
+            ClampPrintZoomPan();
+        }
+    }
+
+    private void ClampPrintZoomPan()
+    {
+        float fitW = PrintZoomImgW;
+        float fitH = PrintZoomImgH;
+        float contentW = fitW * _printZoomFactor;
+        float contentH = fitH * _printZoomFactor;
+
+        float maxPanX = Math.Max(0f, (contentW - fitW) / 2f);
+        float maxPanY = Math.Max(0f, (contentH - fitH) / 2f);
+
+        _printZoomPanX = Math.Clamp(_printZoomPanX, -maxPanX, maxPanX);
+        _printZoomPanY = Math.Clamp(_printZoomPanY, -maxPanY, maxPanY);
+    }
+
+    internal static float ZoomFactorStep(float current, int direction) =>
+        direction > 0
+            ? (float)Math.Round(Math.Min(5f, current * 1.25f), 2)
+            : (float)Math.Round(Math.Max(1f, current / 1.25f), 2);
+
+    private bool HandlePrintZoomClick(IntPtr hwnd, int mouseX, int mouseY)
+    {
+        if (!_printIsZoomed) return false;
+
+        // Check close button
+        var closeRect = PrintOptionsLayout.ZoomCloseButton;
+        if (closeRect.ContainsInclusive(mouseX, mouseY))
+        {
+            ClosePrintZoom(hwnd);
+            return true;
+        }
+
+        // Check zoom buttons
+        float zoomBtnY = PrintOptionsLayout.ZoomButton(0).Y;
+        float zoomBtnH = PrintOptionsLayout.ZoomButton(0).Height;
+        if (mouseY >= zoomBtnY && mouseY <= zoomBtnY + zoomBtnH)
+        {
+            float btnOutX = PrintOptionsLayout.ZoomButton(0).X; // Zoom out (-)
+            float btnInX = PrintOptionsLayout.ZoomButton(1).X;  // Zoom in (+)
+            float btnFitX = PrintOptionsLayout.ZoomButton(2).X; // Fit
+            float cx = PrintZoomImgLeft + (PrintZoomImgW / 2f);
+            float cy = PrintZoomImgTop + (PrintZoomImgH / 2f);
+
+            if (mouseX >= btnOutX && mouseX <= btnOutX + PrintOptionsLayout.ZoomButton(0).Width)
+            {
+                SetPrintZoomFactor(ZoomFactorStep(_printZoomFactor, -1), cx, cy);
+                InvalidateRect(hwnd, IntPtr.Zero, true);
+                return true;
+            }
+            if (mouseX >= btnInX && mouseX <= btnInX + PrintOptionsLayout.ZoomButton(1).Width)
+            {
+                SetPrintZoomFactor(ZoomFactorStep(_printZoomFactor, +1), cx, cy);
+                InvalidateRect(hwnd, IntPtr.Zero, true);
+                return true;
+            }
+            if (mouseX >= btnFitX && mouseX <= btnFitX + PrintOptionsLayout.ZoomButton(2).Width)
+            {
+                _printZoomFactor = 1f;
+                _printZoomPanX = 0f;
+                _printZoomPanY = 0f;
+                InvalidateRect(hwnd, IntPtr.Zero, true);
+                return true;
+            }
+        }
+
+        // Check image viewport for dragging
+        if (mouseX >= PrintZoomImgLeft && mouseX <= PrintZoomImgLeft + PrintZoomImgW &&
+            mouseY >= PrintZoomImgTop && mouseY <= PrintZoomImgTop + PrintZoomImgH)
+        {
+            _printZoomDragging = true;
+            _printZoomDragLastX = mouseX;
+            _printZoomDragLastY = mouseY;
+            SetCapture(hwnd);
+            return true;
+        }
+
+        // Click outside modal closes zoom
+        var modalRect = PrintOptionsLayout.ZoomModal;
+        if (!modalRect.ContainsInclusive(mouseX, mouseY))
+        {
+            ClosePrintZoom(hwnd);
+            return true;
+        }
+
+        return true;
+    }
+
+    private void PaintPrintZoomOverlay(Graphics g, float s)
+    {
+        if (!_printIsZoomed) return;
+        if (_tipFont is null || _msgFont is null) return;
+
+        // 1. Dimmed backdrop
+        using var overlayBg = new SolidBrush(Color.FromArgb(235, 15, 18, 24));
+        g.FillRectangle(overlayBg, 0, 0, PrintOptionsLayout.ClientWidth * s, PrintOptionsClientHeight * s);
+
+        // 2. Modal frame
+        var modalRect = ScalePrintRect(PrintOptionsLayout.ZoomModal, s);
+        using var modalBg = new SolidBrush(Color.FromArgb(32, 35, 42));
+        using var modalPen = new Pen(Color.FromArgb(80, 90, 110), 1.5f * s);
+        g.FillRectangle(modalBg, modalRect);
+        g.DrawRectangle(modalPen, modalRect.X, modalRect.Y, modalRect.Width, modalRect.Height);
+
+        // 3. Title
+        string currentPaperText = _supportedPaperSizes.Count > 0 && _paperSizeIndex >= 0 && _paperSizeIndex < _supportedPaperSizes.Count
+            ? _supportedPaperSizes[_paperSizeIndex]
+            : "A4";
+        var paperDim = PaperSizeRegistry.GetDimensions(currentPaperText);
+        int zoomPct = (int)(_printZoomFactor * 100);
+        int curPage = _printPreviewModel.CurrentPageNumber;
+        using var titleBrush = new SolidBrush(Color.FromArgb(230, 240, 255));
+        g.DrawString($"{Loc("pdf_split_zoom_title")} · P.{curPage} · {zoomPct}% · {paperDim.DisplayName}", _msgFont, titleBrush, modalRect.X + (16f * s), modalRect.Y + (12f * s));
+
+        // 4. Close button
+        var closeRect = ScalePrintRect(PrintOptionsLayout.ZoomCloseButton, s);
+        using var closeBg = new SolidBrush(Color.FromArgb(180, 45, 40));
+        using var closeTextBrush = new SolidBrush(Color.White);
+        g.FillRectangle(closeBg, closeRect);
+        using var closeFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        g.DrawString(Loc("pdf_split_zoom_close"), _tipFont, closeTextBrush, closeRect, closeFormat);
+
+        // 5. Image Area Viewport
+        var imgViewport = ScalePrintRect(new LayoutRect((int)PrintZoomImgLeft, (int)PrintZoomImgTop, (int)PrintZoomImgW, (int)PrintZoomImgH), s);
+        using var viewportBg = new SolidBrush(Color.FromArgb(20, 22, 28));
+        g.FillRectangle(viewportBg, imgViewport);
+
+        // Clip to viewport
+        var prevClip = g.Clip;
+        g.SetClip(imgViewport);
+
+        // Paper dimensions & orientation
+        int curPageNum = _printPreviewModel.CurrentPageNumber;
+        Bitmap? bmp;
+        lock (_printThumbnails)
+        {
+            _printThumbnails.TryGetValue(curPageNum, out bmp);
+        }
+
+        bool isLandscape = _pdfPageWidthPt > _pdfPageHeightPt || (bmp != null && bmp.Width > bmp.Height);
+        float targetPaperW = isLandscape ? Math.Max(paperDim.WidthPt, paperDim.HeightPt) : Math.Min(paperDim.WidthPt, paperDim.HeightPt);
+        float targetPaperH = isLandscape ? Math.Min(paperDim.WidthPt, paperDim.HeightPt) : Math.Max(paperDim.WidthPt, paperDim.HeightPt);
+
+        // Base sheet size inside viewport
+        float maxBaseW = imgViewport.Width - (32f * s);
+        float maxBaseH = imgViewport.Height - (32f * s);
+        float baseScale = Math.Min(maxBaseW / targetPaperW, maxBaseH / targetPaperH);
+        float baseSheetW = targetPaperW * baseScale;
+        float baseSheetH = targetPaperH * baseScale;
+
+        // Apply zoom factor and pan
+        float sheetW = baseSheetW * _printZoomFactor;
+        float sheetH = baseSheetH * _printZoomFactor;
+        float sheetX = imgViewport.X + ((imgViewport.Width - sheetW) / 2f) + (_printZoomPanX * s);
+        float sheetY = imgViewport.Y + ((imgViewport.Height - sheetH) / 2f) + (_printZoomPanY * s);
+
+        // Paper drop shadow
+        using var shadowBrush = new SolidBrush(Color.FromArgb(100, 0, 0, 0));
+        g.FillRectangle(shadowBrush, sheetX + (4f * s), sheetY + (4f * s), sheetW, sheetH);
+
+        // Paper sheet canvas
+        using var sheetBrush = new SolidBrush(Color.White);
+        g.FillRectangle(sheetBrush, sheetX, sheetY, sheetW, sheetH);
+        using var sheetPen = new Pen(Color.FromArgb(160, 175, 195), 1.5f * s);
+        g.DrawRectangle(sheetPen, sheetX, sheetY, sheetW, sheetH);
+
+        // PDF Page drawing onto sheet
+        if (bmp != null)
+        {
+            float pageDrawX, pageDrawY, pageDrawW, pageDrawH;
+            if (_printFitToPage)
+            {
+                float margin = Math.Min(sheetW, sheetH) * 0.03f;
+                float printW = sheetW - (margin * 2f);
+                float printH = sheetH - (margin * 2f);
+                float fitScale = Math.Min(printW / bmp.Width, printH / bmp.Height);
+                pageDrawW = bmp.Width * fitScale;
+                pageDrawH = bmp.Height * fitScale;
+                pageDrawX = sheetX + ((sheetW - pageDrawW) / 2f);
+                pageDrawY = sheetY + ((sheetH - pageDrawH) / 2f);
+            }
+            else
+            {
+                float scaleX = _pdfPageWidthPt / targetPaperW;
+                float scaleY = _pdfPageHeightPt / targetPaperH;
+                pageDrawW = sheetW * scaleX;
+                pageDrawH = sheetH * scaleY;
+                pageDrawX = sheetX + ((sheetW - pageDrawW) / 2f);
+                pageDrawY = sheetY + ((sheetH - pageDrawH) / 2f);
+            }
+
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            g.DrawImage(bmp, pageDrawX, pageDrawY, pageDrawW, pageDrawH);
+        }
+
+        g.Clip = prevClip;
+        using var viewportBorderPen = new Pen(Color.FromArgb(60, 65, 75), 1f * s);
+        g.DrawRectangle(viewportBorderPen, imgViewport.X, imgViewport.Y, imgViewport.Width, imgViewport.Height);
+
+        // 6. Bottom controls: zoom in/out, fit, hint
+        float zoomBtnY = PrintOptionsLayout.ZoomButton(0).Y * s;
+        float zoomBtnH = PrintOptionsLayout.ZoomButton(0).Height * s;
+        float zoomBtnOutX = PrintOptionsLayout.ZoomButton(0).X * s;
+        float zoomBtnInX = PrintOptionsLayout.ZoomButton(1).X * s;
+        float zoomBtnFitX = PrintOptionsLayout.ZoomButton(2).X * s;
+        float zoomBtnW = PrintOptionsLayout.ZoomButton(0).Width * s;
+        float zoomBtnFitW = PrintOptionsLayout.ZoomButton(2).Width * s;
+
+        using var zoomBtnBg = new SolidBrush(Color.FromArgb(48, 48, 48));
+        using var zoomBtnPen = new Pen(Color.FromArgb(80, 80, 80));
+        using var zoomBtnText = new SolidBrush(Color.FromArgb(220, 220, 220));
+
+        g.FillRectangle(zoomBtnBg, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);
+        g.DrawRectangle(zoomBtnPen, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);
+        VectorIcons.DrawMinus(g, zoomBtnOutX + (zoomBtnW / 2f), zoomBtnY + (zoomBtnH / 2f), 4 * s, zoomBtnText.Color, 1.5f * s);
+
+        g.FillRectangle(zoomBtnBg, zoomBtnInX, zoomBtnY, zoomBtnW, zoomBtnH);
+        g.DrawRectangle(zoomBtnPen, zoomBtnInX, zoomBtnY, zoomBtnW, zoomBtnH);
+        VectorIcons.DrawPlus(g, zoomBtnInX + (zoomBtnW / 2f), zoomBtnY + (zoomBtnH / 2f), 4 * s, zoomBtnText.Color, 1.5f * s);
+
+        g.FillRectangle(zoomBtnBg, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);
+        g.DrawRectangle(zoomBtnPen, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);
+        g.DrawString(Loc("pdf_split_zoom_fit"), _tipFont, zoomBtnText, zoomBtnFitX + (8f * s), zoomBtnY + (2f * s));
+
+        using var zoomHintBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+        g.DrawString(Loc("pdf_split_zoom_hint"), _tipFont, zoomHintBrush, modalRect.X + (16f * s), zoomBtnY + (3f * s));
     }
 }

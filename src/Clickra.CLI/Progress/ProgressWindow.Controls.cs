@@ -141,7 +141,7 @@ namespace Clickra.UI
                 case 0x0014: return (IntPtr)1; // WM_ERASEBKGND
                 case 0x0113: return HandleTimer(hwnd); // WM_TIMER
                 case 0x0020: // WM_SETCURSOR
-                    if (_isPromptingPrintOptions && _hoveredPrintElement != PrintElement.None)
+                    if (_isPromptingPrintOptions && (_printIsZoomed || _hoveredPrintElement != PrintElement.None))
                     {
                         SetCursor(LoadCursorW(IntPtr.Zero, IDC_HAND));
                         return (IntPtr)1;
@@ -177,9 +177,43 @@ namespace Clickra.UI
         /// passed on to DefWindowProcW.</summary>
         private IntPtr? HandleKeyDown(IntPtr hwnd, IntPtr w)
         {
+            int key = w.ToInt32();
+            if (_isPromptingPrintOptions)
+            {
+                if (_printIsZoomed)
+                {
+                    if (key == 0x1B || key == 0x20 || key == 0x0D) // Esc / Space / Enter
+                    {
+                        ClosePrintZoom(hwnd);
+                    }
+                    else if (key == 0x6B || key == 0xBB) // numpad + / =
+                    {
+                        SetPrintZoomFactor(ZoomFactorStep(_printZoomFactor, +1), PrintZoomImgLeft + (PrintZoomImgW / 2f), PrintZoomImgTop + (PrintZoomImgH / 2f));
+                        InvalidateRect(hwnd, IntPtr.Zero, true);
+                    }
+                    else if (key == 0x6D || key == 0xBD) // numpad - / -
+                    {
+                        SetPrintZoomFactor(ZoomFactorStep(_printZoomFactor, -1), PrintZoomImgLeft + (PrintZoomImgW / 2f), PrintZoomImgTop + (PrintZoomImgH / 2f));
+                        InvalidateRect(hwnd, IntPtr.Zero, true);
+                    }
+                    else if (key == 0x30 || key == 0x60) // 0 / numpad 0 → fit
+                    {
+                        _printZoomFactor = 1f;
+                        _printZoomPanX = 0f;
+                        _printZoomPanY = 0f;
+                        InvalidateRect(hwnd, IntPtr.Zero, true);
+                    }
+                    return IntPtr.Zero;
+                }
+                else if (key == 0x20) // Space → open zoom
+                {
+                    OpenPrintZoom(hwnd);
+                    return IntPtr.Zero;
+                }
+            }
+
             if (!_isPromptingVisualSplitter) return null;
 
-            int key = w.ToInt32();
             if (_visualSplitIsZoomed)
             {
                 if (key == 0x1B || key == 0x20 || key == 0x0D) // Esc / Space / Enter
@@ -231,6 +265,16 @@ namespace Clickra.UI
         private IntPtr HandleMouseWheel(IntPtr hwnd, IntPtr w, IntPtr l)
         {
             int delta = (short)((w.ToInt64() >> 16) & 0xFFFF);
+            if (_isPromptingPrintOptions && _printIsZoomed)
+            {
+                int sx = (short)(l.ToInt64() & 0xFFFF);
+                int sy = (short)((l.ToInt64() >> 16) & 0xFFFF);
+                var pt = new Point(sx, sy);
+                ScreenToClient(hwnd, ref pt);
+                SetPrintZoomFactor(ZoomFactorStep(_printZoomFactor, delta > 0 ? +1 : -1), pt.X / _dpiScale, pt.Y / _dpiScale);
+                InvalidateRect(hwnd, IntPtr.Zero, true);
+                return IntPtr.Zero;
+            }
             if (_isPromptingVisualSplitter && _visualSplitIsZoomed)
             {
                 // Wheel zooms in the lightbox, anchored at the cursor.
@@ -273,6 +317,17 @@ namespace Clickra.UI
 
             if (_isPromptingPrintOptions)
             {
+                if (_printIsZoomed && _printZoomDragging)
+                {
+                    _printZoomPanX += mouseX - _printZoomDragLastX;
+                    _printZoomPanY += mouseY - _printZoomDragLastY;
+                    _printZoomDragLastX = mouseX;
+                    _printZoomDragLastY = mouseY;
+                    ClampPrintZoomPan();
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                    return IntPtr.Zero;
+                }
+
                 var elem = GetPrintElementAt(mouseX, mouseY);
                 if (elem != _hoveredPrintElement)
                 {
@@ -368,6 +423,10 @@ namespace Clickra.UI
             }
             if (_isPromptingPrintOptions)
             {
+                if (_printIsZoomed)
+                {
+                    if (HandlePrintZoomClick(hwnd, mouseX, mouseY)) return IntPtr.Zero;
+                }
                 _pressedPrintElement = GetPrintElementAt(mouseX, mouseY);
                 HandlePrintOptionsClick(hwnd, mouseX, mouseY);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
@@ -656,6 +715,12 @@ namespace Clickra.UI
         {
             if (_isPromptingPrintOptions)
             {
+                if (_printZoomDragging)
+                {
+                    _printZoomDragging = false;
+                    ReleaseCapture();
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                }
                 if (_pressedPrintElement != PrintElement.None)
                 {
                     _pressedPrintElement = PrintElement.None;
