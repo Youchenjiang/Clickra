@@ -29,7 +29,7 @@ class PrPreflightTests(unittest.TestCase):
             self.assertIsNone(_publication_metadata())
             actual.assert_not_called()
         self.assertIn("--state", github.call_args.args[0])
-        self.assertIn("all", github.call_args.args[0])
+        self.assertIn("open", github.call_args.args[0])
         args = github.call_args.args[0]
         self.assertEqual("user/repo", args[args.index("--repo") + 1])
 
@@ -62,6 +62,18 @@ class PrPreflightTests(unittest.TestCase):
                 with self.assertRaises((OSError, ValueError)):
                     _publication_metadata()
                 live.assert_not_called()
+
+    def test_branch_reuse_with_no_open_prs_returns_draft_metadata(self):
+        from pr_preflight import _publication_metadata
+        def read(*args):
+            return CompletedProcess(args, 0, "chore/bump-version\n" if args[0] == "branch" else "https://github.com/user/repo.git\n", "")
+        with patch("pr_preflight.git", side_effect=read), \
+             patch("pr_preflight.invoke", return_value=CompletedProcess([], 0, "[]", "")) as github, \
+             patch("pr_preflight._github_metadata") as live:
+            self.assertIsNone(_publication_metadata())
+            live.assert_not_called()
+        self.assertIn("--state", github.call_args.args[0])
+        self.assertIn("open", github.call_args.args[0])
 
     def test_initial_branch_preflight_uses_draft_without_nonexistent_pr_metadata(self):
         from pr_preflight import main

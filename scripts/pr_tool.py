@@ -53,7 +53,7 @@ def pr_number(value, repo, branch, run=command):
         if not value.isdecimal() or int(value) < 1:
             raise ValueError("PR number must be a positive integer")
         return int(value)
-    raw = run(["gh", "pr", "list", "--head", branch, "--repo", repo, "--state", "all",
+    raw = run(["gh", "pr", "list", "--head", branch, "--repo", repo, "--state", "open",
                "--json", "number", "--jq", ".[0].number"]).strip()
     try:
         data = json.loads(raw) if raw else None
