@@ -11,7 +11,7 @@ namespace Clickra.Core.Modules.PdfPrint.Processing;
 /// Print Spooler via GDI+ PrintDocument. Avoids creating intermediate disk files and releases
 /// each rendered bitmap immediately after drawing to minimize memory consumption.
 /// </summary>
-public sealed class PdfPrintProcessor
+public static class PdfPrintProcessor
 {
     public static bool Print(
         string pdfPath,
