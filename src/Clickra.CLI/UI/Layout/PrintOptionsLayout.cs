@@ -15,15 +15,18 @@ public static class PrintOptionsLayout
 
     public const int PrinterLabelY = 96;
     public const int PrinterComboY = 118;
-    public const int PrinterComboHeight = 24;
+    public const int PrinterComboHeight = 26;
+    public static LayoutRect PrinterComboRect => new(LeftColumnX, PrinterComboY, LeftColumnWidth, PrinterComboHeight);
 
     public const int PaperLabelY = 148;
     public const int PaperComboY = 168;
-    public const int PaperComboHeight = 24;
+    public const int PaperComboHeight = 26;
+    public static LayoutRect PaperComboRect => new(LeftColumnX, PaperComboY, LeftColumnWidth, PaperComboHeight);
 
     public const int DuplexLabelY = 198;
     public const int DuplexComboY = 218;
-    public const int DuplexComboHeight = 24;
+    public const int DuplexComboHeight = 26;
+    public static LayoutRect DuplexComboRect => new(LeftColumnX, DuplexComboY, LeftColumnWidth, DuplexComboHeight);
 
     public const int RangeLabelY = 248;
     public const int RangeInputY = 268;

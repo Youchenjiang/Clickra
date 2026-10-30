@@ -141,7 +141,7 @@ namespace Clickra.UI
                 case 0x0014: return (IntPtr)1; // WM_ERASEBKGND
                 case 0x0113: return HandleTimer(hwnd); // WM_TIMER
                 case 0x0020: // WM_SETCURSOR
-                    if (_isPromptingPrintOptions && (_printIsZoomed || _hoveredPrintElement != PrintElement.None))
+                    if (_isPromptingPrintOptions && (_printIsZoomed || _hoveredPrintElement != PrintElement.None || _openDropdown != PrintDropdownType.None))
                     {
                         SetCursor(LoadCursorW(IntPtr.Zero, IDC_HAND));
                         return (IntPtr)1;
@@ -180,6 +180,17 @@ namespace Clickra.UI
             int key = w.ToInt32();
             if (_isPromptingPrintOptions)
             {
+                if (_openDropdown != PrintDropdownType.None)
+                {
+                    if (key == 0x1B) // Esc closes dropdown
+                    {
+                        _openDropdown = PrintDropdownType.None;
+                        _hoveredDropdownIndex = -1;
+                        InvalidateRect(hwnd, IntPtr.Zero, false);
+                        return IntPtr.Zero;
+                    }
+                }
+
                 if (_printIsZoomed)
                 {
                     if (key == 0x1B || key == 0x20 || key == 0x0D) // Esc / Space / Enter
@@ -265,15 +276,32 @@ namespace Clickra.UI
         private IntPtr HandleMouseWheel(IntPtr hwnd, IntPtr w, IntPtr l)
         {
             int delta = (short)((w.ToInt64() >> 16) & 0xFFFF);
-            if (_isPromptingPrintOptions && _printIsZoomed)
+            int scrollDir = delta > 0 ? -1 : 1;
+            if (_isPromptingPrintOptions)
             {
-                int sx = (short)(l.ToInt64() & 0xFFFF);
-                int sy = (short)((l.ToInt64() >> 16) & 0xFFFF);
-                var pt = new Point(sx, sy);
-                ScreenToClient(hwnd, ref pt);
-                SetPrintZoomFactor(ZoomFactorStep(_printZoomFactor, delta > 0 ? +1 : -1), pt.X / _dpiScale, pt.Y / _dpiScale);
-                InvalidateRect(hwnd, IntPtr.Zero, true);
-                return IntPtr.Zero;
+                if (_openDropdown != PrintDropdownType.None)
+                {
+                    int maxVisible = GetOpenDropdownMaxVisible();
+                    var items = GetOpenDropdownItems();
+                    int maxScroll = Math.Max(0, items.Count - maxVisible);
+                    if (maxScroll > 0)
+                    {
+                        _dropdownScrollOffset = Math.Max(0, Math.Min(maxScroll, _dropdownScrollOffset + scrollDir));
+                        InvalidateRect(hwnd, IntPtr.Zero, false);
+                    }
+                    return IntPtr.Zero;
+                }
+
+                if (_printIsZoomed)
+                {
+                    int sx = (short)(l.ToInt64() & 0xFFFF);
+                    int sy = (short)((l.ToInt64() >> 16) & 0xFFFF);
+                    var pt = new Point(sx, sy);
+                    ScreenToClient(hwnd, ref pt);
+                    SetPrintZoomFactor(ZoomFactorStep(_printZoomFactor, delta > 0 ? +1 : -1), pt.X / _dpiScale, pt.Y / _dpiScale);
+                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                    return IntPtr.Zero;
+                }
             }
             if (_isPromptingVisualSplitter && _visualSplitIsZoomed)
             {
@@ -286,7 +314,6 @@ namespace Clickra.UI
                 InvalidateRect(hwnd, IntPtr.Zero, true);
                 return IntPtr.Zero;
             }
-            int scrollDir = delta > 0 ? -1 : 1;
             lock (_stateLock)
             {
                 if (!_completed && !_hasError)
@@ -317,6 +344,37 @@ namespace Clickra.UI
 
             if (_isPromptingPrintOptions)
             {
+                if (_openDropdown != PrintDropdownType.None)
+                {
+                    var popupRect = GetOpenDropdownPopupRect();
+                    int oldHovered = _hoveredDropdownIndex;
+                    if (popupRect.ContainsInclusive(mouseX, mouseY))
+                    {
+                        int listTop = popupRect.Y + 3;
+                        int clickedRow = (mouseY - listTop) / PrintDropdownItemHeight;
+                        int itemIdx = _dropdownScrollOffset + clickedRow;
+                        var items = GetOpenDropdownItems();
+                        if (itemIdx >= 0 && itemIdx < items.Count && mouseY >= listTop)
+                        {
+                            _hoveredDropdownIndex = itemIdx;
+                        }
+                        else
+                        {
+                            _hoveredDropdownIndex = -1;
+                        }
+                    }
+                    else
+                    {
+                        _hoveredDropdownIndex = -1;
+                    }
+
+                    if (oldHovered != _hoveredDropdownIndex)
+                    {
+                        InvalidateRect(hwnd, IntPtr.Zero, false);
+                    }
+                    return IntPtr.Zero;
+                }
+
                 if (_printIsZoomed && _printZoomDragging)
                 {
                     _printZoomPanX += mouseX - _printZoomDragLastX;
