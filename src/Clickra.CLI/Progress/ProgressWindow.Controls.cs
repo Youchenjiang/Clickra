@@ -346,6 +346,10 @@ namespace Clickra.UI
             {
                 return IntPtr.Zero;
             }
+            if (_isPromptingPrintOptions && HandlePrintOptionsClick(hwnd, mouseX, mouseY))
+            {
+                return IntPtr.Zero;
+            }
             if (_isPromptingVisualSplitter && HandleVisualSplitterClick(hwnd, mouseX, mouseY))
             {
                 return IntPtr.Zero;
@@ -716,6 +720,12 @@ namespace Clickra.UI
             if (_isPromptingMarkdownOptions)
             {
                 ResolveMarkdownDecision(false);
+                DestroyWindow(hwnd);
+                return IntPtr.Zero;
+            }
+            if (_isPromptingPrintOptions)
+            {
+                ResolvePrintDecision(false);
                 DestroyWindow(hwnd);
                 return IntPtr.Zero;
             }

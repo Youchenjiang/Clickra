@@ -16,7 +16,7 @@ namespace Clickra;
 /// initialization, dashboard launch, CLI argument parsing and dispatch.</summary>
 internal static class ClickraStartup
 {
-    private const string CommandSummary = "Commands: ppt2pdf, word2pdf, excel2pdf, md2pdf, md2word, merge-pdf, compress-pdf, translate-pdf, decrypt-pdf, split-pdf, img2pdf, img-merge, img-stitch, img-to-png, img-to-jpg, img-to-webp, img-to-gif, img-to-heic, --deploy";
+    private const string CommandSummary = "Commands: ppt2pdf, word2pdf, excel2pdf, md2pdf, md2word, merge-pdf, compress-pdf, translate-pdf, decrypt-pdf, split-pdf, print-pdf, img2pdf, img-merge, img-stitch, img-to-png, img-to-jpg, img-to-webp, img-to-gif, img-to-heic, --deploy";
     [DllImport("user32.dll")]
     static extern bool SetProcessDpiAwarenessContext(IntPtr value);
 
@@ -29,7 +29,16 @@ internal static class ClickraStartup
         if (HandleVersionOrDeploy(args)) return;
 
         var argList = args.ToList();
-        ParseOptions(argList, out bool quiet, out string? outputDirOverride, out bool hasCliLevel, out string compressionLevel, out string pagesOption);
+        ParseOptions(
+            argList,
+            out bool quiet,
+            out string? outputDirOverride,
+            out bool hasCliLevel,
+            out string compressionLevel,
+            out string pagesOption,
+            out string? printerOption,
+            out int copiesOption,
+            out bool fitToPageOption);
 
         if (argList.Count < 2)
         {
@@ -65,7 +74,10 @@ internal static class ClickraStartup
                 outputDirOverride,
                 hasCliLevel,
                 compressionLevel,
-                pagesOption);
+                pagesOption,
+                printerOption,
+                copiesOption,
+                fitToPageOption);
             ClickraCli.DispatchCommandSwitch(command, files, dispatchOptions);
         }
         catch (Exception ex)
@@ -109,8 +121,17 @@ internal static class ClickraStartup
     }
 
     /// <summary>Parses and removes global CLI options (quiet mode, output directory,
-    /// compression level and page range) from the argument list.</summary>
-    private static void ParseOptions(List<string> argList, out bool quiet, out string? outputDirOverride, out bool hasCliLevel, out string compressionLevel, out string pagesOption)
+    /// compression level, page range, printer, and copies) from the argument list.</summary>
+    private static void ParseOptions(
+        List<string> argList,
+        out bool quiet,
+        out string? outputDirOverride,
+        out bool hasCliLevel,
+        out string compressionLevel,
+        out string pagesOption,
+        out string? printerOption,
+        out int copiesOption,
+        out bool fitToPageOption)
     {
         bool quietByDefault = SettingsController.QuietMode;
         quiet = quietByDefault;
@@ -122,6 +143,11 @@ internal static class ClickraStartup
         hasCliLevel = argList.Contains("--level") || argList.Contains("--compression-level");
         compressionLevel = ClickraCli.ExtractOptionValue(argList, "--level", "--compression-level") ?? "balanced";
         pagesOption = ClickraCli.ExtractOptionValue(argList, "--pages", "-p") ?? "all";
+        printerOption = ClickraCli.ExtractOptionValue(argList, "--printer", "-m");
+        string? copiesStr = ClickraCli.ExtractOptionValue(argList, "--copies", "-c");
+        copiesOption = int.TryParse(copiesStr, out int cVal) ? Math.Max(1, cVal) : 1;
+        fitToPageOption = !argList.Contains("--no-fit");
+        if (argList.Contains("--no-fit")) argList.Remove("--no-fit");
     }
 
     /// <summary>Prints the CLI usage text to the console.</summary>
@@ -132,6 +158,9 @@ internal static class ClickraStartup
         Console.WriteLine("         --show-ui          (Force show progress window)");
         Console.WriteLine("         --out-dir <dir> / -o <dir> / --out <dir>  (Write outputs to directory)");
         Console.WriteLine("         --level <small|balanced|high>  (PDF compression level)");
+        Console.WriteLine("         --pages <range> / -p <range>  (Page range for print/split)");
+        Console.WriteLine("         --printer <name> / -m <name>  (Printer name for PDF print)");
+        Console.WriteLine("         --copies <count> / -c <count> (Number of print copies)");
         Console.WriteLine(CommandSummary);
         Console.WriteLine("Deployment: Clickra --deploy <target_dir>");
     }

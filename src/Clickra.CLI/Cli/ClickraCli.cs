@@ -13,6 +13,7 @@ using Clickra.Core.Modules.Markdown.Application;
 using Clickra.Core.Modules.PdfCompression.Application;
 using Clickra.Core.Modules.PdfDecrypt.Application;
 using Clickra.Core.Modules.PdfMerge.Application;
+using Clickra.Core.Modules.PdfPrint.Application;
 using Clickra.Core.Modules.PdfSplit.Application;
 using Clickra.Core.Modules.PdfTranslation.Application;
 using Clickra.Core.Processors;
@@ -31,7 +32,10 @@ namespace Clickra
             string? OutputDirOverride,
             bool HasCliLevel,
             string CompressionLevel,
-            string PagesOption);
+            string PagesOption,
+            string? PrinterOption = null,
+            int CopiesOption = 1,
+            bool FitToPageOption = true);
 
         static void ShowWarning(string msg, string title) =>
             NativeDialogs.Warning(IntPtr.Zero, title, msg, 1.0f, SettingsPresentationController.Shared.Language);
@@ -129,7 +133,7 @@ namespace Clickra
         {
             if (DispatchOfficeCommand(command, files, options.Quiet)) return;
             if (DispatchMarkdownCommand(command, files, options.Quiet, options.OutputDir, options.OutputDirOverride)) return;
-            if (DispatchPdfCommand(command, files, options.Quiet, options.OutputDir, options.HasCliLevel, options.CompressionLevel, options.PagesOption)) return;
+            if (DispatchPdfCommand(command, files, options)) return;
             if (DispatchImageCommand(command, files, options.Quiet, options.OutputDir, options.OutputDirOverride)) return;
 
             Console.WriteLine(Loc("cli_err_prefix") + Loc("cli_err_unknown_command", command));
@@ -195,33 +199,32 @@ namespace Clickra
         private static void HandleOfficeToPdfQuiet(string command, IReadOnlyList<string> files)
             => RunQuietUseCase(command, files, null, outputDir: null);
 
-        /// <summary>Handles PDF commands (merge, compress, split, translate, decrypt).</summary>
+        /// <summary>Handles PDF commands (merge, compress, split, translate, decrypt, print).</summary>
         private static bool DispatchPdfCommand(
             string command,
             List<string> files,
-            bool quiet,
-            string outputDir,
-            bool hasCliLevel,
-            string compressionLevel,
-            string pagesOption)
+            DispatchOptions options)
         {
             switch (command)
             {
                 case "merge-pdf":
-                    return DispatchPdfCase(command, files, quiet, 2,
-                        () => HandleMergePdfQuiet(files, outputDir));
+                    return DispatchPdfCase(command, files, options.Quiet, 2,
+                        () => HandleMergePdfQuiet(files, options.OutputDir));
                 case "compress-pdf":
-                    return DispatchPdfCase(command, files, quiet, 1,
-                        () => HandleCompressPdfQuiet(files, outputDir, hasCliLevel, compressionLevel));
+                    return DispatchPdfCase(command, files, options.Quiet, 1,
+                        () => HandleCompressPdfQuiet(files, options.OutputDir, options.HasCliLevel, options.CompressionLevel));
                 case "split-pdf":
-                    return DispatchPdfCase(command, files, quiet, 1,
-                        () => HandleSplitPdfQuiet(files, outputDir, pagesOption));
+                    return DispatchPdfCase(command, files, options.Quiet, 1,
+                        () => HandleSplitPdfQuiet(files, options.OutputDir, options.PagesOption));
                 case "translate-pdf":
-                    return DispatchPdfCase(command, files, quiet, 1,
-                        () => HandleTranslatePdfQuiet(files, outputDir));
+                    return DispatchPdfCase(command, files, options.Quiet, 1,
+                        () => HandleTranslatePdfQuiet(files, options.OutputDir));
                 case "decrypt-pdf":
-                    return DispatchPdfCase(command, files, quiet, 1,
-                        () => HandleDecryptPdfQuiet(files, outputDir));
+                    return DispatchPdfCase(command, files, options.Quiet, 1,
+                        () => HandleDecryptPdfQuiet(files, options.OutputDir));
+                case "print-pdf":
+                    return DispatchPdfCase(command, files, options.Quiet, 1,
+                        () => HandlePrintPdfQuiet(files, options.PrinterOption, options.PagesOption, options.CopiesOption, options.FitToPageOption));
                 default:
                     return false;
             }
@@ -259,6 +262,54 @@ namespace Clickra
                 outputDir,
                 interaction,
                 new QuietSplitObserver(files));
+        }
+
+        /// <summary>Runs the print-pdf command in quiet mode, streaming to the specified printer.</summary>
+        private static void HandlePrintPdfQuiet(
+            List<string> files,
+            string? printerOption,
+            string pagesOption,
+            int copiesOption,
+            bool fitToPageOption)
+        {
+            var options = new PrintPdfOptions(
+                printerOption,
+                pagesOption,
+                copiesOption,
+                200,
+                fitToPageOption,
+                SettingsPresentationController.Shared.Language).ToDictionary();
+
+            var useCase = new PrintPdfUseCase();
+            var request = new ConversionRequest(
+                PrintPdfUseCase.CommandName,
+                files,
+                options,
+                OutputOverride: StoragePathController.GetOutputDirectory(files[0]),
+                TrackTaskLifecycle: true);
+            var plan = useCase.Plan(request);
+            var progress = new SynchronousProgress<ConversionProgress>(state =>
+                WriteConsoleProgress(state.Current, state.Total, state.Message));
+
+            ConversionResult result = useCase.ExecuteAsync(
+                plan,
+                new DelegateConversionInteraction(
+                    (_, _, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null)),
+                progress,
+                cancellationToken: CancellationToken.None).GetAwaiter().GetResult();
+
+            if (result.Status == ConversionResultStatus.Succeeded)
+            {
+                FinishConsoleProgressLine();
+                Console.WriteLine(Loc("cli_progress_printing_pdf_done"));
+            }
+            else
+            {
+                Console.WriteLine($"Error: {result.Error}");
+                Environment.ExitCode = 1;
+            }
         }
 
         /// <summary>Handles image conversion, merge and stitching commands.</summary>

@@ -474,5 +474,19 @@
   "pdf_err_encrypted_translate": "This PDF document is encrypted or password-protected. Please remove the password using 'Decrypt PDF' before translating.",
   "pdf_err_encrypted_compress": "This PDF document is encrypted or password-protected. Please remove the password using 'Decrypt PDF' before compressing.",
   "pdf_err_encrypted_merge": "This PDF document is encrypted or password-protected. Please remove the password using 'Decrypt PDF' before merging.",
-  "pdf_err_encrypted_print": "This PDF document is encrypted or password-protected. Please remove the password using 'Decrypt PDF' before printing."
+  "pdf_err_encrypted_print": "This PDF document is encrypted or password-protected. Please remove the password using 'Decrypt PDF' before printing.",
+  "progress_sub_print_options": "Print options",
+  "print_options_printer": "Printer",
+  "print_options_range": "Page range",
+  "print_options_range_all": "All",
+  "print_options_range_custom": "Custom",
+  "print_options_range_prompt": "Enter page range (e.g. 1-3, 5):",
+  "print_options_copies": "Copies",
+  "print_options_fit": "Fit to page",
+  "print_options_confirm": "Print",
+  "print_options_page_indicator": "Page {0} / {1}",
+  "print_options_loading": "Loading preview...",
+  "cli_progress_printing_pdf": "Printing PDF: {0} ({1}/{2})...",
+  "cli_progress_printing_pdf_stage": "[PDF print] {0} ({1}/{2})",
+  "cli_progress_printing_pdf_done": "PDF print complete."
 }

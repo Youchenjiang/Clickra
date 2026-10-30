@@ -10,6 +10,7 @@ using System.Drawing.Text;
 using System.Drawing.Drawing2D;
 using Clickra.Core;
 using Clickra.Core.Modules.HistoryTasks.Application;
+using Clickra.Core.Modules.PdfPrint.Application;
 using Clickra.Core.Application;
 
 using static Clickra.UI.Native.Win32;
@@ -176,10 +177,15 @@ namespace Clickra.UI
                 _isPromptingMarkdownOptions = existingTaskId is null
                     && _commandOptions is null
                     && IsMarkdownCommand(command);
+                _isPromptingPrintOptions = existingTaskId is null
+                    && _commandOptions is null
+                    && IsPrintCommand(command);
                 _markdownTemplateStatus = Loc("md_options_template_none");
             }
-            if (_isPromptingMarkdownOptions)
+            if (_isPromptingMarkdownOptions || _isPromptingPrintOptions)
                 _progressPresentation.WaitForInput();
+            if (_isPromptingPrintOptions)
+                InitializePrintOptions();
 
 
             if (_darkBrush == IntPtr.Zero) _darkBrush = CreateSolidBrush(0x00202020);
@@ -193,6 +199,8 @@ namespace Clickra.UI
             int clientW = (int)(520 * _dpiScale);
             int logicalClientHeight = _isPromptingMarkdownOptions
                 ? MarkdownOptionsClientHeight
+                : _isPromptingPrintOptions
+                ? PrintOptionsClientHeight
                 : GetStandardClientHeight();
             int clientH = (int)(logicalClientHeight * _dpiScale);
 
@@ -251,7 +259,10 @@ namespace Clickra.UI
             SetTimer(_hwnd, (IntPtr)1, 16, IntPtr.Zero); // 16ms 約 60fps
 
             if (!_isPromptingMarkdownOptions)
-                StartProcessingThread(_hwnd);
+            {
+                if (!_isPromptingPrintOptions)
+                    StartProcessingThread(_hwnd);
+            }
 
             RECT progressRect = default;
             bool hadRect = GetWindowRect(_hwnd, out progressRect);
@@ -311,7 +322,17 @@ namespace Clickra.UI
             command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase)
             || command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
 
-        private int GetStandardClientHeight() => _isPromptingVisualSplitter ? 420 : 280;
+        private static bool IsPrintCommand(string command) =>
+            command.Equals(PrintPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase);
+
+        private int GetStandardClientHeight() => _isPromptingVisualSplitter ? 420 : _isPromptingPrintOptions ? PrintOptionsClientHeight : 280;
+
+        private void ResolvePrintDecision(bool startPrinting)
+        {
+            if (_printDecisionResolved) return;
+            _printDecisionResolved = true;
+            _printDecision?.Invoke(startPrinting);
+        }
 
         private void StartProcessingThread(IntPtr hwnd)
         {
