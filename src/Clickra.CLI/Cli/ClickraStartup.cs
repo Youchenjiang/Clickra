@@ -39,7 +39,9 @@ internal static class ClickraStartup
             out string? printerOption,
             out int copiesOption,
             out bool fitToPageOption,
-            out bool darkenOption);
+            out bool darkenOption,
+            out string? duplexOption,
+            out string? paperSizeOption);
 
         if (argList.Count < 2)
         {
@@ -79,7 +81,9 @@ internal static class ClickraStartup
                 printerOption,
                 copiesOption,
                 fitToPageOption,
-                darkenOption);
+                darkenOption,
+                duplexOption,
+                paperSizeOption);
             ClickraCli.DispatchCommandSwitch(command, files, dispatchOptions);
         }
         catch (Exception ex)
@@ -123,7 +127,7 @@ internal static class ClickraStartup
     }
 
     /// <summary>Parses and removes global CLI options (quiet mode, output directory,
-    /// compression level, page range, printer, and copies) from the argument list.</summary>
+    /// compression level, page range, printer, copies, duplex, and paper size) from the argument list.</summary>
     private static void ParseOptions(
         List<string> argList,
         out bool quiet,
@@ -134,7 +138,9 @@ internal static class ClickraStartup
         out string? printerOption,
         out int copiesOption,
         out bool fitToPageOption,
-        out bool darkenOption)
+        out bool darkenOption,
+        out string? duplexOption,
+        out string? paperSizeOption)
     {
         bool quietByDefault = SettingsController.QuietMode;
         quiet = quietByDefault;
@@ -153,6 +159,8 @@ internal static class ClickraStartup
         if (argList.Contains("--no-fit")) argList.Remove("--no-fit");
         darkenOption = argList.Contains("--darken");
         if (darkenOption) argList.Remove("--darken");
+        duplexOption = ClickraCli.ExtractOptionValue(argList, "--duplex", "-d");
+        paperSizeOption = ClickraCli.ExtractOptionValue(argList, "--paper", "--paper-size");
     }
 
     /// <summary>Prints the CLI usage text to the console.</summary>
@@ -166,6 +174,8 @@ internal static class ClickraStartup
         Console.WriteLine("         --pages <range> / -p <range>  (Page range for print/split)");
         Console.WriteLine("         --printer <name> / -m <name>  (Printer name for PDF print)");
         Console.WriteLine("         --copies <count> / -c <count> (Number of print copies)");
+        Console.WriteLine("         --duplex <simplex|long|short> (Duplex printing mode)");
+        Console.WriteLine("         --paper <name>     (Paper size name for print, e.g. A4, Letter)");
         Console.WriteLine("         --darken           (Darken text and enhance contrast for print)");
         Console.WriteLine(CommandSummary);
         Console.WriteLine("Deployment: Clickra --deploy <target_dir>");

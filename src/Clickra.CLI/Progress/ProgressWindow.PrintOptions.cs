@@ -27,6 +27,10 @@ public partial class ProgressWindow
     private List<string> _installedPrinters = new();
     private int _printPrinterIndex;
     private string _printPrinterName = "";
+    private List<string> _supportedPaperSizes = new();
+    private int _paperSizeIndex;
+    private bool _printerCanDuplex;
+    private int _duplexIndex; // 0 = Simplex, 1 = DuplexLongEdge, 2 = DuplexShortEdge
     private string _printPageRange = "all";
     private int _printCopies = 1;
     private bool _printFitToPage = true;
@@ -35,6 +39,32 @@ public partial class ProgressWindow
     private PdfPreviewModel _printPreviewModel = new(1);
     private readonly Dictionary<int, Bitmap> _printThumbnails = new();
     private readonly HashSet<int> _printPendingThumbnails = new();
+
+    private void RefreshPrinterCapabilities(IPrinterDiscoveryService discovery)
+    {
+        try
+        {
+            _supportedPaperSizes = discovery.GetSupportedPaperSizes(_printPrinterName).ToList();
+            if (_supportedPaperSizes.Count == 0)
+            {
+                _supportedPaperSizes.Add("A4");
+            }
+            int a4Index = _supportedPaperSizes.FindIndex(p => string.Equals(p, "A4", StringComparison.OrdinalIgnoreCase));
+            _paperSizeIndex = a4Index >= 0 ? a4Index : 0;
+            _printerCanDuplex = discovery.CanDuplex(_printPrinterName);
+            if (!_printerCanDuplex)
+            {
+                _duplexIndex = 0;
+            }
+        }
+        catch
+        {
+            _supportedPaperSizes = new List<string> { "A4" };
+            _paperSizeIndex = 0;
+            _printerCanDuplex = false;
+            _duplexIndex = 0;
+        }
+    }
 
     private void InitializePrintOptions()
     {
@@ -48,12 +78,17 @@ public partial class ProgressWindow
             }
             _printPrinterName = discovery.GetDefaultPrinter() ?? _installedPrinters[0];
             _printPrinterIndex = Math.Max(0, _installedPrinters.FindIndex(p => string.Equals(p, _printPrinterName, StringComparison.OrdinalIgnoreCase)));
+            RefreshPrinterCapabilities(discovery);
         }
         catch
         {
             _installedPrinters = new List<string> { "Default Printer" };
             _printPrinterName = _installedPrinters[0];
             _printPrinterIndex = 0;
+            _supportedPaperSizes = new List<string> { "A4" };
+            _paperSizeIndex = 0;
+            _printerCanDuplex = false;
+            _duplexIndex = 0;
         }
 
         if (_files.Count > 0 && File.Exists(_files[0]))
@@ -136,7 +171,38 @@ public partial class ProgressWindow
         DrawPrintButton(g, s, printerNameRect, _printPrinterName, true);
         DrawPrintButton(g, s, nextPrinterRect, ">", false);
 
-        // 2. Page Range Row
+        // 2. Paper Size Row
+        DrawPrintLabel(g, s, Loc("print_options_paper_size"), PrintOptionsLayout.PaperLabelY, bodyBrush);
+        var prevPaperRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.PaperComboY, 26, PrintOptionsLayout.PaperComboHeight);
+        var paperNameRect = new LayoutRect(PrintOptionsLayout.LeftColumnX + 28, PrintOptionsLayout.PaperComboY, PrintOptionsLayout.LeftColumnWidth - 56, PrintOptionsLayout.PaperComboHeight);
+        var nextPaperRect = new LayoutRect(PrintOptionsLayout.LeftColumnX + PrintOptionsLayout.LeftColumnWidth - 26, PrintOptionsLayout.PaperComboY, 26, PrintOptionsLayout.PaperComboHeight);
+        string currentPaperText = _supportedPaperSizes.Count > 0 && _paperSizeIndex >= 0 && _paperSizeIndex < _supportedPaperSizes.Count
+            ? _supportedPaperSizes[_paperSizeIndex]
+            : "A4";
+
+        DrawPrintButton(g, s, prevPaperRect, "<", false, enabled: _supportedPaperSizes.Count > 1);
+        DrawPrintButton(g, s, paperNameRect, currentPaperText, true);
+        DrawPrintButton(g, s, nextPaperRect, ">", false, enabled: _supportedPaperSizes.Count > 1);
+
+        // 3. Duplex Row
+        DrawPrintLabel(g, s, Loc("print_options_duplex"), PrintOptionsLayout.DuplexLabelY, bodyBrush);
+        var prevDuplexRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.DuplexComboY, 26, PrintOptionsLayout.DuplexComboHeight);
+        var duplexNameRect = new LayoutRect(PrintOptionsLayout.LeftColumnX + 28, PrintOptionsLayout.DuplexComboY, PrintOptionsLayout.LeftColumnWidth - 56, PrintOptionsLayout.DuplexComboHeight);
+        var nextDuplexRect = new LayoutRect(PrintOptionsLayout.LeftColumnX + PrintOptionsLayout.LeftColumnWidth - 26, PrintOptionsLayout.DuplexComboY, 26, PrintOptionsLayout.DuplexComboHeight);
+        string currentDuplexText = !_printerCanDuplex
+            ? Loc("print_options_duplex_unsupported")
+            : _duplexIndex switch
+            {
+                1 => Loc("print_options_duplex_long"),
+                2 => Loc("print_options_duplex_short"),
+                _ => Loc("print_options_duplex_simplex")
+            };
+
+        DrawPrintButton(g, s, prevDuplexRect, "<", false, enabled: _printerCanDuplex);
+        DrawPrintButton(g, s, duplexNameRect, currentDuplexText, true, enabled: _printerCanDuplex);
+        DrawPrintButton(g, s, nextDuplexRect, ">", false, enabled: _printerCanDuplex);
+
+        // 4. Page Range Row
         DrawPrintLabel(g, s, Loc("print_options_range"), PrintOptionsLayout.RangeLabelY, bodyBrush);
         var allPagesRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.RangeInputY, 68, PrintOptionsLayout.RangeInputHeight);
         var customPagesRect = new LayoutRect(PrintOptionsLayout.LeftColumnX + 74, PrintOptionsLayout.RangeInputY, PrintOptionsLayout.LeftColumnWidth - 74, PrintOptionsLayout.RangeInputHeight);
@@ -145,7 +211,7 @@ public partial class ProgressWindow
         DrawPrintButton(g, s, allPagesRect, Loc("print_options_range_all"), isAll);
         DrawPrintButton(g, s, customPagesRect, isAll ? Loc("print_options_range_custom") : _printPageRange, !isAll);
 
-        // 3. Copies Row
+        // 5. Copies Row
         DrawPrintLabel(g, s, Loc("print_options_copies"), PrintOptionsLayout.CopiesLabelY, bodyBrush);
         var minusCopiesRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.CopiesInputY, 32, PrintOptionsLayout.CopiesInputHeight);
         var copiesDisplayRect = new LayoutRect(PrintOptionsLayout.LeftColumnX + 36, PrintOptionsLayout.CopiesInputY, 56, PrintOptionsLayout.CopiesInputHeight);
@@ -155,11 +221,11 @@ public partial class ProgressWindow
         DrawPrintDisplayBox(g, s, copiesDisplayRect, _printCopies.ToString());
         DrawPrintButton(g, s, plusCopiesRect, "+", false);
 
-        // 4. Fit to Page Checkbox
+        // 6. Fit to Page Checkbox
         var fitRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.FitToPageY, PrintOptionsLayout.LeftColumnWidth, PrintOptionsLayout.FitToPageHeight);
         DrawPrintCheckbox(g, s, fitRect, Loc("print_options_fit"), _printFitToPage);
 
-        // 5. Darken Text Checkbox
+        // 7. Darken Text Checkbox
         var darkenRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.DarkenY, PrintOptionsLayout.LeftColumnWidth, PrintOptionsLayout.DarkenHeight);
         DrawPrintCheckbox(g, s, darkenRect, Loc("print_options_darken"), _printDarken);
 
@@ -204,7 +270,7 @@ public partial class ProgressWindow
 
         // 7. Separator & Action Buttons
         using var sepPen = new Pen(Color.FromArgb(58, 58, 58), 1f * s);
-        g.DrawLine(sepPen, 36 * s, 372 * s, 484 * s, 372 * s);
+        g.DrawLine(sepPen, 36 * s, PrintOptionsLayout.SeparatorY * s, 484 * s, PrintOptionsLayout.SeparatorY * s);
         DrawPrintButton(g, s, PrintOptionsLayout.ConfirmButton, Loc("print_options_confirm"), true);
         DrawPrintButton(g, s, PrintOptionsLayout.CancelButton, Loc("dialog_cancel"), false);
     }
@@ -298,6 +364,7 @@ public partial class ProgressWindow
             {
                 _printPrinterIndex = (_printPrinterIndex - 1 + _installedPrinters.Count) % _installedPrinters.Count;
                 _printPrinterName = _installedPrinters[_printPrinterIndex];
+                RefreshPrinterCapabilities(new SystemPrinterDiscoveryService());
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
             return true;
@@ -308,6 +375,53 @@ public partial class ProgressWindow
             {
                 _printPrinterIndex = (_printPrinterIndex + 1) % _installedPrinters.Count;
                 _printPrinterName = _installedPrinters[_printPrinterIndex];
+                RefreshPrinterCapabilities(new SystemPrinterDiscoveryService());
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            return true;
+        }
+
+        var prevPaperRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.PaperComboY, 26, PrintOptionsLayout.PaperComboHeight);
+        var paperNameRect = new LayoutRect(PrintOptionsLayout.LeftColumnX + 28, PrintOptionsLayout.PaperComboY, PrintOptionsLayout.LeftColumnWidth - 56, PrintOptionsLayout.PaperComboHeight);
+        var nextPaperRect = new LayoutRect(PrintOptionsLayout.LeftColumnX + PrintOptionsLayout.LeftColumnWidth - 26, PrintOptionsLayout.PaperComboY, 26, PrintOptionsLayout.PaperComboHeight);
+
+        if (prevPaperRect.ContainsInclusive(mouseX, mouseY))
+        {
+            if (_supportedPaperSizes.Count > 1)
+            {
+                _paperSizeIndex = (_paperSizeIndex - 1 + _supportedPaperSizes.Count) % _supportedPaperSizes.Count;
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            return true;
+        }
+        if (nextPaperRect.ContainsInclusive(mouseX, mouseY) || paperNameRect.ContainsInclusive(mouseX, mouseY))
+        {
+            if (_supportedPaperSizes.Count > 1)
+            {
+                _paperSizeIndex = (_paperSizeIndex + 1) % _supportedPaperSizes.Count;
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            return true;
+        }
+
+        var prevDuplexRect = new LayoutRect(PrintOptionsLayout.LeftColumnX, PrintOptionsLayout.DuplexComboY, 26, PrintOptionsLayout.DuplexComboHeight);
+        var duplexNameRect = new LayoutRect(PrintOptionsLayout.LeftColumnX + 28, PrintOptionsLayout.DuplexComboY, PrintOptionsLayout.LeftColumnWidth - 56, PrintOptionsLayout.DuplexComboHeight);
+        var nextDuplexRect = new LayoutRect(PrintOptionsLayout.LeftColumnX + PrintOptionsLayout.LeftColumnWidth - 26, PrintOptionsLayout.DuplexComboY, 26, PrintOptionsLayout.DuplexComboHeight);
+
+        if (prevDuplexRect.ContainsInclusive(mouseX, mouseY))
+        {
+            if (_printerCanDuplex)
+            {
+                _duplexIndex = (_duplexIndex - 1 + 3) % 3;
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            return true;
+        }
+        if (nextDuplexRect.ContainsInclusive(mouseX, mouseY) || duplexNameRect.ContainsInclusive(mouseX, mouseY))
+        {
+            if (_printerCanDuplex)
+            {
+                _duplexIndex = (_duplexIndex + 1) % 3;
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
             return true;
@@ -424,6 +538,11 @@ public partial class ProgressWindow
 
     private void ConfirmPrint(IntPtr hwnd)
     {
+        string? selectedPaper = _supportedPaperSizes.Count > 0 && _paperSizeIndex >= 0 && _paperSizeIndex < _supportedPaperSizes.Count
+            ? _supportedPaperSizes[_paperSizeIndex]
+            : null;
+        var duplexMode = _printerCanDuplex ? (PrintDuplexMode)_duplexIndex : PrintDuplexMode.Simplex;
+
         _commandOptions = new PrintPdfOptions(
             _printPrinterName,
             _printPageRange,
@@ -432,7 +551,9 @@ public partial class ProgressWindow
             _printFitToPage,
             SettingsPresentationController.Shared.Language,
             _printDarken,
-            2.2).ToDictionary();
+            2.2,
+            duplexMode,
+            selectedPaper).ToDictionary();
 
         ResolvePrintDecision(true);
         _isPromptingPrintOptions = false;

@@ -36,7 +36,9 @@ namespace Clickra
             string? PrinterOption = null,
             int CopiesOption = 1,
             bool FitToPageOption = true,
-            bool DarkenOption = false);
+            bool DarkenOption = false,
+            string? DuplexOption = null,
+            string? PaperSizeOption = null);
 
         static void ShowWarning(string msg, string title) =>
             NativeDialogs.Warning(IntPtr.Zero, title, msg, 1.0f, SettingsPresentationController.Shared.Language);
@@ -225,7 +227,7 @@ namespace Clickra
                         () => HandleDecryptPdfQuiet(files, options.OutputDir));
                 case "print-pdf":
                     return DispatchPdfCase(command, files, options.Quiet, 1,
-                        () => HandlePrintPdfQuiet(files, options.PrinterOption, options.PagesOption, options.CopiesOption, options.FitToPageOption, options.DarkenOption));
+                        () => HandlePrintPdfQuiet(files, options.PrinterOption, options.PagesOption, options.CopiesOption, options.FitToPageOption, options.DarkenOption, options.DuplexOption, options.PaperSizeOption));
                 default:
                     return false;
             }
@@ -272,8 +274,21 @@ namespace Clickra
             string pagesOption,
             int copiesOption,
             bool fitToPageOption,
-            bool darkenOption)
+            bool darkenOption,
+            string? duplexOption,
+            string? paperSizeOption)
         {
+            PrintDuplexMode duplex = PrintDuplexMode.Simplex;
+            if (!string.IsNullOrWhiteSpace(duplexOption))
+            {
+                if (Enum.TryParse<PrintDuplexMode>(duplexOption, true, out var parsedDx))
+                    duplex = parsedDx;
+                else if (duplexOption.Equals("long", StringComparison.OrdinalIgnoreCase) || duplexOption.Equals("vertical", StringComparison.OrdinalIgnoreCase))
+                    duplex = PrintDuplexMode.DuplexLongEdge;
+                else if (duplexOption.Equals("short", StringComparison.OrdinalIgnoreCase) || duplexOption.Equals("horizontal", StringComparison.OrdinalIgnoreCase))
+                    duplex = PrintDuplexMode.DuplexShortEdge;
+            }
+
             var options = new PrintPdfOptions(
                 printerOption,
                 pagesOption,
@@ -282,7 +297,9 @@ namespace Clickra
                 fitToPageOption,
                 SettingsPresentationController.Shared.Language,
                 darkenOption,
-                2.2).ToDictionary();
+                2.2,
+                duplex,
+                paperSizeOption).ToDictionary();
 
             RunQuietUseCase(
                 PrintPdfUseCase.CommandName,
