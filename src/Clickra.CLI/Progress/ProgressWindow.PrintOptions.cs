@@ -137,10 +137,11 @@ public partial class ProgressWindow
             {
                 foreach (string printer in printersToWarm)
                 {
+                    if (_cts.IsCancellationRequested) break;
                     _printerDiscovery.GetSupportedPaperSizes(printer);
                     _printerDiscovery.CanDuplex(printer);
                 }
-            });
+            }, _cts.Token);
         }
         catch
         {
@@ -186,43 +187,46 @@ public partial class ProgressWindow
         string filePath = _files[0];
         string fontName = PdfPageThumbnailRenderer.GetTextFontName(SettingsPresentationController.Shared.Language);
 
-        Task.Run(() =>
+        Task.Run(() => RenderThumbnailBackground(filePath, page, fontName), _cts.Token);
+    }
+
+    private void RenderThumbnailBackground(string filePath, int page, string fontName)
+    {
+        if (_cts.IsCancellationRequested) return;
+        Bitmap? bmp = null;
+        try
         {
-            Bitmap? bmp = null;
-            try
+            using (var doc = PdfDocument.Open(filePath))
             {
-                using (var doc = PdfDocument.Open(filePath))
+                if (page >= 1 && page <= doc.NumberOfPages)
                 {
-                    if (page >= 1 && page <= doc.NumberOfPages)
-                    {
-                        var p = doc.GetPage(page);
-                        _pdfPageWidthPt = (float)p.Width;
-                        _pdfPageHeightPt = (float)p.Height;
-                    }
-                }
-                bmp = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, page, 456, fontName);
-                if (bmp != null && _printDarken)
-                {
-                    PdfContrastEnhancer.Enhance(bmp, 2.2);
+                    var p = doc.GetPage(page);
+                    _pdfPageWidthPt = (float)p.Width;
+                    _pdfPageHeightPt = (float)p.Height;
                 }
             }
-            catch
+            bmp = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, page, 456, fontName);
+            if (bmp != null && _printDarken)
             {
-                // Render failure falls back to null
+                PdfContrastEnhancer.Enhance(bmp, 2.2);
             }
-            lock (_printThumbnails)
+        }
+        catch
+        {
+            // Render failure falls back to null
+        }
+        lock (_printThumbnails)
+        {
+            _printPendingThumbnails.Remove(page);
+            if (bmp != null)
             {
-                _printPendingThumbnails.Remove(page);
-                if (bmp != null)
-                {
-                    _printThumbnails[page] = bmp;
-                }
+                _printThumbnails[page] = bmp;
             }
-            if (_hwnd != IntPtr.Zero)
-            {
-                PostMessageW(_hwnd, WM_USER_INVALIDATE, IntPtr.Zero, IntPtr.Zero);
-            }
-        });
+        }
+        if (_hwnd != IntPtr.Zero)
+        {
+            PostMessageW(_hwnd, WM_USER_INVALIDATE, IntPtr.Zero, IntPtr.Zero);
+        }
     }
 
     private static RectangleF ScalePrintRect(LayoutRect rect, float scale) =>
@@ -237,6 +241,27 @@ public partial class ProgressWindow
         using var bodyBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
         using var mutedBrush = new SolidBrush(Color.FromArgb(145, 145, 145));
 
+        string currentPaperText = _supportedPaperSizes.Count > 0 && _paperSizeIndex >= 0 && _paperSizeIndex < _supportedPaperSizes.Count
+            ? _supportedPaperSizes[_paperSizeIndex]
+            : "A4";
+
+        PaintPrintControls(g, s, bodyBrush, currentPaperText);
+        PaintPrintPreviewCard(g, s, msgFont, tipFont, bodyBrush, mutedBrush, currentPaperText);
+        PaintPrintActionButtons(g, s);
+
+        if (_openDropdown != PrintDropdownType.None)
+        {
+            PaintOpenDropdownOverlay(g, s);
+        }
+
+        if (_printIsZoomed)
+        {
+            PaintPrintZoomOverlay(g, s);
+        }
+    }
+
+    private void PaintPrintControls(Graphics g, float s, Brush bodyBrush, string currentPaperText)
+    {
         // 1. Printer Row
         DrawPrintLabel(g, s, Loc("print_options_printer"), PrintOptionsLayout.PrinterLabelY, bodyBrush);
         DrawPrintDropdownButton(g, s, PrintOptionsLayout.PrinterComboRect, _printPrinterName,
@@ -246,9 +271,6 @@ public partial class ProgressWindow
 
         // 2. Paper Size Row
         DrawPrintLabel(g, s, Loc("print_options_paper_size"), PrintOptionsLayout.PaperLabelY, bodyBrush);
-        string currentPaperText = _supportedPaperSizes.Count > 0 && _paperSizeIndex >= 0 && _paperSizeIndex < _supportedPaperSizes.Count
-            ? _supportedPaperSizes[_paperSizeIndex]
-            : "A4";
         DrawPrintDropdownButton(g, s, PrintOptionsLayout.PaperComboRect, currentPaperText,
             isOpen: _openDropdown == PrintDropdownType.PaperSize,
             enabled: _supportedPaperSizes.Count > 0,
@@ -272,22 +294,18 @@ public partial class ProgressWindow
         // 4. Page Range Row
         DrawPrintLabel(g, s, Loc("print_options_range"), PrintOptionsLayout.RangeLabelY, bodyBrush);
         bool isAll = string.Equals(_printPageRange, "all", StringComparison.OrdinalIgnoreCase);
-        DrawPrintButton(g, s, PrintOptionsLayout.RangeAllRect, Loc("print_options_range_all"), isAll,
-            hovered: _hoveredPrintElement == PrintElement.RangeAll,
-            pressed: _pressedPrintElement == PrintElement.RangeAll);
-        DrawPrintButton(g, s, PrintOptionsLayout.RangeCustomRect, isAll ? Loc("print_options_range_custom") : _printPageRange, !isAll,
-            hovered: _hoveredPrintElement == PrintElement.RangeCustom,
-            pressed: _pressedPrintElement == PrintElement.RangeCustom);
+        DrawPrintButton(g, s, PrintOptionsLayout.RangeAllRect, Loc("print_options_range_all"),
+            new ButtonVisualState(isAll, Hovered: _hoveredPrintElement == PrintElement.RangeAll, Pressed: _pressedPrintElement == PrintElement.RangeAll));
+        DrawPrintButton(g, s, PrintOptionsLayout.RangeCustomRect, isAll ? Loc("print_options_range_custom") : _printPageRange,
+            new ButtonVisualState(!isAll, Hovered: _hoveredPrintElement == PrintElement.RangeCustom, Pressed: _pressedPrintElement == PrintElement.RangeCustom));
 
         // 5. Copies Row (Full Width Aligned)
         DrawPrintLabel(g, s, Loc("print_options_copies"), PrintOptionsLayout.CopiesLabelY, bodyBrush);
-        DrawPrintButton(g, s, PrintOptionsLayout.CopiesMinusRect, "-", false, enabled: _printCopies > 1,
-            hovered: _hoveredPrintElement == PrintElement.MinusCopies,
-            pressed: _pressedPrintElement == PrintElement.MinusCopies);
+        DrawPrintButton(g, s, PrintOptionsLayout.CopiesMinusRect, "-",
+            new ButtonVisualState(false, Enabled: _printCopies > 1, Hovered: _hoveredPrintElement == PrintElement.MinusCopies, Pressed: _pressedPrintElement == PrintElement.MinusCopies));
         DrawPrintDisplayBox(g, s, PrintOptionsLayout.CopiesDisplayRect, _printCopies.ToString());
-        DrawPrintButton(g, s, PrintOptionsLayout.CopiesPlusRect, "+", false, enabled: _printCopies < 99,
-            hovered: _hoveredPrintElement == PrintElement.PlusCopies,
-            pressed: _pressedPrintElement == PrintElement.PlusCopies);
+        DrawPrintButton(g, s, PrintOptionsLayout.CopiesPlusRect, "+",
+            new ButtonVisualState(false, Enabled: _printCopies < 99, Hovered: _hoveredPrintElement == PrintElement.PlusCopies, Pressed: _pressedPrintElement == PrintElement.PlusCopies));
 
         // 6. Fit to Page Checkbox
         DrawPrintCheckbox(g, s, PrintOptionsLayout.FitToPageRect, Loc("print_options_fit"), _printFitToPage,
@@ -296,8 +314,10 @@ public partial class ProgressWindow
         // 7. Darken Text Checkbox
         DrawPrintCheckbox(g, s, PrintOptionsLayout.DarkenRect, Loc("print_options_darken"), _printDarken,
             hovered: _hoveredPrintElement == PrintElement.Darken);
+    }
 
-        // --- Right Column: Unified Preview Card Panel ---
+    private void PaintPrintPreviewCard(Graphics g, float s, Font msgFont, Font tipFont, Brush bodyBrush, Brush mutedBrush, string currentPaperText)
+    {
         var cardRect = ScalePrintRect(PrintOptionsLayout.PreviewCardRect, s);
         var headerRect = ScalePrintRect(PrintOptionsLayout.CardHeaderRect, s);
         var viewportRect = ScalePrintRect(PrintOptionsLayout.PreviewArea, s);
@@ -313,6 +333,28 @@ public partial class ProgressWindow
         }
 
         // 2. Card Header
+        var paperDim = PaperSizeRegistry.GetDimensions(currentPaperText);
+        PaintCardHeader(g, s, msgFont, tipFont, headerRect, paperDim);
+
+        // 3. Card Viewport (Paper Canvas)
+        PaintCardViewport(g, s, tipFont, mutedBrush, viewportRect, paperDim);
+
+        // 4. Zoom Pill Badge at bottom-right of Viewport
+        PaintZoomPillBadge(g, s, tipFont);
+
+        // 5. Card Footer: Integrated Navigation Bar
+        PaintCardFooter(g, s, msgFont, bodyBrush, footerRect);
+
+        // Re-stroke outer card rounded border so sub-panel fills don't square off corners
+        using (var cardBorderPen = new Pen(Color.FromArgb(52, 56, 66), 1f * s))
+        using (var cardPath = UIHelper.GetRoundedRectPath(cardRect, 6 * s))
+        {
+            g.DrawPath(cardBorderPen, cardPath);
+        }
+    }
+
+    private void PaintCardHeader(Graphics g, float s, Font msgFont, Font tipFont, RectangleF headerRect, PaperDimension paperDim)
+    {
         using (var headerBg = new SolidBrush(Color.FromArgb(28, 30, 36)))
         {
             g.FillRectangle(headerBg, headerRect);
@@ -337,7 +379,6 @@ public partial class ProgressWindow
         }
 
         // Card Header Right: Paper Size specification pill
-        var paperDim = PaperSizeRegistry.GetDimensions(currentPaperText);
         string paperInfo = $"{paperDim.DisplayName} · {paperDim.WidthMm:0}×{paperDim.HeightMm:0} mm";
         var paperInfoSize = g.MeasureString(paperInfo, tipFont);
         float pillW = paperInfoSize.Width + (12f * s);
@@ -356,8 +397,10 @@ public partial class ProgressWindow
             g.DrawPath(pillBorder, pillPath);
             g.DrawString(paperInfo, tipFont, pillTextBrush, paperPillRect, pillFormat);
         }
+    }
 
-        // 3. Card Viewport (Paper Canvas)
+    private void PaintCardViewport(Graphics g, float s, Font tipFont, Brush mutedBrush, RectangleF viewportRect, PaperDimension paperDim)
+    {
         using var viewportBgBrush = new SolidBrush(Color.FromArgb(18, 19, 22));
         g.FillRectangle(viewportBgBrush, viewportRect);
 
@@ -392,41 +435,23 @@ public partial class ProgressWindow
             using var sheetPen = new Pen(Color.FromArgb(170, 175, 185), 1f * s);
             g.DrawRectangle(sheetPen, sheetX, sheetY, sheetW, sheetH);
 
-            float pageDrawX, pageDrawY, pageDrawW, pageDrawH;
-            if (_printFitToPage)
-            {
-                float margin = Math.Min(sheetW, sheetH) * 0.03f;
-                float printAreaW = sheetW - (margin * 2f);
-                float printAreaH = sheetH - (margin * 2f);
-                float fitScale = Math.Min(printAreaW / bmp.Width, printAreaH / bmp.Height);
-                pageDrawW = bmp.Width * fitScale;
-                pageDrawH = bmp.Height * fitScale;
-                pageDrawX = sheetX + ((sheetW - pageDrawW) / 2f);
-                pageDrawY = sheetY + ((sheetH - pageDrawH) / 2f);
-            }
-            else
-            {
-                float scaleX = _pdfPageWidthPt / targetPaperW;
-                float scaleY = _pdfPageHeightPt / targetPaperH;
-                pageDrawW = sheetW * scaleX;
-                pageDrawH = sheetH * scaleY;
-                pageDrawX = sheetX + ((sheetW - pageDrawW) / 2f);
-                pageDrawY = sheetY + ((sheetH - pageDrawH) / 2f);
-            }
+            var pageBounds = CalculatePageDrawBounds(bmp, sheetX, sheetY, sheetW, sheetH, _printFitToPage, _pdfPageWidthPt, _pdfPageHeightPt, targetPaperW, targetPaperH);
 
             var oldClip = g.Clip;
             g.SetClip(new RectangleF(sheetX, sheetY, sheetW, sheetH));
             g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-            g.DrawImage(bmp, pageDrawX, pageDrawY, pageDrawW, pageDrawH);
+            g.DrawImage(bmp, pageBounds.X, pageBounds.Y, pageBounds.Width, pageBounds.Height);
             g.Clip = oldClip;
         }
         else
         {
             using var centerFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            g.DrawString(Loc("print_options_loading"), _tipFont, mutedBrush, viewportRect, centerFormat);
+            g.DrawString(Loc("print_options_loading"), tipFont, mutedBrush, viewportRect, centerFormat);
         }
+    }
 
-        // 4. Zoom Pill Badge at bottom-right of Viewport
+    private void PaintZoomPillBadge(Graphics g, float s, Font tipFont)
+    {
         bool isZoomPillHovered = _hoveredPrintElement == PrintElement.PreviewArea;
         var zoomPillRect = ScalePrintRect(PrintOptionsLayout.ZoomPillRect, s);
         using (var zoomPath = UIHelper.GetRoundedRectPath(zoomPillRect, zoomPillRect.Height / 2f))
@@ -444,8 +469,10 @@ public partial class ProgressWindow
             using var textFormat = new StringFormat { LineAlignment = StringAlignment.Center };
             g.DrawString(Loc("pdf_split_zoom_tag"), tipFont, zoomTextBrush, textRect, textFormat);
         }
+    }
 
-        // 5. Card Footer: Integrated Navigation Bar
+    private void PaintCardFooter(Graphics g, float s, Font msgFont, Brush bodyBrush, RectangleF footerRect)
+    {
         using (var footerBg = new SolidBrush(Color.FromArgb(28, 30, 36)))
         {
             g.FillRectangle(footerBg, footerRect);
@@ -455,9 +482,8 @@ public partial class ProgressWindow
             g.DrawLine(footerTopPen, footerRect.Left, footerRect.Top, footerRect.Right, footerRect.Top);
         }
 
-        DrawPrintButton(g, s, PrintOptionsLayout.PrevPageButton, "<", false, enabled: _printPreviewModel.CanNavigatePrevious,
-            hovered: _hoveredPrintElement == PrintElement.PrevPage,
-            pressed: _pressedPrintElement == PrintElement.PrevPage);
+        DrawPrintButton(g, s, PrintOptionsLayout.PrevPageButton, "<",
+            new ButtonVisualState(false, Enabled: _printPreviewModel.CanNavigatePrevious, Hovered: _hoveredPrintElement == PrintElement.PrevPage, Pressed: _pressedPrintElement == PrintElement.PrevPage));
 
         using (var pageFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
         {
@@ -465,37 +491,18 @@ public partial class ProgressWindow
             g.DrawString(pageText, msgFont, bodyBrush, ScalePrintRect(PrintOptionsLayout.PageTextRect, s), pageFormat);
         }
 
-        DrawPrintButton(g, s, PrintOptionsLayout.NextPageButton, ">", false, enabled: _printPreviewModel.CanNavigateNext,
-            hovered: _hoveredPrintElement == PrintElement.NextPage,
-            pressed: _pressedPrintElement == PrintElement.NextPage);
+        DrawPrintButton(g, s, PrintOptionsLayout.NextPageButton, ">",
+            new ButtonVisualState(false, Enabled: _printPreviewModel.CanNavigateNext, Hovered: _hoveredPrintElement == PrintElement.NextPage, Pressed: _pressedPrintElement == PrintElement.NextPage));
+    }
 
-        // Re-stroke outer card rounded border so sub-panel fills don't square off corners
-        using (var cardBorderPen = new Pen(Color.FromArgb(52, 56, 66), 1f * s))
-        using (var cardPath = UIHelper.GetRoundedRectPath(cardRect, 6 * s))
-        {
-            g.DrawPath(cardBorderPen, cardPath);
-        }
-
-        // 7. Separator & Action Buttons
+    private void PaintPrintActionButtons(Graphics g, float s)
+    {
         using var sepPen = new Pen(Color.FromArgb(50, 52, 60), 1f * s);
         g.DrawLine(sepPen, 36 * s, PrintOptionsLayout.SeparatorY * s, 484 * s, PrintOptionsLayout.SeparatorY * s);
-        DrawPrintButton(g, s, PrintOptionsLayout.ConfirmButton, Loc("print_options_confirm"), true,
-            hovered: _hoveredPrintElement == PrintElement.Confirm,
-            pressed: _pressedPrintElement == PrintElement.Confirm);
-        DrawPrintButton(g, s, PrintOptionsLayout.CancelButton, Loc("dialog_cancel"), false,
-            hovered: _hoveredPrintElement == PrintElement.Cancel,
-            pressed: _pressedPrintElement == PrintElement.Cancel);
-
-        // 8. Open Dropdown Overlay (floats above other controls)
-        if (_openDropdown != PrintDropdownType.None)
-        {
-            PaintOpenDropdownOverlay(g, s);
-        }
-
-        if (_printIsZoomed)
-        {
-            PaintPrintZoomOverlay(g, s);
-        }
+        DrawPrintButton(g, s, PrintOptionsLayout.ConfirmButton, Loc("print_options_confirm"),
+            new ButtonVisualState(true, Hovered: _hoveredPrintElement == PrintElement.Confirm, Pressed: _pressedPrintElement == PrintElement.Confirm));
+        DrawPrintButton(g, s, PrintOptionsLayout.CancelButton, Loc("dialog_cancel"),
+            new ButtonVisualState(false, Hovered: _hoveredPrintElement == PrintElement.Cancel, Pressed: _pressedPrintElement == PrintElement.Cancel));
     }
 
     private void DrawPrintLabel(Graphics g, float s, string text, int y, Brush brush)
@@ -506,46 +513,21 @@ public partial class ProgressWindow
         g.DrawString(text, _msgFont, brush, rect, format);
     }
 
-    private void DrawPrintButton(Graphics g, float s, LayoutRect logicalRect, string text, bool selected, bool enabled = true, bool hovered = false, bool pressed = false)
+    private readonly record struct ButtonVisualState(bool Selected, bool Enabled = true, bool Hovered = false, bool Pressed = false);
+
+    private void DrawPrintButton(Graphics g, float s, LayoutRect logicalRect, string text, ButtonVisualState state)
     {
         var rect = ScalePrintRect(logicalRect, s);
         using var path = UIHelper.GetRoundedRectPath(rect, 4 * s);
         Color accent = UIHelper.GetSystemColorizationColor();
-        Color bg;
-        Color border;
-
-        if (!enabled)
-        {
-            bg = Color.FromArgb(35, 35, 35);
-            border = Color.FromArgb(48, 48, 48);
-        }
-        else if (pressed)
-        {
-            bg = selected ? UIHelper.Darken(accent, 0.25f) : Color.FromArgb(68, 68, 68);
-            border = selected ? accent : UIHelper.Lighten(accent, 0.2f);
-        }
-        else if (hovered)
-        {
-            bg = selected ? UIHelper.Lighten(accent, 0.15f) : Color.FromArgb(58, 58, 58);
-            border = selected ? UIHelper.Lighten(accent, 0.35f) : Color.FromArgb(95, 95, 95);
-        }
-        else if (selected)
-        {
-            bg = accent;
-            border = UIHelper.Lighten(accent, 0.18f);
-        }
-        else
-        {
-            bg = Color.FromArgb(45, 45, 45);
-            border = Color.FromArgb(70, 70, 70);
-        }
+        GetButtonColors(state, accent, out Color bg, out Color border);
 
         using var fill = new SolidBrush(bg);
         using var pen = new Pen(border, 1f * s);
         g.FillPath(fill, path);
         g.DrawPath(pen, path);
 
-        Color textColor = enabled ? Color.White : Color.FromArgb(120, 120, 120);
+        Color textColor = state.Enabled ? Color.White : Color.FromArgb(120, 120, 120);
         using var textBrush = new SolidBrush(textColor);
         using var format = new StringFormat
         {
@@ -555,6 +537,35 @@ public partial class ProgressWindow
             FormatFlags = StringFormatFlags.NoWrap
         };
         g.DrawString(text, _msgFont ?? SystemFonts.DefaultFont, textBrush, rect, format);
+    }
+
+    private static void GetButtonColors(ButtonVisualState state, Color accent, out Color bg, out Color border)
+    {
+        if (!state.Enabled)
+        {
+            bg = Color.FromArgb(35, 35, 35);
+            border = Color.FromArgb(48, 48, 48);
+        }
+        else if (state.Pressed)
+        {
+            bg = state.Selected ? UIHelper.Darken(accent, 0.25f) : Color.FromArgb(68, 68, 68);
+            border = state.Selected ? accent : UIHelper.Lighten(accent, 0.2f);
+        }
+        else if (state.Hovered)
+        {
+            bg = state.Selected ? UIHelper.Lighten(accent, 0.15f) : Color.FromArgb(58, 58, 58);
+            border = state.Selected ? UIHelper.Lighten(accent, 0.35f) : Color.FromArgb(95, 95, 95);
+        }
+        else if (state.Selected)
+        {
+            bg = accent;
+            border = UIHelper.Lighten(accent, 0.18f);
+        }
+        else
+        {
+            bg = Color.FromArgb(45, 45, 45);
+            border = Color.FromArgb(70, 70, 70);
+        }
     }
 
     private void DrawPrintDisplayBox(Graphics g, float s, LayoutRect logicalRect, string text)
@@ -579,12 +590,7 @@ public partial class ProgressWindow
 
         using var path = UIHelper.GetRoundedRectPath(boxRect, 3 * s);
         Color accent = UIHelper.GetSystemColorizationColor();
-        Color bg = isChecked
-            ? (hovered ? UIHelper.Lighten(accent, 0.15f) : accent)
-            : (hovered ? Color.FromArgb(55, 55, 55) : Color.FromArgb(40, 40, 40));
-        Color border = isChecked
-            ? (hovered ? UIHelper.Lighten(accent, 0.35f) : UIHelper.Lighten(accent, 0.2f))
-            : (hovered ? Color.FromArgb(120, 120, 120) : Color.FromArgb(80, 80, 80));
+        GetCheckboxColors(isChecked, hovered, accent, out Color bg, out Color border);
 
         using var fill = new SolidBrush(bg);
         using var pen = new Pen(border, 1f * s);
@@ -606,6 +612,20 @@ public partial class ProgressWindow
         using var textBrush = new SolidBrush(hovered ? Color.White : Color.FromArgb(220, 220, 220));
         using var format = new StringFormat { LineAlignment = StringAlignment.Center };
         g.DrawString(text, _msgFont ?? SystemFonts.DefaultFont, textBrush, labelRect, format);
+    }
+
+    private static void GetCheckboxColors(bool isChecked, bool hovered, Color accent, out Color bg, out Color border)
+    {
+        if (isChecked)
+        {
+            bg = hovered ? UIHelper.Lighten(accent, 0.15f) : accent;
+            border = hovered ? UIHelper.Lighten(accent, 0.35f) : UIHelper.Lighten(accent, 0.2f);
+        }
+        else
+        {
+            bg = hovered ? Color.FromArgb(55, 55, 55) : Color.FromArgb(40, 40, 40);
+            border = hovered ? Color.FromArgb(120, 120, 120) : Color.FromArgb(80, 80, 80);
+        }
     }
 
     private const int PrintDropdownItemHeight = 24;
@@ -671,13 +691,7 @@ public partial class ProgressWindow
         var rect = ScalePrintRect(logicalRect, s);
         using var path = UIHelper.GetRoundedRectPath(rect, 4 * s);
         Color accent = UIHelper.GetSystemColorizationColor();
-        Color bg = !enabled ? Color.FromArgb(32, 32, 32)
-                 : isHovered ? Color.FromArgb(56, 56, 56)
-                 : Color.FromArgb(42, 42, 42);
-        Color border = !enabled ? Color.FromArgb(48, 48, 48)
-                     : isOpen ? accent
-                     : isHovered ? Color.FromArgb(100, 100, 100)
-                     : Color.FromArgb(68, 68, 68);
+        GetDropdownButtonColors(enabled, isOpen, isHovered, accent, out Color bg, out Color border, out Color chevronCol);
 
         using var bgBrush = new SolidBrush(bg);
         using var borderPen = new Pen(border, isOpen ? 1.5f * s : 1f * s);
@@ -701,7 +715,6 @@ public partial class ProgressWindow
         // Vector Chevron
         float chevronX = rect.Right - (13f * s);
         float chevronY = rect.Y + (rect.Height / 2f);
-        Color chevronCol = !enabled ? Color.FromArgb(90, 90, 90) : (isOpen ? accent : Color.FromArgb(170, 175, 185));
         if (isOpen)
         {
             VectorIcons.DrawChevronUp(g, chevronX, chevronY, 3.5f * s, chevronCol, 1.6f * s);
@@ -709,6 +722,29 @@ public partial class ProgressWindow
         else
         {
             VectorIcons.DrawChevronDown(g, chevronX, chevronY, 3.5f * s, chevronCol, 1.6f * s);
+        }
+    }
+
+    private static void GetDropdownButtonColors(bool enabled, bool isOpen, bool isHovered, Color accent, out Color bg, out Color border, out Color chevronCol)
+    {
+        if (!enabled)
+        {
+            bg = Color.FromArgb(32, 32, 32);
+            border = Color.FromArgb(48, 48, 48);
+            chevronCol = Color.FromArgb(90, 90, 90);
+            return;
+        }
+
+        bg = isHovered ? Color.FromArgb(56, 56, 56) : Color.FromArgb(42, 42, 42);
+        if (isOpen)
+        {
+            border = accent;
+            chevronCol = accent;
+        }
+        else
+        {
+            border = isHovered ? Color.FromArgb(100, 100, 100) : Color.FromArgb(68, 68, 68);
+            chevronCol = Color.FromArgb(170, 175, 185);
         }
     }
 
@@ -778,7 +814,7 @@ public partial class ProgressWindow
 
             float textLeft = itemX + (isSelected ? 22f * s : 8f * s);
             var textRect = new RectangleF(textLeft, curItemY, itemW - (isSelected ? 24f * s : 10f * s), itemH);
-            Color textCol = isHovered ? Color.White : (isSelected ? Color.FromArgb(240, 240, 240) : Color.FromArgb(195, 200, 210));
+            Color textCol = GetDropdownItemTextColor(isHovered, isSelected);
             using var textBrush = new SolidBrush(textCol);
             using var format = new StringFormat
             {
@@ -789,26 +825,36 @@ public partial class ProgressWindow
             g.DrawString(items[itemIdx], _msgFont ?? SystemFonts.DefaultFont, textBrush, textRect, format);
         }
 
-        // Scrollbar if items exceed maxVisible
-        if (items.Count > maxVisible)
+        PaintDropdownScrollbar(g, s, popupRect, items.Count, maxVisible, maxScroll);
+    }
+
+    private static Color GetDropdownItemTextColor(bool isHovered, bool isSelected)
+    {
+        if (isHovered) return Color.White;
+        if (isSelected) return Color.FromArgb(240, 240, 240);
+        return Color.FromArgb(195, 200, 210);
+    }
+
+    private void PaintDropdownScrollbar(Graphics g, float s, LayoutRect popupRect, int itemsCount, int maxVisible, int maxScroll)
+    {
+        if (itemsCount <= maxVisible) return;
+
+        float trackX = (popupRect.Right - 7) * s;
+        float trackY = (popupRect.Y + 4) * s;
+        float trackW = 4f * s;
+        float trackH = (popupRect.Height - 8) * s;
+
+        using (var trackBrush = new SolidBrush(Color.FromArgb(42, 42, 45)))
         {
-            float trackX = (popupRect.Right - 7) * s;
-            float trackY = (popupRect.Y + 4) * s;
-            float trackW = 4f * s;
-            float trackH = (popupRect.Height - 8) * s;
-
-            using (var trackBrush = new SolidBrush(Color.FromArgb(42, 42, 45)))
-            {
-                g.FillRectangle(trackBrush, trackX, trackY, trackW, trackH);
-            }
-
-            float thumbH = Math.Max(16f * s, ((float)maxVisible / items.Count) * trackH);
-            float thumbY = trackY + (((float)_dropdownScrollOffset / maxScroll) * (trackH - thumbH));
-
-            using var thumbBrush = new SolidBrush(Color.FromArgb(110, 115, 125));
-            using var thumbPath = UIHelper.GetRoundedRectPath(new RectangleF(trackX, thumbY, trackW, thumbH), 2 * s);
-            g.FillPath(thumbBrush, thumbPath);
+            g.FillRectangle(trackBrush, trackX, trackY, trackW, trackH);
         }
+
+        float thumbH = Math.Max(16f * s, ((float)maxVisible / itemsCount) * trackH);
+        float thumbY = trackY + (((float)_dropdownScrollOffset / maxScroll) * (trackH - thumbH));
+
+        using var thumbBrush = new SolidBrush(Color.FromArgb(110, 115, 125));
+        using var thumbPath = UIHelper.GetRoundedRectPath(new RectangleF(trackX, thumbY, trackW, thumbH), 2 * s);
+        g.FillPath(thumbBrush, thumbPath);
     }
 
     private bool HandleOpenDropdownClick(IntPtr hwnd, int mouseX, int mouseY)
@@ -884,7 +930,7 @@ public partial class ProgressWindow
         return true;
     }
 
-    private PrintElement GetPrintElementAt(int mouseX, int mouseY)
+    private static PrintElement GetPrintElementAt(int mouseX, int mouseY)
     {
         if (PrintOptionsLayout.PrinterComboRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.PrinterCombo;
         if (PrintOptionsLayout.PaperComboRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.PaperCombo;
@@ -910,13 +956,25 @@ public partial class ProgressWindow
         return PrintElement.None;
     }
 
-    private bool HandlePrintOptionsClick(IntPtr hwnd, int mouseX, int mouseY)
+    private void HandlePrintOptionsClick(IntPtr hwnd, int mouseX, int mouseY)
     {
         if (_openDropdown != PrintDropdownType.None)
         {
-            return HandleOpenDropdownClick(hwnd, mouseX, mouseY);
+            HandleOpenDropdownClick(hwnd, mouseX, mouseY);
+            return;
         }
 
+        if (TryHandleDropdownToggles(hwnd, mouseX, mouseY) ||
+            TryHandleRangeAndCopies(hwnd, mouseX, mouseY) ||
+            TryHandleCheckboxAndPreviewClicks(hwnd, mouseX, mouseY) ||
+            TryHandlePaginationAndActions(hwnd, mouseX, mouseY))
+        {
+            return;
+        }
+    }
+
+    private bool TryHandleDropdownToggles(IntPtr hwnd, int mouseX, int mouseY)
+    {
         if (PrintOptionsLayout.PrinterComboRect.ContainsInclusive(mouseX, mouseY))
         {
             if (_installedPrinters.Count > 0)
@@ -954,6 +1012,11 @@ public partial class ProgressWindow
             return true;
         }
 
+        return false;
+    }
+
+    private bool TryHandleRangeAndCopies(IntPtr hwnd, int mouseX, int mouseY)
+    {
         if (PrintOptionsLayout.RangeAllRect.ContainsInclusive(mouseX, mouseY))
         {
             _printPageRange = "all";
@@ -1000,6 +1063,11 @@ public partial class ProgressWindow
             return true;
         }
 
+        return false;
+    }
+
+    private bool TryHandleCheckboxAndPreviewClicks(IntPtr hwnd, int mouseX, int mouseY)
+    {
         if (PrintOptionsLayout.FitToPageRect.ContainsInclusive(mouseX, mouseY))
         {
             _printFitToPage = !_printFitToPage;
@@ -1026,6 +1094,11 @@ public partial class ProgressWindow
             return true;
         }
 
+        return false;
+    }
+
+    private bool TryHandlePaginationAndActions(IntPtr hwnd, int mouseX, int mouseY)
+    {
         if (PrintOptionsLayout.PrevPageButton.ContainsInclusive(mouseX, mouseY))
         {
             if (_printPreviewModel.CanNavigatePrevious)
@@ -1099,18 +1172,7 @@ public partial class ProgressWindow
         float s = _dpiScale;
         int clientW = (int)(PrintOptionsLayout.ClientWidth * s);
         int clientH = (int)((expand ? PrintOptionsClientHeight : 280) * s);
-
-        _bufferGraphics?.Dispose();
-        _bufferBmp?.Dispose();
-        _bufferBmp = new Bitmap(clientW, clientH);
-        _bufferGraphics = Graphics.FromImage(_bufferBmp);
-        _bufferGraphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-        _bufferGraphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-
-        var rect = new RECT { left = 0, top = 0, right = clientW, bottom = clientH };
-        AdjustWindowRectEx(ref rect, WS_OVERLAPPED_FIXED, false, 0);
-        SetWindowPos(hwnd, IntPtr.Zero, 0, 0, rect.right - rect.left, rect.bottom - rect.top, 0x0002 | 0x0004);
-        InvalidateRect(hwnd, IntPtr.Zero, false);
+        ResizeClientSurface(hwnd, clientW, clientH);
     }
 
     public void OpenPrintZoom(IntPtr hwnd)
@@ -1170,47 +1232,65 @@ public partial class ProgressWindow
         if (!_printIsZoomed) return false;
 
         // Check close button
-        var closeRect = PrintOptionsLayout.ZoomCloseButton;
-        if (closeRect.ContainsInclusive(mouseX, mouseY))
+        if (PrintOptionsLayout.ZoomCloseButton.ContainsInclusive(mouseX, mouseY))
         {
             ClosePrintZoom(hwnd);
             return true;
         }
 
-        // Check zoom buttons
-        float zoomBtnY = PrintOptionsLayout.ZoomButton(0).Y;
-        float zoomBtnH = PrintOptionsLayout.ZoomButton(0).Height;
-        if (mouseY >= zoomBtnY && mouseY <= zoomBtnY + zoomBtnH)
+        if (TryHandleZoomButtons(hwnd, mouseX, mouseY) ||
+            TryHandleZoomViewportDrag(hwnd, mouseX, mouseY))
         {
-            float btnOutX = PrintOptionsLayout.ZoomButton(0).X; // Zoom out (-)
-            float btnInX = PrintOptionsLayout.ZoomButton(1).X;  // Zoom in (+)
-            float btnFitX = PrintOptionsLayout.ZoomButton(2).X; // Fit
-            float cx = PrintZoomImgLeft + (PrintZoomImgW / 2f);
-            float cy = PrintZoomImgTop + (PrintZoomImgH / 2f);
-
-            if (mouseX >= btnOutX && mouseX <= btnOutX + PrintOptionsLayout.ZoomButton(0).Width)
-            {
-                SetPrintZoomFactor(ZoomFactorStep(_printZoomFactor, -1), cx, cy);
-                InvalidateRect(hwnd, IntPtr.Zero, true);
-                return true;
-            }
-            if (mouseX >= btnInX && mouseX <= btnInX + PrintOptionsLayout.ZoomButton(1).Width)
-            {
-                SetPrintZoomFactor(ZoomFactorStep(_printZoomFactor, +1), cx, cy);
-                InvalidateRect(hwnd, IntPtr.Zero, true);
-                return true;
-            }
-            if (mouseX >= btnFitX && mouseX <= btnFitX + PrintOptionsLayout.ZoomButton(2).Width)
-            {
-                _printZoomFactor = 1f;
-                _printZoomPanX = 0f;
-                _printZoomPanY = 0f;
-                InvalidateRect(hwnd, IntPtr.Zero, true);
-                return true;
-            }
+            return true;
         }
 
-        // Check image viewport for dragging
+        // Click outside modal closes zoom
+        if (!PrintOptionsLayout.ZoomModal.ContainsInclusive(mouseX, mouseY))
+        {
+            ClosePrintZoom(hwnd);
+        }
+
+        return true;
+    }
+
+    private bool TryHandleZoomButtons(IntPtr hwnd, int mouseX, int mouseY)
+    {
+        float zoomBtnY = PrintOptionsLayout.ZoomButton(0).Y;
+        float zoomBtnH = PrintOptionsLayout.ZoomButton(0).Height;
+        if (mouseY < zoomBtnY || mouseY > zoomBtnY + zoomBtnH) return false;
+
+        float btnOutX = PrintOptionsLayout.ZoomButton(0).X;
+        float btnInX = PrintOptionsLayout.ZoomButton(1).X;
+        float btnFitX = PrintOptionsLayout.ZoomButton(2).X;
+        float cx = PrintZoomImgLeft + (PrintZoomImgW / 2f);
+        float cy = PrintZoomImgTop + (PrintZoomImgH / 2f);
+
+        if (mouseX >= btnOutX && mouseX <= btnOutX + PrintOptionsLayout.ZoomButton(0).Width)
+        {
+            SetPrintZoomFactor(ZoomFactorStep(_printZoomFactor, -1), cx, cy);
+            InvalidateRect(hwnd, IntPtr.Zero, true);
+            return true;
+        }
+        if (mouseX >= btnInX && mouseX <= btnInX + PrintOptionsLayout.ZoomButton(1).Width)
+        {
+            SetPrintZoomFactor(ZoomFactorStep(_printZoomFactor, +1), cx, cy);
+            InvalidateRect(hwnd, IntPtr.Zero, true);
+            return true;
+        }
+        if (mouseX >= btnFitX && mouseX <= btnFitX + PrintOptionsLayout.ZoomButton(2).Width)
+        {
+            _printZoomFactor = 1f;
+            _printZoomPanX = 0f;
+            _printZoomPanY = 0f;
+            InvalidateRect(hwnd, IntPtr.Zero, true);
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TryHandleZoomViewportDrag(IntPtr hwnd, int mouseX, int mouseY)
+    {
         if (mouseX >= PrintZoomImgLeft && mouseX <= PrintZoomImgLeft + PrintZoomImgW &&
             mouseY >= PrintZoomImgTop && mouseY <= PrintZoomImgTop + PrintZoomImgH)
         {
@@ -1220,16 +1300,7 @@ public partial class ProgressWindow
             SetCapture(hwnd);
             return true;
         }
-
-        // Click outside modal closes zoom
-        var modalRect = PrintOptionsLayout.ZoomModal;
-        if (!modalRect.ContainsInclusive(mouseX, mouseY))
-        {
-            ClosePrintZoom(hwnd);
-            return true;
-        }
-
-        return true;
+        return false;
     }
 
     private void PaintPrintZoomOverlay(Graphics g, float s)
@@ -1313,30 +1384,9 @@ public partial class ProgressWindow
         // PDF Page drawing onto sheet
         if (bmp != null)
         {
-            float pageDrawX, pageDrawY, pageDrawW, pageDrawH;
-            if (_printFitToPage)
-            {
-                float margin = Math.Min(sheetW, sheetH) * 0.03f;
-                float printW = sheetW - (margin * 2f);
-                float printH = sheetH - (margin * 2f);
-                float fitScale = Math.Min(printW / bmp.Width, printH / bmp.Height);
-                pageDrawW = bmp.Width * fitScale;
-                pageDrawH = bmp.Height * fitScale;
-                pageDrawX = sheetX + ((sheetW - pageDrawW) / 2f);
-                pageDrawY = sheetY + ((sheetH - pageDrawH) / 2f);
-            }
-            else
-            {
-                float scaleX = _pdfPageWidthPt / targetPaperW;
-                float scaleY = _pdfPageHeightPt / targetPaperH;
-                pageDrawW = sheetW * scaleX;
-                pageDrawH = sheetH * scaleY;
-                pageDrawX = sheetX + ((sheetW - pageDrawW) / 2f);
-                pageDrawY = sheetY + ((sheetH - pageDrawH) / 2f);
-            }
-
+            var pageBounds = CalculatePageDrawBounds(bmp, sheetX, sheetY, sheetW, sheetH, _printFitToPage, _pdfPageWidthPt, _pdfPageHeightPt, targetPaperW, targetPaperH);
             g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-            g.DrawImage(bmp, pageDrawX, pageDrawY, pageDrawW, pageDrawH);
+            g.DrawImage(bmp, pageBounds.X, pageBounds.Y, pageBounds.Width, pageBounds.Height);
         }
 
         g.Clip = prevClip;
@@ -1370,5 +1420,36 @@ public partial class ProgressWindow
 
         using var zoomHintBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
         g.DrawString(Loc("pdf_split_zoom_hint"), _tipFont, zoomHintBrush, modalRect.X + (16f * s), zoomBtnY + (3f * s));
+    }
+
+    private static RectangleF CalculatePageDrawBounds(
+        Bitmap bmp,
+        float sheetX, float sheetY, float sheetW, float sheetH,
+        bool fitToPage,
+        float pdfPageWidthPt, float pdfPageHeightPt,
+        float targetPaperW, float targetPaperH)
+    {
+        float pageDrawW;
+        float pageDrawH;
+        if (fitToPage)
+        {
+            float margin = Math.Min(sheetW, sheetH) * 0.03f;
+            float printAreaW = sheetW - (margin * 2f);
+            float printAreaH = sheetH - (margin * 2f);
+            float fitScale = Math.Min(printAreaW / bmp.Width, printAreaH / bmp.Height);
+            pageDrawW = bmp.Width * fitScale;
+            pageDrawH = bmp.Height * fitScale;
+        }
+        else
+        {
+            float scaleX = pdfPageWidthPt / targetPaperW;
+            float scaleY = pdfPageHeightPt / targetPaperH;
+            pageDrawW = sheetW * scaleX;
+            pageDrawH = sheetH * scaleY;
+        }
+
+        float pageDrawX = sheetX + ((sheetW - pageDrawW) / 2f);
+        float pageDrawY = sheetY + ((sheetH - pageDrawH) / 2f);
+        return new RectangleF(pageDrawX, pageDrawY, pageDrawW, pageDrawH);
     }
 }
