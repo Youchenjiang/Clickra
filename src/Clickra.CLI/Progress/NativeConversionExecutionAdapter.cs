@@ -233,18 +233,14 @@ internal sealed class NativeConversionExecutionAdapter
 
     private void RunPrint(List<string> files, Action<int, int, string> progressCallback)
     {
-        var useCase = new PrintPdfUseCase();
-        var request = new ConversionRequest(
+        _ = ConversionUseCases.GetRequired(PrintPdfUseCase.CommandName);
+        ConversionPlan plan = ConversionExecutionService.Plan(
             PrintPdfUseCase.CommandName,
             files,
-            _commandOptions,
-            OutputOverride: _outputDirOverride,
-            TrackTaskLifecycle: true);
-        ConversionPlan plan = useCase.Plan(request);
-        if (_startIndex > 0)
-        {
-            plan = plan with { ResumeStartIndex = _startIndex };
-        }
+            options: _commandOptions,
+            outputOverride: _outputDirOverride,
+            TrackTaskLifecycle: true,
+            planOptions: new ExecutionPlanOptions(_existingTaskId, true, _startIndex));
 
         var interaction = new DelegateConversionInteraction(
             (_, _, _, _) => Task.FromResult<string?>(null),
@@ -253,7 +249,7 @@ internal sealed class NativeConversionExecutionAdapter
 
         var progress = CreatePdfProgress(files, progressCallback, "cli_progress_printing_pdf_stage");
 
-        ConversionResult result = useCase.ExecuteAsync(
+        ConversionResult result = ConversionExecutionService.Execute(
             plan,
             interaction,
             progress,
@@ -263,7 +259,7 @@ internal sealed class NativeConversionExecutionAdapter
                 progressCallback,
                 10,
                 "cli_progress_printing_pdf"),
-            _cancellationToken).GetAwaiter().GetResult();
+            _cancellationToken);
 
         _completeResult(
             result,

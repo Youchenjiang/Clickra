@@ -222,6 +222,7 @@
   "pdf_error_provider_timeout": "翻译供应商链调用超过 {0} 秒。",
   "pdf_error_provider_limited": "第 {0} 页翻译时，翻译服务暂时限制使用（请求过多或今日免费额度已用完），请稍后再试。",
   "cmd_split_pdf": "分割 PDF",
+  "cmd_print_pdf": "打印 PDF",
   "pdf_split_title": "PDF 可视化分割",
   "pdf_split_prompt": "请输入分页范围（例如 1-5, 8 或 all 拆分为单页档）：",
   "pdf_split_mode_custom": "自訂分段",

@@ -51,6 +51,7 @@ public static class ConvertCommandMetadata
         ["translate-pdf"] = new("pdf", PdfExtensions, 1, "cmd_translate_pdf"),
         ["decrypt-pdf"] = new("pdf", PdfExtensions, 1, "cmd_decrypt_pdf"),
         ["split-pdf"] = new("pdf", PdfExtensions, 1, "cmd_split_pdf"),
+        ["print-pdf"] = new("pdf", PdfExtensions, 1, "cmd_print_pdf"),
         [CmdImg2Pdf] = new(FileTypeImage, ImageExtensions, 1, "cmd_img_to_pdf"),
         [CmdImgMerge] = new(FileTypeImage, ImageExtensions, 2, "cmd_merge_img"),
         ["img-stitch"] = new(FileTypeImage, ImageExtensions, 2, "cmd_stitch_img"),

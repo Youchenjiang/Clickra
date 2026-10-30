@@ -222,6 +222,7 @@
   "pdf_error_provider_timeout": "翻訳プロバイダー呼び出しが {0} 秒を超えました。",
   "pdf_error_provider_limited": "{0} ページの翻訳中に翻訳サービスが一時的に利用を制限しました（リクエスト過多、または本日の無料枠の上限）。しばらくしてから再試行してください。",
   "cmd_split_pdf": "PDF 分割",
+  "cmd_print_pdf": "PDFを印刷",
   "pdf_split_title": "PDF 視覚分割",
   "pdf_split_prompt": "ページ範囲を入力してください（例：1-5, 8 または全ページ分割の all）：",
   "pdf_split_mode_custom": "カスタム分割",

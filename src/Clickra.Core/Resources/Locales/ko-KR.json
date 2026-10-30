@@ -222,6 +222,7 @@
   "pdf_error_provider_timeout": "번역 공급자 호출이 {0}초를 초과했습니다.",
   "pdf_error_provider_limited": "{0}페이지를 번역하는 중 번역 서비스가 일시적으로 사용을 제한했습니다(요청 과다 또는 오늘의 무료 할당량 소진). 잠시 후 다시 시도하세요.",
   "cmd_split_pdf": "PDF 분할",
+  "cmd_print_pdf": "PDF 인쇄",
   "pdf_split_title": "PDF 시각적 분할",
   "pdf_split_prompt": "페이지 범위를 입력하십시오 (예: 1-5, 8 또는 전체 분할 all):",
   "pdf_split_mode_custom": "사용자 정의 분할",

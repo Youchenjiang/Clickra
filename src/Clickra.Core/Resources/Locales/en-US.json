@@ -222,6 +222,7 @@
   "pdf_error_provider_timeout": "Translation provider chain call exceeded {0}s.",
   "pdf_error_provider_limited": "Translation services are temporarily limiting requests on page {0} (too many requests, or today's free quota is used up). Please try again later.",
   "cmd_split_pdf": "Split PDF",
+  "cmd_print_pdf": "Print PDF",
   "pdf_split_title": "Split PDF Visually",
   "pdf_split_prompt": "Enter page range (e.g. 1-5, 8 or all to split into single pages):",
   "pdf_split_mode_custom": "Custom segments",

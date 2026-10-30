@@ -280,36 +280,11 @@ namespace Clickra
                 fitToPageOption,
                 SettingsPresentationController.Shared.Language).ToDictionary();
 
-            var useCase = new PrintPdfUseCase();
-            var request = new ConversionRequest(
+            RunQuietUseCase(
                 PrintPdfUseCase.CommandName,
                 files,
                 options,
-                OutputOverride: StoragePathController.GetOutputDirectory(files[0]),
-                TrackTaskLifecycle: true);
-            var plan = useCase.Plan(request);
-            var progress = new SynchronousProgress<ConversionProgress>(state =>
-                WriteConsoleProgress(state.Current, state.Total, state.Message));
-
-            ConversionResult result = useCase.ExecuteAsync(
-                plan,
-                new DelegateConversionInteraction(
-                    (_, _, _, _) => Task.FromResult<string?>(null),
-                    (_, _, _) => Task.FromResult<string?>(null),
-                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null)),
-                progress,
-                cancellationToken: CancellationToken.None).GetAwaiter().GetResult();
-
-            if (result.Status == ConversionResultStatus.Succeeded)
-            {
-                FinishConsoleProgressLine();
-                Console.WriteLine(Loc("cli_progress_printing_pdf_done"));
-            }
-            else
-            {
-                Console.WriteLine($"Error: {result.Error}");
-                Environment.ExitCode = 1;
-            }
+                StoragePathController.GetOutputDirectory(files[0]));
         }
 
         /// <summary>Handles image conversion, merge and stitching commands.</summary>
