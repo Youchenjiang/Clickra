@@ -38,6 +38,9 @@ public interface IPrinterDiscoveryService
 /// </summary>
 public sealed class SystemPrinterDiscoveryService : IPrinterDiscoveryService
 {
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, IReadOnlyList<string>> PaperSizesCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> DuplexCache = new(StringComparer.OrdinalIgnoreCase);
+
     public IReadOnlyList<string> GetInstalledPrinters()
     {
         var list = new List<string>();
@@ -80,12 +83,24 @@ public sealed class SystemPrinterDiscoveryService : IPrinterDiscoveryService
 
     public IReadOnlyList<string> GetSupportedPaperSizes(string? printerName = null)
     {
+        string key = printerName?.Trim() ?? string.Empty;
+        return PaperSizesCache.GetOrAdd(key, QuerySupportedPaperSizes);
+    }
+
+    public bool CanDuplex(string? printerName = null)
+    {
+        string key = printerName?.Trim() ?? string.Empty;
+        return DuplexCache.GetOrAdd(key, QueryCanDuplex);
+    }
+
+    private static IReadOnlyList<string> QuerySupportedPaperSizes(string key)
+    {
         try
         {
             var settings = new PrinterSettings();
-            if (!string.IsNullOrWhiteSpace(printerName))
+            if (!string.IsNullOrWhiteSpace(key))
             {
-                settings.PrinterName = printerName;
+                settings.PrinterName = key;
             }
 
             if (!settings.IsValid) return Array.Empty<string>();
@@ -107,14 +122,14 @@ public sealed class SystemPrinterDiscoveryService : IPrinterDiscoveryService
         }
     }
 
-    public bool CanDuplex(string? printerName = null)
+    private static bool QueryCanDuplex(string key)
     {
         try
         {
             var settings = new PrinterSettings();
-            if (!string.IsNullOrWhiteSpace(printerName))
+            if (!string.IsNullOrWhiteSpace(key))
             {
-                settings.PrinterName = printerName;
+                settings.PrinterName = key;
             }
             return settings.IsValid && settings.CanDuplex;
         }
