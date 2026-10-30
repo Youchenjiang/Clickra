@@ -100,9 +100,8 @@ public sealed class PrintPdfUseCase : PerFileConversionUseCaseBase
         var printOptions = (PrintPdfOptions?)executionState
             ?? PrintPdfOptions.FromDictionary(plan.NormalizedOptions);
 
-        var processor = new PdfPrintProcessor();
         await Task.Run(
-            () => processor.Print(
+            () => PdfPrintProcessor.Print(
                 plan.Inputs[index],
                 printOptions,
                 (current, total, message) =>

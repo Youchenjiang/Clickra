@@ -44,27 +44,65 @@ public sealed record PrintPdfOptions(
 
         string? printer = dict.TryGetValue(PrinterNameKey, out var p) ? p?.ToString() : null;
         string? pages = dict.TryGetValue(PageRangeKey, out var pg) ? pg?.ToString() : null;
-        int copies = dict.TryGetValue(CopiesKey, out var c) && int.TryParse(c?.ToString(), out int cVal) ? Math.Max(1, cVal) : 1;
-        int dpi = dict.TryGetValue(DpiKey, out var d) && int.TryParse(d?.ToString(), out int dVal) ? Math.Clamp(dVal, 72, 600) : 200;
-        bool fit = !dict.TryGetValue(FitToPageKey, out var f) || !bool.TryParse(f?.ToString(), out bool fVal) || fVal;
+        int copies = ParseInt(dict, CopiesKey, 1, 1, 999);
+        int dpi = ParseInt(dict, DpiKey, 200, 72, 600);
+        bool fit = ParseBool(dict, FitToPageKey, true);
         string? lang = dict.TryGetValue(ExecutionLocalizationOptions.LanguageKey, out var l) ? l?.ToString() : null;
-        bool darken = dict.TryGetValue(DarkenTextKey, out var dk) && bool.TryParse(dk?.ToString(), out bool dkVal) && dkVal;
-        double gamma = dict.TryGetValue(DarkenGammaKey, out var gm) && double.TryParse(gm?.ToString(), out double gmVal) && gmVal > 0.1 ? gmVal : 2.2;
-
-        PrintDuplexMode duplex = PrintDuplexMode.Simplex;
-        if (dict.TryGetValue(DuplexKey, out var dx) && dx != null)
-        {
-            string dxStr = dx.ToString()!;
-            if (Enum.TryParse<PrintDuplexMode>(dxStr, true, out var parsedDx))
-                duplex = parsedDx;
-            else if (dxStr.Equals("long", StringComparison.OrdinalIgnoreCase) || dxStr.Equals("vertical", StringComparison.OrdinalIgnoreCase))
-                duplex = PrintDuplexMode.DuplexLongEdge;
-            else if (dxStr.Equals("short", StringComparison.OrdinalIgnoreCase) || dxStr.Equals("horizontal", StringComparison.OrdinalIgnoreCase))
-                duplex = PrintDuplexMode.DuplexShortEdge;
-        }
+        bool darken = ParseBool(dict, DarkenTextKey, false);
+        double gamma = ParseDouble(dict, DarkenGammaKey, 2.2, 0.1);
+        PrintDuplexMode duplex = ParseDuplex(dict);
         string? paper = dict.TryGetValue(PaperSizeKey, out var pSz) ? pSz?.ToString() : null;
 
         return new PrintPdfOptions(printer, pages, copies, dpi, fit, lang, darken, gamma, duplex, paper);
+    }
+
+    private static int ParseInt(IReadOnlyDictionary<string, object> dict, string key, int defaultVal, int min, int max)
+    {
+        if (dict.TryGetValue(key, out var val) && int.TryParse(val?.ToString(), out int parsed))
+        {
+            return Math.Clamp(parsed, min, max);
+        }
+        return defaultVal;
+    }
+
+    private static bool ParseBool(IReadOnlyDictionary<string, object> dict, string key, bool defaultVal)
+    {
+        if (dict.TryGetValue(key, out var val) && bool.TryParse(val?.ToString(), out bool parsed))
+        {
+            return parsed;
+        }
+        return defaultVal;
+    }
+
+    private static double ParseDouble(IReadOnlyDictionary<string, object> dict, string key, double defaultVal, double min)
+    {
+        if (dict.TryGetValue(key, out var val) && double.TryParse(val?.ToString(), out double parsed) && parsed >= min)
+        {
+            return parsed;
+        }
+        return defaultVal;
+    }
+
+    private static PrintDuplexMode ParseDuplex(IReadOnlyDictionary<string, object> dict)
+    {
+        if (!dict.TryGetValue(DuplexKey, out var dx) || dx is null)
+        {
+            return PrintDuplexMode.Simplex;
+        }
+        string dxStr = dx.ToString()!;
+        if (Enum.TryParse<PrintDuplexMode>(dxStr, true, out var parsedDx))
+        {
+            return parsedDx;
+        }
+        if (dxStr.Equals("long", StringComparison.OrdinalIgnoreCase) || dxStr.Equals("vertical", StringComparison.OrdinalIgnoreCase))
+        {
+            return PrintDuplexMode.DuplexLongEdge;
+        }
+        if (dxStr.Equals("short", StringComparison.OrdinalIgnoreCase) || dxStr.Equals("horizontal", StringComparison.OrdinalIgnoreCase))
+        {
+            return PrintDuplexMode.DuplexShortEdge;
+        }
+        return PrintDuplexMode.Simplex;
     }
 
     public Dictionary<string, object> ToDictionary()
@@ -83,4 +121,3 @@ public sealed record PrintPdfOptions(
         return dict;
     }
 }
-

@@ -39,104 +39,116 @@ public static class PdfContrastEnhancer
             Marshal.Copy(data.Scan0, buffer, 0, totalBytes);
 
             int totalPixels = width * height;
-            int[] hist = new int[256];
+            int[] hist = BuildLuminanceHistogram(buffer, width, height, stride);
 
-            // Pass 1: Build 256-bin histogram of effective luminance
-            for (int y = 0; y < height; y++)
+            if (!TryCalculateCutoffs(hist, totalPixels, out float blackPt, out float whitePt))
             {
-                int rowOffset = y * stride;
-                for (int x = 0; x < width; x++)
-                {
-                    int idx = rowOffset + (x * 4);
-                    byte b = buffer[idx];
-                    byte g = buffer[idx + 1];
-                    byte r = buffer[idx + 2];
-
-                    int lum = CalculateLuminance(r, g, b);
-                    hist[lum]++;
-                }
-            }
-
-            // Find 98th percentile as white point (paper background)
-            int whiteCountTarget = (int)Math.Round(totalPixels * 0.98);
-            int accumulated = 0;
-            int whitePt = 255;
-            for (int i = 0; i < 256; i++)
-            {
-                accumulated += hist[i];
-                if (accumulated >= whiteCountTarget)
-                {
-                    whitePt = i;
-                    break;
-                }
-            }
-
-            // Count text pixels below (whitePt - 15)
-            int textThreshold = Math.Max(0, whitePt - 15);
-            int textPixelCount = 0;
-            for (int i = 0; i < textThreshold; i++)
-            {
-                textPixelCount += hist[i];
-            }
-
-            if (textPixelCount == 0)
-            {
-                // No text / ink detected, nothing to enhance
                 return;
             }
 
-            // Find 15th percentile among text pixels as black point
-            int blackCountTarget = (int)Math.Round(textPixelCount * 0.15);
-            accumulated = 0;
-            int blackPtRaw = 0;
-            for (int i = 0; i < textThreshold; i++)
-            {
-                accumulated += hist[i];
-                if (accumulated >= blackCountTarget)
-                {
-                    blackPtRaw = i;
-                    break;
-                }
-            }
-
-            float blackPt = Math.Max(20.0f, blackPtRaw);
-            float effectiveWhitePt = Math.Max(blackPt + 1.0f, whitePt);
-            float range = effectiveWhitePt - blackPt;
-
-            // Precompute 256-entry gamma lookup table (LUT)
-            byte[] lut = new byte[256];
-            for (int i = 0; i < 256; i++)
-            {
-                float scale = Math.Clamp((i - blackPt) / range, 0f, 1f);
-                lut[i] = (byte)Math.Clamp((int)Math.Round(Math.Pow(scale, gamma) * 255.0), 0, 255);
-            }
-
-            // Pass 2: Apply LUT to all pixels in-place
-            for (int y = 0; y < height; y++)
-            {
-                int rowOffset = y * stride;
-                for (int x = 0; x < width; x++)
-                {
-                    int idx = rowOffset + (x * 4);
-                    byte b = buffer[idx];
-                    byte g = buffer[idx + 1];
-                    byte r = buffer[idx + 2];
-
-                    int lum = CalculateLuminance(r, g, b);
-                    byte enhanced = lut[lum];
-
-                    buffer[idx] = enhanced;
-                    buffer[idx + 1] = enhanced;
-                    buffer[idx + 2] = enhanced;
-                    // buffer[idx + 3] (Alpha) is preserved
-                }
-            }
+            byte[] lut = BuildGammaLut(blackPt, whitePt, gamma);
+            ApplyLut(buffer, width, height, stride, lut);
 
             Marshal.Copy(buffer, 0, data.Scan0, totalBytes);
         }
         finally
         {
             bitmap.UnlockBits(data);
+        }
+    }
+
+    private static int[] BuildLuminanceHistogram(byte[] buffer, int width, int height, int stride)
+    {
+        int[] hist = new int[256];
+        for (int y = 0; y < height; y++)
+        {
+            int rowOffset = y * stride;
+            for (int x = 0; x < width; x++)
+            {
+                int idx = rowOffset + (x * 4);
+                byte b = buffer[idx];
+                byte g = buffer[idx + 1];
+                byte r = buffer[idx + 2];
+                hist[CalculateLuminance(r, g, b)]++;
+            }
+        }
+        return hist;
+    }
+
+    private static bool TryCalculateCutoffs(int[] hist, int totalPixels, out float blackPt, out float whitePt)
+    {
+        blackPt = 20.0f;
+        whitePt = 255.0f;
+
+        int whiteCountTarget = (int)Math.Round(totalPixels * 0.98);
+        int accumulated = 0;
+        int detectedWhite = 255;
+        for (int i = 0; i < 256; i++)
+        {
+            accumulated += hist[i];
+            if (accumulated >= whiteCountTarget)
+            {
+                detectedWhite = i;
+                break;
+            }
+        }
+
+        int textThreshold = Math.Max(0, detectedWhite - 15);
+        int textPixelCount = 0;
+        for (int i = 0; i < textThreshold; i++)
+        {
+            textPixelCount += hist[i];
+        }
+
+        if (textPixelCount == 0)
+        {
+            return false;
+        }
+
+        int blackCountTarget = (int)Math.Round(textPixelCount * 0.15);
+        accumulated = 0;
+        int detectedBlack = 0;
+        for (int i = 0; i < textThreshold; i++)
+        {
+            accumulated += hist[i];
+            if (accumulated >= blackCountTarget)
+            {
+                detectedBlack = i;
+                break;
+            }
+        }
+
+        blackPt = Math.Max(20.0f, detectedBlack);
+        whitePt = Math.Max(blackPt + 1.0f, detectedWhite);
+        return true;
+    }
+
+    private static byte[] BuildGammaLut(float blackPt, float whitePt, double gamma)
+    {
+        float range = whitePt - blackPt;
+        byte[] lut = new byte[256];
+        for (int i = 0; i < 256; i++)
+        {
+            float scale = Math.Clamp((i - blackPt) / range, 0f, 1f);
+            lut[i] = (byte)Math.Clamp((int)Math.Round(Math.Pow(scale, gamma) * 255.0), 0, 255);
+        }
+        return lut;
+    }
+
+    private static void ApplyLut(byte[] buffer, int width, int height, int stride, byte[] lut)
+    {
+        for (int y = 0; y < height; y++)
+        {
+            int rowOffset = y * stride;
+            for (int x = 0; x < width; x++)
+            {
+                int idx = rowOffset + (x * 4);
+                byte lum = (byte)CalculateLuminance(buffer[idx + 2], buffer[idx + 1], buffer[idx]);
+                byte enhanced = lut[lum];
+                buffer[idx] = enhanced;
+                buffer[idx + 1] = enhanced;
+                buffer[idx + 2] = enhanced;
+            }
         }
     }
 

@@ -13,7 +13,7 @@ namespace Clickra.Core.Modules.PdfPrint.Processing;
 /// </summary>
 public sealed class PdfPrintProcessor
 {
-    public bool Print(
+    public static bool Print(
         string pdfPath,
         PrintPdfOptions options,
         Action<int, int, string>? progress = null,
@@ -34,6 +34,50 @@ public sealed class PdfPrintProcessor
         using var printDoc = new PrintDocument();
         printDoc.DocumentName = docName;
 
+        ConfigurePrinter(printDoc, options, out PaperSize? targetPaper);
+
+        double paperWidthInches = targetPaper != null && targetPaper.Width > 0
+            ? targetPaper.Width / 100.0
+            : 8.27; // fallback to standard A4 width
+        int renderWidth = (int)Math.Round(paperWidthInches * options.Dpi);
+
+        string effectiveLang = !string.IsNullOrWhiteSpace(options.Language) ? options.Language : "en";
+        string defaultFontName = PdfPageThumbnailRenderer.GetTextFontName(effectiveLang);
+
+        int currentIndex = 0;
+        int totalPrintCount = pagesToPrint.Count;
+
+        printDoc.PrintPage += (sender, e) =>
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                e.Cancel = true;
+                e.HasMorePages = false;
+                return;
+            }
+
+            if (currentIndex >= totalPrintCount)
+            {
+                e.HasMorePages = false;
+                return;
+            }
+
+            int pageNum = pagesToPrint[currentIndex];
+            progress?.Invoke(currentIndex + 1, totalPrintCount, $"Printing page {pageNum} of {totalDocPages}...");
+
+            RenderAndDrawPage(e, pdfPath, pageNum, renderWidth, defaultFontName, options);
+
+            currentIndex++;
+            e.HasMorePages = currentIndex < totalPrintCount;
+        };
+
+        printDoc.Print();
+        progress?.Invoke(totalPrintCount, totalPrintCount, "Print job sent successfully.");
+        return true;
+    }
+
+    private static void ConfigurePrinter(PrintDocument printDoc, PrintPdfOptions options, out PaperSize? targetPaper)
+    {
         if (!string.IsNullOrWhiteSpace(options.PrinterName))
         {
             printDoc.PrinterSettings.PrinterName = options.PrinterName;
@@ -57,32 +101,7 @@ public sealed class PdfPrintProcessor
             };
         }
 
-        PaperSize? targetPaper = null;
-        if (!string.IsNullOrWhiteSpace(options.PaperSize))
-        {
-            foreach (PaperSize paper in printDoc.PrinterSettings.PaperSizes)
-            {
-                if (string.Equals(paper.PaperName, options.PaperSize, StringComparison.OrdinalIgnoreCase))
-                {
-                    targetPaper = paper;
-                    break;
-                }
-            }
-        }
-
-        if (targetPaper == null)
-        {
-            // Default to A4 if available in printer settings
-            foreach (PaperSize paper in printDoc.PrinterSettings.PaperSizes)
-            {
-                if (paper.Kind == PaperKind.A4)
-                {
-                    targetPaper = paper;
-                    break;
-                }
-            }
-        }
-
+        targetPaper = FindTargetPaperSize(printDoc.PrinterSettings.PaperSizes, options.PaperSize);
         if (targetPaper != null)
         {
             printDoc.DefaultPageSettings.PaperSize = targetPaper;
@@ -90,65 +109,56 @@ public sealed class PdfPrintProcessor
 
         printDoc.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
         printDoc.OriginAtMargins = false;
+    }
 
-        double paperWidthInches = targetPaper != null && targetPaper.Width > 0
-            ? targetPaper.Width / 100.0
-            : 8.27; // fallback to standard A4 width
-        int renderWidth = (int)Math.Round(paperWidthInches * options.Dpi);
-
-        int currentIndex = 0;
-        int totalPrintCount = pagesToPrint.Count;
-        string effectiveLang = !string.IsNullOrWhiteSpace(options.Language) ? options.Language : "en";
-        string defaultFontName = PdfPageThumbnailRenderer.GetTextFontName(effectiveLang);
-
-        printDoc.PrintPage += (sender, e) =>
+    private static PaperSize? FindTargetPaperSize(PrinterSettings.PaperSizeCollection paperSizes, string? requestedPaper)
+    {
+        if (!string.IsNullOrWhiteSpace(requestedPaper))
         {
-            if (cancellationToken.IsCancellationRequested)
+            foreach (PaperSize paper in paperSizes)
             {
-                e.Cancel = true;
-                e.HasMorePages = false;
-                return;
-            }
-
-            if (currentIndex < totalPrintCount)
-            {
-                int pageNum = pagesToPrint[currentIndex];
-                progress?.Invoke(currentIndex + 1, totalPrintCount, $"Printing page {pageNum} of {totalDocPages}...");
-
-                // Render page directly to bitmap
-                using (Bitmap? pageBmp = PdfPageThumbnailRenderer.RenderPageFromFile(pdfPath, pageNum, renderWidth, defaultFontName))
+                if (string.Equals(paper.PaperName, requestedPaper, StringComparison.OrdinalIgnoreCase))
                 {
-                    if (pageBmp != null)
-                    {
-                        if (options.DarkenText)
-                        {
-                            PdfContrastEnhancer.Enhance(pageBmp, options.DarkenGamma);
-                        }
-
-                        if (options.FitToPage)
-                        {
-                            e.Graphics?.DrawImage(pageBmp, e.PageBounds);
-                        }
-                        else
-                        {
-                            // Draw centered or native
-                            e.Graphics?.DrawImage(pageBmp, 0, 0);
-                        }
-                    }
+                    return paper;
                 }
-
-                currentIndex++;
-                e.HasMorePages = (currentIndex < totalPrintCount);
             }
-            else
+        }
+
+        foreach (PaperSize paper in paperSizes)
+        {
+            if (paper.Kind == PaperKind.A4)
             {
-                e.HasMorePages = false;
+                return paper;
             }
-        };
+        }
 
-        printDoc.Print();
-        progress?.Invoke(totalPrintCount, totalPrintCount, "Print job sent successfully.");
-        return true;
+        return null;
+    }
+
+    private static void RenderAndDrawPage(
+        PrintPageEventArgs e,
+        string pdfPath,
+        int pageNum,
+        int renderWidth,
+        string defaultFontName,
+        PrintPdfOptions options)
+    {
+        using Bitmap? pageBmp = PdfPageThumbnailRenderer.RenderPageFromFile(pdfPath, pageNum, renderWidth, defaultFontName);
+        if (pageBmp == null) return;
+
+        if (options.DarkenText)
+        {
+            PdfContrastEnhancer.Enhance(pageBmp, options.DarkenGamma);
+        }
+
+        if (options.FitToPage)
+        {
+            e.Graphics?.DrawImage(pageBmp, e.PageBounds);
+        }
+        else
+        {
+            e.Graphics?.DrawImage(pageBmp, 0, 0);
+        }
     }
 
     /// <summary>
@@ -168,30 +178,39 @@ public sealed class PdfPrintProcessor
 
         foreach (string part in parts)
         {
-            if (int.TryParse(part, out int singlePage))
-            {
-                if (singlePage >= 1 && singlePage <= totalPages)
-                    result.Add(singlePage);
-            }
-            else if (part.Contains('-'))
-            {
-                string[] rangeParts = part.Split('-');
-                if (rangeParts.Length == 2 &&
-                    int.TryParse(rangeParts[0].Trim(), out int start) &&
-                    int.TryParse(rangeParts[1].Trim(), out int end))
-                {
-                    int rStart = Math.Max(1, Math.Min(start, end));
-                    int rEnd = Math.Min(totalPages, Math.Max(start, end));
-                    for (int p = rStart; p <= rEnd; p++)
-                    {
-                        result.Add(p);
-                    }
-                }
-            }
+            ParsePageToken(part, totalPages, result);
         }
 
         var list = result.ToList();
         list.Sort();
         return list;
+    }
+
+    private static void ParsePageToken(string token, int totalPages, HashSet<int> result)
+    {
+        if (int.TryParse(token, out int singlePage))
+        {
+            if (singlePage >= 1 && singlePage <= totalPages)
+            {
+                result.Add(singlePage);
+            }
+            return;
+        }
+
+        int dashIdx = token.IndexOf('-');
+        if (dashIdx < 0) return;
+
+        string[] rangeParts = token.Split('-');
+        if (rangeParts.Length == 2 &&
+            int.TryParse(rangeParts[0].Trim(), out int start) &&
+            int.TryParse(rangeParts[1].Trim(), out int end))
+        {
+            int rStart = Math.Max(1, Math.Min(start, end));
+            int rEnd = Math.Min(totalPages, Math.Max(start, end));
+            for (int p = rStart; p <= rEnd; p++)
+            {
+                result.Add(p);
+            }
+        }
     }
 }
