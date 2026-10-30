@@ -29,19 +29,7 @@ internal static class ClickraStartup
         if (HandleVersionOrDeploy(args)) return;
 
         var argList = args.ToList();
-        ParseOptions(
-            argList,
-            out bool quiet,
-            out string? outputDirOverride,
-            out bool hasCliLevel,
-            out string compressionLevel,
-            out string pagesOption,
-            out string? printerOption,
-            out int copiesOption,
-            out bool fitToPageOption,
-            out bool darkenOption,
-            out string? duplexOption,
-            out string? paperSizeOption);
+        var cliOpts = ParseOptions(argList);
 
         if (argList.Count < 2)
         {
@@ -64,31 +52,31 @@ internal static class ClickraStartup
         string startTimeStr = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
         try
         {
-            string outputDir = string.IsNullOrWhiteSpace(outputDirOverride)
+            string outputDir = string.IsNullOrWhiteSpace(cliOpts.OutputDirOverride)
                 ? StoragePathController.GetOutputDirectory(files[0])
-                : Path.GetFullPath(outputDirOverride);
-            if (!string.IsNullOrWhiteSpace(outputDirOverride))
+                : Path.GetFullPath(cliOpts.OutputDirOverride);
+            if (!string.IsNullOrWhiteSpace(cliOpts.OutputDirOverride))
             {
                 Directory.CreateDirectory(outputDir);
             }
             var dispatchOptions = new ClickraCli.DispatchOptions(
-                quiet,
+                cliOpts.Quiet,
                 outputDir,
-                outputDirOverride,
-                hasCliLevel,
-                compressionLevel,
-                pagesOption,
-                printerOption,
-                copiesOption,
-                fitToPageOption,
-                darkenOption,
-                duplexOption,
-                paperSizeOption);
+                cliOpts.OutputDirOverride,
+                cliOpts.HasCliLevel,
+                cliOpts.CompressionLevel,
+                cliOpts.PagesOption,
+                cliOpts.PrinterOption,
+                cliOpts.CopiesOption,
+                cliOpts.FitToPageOption,
+                cliOpts.DarkenOption,
+                cliOpts.DuplexOption,
+                cliOpts.PaperSizeOption);
             ClickraCli.DispatchCommandSwitch(command, files, dispatchOptions);
         }
         catch (Exception ex)
         {
-            ReportDispatchError(command, startTimeStr, quiet, ex);
+            ReportDispatchError(command, startTimeStr, cliOpts.Quiet, ex);
         }
     }
 
@@ -126,41 +114,55 @@ internal static class ClickraStartup
         }
     }
 
+    internal sealed record RawCliOptions(
+        bool Quiet,
+        string? OutputDirOverride,
+        bool HasCliLevel,
+        string CompressionLevel,
+        string PagesOption,
+        string? PrinterOption,
+        int CopiesOption,
+        bool FitToPageOption,
+        bool DarkenOption,
+        string? DuplexOption,
+        string? PaperSizeOption);
+
     /// <summary>Parses and removes global CLI options (quiet mode, output directory,
     /// compression level, page range, printer, copies, duplex, and paper size) from the argument list.</summary>
-    private static void ParseOptions(
-        List<string> argList,
-        out bool quiet,
-        out string? outputDirOverride,
-        out bool hasCliLevel,
-        out string compressionLevel,
-        out string pagesOption,
-        out string? printerOption,
-        out int copiesOption,
-        out bool fitToPageOption,
-        out bool darkenOption,
-        out string? duplexOption,
-        out string? paperSizeOption)
+    private static RawCliOptions ParseOptions(List<string> argList)
     {
         bool quietByDefault = SettingsController.QuietMode;
-        quiet = quietByDefault;
+        bool quiet = quietByDefault;
         if (argList.Contains("--quiet")) { quiet = true; argList.Remove("--quiet"); }
         if (argList.Contains("--no-ui")) { quiet = true; argList.Remove("--no-ui"); }
         if (argList.Contains("--show-ui")) { quiet = false; argList.Remove("--show-ui"); }
 
-        outputDirOverride = ClickraCli.ExtractOptionValue(argList, "--out-dir", "-o", "--out");
-        hasCliLevel = argList.Contains("--level") || argList.Contains("--compression-level");
-        compressionLevel = ClickraCli.ExtractOptionValue(argList, "--level", "--compression-level") ?? "balanced";
-        pagesOption = ClickraCli.ExtractOptionValue(argList, "--pages", "-p") ?? "all";
-        printerOption = ClickraCli.ExtractOptionValue(argList, "--printer", "-m");
+        string? outputDirOverride = ClickraCli.ExtractOptionValue(argList, "--out-dir", "-o", "--out");
+        bool hasCliLevel = argList.Contains("--level") || argList.Contains("--compression-level");
+        string compressionLevel = ClickraCli.ExtractOptionValue(argList, "--level", "--compression-level") ?? "balanced";
+        string pagesOption = ClickraCli.ExtractOptionValue(argList, "--pages", "-p") ?? "all";
+        string? printerOption = ClickraCli.ExtractOptionValue(argList, "--printer", "-m");
         string? copiesStr = ClickraCli.ExtractOptionValue(argList, "--copies", "-c");
-        copiesOption = int.TryParse(copiesStr, out int cVal) ? Math.Max(1, cVal) : 1;
-        fitToPageOption = !argList.Contains("--no-fit");
+        int copiesOption = int.TryParse(copiesStr, out int cVal) ? Math.Max(1, cVal) : 1;
+        bool fitToPageOption = !argList.Contains("--no-fit");
         if (argList.Contains("--no-fit")) argList.Remove("--no-fit");
-        darkenOption = argList.Contains("--darken");
+        bool darkenOption = argList.Contains("--darken");
         if (darkenOption) argList.Remove("--darken");
-        duplexOption = ClickraCli.ExtractOptionValue(argList, "--duplex", "-d");
-        paperSizeOption = ClickraCli.ExtractOptionValue(argList, "--paper", "--paper-size");
+        string? duplexOption = ClickraCli.ExtractOptionValue(argList, "--duplex", "-d");
+        string? paperSizeOption = ClickraCli.ExtractOptionValue(argList, "--paper", "--paper-size");
+
+        return new RawCliOptions(
+            quiet,
+            outputDirOverride,
+            hasCliLevel,
+            compressionLevel,
+            pagesOption,
+            printerOption,
+            copiesOption,
+            fitToPageOption,
+            darkenOption,
+            duplexOption,
+            paperSizeOption);
     }
 
     /// <summary>Prints the CLI usage text to the console.</summary>
