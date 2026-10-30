@@ -47,17 +47,54 @@ public sealed class PdfPrintProcessor
         printDoc.PrinterSettings.Copies = (short)Math.Clamp(options.Copies, 1, 999);
         printDoc.PrintController = new StandardPrintController(); // Suppress the default WinForms printing status dialog
 
-        // Default to A4 if available in printer settings
-        foreach (PaperSize paper in printDoc.PrinterSettings.PaperSizes)
+        if (printDoc.PrinterSettings.CanDuplex)
         {
-            if (paper.Kind == PaperKind.A4)
+            printDoc.PrinterSettings.Duplex = options.Duplex switch
             {
-                printDoc.DefaultPageSettings.PaperSize = paper;
-                break;
+                PrintDuplexMode.DuplexLongEdge => Duplex.Vertical,
+                PrintDuplexMode.DuplexShortEdge => Duplex.Horizontal,
+                _ => Duplex.Simplex
+            };
+        }
+
+        PaperSize? targetPaper = null;
+        if (!string.IsNullOrWhiteSpace(options.PaperSize))
+        {
+            foreach (PaperSize paper in printDoc.PrinterSettings.PaperSizes)
+            {
+                if (string.Equals(paper.PaperName, options.PaperSize, StringComparison.OrdinalIgnoreCase))
+                {
+                    targetPaper = paper;
+                    break;
+                }
             }
         }
+
+        if (targetPaper == null)
+        {
+            // Default to A4 if available in printer settings
+            foreach (PaperSize paper in printDoc.PrinterSettings.PaperSizes)
+            {
+                if (paper.Kind == PaperKind.A4)
+                {
+                    targetPaper = paper;
+                    break;
+                }
+            }
+        }
+
+        if (targetPaper != null)
+        {
+            printDoc.DefaultPageSettings.PaperSize = targetPaper;
+        }
+
         printDoc.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
         printDoc.OriginAtMargins = false;
+
+        double paperWidthInches = targetPaper != null && targetPaper.Width > 0
+            ? targetPaper.Width / 100.0
+            : 8.27; // fallback to standard A4 width
+        int renderWidth = (int)Math.Round(paperWidthInches * options.Dpi);
 
         int currentIndex = 0;
         int totalPrintCount = pagesToPrint.Count;
@@ -78,8 +115,7 @@ public sealed class PdfPrintProcessor
                 int pageNum = pagesToPrint[currentIndex];
                 progress?.Invoke(currentIndex + 1, totalPrintCount, $"Printing page {pageNum} of {totalDocPages}...");
 
-                // Render page directly to bitmap (DPI scale: 200 DPI gives ~1654x2338 for A4)
-                int renderWidth = (int)Math.Round(8.27 * options.Dpi); // ~A4 width in inches * dpi
+                // Render page directly to bitmap
                 using (Bitmap? pageBmp = PdfPageThumbnailRenderer.RenderPageFromFile(pdfPath, pageNum, renderWidth, defaultFontName))
                 {
                     if (pageBmp != null)
