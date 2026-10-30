@@ -493,6 +493,7 @@
   "print_options_darken": "文字を濃くしコントラスト強調",
   "print_options_confirm": "印刷",
   "print_options_page_indicator": "{0} / {1} ページ",
+  "print_options_preview": "リアルタイムプレビュー",
   "print_options_loading": "プレビューを読み込み中...",
   "cli_progress_printing_pdf": "PDF を印刷中: {0} ({1}/{2})...",
   "cli_progress_printing_pdf_stage": "[PDF 印刷] {0} ({1}/{2})",

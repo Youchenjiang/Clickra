@@ -493,6 +493,7 @@
   "print_options_darken": "글자 진하게 및 대비 향상",
   "print_options_confirm": "인쇄",
   "print_options_page_indicator": "{0} / {1} 페이지",
+  "print_options_preview": "실시간 미리보기",
   "print_options_loading": "미리보기 로드 중...",
   "cli_progress_printing_pdf": "PDF 인쇄 중: {0} ({1}/{2})...",
   "cli_progress_printing_pdf_stage": "[PDF 인쇄] {0} ({1}/{2})",

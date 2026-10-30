@@ -493,6 +493,7 @@
   "print_options_darken": "加深字迹与增强对比",
   "print_options_confirm": "打印",
   "print_options_page_indicator": "第 {0} / {1} 页",
+  "print_options_preview": "实时预览",
   "print_options_loading": "正在加载预览...",
   "cli_progress_printing_pdf": "正在打印 PDF: {0} ({1}/{2})...",
   "cli_progress_printing_pdf_stage": "[PDF 打印] {0} ({1}/{2})",

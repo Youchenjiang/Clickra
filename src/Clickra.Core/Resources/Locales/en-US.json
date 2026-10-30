@@ -493,6 +493,7 @@
   "print_options_darken": "Darken text & enhance contrast",
   "print_options_confirm": "Print",
   "print_options_page_indicator": "Page {0} / {1}",
+  "print_options_preview": "Live Preview",
   "print_options_loading": "Loading preview...",
   "cli_progress_printing_pdf": "Printing PDF: {0} ({1}/{2})...",
   "cli_progress_printing_pdf_stage": "[PDF print] {0} ({1}/{2})",

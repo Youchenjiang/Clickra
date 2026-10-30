@@ -493,6 +493,7 @@
   "print_options_darken": "加深字跡與增強對比",
   "print_options_confirm": "列印",
   "print_options_page_indicator": "第 {0} / {1} 頁",
+  "print_options_preview": "即時預覽",
   "print_options_loading": "載入預覽中...",
   "cli_progress_printing_pdf": "正在列印 PDF: {0} ({1}/{2})...",
   "cli_progress_printing_pdf_stage": "[PDF 列印] {0} ({1}/{2})",
