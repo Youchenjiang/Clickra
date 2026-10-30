@@ -147,5 +147,32 @@ static partial class TestSuite
             var optsSimplex = PrintPdfOptions.FromDictionary(dictSimplex);
             Assert.True(optsSimplex.Duplex == PrintDuplexMode.Simplex, "Expected Simplex");
         });
+
+        runner.Run("PDF print: paper size registry resolves known and fallback dimensions correctly", () =>
+        {
+            var a4 = PaperSizeRegistry.GetDimensions("A4");
+            Assert.Equal("A4", a4.DisplayName);
+            Assert.True(Math.Abs(a4.WidthMm - 210f) < 0.1f, "A4 width mismatch");
+            Assert.True(Math.Abs(a4.HeightMm - 297f) < 0.1f, "A4 height mismatch");
+            Assert.True(Math.Abs(a4.AspectRatio - (210f / 297f)) < 0.01f, "A4 aspect ratio mismatch");
+
+            var a3 = PaperSizeRegistry.GetDimensions("A3");
+            Assert.Equal("A3", a3.DisplayName);
+            Assert.True(Math.Abs(a3.WidthMm - 297f) < 0.1f, "A3 width mismatch");
+            Assert.True(Math.Abs(a3.HeightMm - 420f) < 0.1f, "A3 height mismatch");
+            Assert.True(a3.WidthPt > a4.WidthPt, "A3 width must be larger than A4 width");
+            Assert.True(a3.HeightPt > a4.HeightPt, "A3 height must be larger than A4 height");
+
+            var letter = PaperSizeRegistry.GetDimensions("US Letter");
+            Assert.Equal("Letter", letter.DisplayName);
+            Assert.True(Math.Abs(letter.WidthMm - 215.9f) < 0.1f, "Letter width mismatch");
+            Assert.True(Math.Abs(letter.HeightMm - 279.4f) < 0.1f, "Letter height mismatch");
+
+            var fallback = PaperSizeRegistry.GetDimensions(null);
+            Assert.Equal("A4", fallback.DisplayName);
+
+            var unknown = PaperSizeRegistry.GetDimensions("Custom Roll Paper");
+            Assert.Equal("A4", unknown.DisplayName);
+        });
     }
 }
