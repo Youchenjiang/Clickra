@@ -140,6 +140,13 @@ namespace Clickra.UI
                 case 0x02E0: return HandleDpiChanged(hwnd, w, l); // WM_DPICHANGED
                 case 0x0014: return (IntPtr)1; // WM_ERASEBKGND
                 case 0x0113: return HandleTimer(hwnd); // WM_TIMER
+                case 0x0020: // WM_SETCURSOR
+                    if (_isPromptingPrintOptions && _hoveredPrintElement != PrintElement.None)
+                    {
+                        SetCursor(LoadCursorW(IntPtr.Zero, IDC_HAND));
+                        return (IntPtr)1;
+                    }
+                    break;
                 case 0x000F: return HandlePaint(hwnd); // WM_PAINT
                 case 0x0002: return HandleDestroy(hwnd); // WM_DESTROY
             }
@@ -264,6 +271,17 @@ namespace Clickra.UI
             int mouseX = (int)(rawX / _dpiScale);
             int mouseY = (int)(rawY / _dpiScale);
 
+            if (_isPromptingPrintOptions)
+            {
+                var elem = GetPrintElementAt(mouseX, mouseY);
+                if (elem != _hoveredPrintElement)
+                {
+                    _hoveredPrintElement = elem;
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                }
+                return IntPtr.Zero;
+            }
+
             if (_isPromptingVisualSplitter && _visualSplitIsZoomed && _visualSplitZoomDragging)
             {
                 _visualSplitZoomPanX += mouseX - _visualSplitZoomDragLastX;
@@ -350,7 +368,9 @@ namespace Clickra.UI
             }
             if (_isPromptingPrintOptions)
             {
+                _pressedPrintElement = GetPrintElementAt(mouseX, mouseY);
                 HandlePrintOptionsClick(hwnd, mouseX, mouseY);
+                InvalidateRect(hwnd, IntPtr.Zero, false);
                 return IntPtr.Zero;
             }
             if (_isPromptingVisualSplitter && HandleVisualSplitterClick(hwnd, mouseX, mouseY))
@@ -634,6 +654,15 @@ namespace Clickra.UI
         /// <summary>Ends zoom-lightbox or scrollbar dragging and releases the capture.</summary>
         private IntPtr HandleLButtonUp(IntPtr hwnd)
         {
+            if (_isPromptingPrintOptions)
+            {
+                if (_pressedPrintElement != PrintElement.None)
+                {
+                    _pressedPrintElement = PrintElement.None;
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                }
+                return IntPtr.Zero;
+            }
             if (_visualSplitZoomDragging)
             {
                 _visualSplitZoomDragging = false;
