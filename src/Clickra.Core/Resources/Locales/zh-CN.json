@@ -484,6 +484,7 @@
   "print_options_range_prompt": "输入页面范围（例如 1-3, 5）：",
   "print_options_copies": "份数",
   "print_options_fit": "适合页面大小",
+  "print_options_darken": "加深字迹与增强对比",
   "print_options_confirm": "打印",
   "print_options_page_indicator": "第 {0} / {1} 页",
   "print_options_loading": "正在加载预览...",
