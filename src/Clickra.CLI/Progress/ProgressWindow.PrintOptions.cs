@@ -158,26 +158,33 @@ public partial class ProgressWindow
             _duplexIndex = 0;
         }
 
-        if (_files.Count > 0 && File.Exists(_files[0]))
+        InitializeDocumentPreview();
+    }
+
+    private void InitializeDocumentPreview()
+    {
+        if (_files.Count == 0 || !File.Exists(_files[0]))
         {
-            int totalPages = 1;
-            try
-            {
-                using var doc = PdfDocument.Open(_files[0]);
-                totalPages = Math.Max(1, doc.NumberOfPages);
-                var p1 = doc.GetPage(1);
-                int rot1 = p1.Rotation.Value;
-                bool isRotated = rot1 == 90 || rot1 == 270;
-                _pdfPageWidthPt = (float)(isRotated ? p1.Height : p1.Width);
-                _pdfPageHeightPt = (float)(isRotated ? p1.Width : p1.Height);
-            }
-            catch
-            {
-                // Fallback to single page for unreadable or encrypted files
-            }
-            _printPreviewModel = new PdfPreviewModel(totalPages);
-            RequestPrintPreviewThumbnail(1);
+            return;
         }
+
+        int totalPages = 1;
+        try
+        {
+            using var doc = PdfDocument.Open(_files[0]);
+            totalPages = Math.Max(1, doc.NumberOfPages);
+            var p1 = doc.GetPage(1);
+            int rot1 = p1.Rotation.Value;
+            bool isRotated = rot1 == 90 || rot1 == 270;
+            _pdfPageWidthPt = (float)(isRotated ? p1.Height : p1.Width);
+            _pdfPageHeightPt = (float)(isRotated ? p1.Width : p1.Height);
+        }
+        catch
+        {
+            // Fallback to single page for unreadable or encrypted files
+        }
+        _printPreviewModel = new PdfPreviewModel(totalPages);
+        RequestPrintPreviewThumbnail(1);
     }
 
     private void RequestPrintPreviewThumbnail(int page)
@@ -936,30 +943,44 @@ public partial class ProgressWindow
 
     private static PrintElement GetPrintElementAt(int mouseX, int mouseY)
     {
+        var combo = GetPrintComboOrOrientationElement(mouseX, mouseY);
+        if (combo != PrintElement.None) return combo;
+
+        var option = GetPrintOptionsOrPreviewElement(mouseX, mouseY);
+        if (option != PrintElement.None) return option;
+
+        return GetPrintNavigationOrActionButton(mouseX, mouseY);
+    }
+
+    private static PrintElement GetPrintComboOrOrientationElement(int mouseX, int mouseY)
+    {
         if (PrintOptionsLayout.PrinterComboRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.PrinterCombo;
         if (PrintOptionsLayout.PaperComboRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.PaperCombo;
         if (PrintOptionsLayout.OrientationAutoRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.OrientationAuto;
         if (PrintOptionsLayout.OrientationPortraitRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.OrientationPortrait;
         if (PrintOptionsLayout.OrientationLandscapeRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.OrientationLandscape;
         if (PrintOptionsLayout.DuplexComboRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.DuplexCombo;
+        return PrintElement.None;
+    }
 
+    private static PrintElement GetPrintOptionsOrPreviewElement(int mouseX, int mouseY)
+    {
         if (PrintOptionsLayout.RangeAllRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.RangeAll;
         if (PrintOptionsLayout.RangeCustomRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.RangeCustom;
-
         if (PrintOptionsLayout.CopiesMinusRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.MinusCopies;
         if (PrintOptionsLayout.CopiesPlusRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.PlusCopies;
-
         if (PrintOptionsLayout.FitToPageRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.FitToPage;
         if (PrintOptionsLayout.DarkenRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.Darken;
-
         if (PrintOptionsLayout.PreviewArea.ContainsInclusive(mouseX, mouseY)) return PrintElement.PreviewArea;
+        return PrintElement.None;
+    }
 
+    private static PrintElement GetPrintNavigationOrActionButton(int mouseX, int mouseY)
+    {
         if (PrintOptionsLayout.PrevPageButton.ContainsInclusive(mouseX, mouseY)) return PrintElement.PrevPage;
         if (PrintOptionsLayout.NextPageButton.ContainsInclusive(mouseX, mouseY)) return PrintElement.NextPage;
-
         if (PrintOptionsLayout.ConfirmButton.ContainsInclusive(mouseX, mouseY)) return PrintElement.Confirm;
         if (PrintOptionsLayout.CancelButton.ContainsInclusive(mouseX, mouseY)) return PrintElement.Cancel;
-
         return PrintElement.None;
     }
 
