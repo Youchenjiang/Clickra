@@ -48,5 +48,17 @@ static partial class TestSuite
             Assert.True(source.Contains("QuoteArgument", StringComparison.Ordinal),
                 "ClickraLauncher must quote activation arguments to protect paths and tokens containing spaces.");
         });
+
+        runner.RunGuard("MSIX manifest does not hijack default file associations", () =>
+        {
+            string? root = FindRepoRoot();
+            if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
+
+            string manifestPath = Path.Combine(root, "packaging", "msix", "AppxManifest.xml");
+            string manifestText = File.ReadAllText(manifestPath);
+
+            Assert.False(manifestText.Contains("windows.fileTypeAssociation", StringComparison.OrdinalIgnoreCase),
+                "AppxManifest.xml must not declare windows.fileTypeAssociation to prevent hijacking default file open handlers.");
+        });
     }
 }
