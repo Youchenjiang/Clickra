@@ -1,3 +1,4 @@
+using Clickra.Core.Application;
 using Clickra.Core.Modules.Settings.Application;
 using System;
 using System.IO;
@@ -30,6 +31,20 @@ internal static class ClickraStartup
 
         var argList = args.ToList();
         var cliOpts = ParseOptions(argList);
+
+        if (argList.Count > 0 &&
+            !ConvertCommandRegistry.IsKnownCommand(argList[0]) &&
+            (File.Exists(argList[0]) || Directory.Exists(argList[0])))
+        {
+            var targetFiles = argList.Where(f => File.Exists(f) || Directory.Exists(f)).ToList();
+            if (targetFiles.Count > 0)
+            {
+                if (TryLaunchFluent(string.Join(" ", targetFiles.Select(f => $"\"{f}\""))))
+                    return;
+                DashboardWindow.Show(targetFiles);
+                return;
+            }
+        }
 
         if (argList.Count < 2)
         {
@@ -268,7 +283,7 @@ internal static class ClickraStartup
     /// then launches Clickra.Fluent.exe via shell activation (MSIX path).
     /// Returns true if Fluent was launched; false if not available.
     /// </summary>
-    private static bool TryLaunchFluent()
+    private static bool TryLaunchFluent(string? arguments = null)
     {
         try
         {
@@ -285,6 +300,10 @@ internal static class ClickraStartup
             {
                 UseShellExecute = true,
             };
+            if (!string.IsNullOrEmpty(arguments))
+            {
+                psi.Arguments = arguments;
+            }
             using var proc = Process.Start(psi);
             if (proc is null) return false;
 
