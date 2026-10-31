@@ -13,6 +13,16 @@ public enum PrintDuplexMode
 }
 
 /// <summary>
+/// Specifies page orientation for printing.
+/// </summary>
+public enum PrintOrientation
+{
+    Auto = 0,
+    Portrait = 1,
+    Landscape = 2
+}
+
+/// <summary>
 /// Execution parameters for printing a PDF file.
 /// </summary>
 public sealed record PrintPdfOptions(
@@ -25,7 +35,8 @@ public sealed record PrintPdfOptions(
     bool DarkenText = false,
     double DarkenGamma = 2.2,
     PrintDuplexMode Duplex = PrintDuplexMode.Simplex,
-    string? PaperSize = null
+    string? PaperSize = null,
+    PrintOrientation Orientation = PrintOrientation.Auto
 )
 {
     public const string PrinterNameKey = "printer";
@@ -37,6 +48,7 @@ public sealed record PrintPdfOptions(
     public const string DarkenGammaKey = "darken_gamma";
     public const string DuplexKey = "duplex";
     public const string PaperSizeKey = "paper_size";
+    public const string OrientationKey = "orientation";
 
     public static PrintPdfOptions FromDictionary(IReadOnlyDictionary<string, object>? dict)
     {
@@ -52,8 +64,9 @@ public sealed record PrintPdfOptions(
         double gamma = ParseDouble(dict, DarkenGammaKey, 2.2, 0.1);
         PrintDuplexMode duplex = ParseDuplex(dict);
         string? paper = dict.TryGetValue(PaperSizeKey, out var pSz) ? pSz?.ToString() : null;
+        PrintOrientation orientation = ParseOrientation(dict);
 
-        return new PrintPdfOptions(printer, pages, copies, dpi, fit, lang, darken, gamma, duplex, paper);
+        return new PrintPdfOptions(printer, pages, copies, dpi, fit, lang, darken, gamma, duplex, paper, orientation);
     }
 
     private static int ParseInt(IReadOnlyDictionary<string, object> dict, string key, int defaultVal, int min, int max)
@@ -105,6 +118,37 @@ public sealed record PrintPdfOptions(
         return PrintDuplexMode.Simplex;
     }
 
+    public static PrintOrientation ParseOrientation(string? str)
+    {
+        if (string.IsNullOrWhiteSpace(str))
+        {
+            return PrintOrientation.Auto;
+        }
+        if (Enum.TryParse<PrintOrientation>(str, true, out var parsedO))
+        {
+            return parsedO;
+        }
+        if (str.Equals("p", StringComparison.OrdinalIgnoreCase) || str.Equals("portrait", StringComparison.OrdinalIgnoreCase) || str.Equals("vertical", StringComparison.OrdinalIgnoreCase))
+        {
+            return PrintOrientation.Portrait;
+        }
+        if (str.Equals("l", StringComparison.OrdinalIgnoreCase) || str.Equals("landscape", StringComparison.OrdinalIgnoreCase) || str.Equals("horizontal", StringComparison.OrdinalIgnoreCase))
+        {
+            return PrintOrientation.Landscape;
+        }
+        return PrintOrientation.Auto;
+    }
+
+    private static PrintOrientation ParseOrientation(IReadOnlyDictionary<string, object> dict)
+    {
+        if (!dict.TryGetValue(OrientationKey, out var o) || o is null)
+        {
+            return PrintOrientation.Auto;
+        }
+        if (o is PrintOrientation po) return po;
+        return ParseOrientation(o.ToString());
+    }
+
     public Dictionary<string, object> ToDictionary()
     {
         var dict = new Dictionary<string, object>(StringComparer.Ordinal);
@@ -117,6 +161,7 @@ public sealed record PrintPdfOptions(
         if (Math.Abs(DarkenGamma - 2.2) > 0.01) dict[DarkenGammaKey] = DarkenGamma;
         if (Duplex != PrintDuplexMode.Simplex) dict[DuplexKey] = Duplex.ToString();
         if (!string.IsNullOrWhiteSpace(PaperSize)) dict[PaperSizeKey] = PaperSize;
+        if (Orientation != PrintOrientation.Auto) dict[OrientationKey] = Orientation.ToString();
         if (!string.IsNullOrWhiteSpace(Language)) dict[ExecutionLocalizationOptions.LanguageKey] = Language;
         return dict;
     }
