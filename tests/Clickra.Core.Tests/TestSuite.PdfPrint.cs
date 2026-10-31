@@ -174,5 +174,93 @@ static partial class TestSuite
             var unknown = PaperSizeRegistry.GetDimensions("Custom Roll Paper");
             Assert.Equal("A4", unknown.DisplayName);
         });
+
+        runner.Run("PDF print: options parse and serialize orientation correctly", () =>
+        {
+            var dictAuto = new Dictionary<string, object>
+            {
+                [PrintPdfOptions.OrientationKey] = "auto"
+            };
+            var optsAuto = PrintPdfOptions.FromDictionary(dictAuto);
+            Assert.True(optsAuto.Orientation == PrintOrientation.Auto, "Expected Auto");
+
+            var dictPortrait = new Dictionary<string, object>
+            {
+                [PrintPdfOptions.OrientationKey] = "portrait"
+            };
+            var optsPortrait = PrintPdfOptions.FromDictionary(dictPortrait);
+            Assert.True(optsPortrait.Orientation == PrintOrientation.Portrait, "Expected Portrait");
+            Assert.Equal("Portrait", optsPortrait.ToDictionary()[PrintPdfOptions.OrientationKey]?.ToString() ?? "");
+
+            var dictLandscape = new Dictionary<string, object>
+            {
+                [PrintPdfOptions.OrientationKey] = "l"
+            };
+            var optsLandscape = PrintPdfOptions.FromDictionary(dictLandscape);
+            Assert.True(optsLandscape.Orientation == PrintOrientation.Landscape, "Expected Landscape");
+            Assert.Equal("Landscape", optsLandscape.ToDictionary()[PrintPdfOptions.OrientationKey]?.ToString() ?? "");
+
+            var dictEnum = new Dictionary<string, object>
+            {
+                [PrintPdfOptions.OrientationKey] = PrintOrientation.Landscape
+            };
+            var optsEnum = PrintPdfOptions.FromDictionary(dictEnum);
+            Assert.True(optsEnum.Orientation == PrintOrientation.Landscape, "Expected Landscape from enum");
+
+            Assert.True(PrintPdfOptions.ParseOrientation(null) == PrintOrientation.Auto, "Null must resolve to Auto");
+            Assert.True(PrintPdfOptions.ParseOrientation("unknown") == PrintOrientation.Auto, "Unknown must resolve to Auto");
+        });
+
+        runner.Run("PDF print: processor correctly detects per-page landscape orientation", () =>
+        {
+            string tempPdf = Path.Combine(Path.GetTempPath(), $"clickra_orient_test_{Guid.NewGuid():N}.pdf");
+            try
+            {
+                using (var doc = new PdfSharp.Pdf.PdfDocument())
+                {
+                    var p1 = doc.AddPage();
+                    p1.Width = PdfSharp.Drawing.XUnit.FromPoint(800);
+                    p1.Height = PdfSharp.Drawing.XUnit.FromPoint(600); // Landscape
+
+                    var p2 = doc.AddPage();
+                    p2.Width = PdfSharp.Drawing.XUnit.FromPoint(600);
+                    p2.Height = PdfSharp.Drawing.XUnit.FromPoint(800); // Portrait
+
+                    doc.Save(tempPdf);
+                }
+
+                var orientations = PdfPrintProcessor.ReadPageOrientations(tempPdf, new[] { 1, 2 });
+                Assert.True(orientations[1], "Page 1 should be detected as landscape");
+                Assert.False(orientations[2], "Page 2 should be detected as portrait");
+            }
+            finally
+            {
+                if (File.Exists(tempPdf)) File.Delete(tempPdf);
+            }
+        });
+
+        runner.Run("PDF print: non-fit mode preserves physical size for smaller pages without enlarging to paper", () =>
+        {
+            // A4 paper bounds: 8.27 in x 11.69 in -> 827 x 1169 in 1/100 inches
+            var a4PaperBounds = new System.Drawing.Rectangle(0, 0, 827, 1169);
+            // A5 page in points: 420 pt x 595 pt
+            float a5WidthPt = 420f;
+            float a5HeightPt = 595f;
+
+            // In non-fit mode, A5 destination should be exactly 420 * 100/72 = 583 x 826 in 1/100 inches, centered on A4
+            var nonFitBounds = PdfPrintProcessor.CalculateDestinationBounds(a4PaperBounds, a5WidthPt, a5HeightPt, fitToPage: false);
+            int expectedW = (int)Math.Round(a5WidthPt * (100f / 72f));
+            int expectedH = (int)Math.Round(a5HeightPt * (100f / 72f));
+            Assert.Equal(expectedW, nonFitBounds.Width);
+            Assert.Equal(expectedH, nonFitBounds.Height);
+            Assert.True(nonFitBounds.Width < a4PaperBounds.Width, "Non-fit mode must not enlarge A5 to A4 paper width");
+            Assert.True(nonFitBounds.Height < a4PaperBounds.Height, "Non-fit mode must not enlarge A5 to A4 paper height");
+            Assert.Equal((a4PaperBounds.Width - expectedW) / 2, nonFitBounds.X);
+            Assert.Equal((a4PaperBounds.Height - expectedH) / 2, nonFitBounds.Y);
+
+            // In fit-to-page mode, it scales up to fit inside the paper print area (with 3% safe margin)
+            var fitBounds = PdfPrintProcessor.CalculateDestinationBounds(a4PaperBounds, a5WidthPt, a5HeightPt, fitToPage: true);
+            Assert.True(fitBounds.Width > nonFitBounds.Width, "Fit-to-page should scale up smaller pages to fit paper area");
+        });
     }
 }

@@ -71,7 +71,8 @@ internal static class ClickraStartup
                 cliOpts.FitToPageOption,
                 cliOpts.DarkenOption,
                 cliOpts.DuplexOption,
-                cliOpts.PaperSizeOption);
+                cliOpts.PaperSizeOption,
+                cliOpts.OrientationOption);
             ClickraCli.DispatchCommandSwitch(command, files, dispatchOptions);
         }
         catch (Exception ex)
@@ -125,7 +126,8 @@ internal static class ClickraStartup
         bool FitToPageOption,
         bool DarkenOption,
         string? DuplexOption,
-        string? PaperSizeOption);
+        string? PaperSizeOption,
+        string? OrientationOption);
 
     /// <summary>Parses and removes global CLI options (quiet mode, output directory,
     /// compression level, page range, printer, copies, duplex, and paper size) from the argument list.</summary>
@@ -150,6 +152,7 @@ internal static class ClickraStartup
         if (darkenOption) argList.Remove("--darken");
         string? duplexOption = ClickraCli.ExtractOptionValue(argList, "--duplex", "-d");
         string? paperSizeOption = ClickraCli.ExtractOptionValue(argList, "--paper", "--paper-size");
+        string? orientationOption = ClickraCli.ExtractOptionValue(argList, "--orientation", "--orient");
 
         return new RawCliOptions(
             quiet,
@@ -162,7 +165,8 @@ internal static class ClickraStartup
             fitToPageOption,
             darkenOption,
             duplexOption,
-            paperSizeOption);
+            paperSizeOption,
+            orientationOption);
     }
 
     /// <summary>Prints the CLI usage text to the console.</summary>
@@ -178,6 +182,7 @@ internal static class ClickraStartup
         Console.WriteLine("         --copies <count> / -c <count> (Number of print copies)");
         Console.WriteLine("         --duplex <simplex|long|short> (Duplex printing mode)");
         Console.WriteLine("         --paper <name>     (Paper size name for print, e.g. A4, Letter)");
+        Console.WriteLine("         --orientation <auto|portrait|landscape> (Print orientation)");
         Console.WriteLine("         --darken           (Darken text and enhance contrast for print)");
         Console.WriteLine(CommandSummary);
         Console.WriteLine("Deployment: Clickra --deploy <target_dir>");

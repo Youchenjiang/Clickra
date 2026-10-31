@@ -1,5 +1,12 @@
 # Changelog
 
+## [v3.16.1.0] - 2026-10-31
+
+- **PDF 列印方向控制 (Print Orientation Controls)**：新增直向、橫向與自動方向切換按鈕，CLI 支援 `--orientation <auto|portrait|landscape>` 旗標；徹底解決橫向簡報或寬版頁面強制擠壓為直向的排版變形問題。
+- **等比例自適應縮放與安全邊距 (Aspect-Preserving Scaling & Safe Margins)**：繪製時維持原始頁面寬高比，預覽畫面與實體列印皆套用 3% 內縮邊距，達成所見即所得並杜絕印表機硬體邊緣裁切。
+- **印表機 DEVMODE 橫向初始化 (DEVMODE Landscape Initialization)**：在文件列印啟動時即預先配置印表機橫向設定，確保 HP、Canon 等各廠牌實體印表機驅動程式皆能精確套用頁面方向。
+- **旋轉頁面智慧識別 (Rotated Page Detection)**：自動辨讀 PDF 內嵌旋轉視角標記（90° / 270°），依旋轉後實際視覺尺寸決定版面方向與預覽縮圖。
+
 ## [v3.16.0.0] - 2026-10-31
 
 - **PDF 直接串流列印與雙面選項 (Direct PDF Printing & Duplex Controls)**：支援從 CLI (`print-pdf`) 與 Windows 檔案總管右鍵選單直接列印 PDF；串流引擎直接以 GDI+ PrintDocument 發送至 Windows Print Spooler，不建立暫存磁碟檔案，具備單面/長邊翻頁/短邊翻頁雙面設定與紙張規格自動偵測。
