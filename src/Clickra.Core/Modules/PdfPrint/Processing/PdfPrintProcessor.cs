@@ -34,12 +34,14 @@ public static class PdfPrintProcessor
         using var printDoc = new PrintDocument();
         printDoc.DocumentName = docName;
 
-        ConfigurePrinter(printDoc, options, out PaperSize? targetPaper);
-
         string effectiveLang = !string.IsNullOrWhiteSpace(options.Language) ? options.Language : "en";
         string defaultFontName = PdfPageThumbnailRenderer.GetTextFontName(effectiveLang);
 
         Dictionary<int, bool> pageOrientations = ReadPageOrientations(pdfPath, pagesToPrint);
+        bool firstPageLandscape = pagesToPrint.Count > 0 &&
+                                  pageOrientations.TryGetValue(pagesToPrint[0], out bool fl) && fl;
+
+        ConfigurePrinter(printDoc, options, firstPageLandscape, out PaperSize? targetPaper);
 
         int currentIndex = 0;
         int totalPrintCount = pagesToPrint.Count;
@@ -88,7 +90,7 @@ public static class PdfPrintProcessor
         return true;
     }
 
-    private static void ConfigurePrinter(PrintDocument printDoc, PrintPdfOptions options, out PaperSize? targetPaper)
+    private static void ConfigurePrinter(PrintDocument printDoc, PrintPdfOptions options, bool firstPageLandscape, out PaperSize? targetPaper)
     {
         if (!string.IsNullOrWhiteSpace(options.PrinterName))
         {
@@ -119,14 +121,13 @@ public static class PdfPrintProcessor
             printDoc.DefaultPageSettings.PaperSize = targetPaper;
         }
 
-        if (options.Orientation == PrintOrientation.Landscape)
+        bool isLandscape = options.Orientation switch
         {
-            printDoc.DefaultPageSettings.Landscape = true;
-        }
-        else if (options.Orientation == PrintOrientation.Portrait)
-        {
-            printDoc.DefaultPageSettings.Landscape = false;
-        }
+            PrintOrientation.Landscape => true,
+            PrintOrientation.Portrait => false,
+            _ => firstPageLandscape
+        };
+        printDoc.DefaultPageSettings.Landscape = isLandscape;
 
         printDoc.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
         printDoc.OriginAtMargins = false;
@@ -177,11 +178,14 @@ public static class PdfPrintProcessor
 
         if (options.FitToPage)
         {
-            float scale = Math.Min((float)pageBounds.Width / pageBmp.Width, (float)pageBounds.Height / pageBmp.Height);
+            int margin = (int)Math.Round(Math.Min(pageBounds.Width, pageBounds.Height) * 0.03f);
+            int printAreaW = pageBounds.Width - (margin * 2);
+            int printAreaH = pageBounds.Height - (margin * 2);
+            float scale = Math.Min((float)printAreaW / pageBmp.Width, (float)printAreaH / pageBmp.Height);
             int destW = (int)Math.Round(pageBmp.Width * scale);
             int destH = (int)Math.Round(pageBmp.Height * scale);
-            int destX = pageBounds.X + (pageBounds.Width - destW) / 2;
-            int destY = pageBounds.Y + (pageBounds.Height - destH) / 2;
+            int destX = pageBounds.X + margin + (printAreaW - destW) / 2;
+            int destY = pageBounds.Y + margin + (printAreaH - destH) / 2;
             e.Graphics?.DrawImage(pageBmp, new Rectangle(destX, destY, destW, destH));
         }
         else
@@ -208,7 +212,11 @@ public static class PdfPrintProcessor
                 if (pageNum >= 1 && pageNum <= doc.NumberOfPages)
                 {
                     var page = doc.GetPage(pageNum);
-                    result[pageNum] = page.Width > page.Height;
+                    int rot = page.Rotation.Value;
+                    bool isRotated = rot == 90 || rot == 270;
+                    double visualW = isRotated ? page.Height : page.Width;
+                    double visualH = isRotated ? page.Width : page.Height;
+                    result[pageNum] = visualW > visualH;
                 }
             }
         }
