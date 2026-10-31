@@ -138,24 +138,24 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Extract Release Notes from CHANGELOG
+      - name: Extract English Release Notes
         id: get_release_notes
         shell: pwsh
         run: |
           $tag = "${{ github.ref_name }}"
-          Write-Host "Extracting release notes for tag: $tag"
+          Write-Host "Extracting English release notes for tag: $tag"
           $notes = ""
-          if (Test-Path "CHANGELOG.md") {
-              $changelog = Get-Content "CHANGELOG.md" -Raw -Encoding utf8
-              $cleanTag = $tag.TrimStart('v')
-              $pattern = "(?ms)^##\s+\[v?$( [regex]::Escape($cleanTag) )\]\s*-\s*[\d\-]+\s*\r?\n(.*?)(?=^##\s+\[|\Z)"
-              if ($changelog -match $pattern) {
+          $listingPath = "docs/store/StoreListing_EN.md"
+          if (Test-Path $listingPath) {
+              $content = Get-Content $listingPath -Raw -Encoding utf8
+              $pattern = "(?ms)^##\s+What's new in this version\s*\r?\n(.*?)(?=^##\s+|\Z)"
+              if ($content -match $pattern) {
                   $notes = $Matches[1].Trim()
-                  Write-Host "Found release notes for $tag in CHANGELOG.md"
+                  Write-Host "Found release notes in StoreListing_EN.md"
               }
           }
           if ([string]::IsNullOrWhiteSpace($notes)) {
-              $notes = "- Maintenance and stability improvements."
+              $notes = "- Maintenance, performance improvements, and stability fixes."
           }
           $delimiter = [guid]::NewGuid().ToString()
           "release_notes<<$delimiter" >> $env:GITHUB_OUTPUT
