@@ -206,7 +206,7 @@ def _publication_metadata():
     if not match:
         raise ValueError("unrecognized origin repository")
     repository = match.group(1).removesuffix(".git")
-    response = invoke(["gh", "pr", "list", "--repo", repository, "--state", "all",
+    response = invoke(["gh", "pr", "list", "--repo", repository, "--state", "open",
                        "--head", current, "--json", "number,state,headRefName,headRefOid"])
     if response.returncode:
         raise OSError("cannot verify existing GitHub PRs for this branch")

@@ -79,12 +79,26 @@ class CreateTests(unittest.TestCase):
             ("git", "status", "--porcelain"): "",
             ("git", "rev-parse", "origin/main"): "b" * 40,
             ("git", "ls-remote", "--heads", "origin", "main"): "b" * 40 + "\trefs/heads/main",
-            ("gh", "pr", "list", "--state", "all", "--head", "feature/valid-workflow",
+            ("gh", "pr", "list", "--state", "open", "--head", "feature/valid-workflow",
              "--repo", "user/repo", "--json", "number"): '[{"number":123}]'}
         with self.assertRaisesRegex(RuntimeError, "existing"), \
              patch.object(pr_creation, "_read", side_effect=lambda argv: values[tuple(argv)]), \
              patch.object(pr_creation, "remote_head", return_value=sha):
             pr_creation.current_branch("user/repo", "feature/valid-workflow")
+
+    def test_current_branch_permits_reuse_when_no_open_pr_exists(self):
+        sha = "a" * 40
+        values = {
+            ("git", "rev-parse", "HEAD"): sha,
+            ("git", "branch", "--show-current"): "feature/valid-workflow",
+            ("git", "status", "--porcelain"): "",
+            ("git", "rev-parse", "origin/main"): "b" * 40,
+            ("git", "ls-remote", "--heads", "origin", "main"): "b" * 40 + "\trefs/heads/main",
+            ("gh", "pr", "list", "--state", "open", "--head", "feature/valid-workflow",
+             "--repo", "user/repo", "--json", "number"): '[]'}
+        with patch.object(pr_creation, "_read", side_effect=lambda argv: values[tuple(argv)]), \
+             patch.object(pr_creation, "remote_head", return_value=sha):
+            self.assertEqual(sha, pr_creation.current_branch("user/repo", "feature/valid-workflow"))
 
     def test_invalid_milestone_fails_during_preview(self):
         with TemporaryDirectory() as folder:

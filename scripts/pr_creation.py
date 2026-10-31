@@ -62,7 +62,7 @@ def current_branch(repo, branch):
     remote_main = _read(["git", "ls-remote", "--heads", "origin", "main"]).split()[0]
     if base != remote_main:
         raise RuntimeError("origin/main is stale; fetch and rebuild first")
-    existing = json.loads(_read(["gh", "pr", "list", "--state", "all", "--head", branch,
+    existing = json.loads(_read(["gh", "pr", "list", "--state", "open", "--head", branch,
                                  "--repo", repo, "--json", "number"]))
     if not isinstance(existing, list) or existing:
         raise RuntimeError("an existing or ambiguous PR was found for this branch")
