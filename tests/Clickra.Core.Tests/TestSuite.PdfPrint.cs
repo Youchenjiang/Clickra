@@ -174,5 +174,69 @@ static partial class TestSuite
             var unknown = PaperSizeRegistry.GetDimensions("Custom Roll Paper");
             Assert.Equal("A4", unknown.DisplayName);
         });
+
+        runner.Run("PDF print: options parse and serialize orientation correctly", () =>
+        {
+            var dictAuto = new Dictionary<string, object>
+            {
+                [PrintPdfOptions.OrientationKey] = "auto"
+            };
+            var optsAuto = PrintPdfOptions.FromDictionary(dictAuto);
+            Assert.True(optsAuto.Orientation == PrintOrientation.Auto, "Expected Auto");
+
+            var dictPortrait = new Dictionary<string, object>
+            {
+                [PrintPdfOptions.OrientationKey] = "portrait"
+            };
+            var optsPortrait = PrintPdfOptions.FromDictionary(dictPortrait);
+            Assert.True(optsPortrait.Orientation == PrintOrientation.Portrait, "Expected Portrait");
+            Assert.Equal("Portrait", optsPortrait.ToDictionary()[PrintPdfOptions.OrientationKey]?.ToString() ?? "");
+
+            var dictLandscape = new Dictionary<string, object>
+            {
+                [PrintPdfOptions.OrientationKey] = "l"
+            };
+            var optsLandscape = PrintPdfOptions.FromDictionary(dictLandscape);
+            Assert.True(optsLandscape.Orientation == PrintOrientation.Landscape, "Expected Landscape");
+            Assert.Equal("Landscape", optsLandscape.ToDictionary()[PrintPdfOptions.OrientationKey]?.ToString() ?? "");
+
+            var dictEnum = new Dictionary<string, object>
+            {
+                [PrintPdfOptions.OrientationKey] = PrintOrientation.Landscape
+            };
+            var optsEnum = PrintPdfOptions.FromDictionary(dictEnum);
+            Assert.True(optsEnum.Orientation == PrintOrientation.Landscape, "Expected Landscape from enum");
+
+            Assert.True(PrintPdfOptions.ParseOrientation(null) == PrintOrientation.Auto, "Null must resolve to Auto");
+            Assert.True(PrintPdfOptions.ParseOrientation("unknown") == PrintOrientation.Auto, "Unknown must resolve to Auto");
+        });
+
+        runner.Run("PDF print: processor correctly detects per-page landscape orientation", () =>
+        {
+            string tempPdf = Path.Combine(Path.GetTempPath(), $"clickra_orient_test_{Guid.NewGuid():N}.pdf");
+            try
+            {
+                using (var doc = new PdfSharp.Pdf.PdfDocument())
+                {
+                    var p1 = doc.AddPage();
+                    p1.Width = PdfSharp.Drawing.XUnit.FromPoint(800);
+                    p1.Height = PdfSharp.Drawing.XUnit.FromPoint(600); // Landscape
+
+                    var p2 = doc.AddPage();
+                    p2.Width = PdfSharp.Drawing.XUnit.FromPoint(600);
+                    p2.Height = PdfSharp.Drawing.XUnit.FromPoint(800); // Portrait
+
+                    doc.Save(tempPdf);
+                }
+
+                var orientations = PdfPrintProcessor.ReadPageOrientations(tempPdf, new[] { 1, 2 });
+                Assert.True(orientations[1], "Page 1 should be detected as landscape");
+                Assert.False(orientations[2], "Page 2 should be detected as portrait");
+            }
+            finally
+            {
+                if (File.Exists(tempPdf)) File.Delete(tempPdf);
+            }
+        });
     }
 }
