@@ -166,8 +166,10 @@ public partial class ProgressWindow
                 using var doc = PdfDocument.Open(_files[0]);
                 totalPages = Math.Max(1, doc.NumberOfPages);
                 var p1 = doc.GetPage(1);
-                _pdfPageWidthPt = (float)p1.Width;
-                _pdfPageHeightPt = (float)p1.Height;
+                int rot1 = p1.Rotation.Value;
+                bool isRotated = rot1 == 90 || rot1 == 270;
+                _pdfPageWidthPt = (float)(isRotated ? p1.Height : p1.Width);
+                _pdfPageHeightPt = (float)(isRotated ? p1.Width : p1.Height);
             }
             catch
             {
@@ -205,8 +207,10 @@ public partial class ProgressWindow
                 if (page >= 1 && page <= doc.NumberOfPages)
                 {
                     var p = doc.GetPage(page);
-                    _pdfPageWidthPt = (float)p.Width;
-                    _pdfPageHeightPt = (float)p.Height;
+                    int rot = p.Rotation.Value;
+                    bool isRotated = rot == 90 || rot == 270;
+                    _pdfPageWidthPt = (float)(isRotated ? p.Height : p.Width);
+                    _pdfPageHeightPt = (float)(isRotated ? p.Width : p.Height);
                 }
             }
             bmp = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, page, 456, fontName);
@@ -1483,10 +1487,9 @@ public partial class ProgressWindow
         }
         else
         {
-            float scaleX = pdfPageWidthPt / targetPaperW;
-            float scaleY = pdfPageHeightPt / targetPaperH;
-            pageDrawW = sheetRect.Width * scaleX;
-            pageDrawH = sheetRect.Height * scaleY;
+            float scale = Math.Min(sheetRect.Width / targetPaperW, sheetRect.Height / targetPaperH);
+            pageDrawW = pdfPageWidthPt * scale;
+            pageDrawH = pdfPageHeightPt * scale;
         }
 
         float pageDrawX = sheetRect.X + ((sheetRect.Width - pageDrawW) / 2f);
