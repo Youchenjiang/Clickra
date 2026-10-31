@@ -238,5 +238,29 @@ static partial class TestSuite
                 if (File.Exists(tempPdf)) File.Delete(tempPdf);
             }
         });
+
+        runner.Run("PDF print: non-fit mode preserves physical size for smaller pages without enlarging to paper", () =>
+        {
+            // A4 paper bounds: 8.27 in x 11.69 in -> 827 x 1169 in 1/100 inches
+            var a4PaperBounds = new System.Drawing.Rectangle(0, 0, 827, 1169);
+            // A5 page in points: 420 pt x 595 pt
+            float a5WidthPt = 420f;
+            float a5HeightPt = 595f;
+
+            // In non-fit mode, A5 destination should be exactly 420 * 100/72 = 583 x 826 in 1/100 inches, centered on A4
+            var nonFitBounds = PdfPrintProcessor.CalculateDestinationBounds(a4PaperBounds, a5WidthPt, a5HeightPt, fitToPage: false);
+            int expectedW = (int)Math.Round(a5WidthPt * (100f / 72f));
+            int expectedH = (int)Math.Round(a5HeightPt * (100f / 72f));
+            Assert.Equal(expectedW, nonFitBounds.Width);
+            Assert.Equal(expectedH, nonFitBounds.Height);
+            Assert.True(nonFitBounds.Width < a4PaperBounds.Width, "Non-fit mode must not enlarge A5 to A4 paper width");
+            Assert.True(nonFitBounds.Height < a4PaperBounds.Height, "Non-fit mode must not enlarge A5 to A4 paper height");
+            Assert.Equal((a4PaperBounds.Width - expectedW) / 2, nonFitBounds.X);
+            Assert.Equal((a4PaperBounds.Height - expectedH) / 2, nonFitBounds.Y);
+
+            // In fit-to-page mode, it scales up to fit inside the paper print area (with 3% safe margin)
+            var fitBounds = PdfPrintProcessor.CalculateDestinationBounds(a4PaperBounds, a5WidthPt, a5HeightPt, fitToPage: true);
+            Assert.True(fitBounds.Width > nonFitBounds.Width, "Fit-to-page should scale up smaller pages to fit paper area");
+        });
     }
 }
