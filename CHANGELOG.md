@@ -1,5 +1,12 @@
 # Changelog
 
+## [v3.16.0.0] - 2026-10-31
+
+- **PDF 直接串流列印與雙面選項 (Direct PDF Printing & Duplex Controls)**：支援從 CLI (`print-pdf`) 與 Windows 檔案總管右鍵選單直接列印 PDF；串流引擎直接以 GDI+ PrintDocument 發送至 Windows Print Spooler，不建立暫存磁碟檔案，具備單面/長邊翻頁/短邊翻頁雙面設定與紙張規格自動偵測。
+- **原生深色列印設定視窗與即時預覽 (Native Print Dialog & Live Preview)**：提供純向量深色 Win32 列印對話框，具備即時預覽卡片、紙張長寬比規格標籤、頁面巡覽、全螢幕燈箱高解析放大拖曳與份數快速加減。
+- **自適應排版與對比增強 (Page Fit & Contrast Enhancement)**：支援「符合紙張大小」自動等比縮放居中，以及「加深字跡與增強對比」灰階直方圖動態等化處理，大幅提升列印清晰度與暗部易讀性。
+- **五國語言在地化與選單圖示整合 (Locales & Shell Menu Integration)**：完成繁體中文、簡體中文、英文、日文、韓文之列印設定介面字典，並整合 Explorer 右鍵選單專屬高解析度多尺寸圖示資產。
+
 ## [v3.15.0.0] - 2026-10-30
 
 - **自定義 AI 論文翻譯引擎 (Custom AI Paper Translator)**：支援 OpenAI 相容 API 規格之雲端模型（包含 Google Gemini API 與自建 LLM），可自訂 API 端點與模型名稱，並提供金鑰安全遮罩、動態文字設定控制項與單次請求覆蓋能力。
