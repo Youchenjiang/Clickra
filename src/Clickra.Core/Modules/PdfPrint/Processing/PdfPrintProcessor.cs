@@ -37,7 +37,10 @@ public static class PdfPrintProcessor
         string effectiveLang = !string.IsNullOrWhiteSpace(options.Language) ? options.Language : "en";
         string defaultFontName = PdfPageThumbnailRenderer.GetTextFontName(effectiveLang);
 
-        Dictionary<int, bool> pageOrientations = ReadPageOrientations(pdfPath, pagesToPrint);
+        var pageDimensions = ReadPageDimensions(pdfPath, pagesToPrint);
+        Dictionary<int, bool> pageOrientations = pageDimensions.ToDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value.widthPt > kvp.Value.heightPt);
         bool firstPageLandscape = pagesToPrint.Count > 0 &&
                                   pageOrientations.TryGetValue(pagesToPrint[0], out bool fl) && fl;
 
@@ -79,7 +82,7 @@ public static class PdfPrintProcessor
             int pageNum = pagesToPrint[currentIndex];
             progress?.Invoke(currentIndex + 1, totalPrintCount, $"Printing page {pageNum} of {totalDocPages}...");
 
-            RenderAndDrawPage(e, pdfPath, pageNum, defaultFontName, options);
+            RenderAndDrawPage(e, pdfPath, pageNum, defaultFontName, options, pageDimensions);
 
             currentIndex++;
             e.HasMorePages = currentIndex < totalPrintCount;
@@ -157,16 +160,58 @@ public static class PdfPrintProcessor
         return null;
     }
 
+    public static Rectangle CalculateDestinationBounds(
+        Rectangle pageBounds,
+        float pdfPageWidthPt,
+        float pdfPageHeightPt,
+        bool fitToPage)
+    {
+        if (fitToPage)
+        {
+            int margin = (int)Math.Round(Math.Min(pageBounds.Width, pageBounds.Height) * 0.03f);
+            int printAreaW = Math.Max(1, pageBounds.Width - (margin * 2));
+            int printAreaH = Math.Max(1, pageBounds.Height - (margin * 2));
+            float scale = Math.Min((float)printAreaW / pdfPageWidthPt, (float)printAreaH / pdfPageHeightPt);
+            int destW = (int)Math.Round(pdfPageWidthPt * scale);
+            int destH = (int)Math.Round(pdfPageHeightPt * scale);
+            int destX = pageBounds.X + margin + (printAreaW - destW) / 2;
+            int destY = pageBounds.Y + margin + (printAreaH - destH) / 2;
+            return new Rectangle(destX, destY, destW, destH);
+        }
+        else
+        {
+            // 1 pt = 1/72 inch = 100/72 hundredths of an inch in PrintDocument physical coordinates
+            int destW = (int)Math.Round(pdfPageWidthPt * (100f / 72f));
+            int destH = (int)Math.Round(pdfPageHeightPt * (100f / 72f));
+            int destX = pageBounds.X + (pageBounds.Width - destW) / 2;
+            int destY = pageBounds.Y + (pageBounds.Height - destH) / 2;
+            return new Rectangle(destX, destY, destW, destH);
+        }
+    }
+
     private static void RenderAndDrawPage(
         PrintPageEventArgs e,
         string pdfPath,
         int pageNum,
         string defaultFontName,
-        PrintPdfOptions options)
+        PrintPdfOptions options,
+        Dictionary<int, (float widthPt, float heightPt)>? pageDimensions = null)
     {
         Rectangle pageBounds = e.PageBounds;
-        double paperWidthInches = Math.Max(1, pageBounds.Width) / 100.0;
-        int renderWidth = (int)Math.Round(paperWidthInches * options.Dpi);
+        float pdfW = pageBounds.Width / 100f * 72f;
+        float pdfH = pageBounds.Height / 100f * 72f;
+        if (pageDimensions != null && pageDimensions.TryGetValue(pageNum, out var dim) && dim.widthPt > 0 && dim.heightPt > 0)
+        {
+            pdfW = dim.widthPt;
+            pdfH = dim.heightPt;
+        }
+
+        Rectangle destRect = CalculateDestinationBounds(pageBounds, pdfW, pdfH, options.FitToPage);
+
+        int renderWidth = options.FitToPage
+            ? (int)Math.Round((destRect.Width / 100f) * options.Dpi)
+            : (int)Math.Round((pdfW / 72f) * options.Dpi);
+        renderWidth = Math.Max(100, renderWidth);
 
         using Bitmap? pageBmp = PdfPageThumbnailRenderer.RenderPageFromFile(pdfPath, pageNum, renderWidth, defaultFontName);
         if (pageBmp == null) return;
@@ -176,34 +221,15 @@ public static class PdfPrintProcessor
             PdfContrastEnhancer.Enhance(pageBmp, options.DarkenGamma);
         }
 
-        if (options.FitToPage)
-        {
-            int margin = (int)Math.Round(Math.Min(pageBounds.Width, pageBounds.Height) * 0.03f);
-            int printAreaW = pageBounds.Width - (margin * 2);
-            int printAreaH = pageBounds.Height - (margin * 2);
-            float scale = Math.Min((float)printAreaW / pageBmp.Width, (float)printAreaH / pageBmp.Height);
-            int destW = (int)Math.Round(pageBmp.Width * scale);
-            int destH = (int)Math.Round(pageBmp.Height * scale);
-            int destX = pageBounds.X + margin + (printAreaW - destW) / 2;
-            int destY = pageBounds.Y + margin + (printAreaH - destH) / 2;
-            e.Graphics?.DrawImage(pageBmp, new Rectangle(destX, destY, destW, destH));
-        }
-        else
-        {
-            int destW = (int)Math.Round(pageBmp.Width * (100f / options.Dpi));
-            int destH = (int)Math.Round(pageBmp.Height * (100f / options.Dpi));
-            int destX = pageBounds.X + (pageBounds.Width - destW) / 2;
-            int destY = pageBounds.Y + (pageBounds.Height - destH) / 2;
-            e.Graphics?.DrawImage(pageBmp, new Rectangle(destX, destY, destW, destH));
-        }
+        e.Graphics?.DrawImage(pageBmp, destRect);
     }
 
     /// <summary>
-    /// Reads page orientation (true = landscape, false = portrait) for the specified pages.
+    /// Reads physical page dimensions in points (width, height) accounting for PDF rotation.
     /// </summary>
-    public static Dictionary<int, bool> ReadPageOrientations(string pdfPath, IEnumerable<int> pages)
+    public static Dictionary<int, (float widthPt, float heightPt)> ReadPageDimensions(string pdfPath, IEnumerable<int> pages)
     {
-        var result = new Dictionary<int, bool>();
+        var result = new Dictionary<int, (float widthPt, float heightPt)>();
         try
         {
             using var doc = UglyToad.PdfPig.PdfDocument.Open(pdfPath);
@@ -214,9 +240,9 @@ public static class PdfPrintProcessor
                     var page = doc.GetPage(pageNum);
                     int rot = page.Rotation.Value;
                     bool isRotated = rot == 90 || rot == 270;
-                    double visualW = isRotated ? page.Height : page.Width;
-                    double visualH = isRotated ? page.Width : page.Height;
-                    result[pageNum] = visualW > visualH;
+                    float visualW = (float)(isRotated ? page.Height : page.Width);
+                    float visualH = (float)(isRotated ? page.Width : page.Height);
+                    result[pageNum] = (visualW, visualH);
                 }
             }
         }
@@ -225,6 +251,15 @@ public static class PdfPrintProcessor
             // Unreadable PDF falls back to empty dictionary
         }
         return result;
+    }
+
+    /// <summary>
+    /// Reads page orientation (true = landscape, false = portrait) for the specified pages.
+    /// </summary>
+    public static Dictionary<int, bool> ReadPageOrientations(string pdfPath, IEnumerable<int> pages)
+    {
+        var dimensions = ReadPageDimensions(pdfPath, pages);
+        return dimensions.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.widthPt > kvp.Value.heightPt);
     }
 
     /// <summary>
