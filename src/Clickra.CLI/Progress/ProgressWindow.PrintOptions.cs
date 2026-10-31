@@ -33,6 +33,7 @@ public partial class ProgressWindow
     private int _paperSizeIndex;
     private bool _printerCanDuplex;
     private int _duplexIndex; // 0 = Simplex, 1 = DuplexLongEdge, 2 = DuplexShortEdge
+    private PrintOrientation _printOrientation = PrintOrientation.Auto;
     private string _printPageRange = "all";
     private int _printCopies = 1;
     private bool _printFitToPage = true;
@@ -72,6 +73,9 @@ public partial class ProgressWindow
         None = 0,
         PrinterCombo,
         PaperCombo,
+        OrientationAuto,
+        OrientationPortrait,
+        OrientationLandscape,
         DuplexCombo,
         RangeAll,
         RangeCustom,
@@ -276,7 +280,16 @@ public partial class ProgressWindow
             enabled: _supportedPaperSizes.Count > 0,
             isHovered: _hoveredPrintElement == PrintElement.PaperCombo);
 
-        // 3. Duplex Row
+        // 3. Orientation Row
+        DrawPrintLabel(g, s, Loc("print_options_orientation"), PrintOptionsLayout.OrientationLabelY, bodyBrush);
+        DrawPrintButton(g, s, PrintOptionsLayout.OrientationAutoRect, Loc("print_options_orientation_auto"),
+            new ButtonVisualState(_printOrientation == PrintOrientation.Auto, Hovered: _hoveredPrintElement == PrintElement.OrientationAuto, Pressed: _pressedPrintElement == PrintElement.OrientationAuto));
+        DrawPrintButton(g, s, PrintOptionsLayout.OrientationPortraitRect, Loc("print_options_orientation_portrait"),
+            new ButtonVisualState(_printOrientation == PrintOrientation.Portrait, Hovered: _hoveredPrintElement == PrintElement.OrientationPortrait, Pressed: _pressedPrintElement == PrintElement.OrientationPortrait));
+        DrawPrintButton(g, s, PrintOptionsLayout.OrientationLandscapeRect, Loc("print_options_orientation_landscape"),
+            new ButtonVisualState(_printOrientation == PrintOrientation.Landscape, Hovered: _hoveredPrintElement == PrintElement.OrientationLandscape, Pressed: _pressedPrintElement == PrintElement.OrientationLandscape));
+
+        // 4. Duplex Row
         DrawPrintLabel(g, s, Loc("print_options_duplex"), PrintOptionsLayout.DuplexLabelY, bodyBrush);
         string currentDuplexText = !_printerCanDuplex
             ? Loc("print_options_duplex_unsupported")
@@ -413,7 +426,12 @@ public partial class ProgressWindow
 
         if (bmp != null)
         {
-            bool isLandscape = _pdfPageWidthPt > _pdfPageHeightPt || bmp.Width > bmp.Height;
+            bool isLandscape = _printOrientation switch
+            {
+                PrintOrientation.Landscape => true,
+                PrintOrientation.Portrait => false,
+                _ => _pdfPageWidthPt > _pdfPageHeightPt || bmp.Width > bmp.Height
+            };
             float targetPaperW = isLandscape ? Math.Max(paperDim.WidthPt, paperDim.HeightPt) : Math.Min(paperDim.WidthPt, paperDim.HeightPt);
             float targetPaperH = isLandscape ? Math.Min(paperDim.WidthPt, paperDim.HeightPt) : Math.Max(paperDim.WidthPt, paperDim.HeightPt);
 
@@ -916,6 +934,9 @@ public partial class ProgressWindow
     {
         if (PrintOptionsLayout.PrinterComboRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.PrinterCombo;
         if (PrintOptionsLayout.PaperComboRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.PaperCombo;
+        if (PrintOptionsLayout.OrientationAutoRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.OrientationAuto;
+        if (PrintOptionsLayout.OrientationPortraitRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.OrientationPortrait;
+        if (PrintOptionsLayout.OrientationLandscapeRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.OrientationLandscape;
         if (PrintOptionsLayout.DuplexComboRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.DuplexCombo;
 
         if (PrintOptionsLayout.RangeAllRect.ContainsInclusive(mouseX, mouseY)) return PrintElement.RangeAll;
@@ -947,6 +968,7 @@ public partial class ProgressWindow
         }
 
         _ = TryHandleDropdownToggles(hwnd, mouseX, mouseY) ||
+            TryHandleOrientation(hwnd, mouseX, mouseY) ||
             TryHandleRangeAndCopies(hwnd, mouseX, mouseY) ||
             TryHandleCheckboxAndPreviewClicks(hwnd, mouseX, mouseY) ||
             TryHandlePaginationAndActions(hwnd, mouseX, mouseY);
@@ -1001,6 +1023,29 @@ public partial class ProgressWindow
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
         return true;
+    }
+
+    private bool TryHandleOrientation(IntPtr hwnd, int mouseX, int mouseY)
+    {
+        if (PrintOptionsLayout.OrientationAutoRect.ContainsInclusive(mouseX, mouseY))
+        {
+            _printOrientation = PrintOrientation.Auto;
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+            return true;
+        }
+        if (PrintOptionsLayout.OrientationPortraitRect.ContainsInclusive(mouseX, mouseY))
+        {
+            _printOrientation = PrintOrientation.Portrait;
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+            return true;
+        }
+        if (PrintOptionsLayout.OrientationLandscapeRect.ContainsInclusive(mouseX, mouseY))
+        {
+            _printOrientation = PrintOrientation.Landscape;
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+            return true;
+        }
+        return false;
     }
 
     private bool TryHandleRangeAndCopies(IntPtr hwnd, int mouseX, int mouseY)
@@ -1139,7 +1184,8 @@ public partial class ProgressWindow
             _printDarken,
             2.2,
             duplexMode,
-            selectedPaper).ToDictionary();
+            selectedPaper,
+            _printOrientation).ToDictionary();
 
         ResolvePrintDecision(true);
         _isPromptingPrintOptions = false;
@@ -1342,7 +1388,12 @@ public partial class ProgressWindow
             _printThumbnails.TryGetValue(curPageNum, out bmp);
         }
 
-        bool isLandscape = _pdfPageWidthPt > _pdfPageHeightPt || (bmp != null && bmp.Width > bmp.Height);
+        bool isLandscape = _printOrientation switch
+        {
+            PrintOrientation.Landscape => true,
+            PrintOrientation.Portrait => false,
+            _ => _pdfPageWidthPt > _pdfPageHeightPt || (bmp != null && bmp.Width > bmp.Height)
+        };
         float targetPaperW = isLandscape ? Math.Max(paperDim.WidthPt, paperDim.HeightPt) : Math.Min(paperDim.WidthPt, paperDim.HeightPt);
         float targetPaperH = isLandscape ? Math.Min(paperDim.WidthPt, paperDim.HeightPt) : Math.Max(paperDim.WidthPt, paperDim.HeightPt);
 

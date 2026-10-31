@@ -2,42 +2,50 @@ namespace Clickra.UI.Layout;
 
 /// <summary>
 /// Logical-pixel geometry for the native PDF print confirmation and preview dialog.
-/// Width: 520, Height: 466 (matches standard prompt window scale).
+/// Width: 520, Height: 472 (matches standard prompt window scale).
 /// </summary>
 public static class PrintOptionsLayout
 {
     public const int ClientWidth = 520;
-    public const int ClientHeight = 466;
+    public const int ClientHeight = 472;
 
     // Left controls column (Options)
     public const int LeftColumnX = 36;
     public const int LeftColumnWidth = 200;
 
-    // Group 1: Device & Media (Printer, Paper, Duplex)
-    public const int PrinterLabelY = 96;
-    public const int PrinterComboY = 116;
-    public const int PrinterComboHeight = 26;
+    // Group 1: Device & Media (Printer, Paper, Orientation, Duplex)
+    public const int PrinterLabelY = 94;
+    public const int PrinterComboY = 112;
+    public const int PrinterComboHeight = 24;
     public static LayoutRect PrinterComboRect => new(LeftColumnX, PrinterComboY, LeftColumnWidth, PrinterComboHeight);
 
-    public const int PaperLabelY = 148;
-    public const int PaperComboY = 168;
-    public const int PaperComboHeight = 26;
+    public const int PaperLabelY = 142;
+    public const int PaperComboY = 160;
+    public const int PaperComboHeight = 24;
     public static LayoutRect PaperComboRect => new(LeftColumnX, PaperComboY, LeftColumnWidth, PaperComboHeight);
 
-    public const int DuplexLabelY = 200;
-    public const int DuplexComboY = 220;
-    public const int DuplexComboHeight = 26;
+    public const int OrientationLabelY = 190;
+    public const int OrientationButtonsY = 208;
+    public const int OrientationButtonHeight = 24;
+    public const int OrientationButtonWidth = 64;
+    public static LayoutRect OrientationAutoRect => new(LeftColumnX, OrientationButtonsY, OrientationButtonWidth, OrientationButtonHeight);
+    public static LayoutRect OrientationPortraitRect => new(LeftColumnX + 68, OrientationButtonsY, OrientationButtonWidth, OrientationButtonHeight);
+    public static LayoutRect OrientationLandscapeRect => new(LeftColumnX + 136, OrientationButtonsY, OrientationButtonWidth, OrientationButtonHeight);
+
+    public const int DuplexLabelY = 238;
+    public const int DuplexComboY = 256;
+    public const int DuplexComboHeight = 24;
     public static LayoutRect DuplexComboRect => new(LeftColumnX, DuplexComboY, LeftColumnWidth, DuplexComboHeight);
 
     // Group 2: Scope & Quantity (Range, Copies)
-    public const int RangeLabelY = 258;
-    public const int RangeInputY = 278;
+    public const int RangeLabelY = 286;
+    public const int RangeInputY = 304;
     public const int RangeInputHeight = 24;
     public static LayoutRect RangeAllRect => new(LeftColumnX, RangeInputY, 70, RangeInputHeight);
     public static LayoutRect RangeCustomRect => new(LeftColumnX + 74, RangeInputY, LeftColumnWidth - 74, RangeInputHeight);
 
-    public const int CopiesLabelY = 308;
-    public const int CopiesInputY = 328;
+    public const int CopiesLabelY = 334;
+    public const int CopiesInputY = 352;
     public const int CopiesInputHeight = 24;
     public const int CopiesButtonWidth = 44;
     public static LayoutRect CopiesMinusRect => new(LeftColumnX, CopiesInputY, CopiesButtonWidth, CopiesInputHeight);
@@ -45,11 +53,11 @@ public static class PrintOptionsLayout
     public static LayoutRect CopiesPlusRect => new(LeftColumnX + LeftColumnWidth - CopiesButtonWidth, CopiesInputY, CopiesButtonWidth, CopiesInputHeight);
 
     // Group 3: Layout & Contrast (Fit, Darken)
-    public const int FitToPageY = 364;
+    public const int FitToPageY = 384;
     public const int FitToPageHeight = 18;
     public static LayoutRect FitToPageRect => new(LeftColumnX, FitToPageY, LeftColumnWidth, FitToPageHeight);
 
-    public const int DarkenY = 388;
+    public const int DarkenY = 406;
     public const int DarkenHeight = 18;
     public static LayoutRect DarkenRect => new(LeftColumnX, DarkenY, LeftColumnWidth, DarkenHeight);
 
@@ -87,10 +95,10 @@ public static class PrintOptionsLayout
     public static LayoutRect PageTextRect => new(PreviewLeft + NavButtonWidth + 12, NavY + 6, PreviewWidth - (NavButtonWidth * 2) - 24, NavButtonHeight);
 
     // Bottom action buttons
-    public const int SeparatorY = 418;
-    public const int ActionY = 428;
-    public static LayoutRect ConfirmButton => new(296, ActionY, 100, 28);
-    public static LayoutRect CancelButton => new(404, ActionY, 80, 28);
+    public const int SeparatorY = 430;
+    public const int ActionY = 438;
+    public static LayoutRect ConfirmButton => new(296, ActionY, 100, 26);
+    public static LayoutRect CancelButton => new(404, ActionY, 80, 26);
 
     // Zoom modal geometry (logical px)
     public static LayoutRect ZoomModal => new(24, 20, 472, 420);

@@ -38,7 +38,8 @@ namespace Clickra
             bool FitToPageOption = true,
             bool DarkenOption = false,
             string? DuplexOption = null,
-            string? PaperSizeOption = null);
+            string? PaperSizeOption = null,
+            string? OrientationOption = null);
 
         static void ShowWarning(string msg, string title) =>
             NativeDialogs.Warning(IntPtr.Zero, title, msg, 1.0f, SettingsPresentationController.Shared.Language);
@@ -281,6 +282,12 @@ namespace Clickra
                     duplex = PrintDuplexMode.DuplexShortEdge;
             }
 
+            PrintOrientation orientation = PrintOrientation.Auto;
+            if (!string.IsNullOrWhiteSpace(cliOptions.OrientationOption))
+            {
+                orientation = PrintPdfOptions.ParseOrientation(cliOptions.OrientationOption);
+            }
+
             var options = new PrintPdfOptions(
                 cliOptions.PrinterOption,
                 cliOptions.PagesOption,
@@ -291,7 +298,8 @@ namespace Clickra
                 cliOptions.DarkenOption,
                 2.2,
                 duplex,
-                cliOptions.PaperSizeOption).ToDictionary();
+                cliOptions.PaperSizeOption,
+                orientation).ToDictionary();
 
             RunQuietUseCase(
                 PrintPdfUseCase.CommandName,
