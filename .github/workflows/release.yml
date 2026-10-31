@@ -1,4 +1,4 @@
-﻿name: Release Clickra MSIX
+name: Release Clickra MSIX
 
 on:
   push:
@@ -138,40 +138,28 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Fetch Merged Pull Request Description
-        id: get_pr_desc
+      - name: Extract English Release Notes
+        id: get_release_notes
         shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $commitSha = "${{ github.sha }}"
-          Write-Host "Fetching PR for commit: $commitSha"
-          $prBody = ""
-          try {
-              $pullsJson = gh api "repos/${{ github.repository }}/commits/$commitSha/pulls"
-              $pulls = $pullsJson | ConvertFrom-Json
-              if ($pulls -and $pulls.Count -gt 0) {
-                  $prBody = $pulls[0].body
-                  Write-Host "Found PR #${($pulls[0].number)}: $($pulls[0].title)"
+          $tag = "${{ github.ref_name }}"
+          Write-Host "Extracting English release notes for tag: $tag"
+          $notes = ""
+          $listingPath = "docs/store/StoreListing_EN.md"
+          if (Test-Path $listingPath) {
+              $content = Get-Content $listingPath -Raw -Encoding utf8
+              $pattern = "(?ms)^##\s+What's new in this version\s*\r?\n(.*?)(?=^##\s+|\Z)"
+              if ($content -match $pattern) {
+                  $notes = $Matches[1].Trim()
+                  Write-Host "Found release notes in StoreListing_EN.md"
               }
-          } catch {}
-          if ([string]::IsNullOrWhiteSpace($prBody)) {
-              Write-Host "No direct PR found for commit. Fetching the last merged PR..."
-              try {
-                  $lastPrJson = gh pr list --repo "${{ github.repository }}" --state merged --limit 1 --json body,number,title
-                  $lastPr = $lastPrJson | ConvertFrom-Json
-                  if ($lastPr -and $lastPr.Count -gt 0) {
-                      $prBody = $lastPr[0].body
-                      Write-Host "Found last merged PR #${($lastPr[0].number)}: $($lastPr[0].title)"
-                  }
-              } catch {}
           }
-          if ([string]::IsNullOrWhiteSpace($prBody)) {
-              $prBody = "No release notes available."
+          if ([string]::IsNullOrWhiteSpace($notes)) {
+              $notes = "- Maintenance, performance improvements, and stability fixes."
           }
           $delimiter = [guid]::NewGuid().ToString()
-          "pr_body<<$delimiter" >> $env:GITHUB_OUTPUT
-          $prBody >> $env:GITHUB_OUTPUT
+          "release_notes<<$delimiter" >> $env:GITHUB_OUTPUT
+          $notes >> $env:GITHUB_OUTPUT
           "$delimiter" >> $env:GITHUB_OUTPUT
 
       - name: Create GitHub Release
@@ -180,7 +168,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cat << 'EOF' > release_notes.md
-          ${{ steps.get_pr_desc.outputs.pr_body }}
+          ## What's Changed in ${{ github.ref_name }}
+
+          ${{ steps.get_release_notes.outputs.release_notes }}
 
           ---
           ### 📦 Installation
