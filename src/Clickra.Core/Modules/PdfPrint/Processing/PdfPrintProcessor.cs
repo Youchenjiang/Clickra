@@ -41,7 +41,7 @@ public static class PdfPrintProcessor
         bool firstPageLandscape = pagesToPrint.Count > 0 &&
                                   pageOrientations.TryGetValue(pagesToPrint[0], out bool fl) && fl;
 
-        ConfigurePrinter(printDoc, options, firstPageLandscape, out PaperSize? targetPaper);
+        ConfigurePrinter(printDoc, options, firstPageLandscape);
 
         int currentIndex = 0;
         int totalPrintCount = pagesToPrint.Count;
@@ -90,7 +90,7 @@ public static class PdfPrintProcessor
         return true;
     }
 
-    private static void ConfigurePrinter(PrintDocument printDoc, PrintPdfOptions options, bool firstPageLandscape, out PaperSize? targetPaper)
+    private static void ConfigurePrinter(PrintDocument printDoc, PrintPdfOptions options, bool firstPageLandscape)
     {
         if (!string.IsNullOrWhiteSpace(options.PrinterName))
         {
@@ -115,7 +115,7 @@ public static class PdfPrintProcessor
             };
         }
 
-        targetPaper = FindTargetPaperSize(printDoc.PrinterSettings.PaperSizes, options.PaperSize);
+        PaperSize? targetPaper = FindTargetPaperSize(printDoc.PrinterSettings.PaperSizes, options.PaperSize);
         if (targetPaper != null)
         {
             printDoc.DefaultPageSettings.PaperSize = targetPaper;
