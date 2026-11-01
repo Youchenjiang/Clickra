@@ -439,10 +439,11 @@ def _prepare(body_file, initial=False):
         raise ValueError(f"PR body file does not exist: {body}")
     from pr_preflight import _github_metadata, check
     if initial:
-        from pr_preflight import validate_pr_body
+        from pr_preflight import validate_pr_body, _check_version_bump
         # This is only a preview: the actual first push verifies remote main
         # and the exact object through the mandatory versioned hook.
         problems = validate_pr_body(body.read_text(encoding="utf-8"))
+        problems.extend(_check_version_bump("origin/main"))
     else:
         problems = check("origin/main", str(body), metadata=_github_metadata())
     for problem in problems:
