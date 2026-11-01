@@ -1,3 +1,4 @@
+import re
 import sys
 import shutil
 import subprocess
@@ -271,11 +272,14 @@ class PrPreflightTests(unittest.TestCase):
     @patch("pr_preflight.git")
     def test_version_bump_required_when_src_modified_and_version_tagged(self, mock_git):
         from pr_preflight import _check_version_bump
+        props = (Path(__file__).resolve().parent.parent.parent / "src" / "Directory.Build.props").read_text(encoding="utf-8")
+        m = re.search(r"<Version>(.*?)</Version>", props)
+        current_tag = f"v{m.group(1).strip()}" if m else "v3.16.2.0"
         def command(*args):
             if args[0] == "diff":
                 return CompletedProcess(args, 0, "src/Clickra.Core/Service.cs\n", "")
             if args[0] == "tag":
-                return CompletedProcess(args, 0, "v3.16.1.0\n", "")
+                return CompletedProcess(args, 0, f"{current_tag}\n", "")
             return CompletedProcess(args, 0, "", "")
         mock_git.side_effect = command
         errors = _check_version_bump("origin/main")
