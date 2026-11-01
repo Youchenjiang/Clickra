@@ -258,3 +258,67 @@ jobs:
       - name: Run public PDF identity translation E2E
         if: steps.scope.outputs.required == 'true'
         run: python tests/PdfRegression/test_public_translation_identity.py
+
+  auto-tag-release:
+    name: Auto-tag and trigger release
+    needs:
+      - build
+      - deterministic-tests
+      - pr-governance-tests
+      - store-publishing-tests
+      - fixture-regression-tests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Check version and auto-tag
+        id: check_tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          props_file="src/Directory.Build.props"
+          if [[ ! -f "$props_file" ]]; then
+            echo "Error: $props_file not found" >&2
+            exit 1
+          fi
+          version=$(grep -oPm1 "(?<=<Version>)[^<]+" "$props_file" || true)
+          if [[ -z "$version" ]]; then
+            echo "Error: Version not found in $props_file" >&2
+            exit 1
+          fi
+          tag="v$version"
+          echo "Target release tag: $tag"
+
+          # Check if tag already exists on remote
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists on remote. No new release needed."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Tag $tag does not exist. Creating and pushing tag..."
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "Release $tag"
+          git push origin "$tag"
+
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch Release Workflow
+        if: steps.check_tag.outputs.should_release == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.check_tag.outputs.tag }}
+        run: |
+          echo "Dispatching release.yml for $TAG..."
+          gh workflow run release.yml --ref "$TAG" -f tag="$TAG" -f publish=true
