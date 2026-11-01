@@ -6,6 +6,8 @@ namespace Clickra.Core.Tests;
 static partial class TestSuite
 {
     private static readonly TimeSpan MsixToolingRegexTimeout = TimeSpan.FromSeconds(1);
+    private const string PackagingDirName = "packaging";
+    private const string AppxManifestFileName = "AppxManifest.xml";
 
     public static void RegisterMsixToolingTests(TestRunner runner)
     {
@@ -14,7 +16,7 @@ static partial class TestSuite
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
-            string manifestPath = Path.Combine(root, "packaging", "msix", "AppxManifest.xml");
+            string manifestPath = Path.Combine(root, PackagingDirName, "msix", AppxManifestFileName);
             var manifest = XDocument.Load(manifestPath);
             string? manifestIdentity = manifest.Root?
                 .Elements()
@@ -54,7 +56,7 @@ static partial class TestSuite
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
-            string manifestPath = Path.Combine(root, "packaging", "msix", "AppxManifest.xml");
+            string manifestPath = Path.Combine(root, PackagingDirName, "msix", AppxManifestFileName);
             string manifestText = File.ReadAllText(manifestPath);
 
             Assert.False(manifestText.Contains("windows.fileTypeAssociation", StringComparison.OrdinalIgnoreCase),
@@ -78,9 +80,9 @@ static partial class TestSuite
 
             string[] manifestRelativePaths =
             [
-                Path.Combine("packaging", "msix", "AppxManifest.xml"),
-                Path.Combine("packaging", "msix", "AppxManifest.Fluent.xml"),
-                Path.Combine("src", "resources", "AppxManifest.xml"),
+                Path.Combine(PackagingDirName, "msix", AppxManifestFileName),
+                Path.Combine(PackagingDirName, "msix", "AppxManifest.Fluent.xml"),
+                Path.Combine("src", "resources", AppxManifestFileName),
             ];
 
             foreach (string relativePath in manifestRelativePaths)
