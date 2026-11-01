@@ -1,5 +1,11 @@
 # Changelog
 
+## [v3.16.2.0] - 2026-11-01
+
+- **自動化發佈與 CI Release Tag 整合 (Automated Tagging & Release CI)**：PR 合併至 `main` 且偵測到新版本時，CI 工作流程將自動建立並推送 Git Release Tag（`vX.X.X.X`），並自動觸發 GitHub Release 建置與發佈流程，大幅降低發布維護成本。
+- **發佈預檢版本鎖步與發佈防護 (Strict Preflight Version Bump Lockstep)**：強化本機 `pr_preflight.py` 治理機制，針對觸及核心程式碼或封裝資源之 PR，強制檢查發佈版本是否已從遠端既有 Tag 遞增，並鎖步驗證 MSIX 清單、版本日誌與 5 國語言商店資訊。
+- **MSIX 清單與專案版本一致性守護 (MSIX Manifest & Build Props Architecture Guard)**：新增自動化架構守護測試，確保 `Directory.Build.props`、MSIX 清單與 Fluent 清單之版本號永遠維持嚴格一致，杜絕版本遺漏或分歧。
+
 ## [v3.16.1.0] - 2026-10-31
 
 - **PDF 列印方向控制 (Print Orientation Controls)**：新增直向、橫向與自動方向切換按鈕，CLI 支援 `--orientation <auto|portrait|landscape>` 旗標；徹底解決橫向簡報或寬版頁面強制擠壓為直向的排版變形問題。
