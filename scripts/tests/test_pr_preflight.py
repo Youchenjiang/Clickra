@@ -261,6 +261,50 @@ class PrPreflightTests(unittest.TestCase):
             errors = check("origin/main", body_file)
             self.assertIn("cannot read worktree status", errors)
             self.assertIn("origin/main changed or cannot be verified at end of preflight", errors)
+    @patch("pr_preflight.git")
+    def test_version_bump_not_required_for_non_release_files(self, mock_git):
+        from pr_preflight import _check_version_bump
+        mock_git.return_value = CompletedProcess([], 0, "scripts/pr_preflight.py\ndocs/store/StoreListing_EN.md\n", "")
+        errors = _check_version_bump("origin/main")
+        self.assertEqual([], errors)
+
+    @patch("pr_preflight.git")
+    def test_version_bump_required_when_src_modified_and_version_tagged(self, mock_git):
+        from pr_preflight import _check_version_bump
+        def command(*args):
+            if args[0] == "diff":
+                return CompletedProcess(args, 0, "src/Clickra.Core/Service.cs\n", "")
+            if args[0] == "tag":
+                return CompletedProcess(args, 0, "v3.16.1.0\n", "")
+            return CompletedProcess(args, 0, "", "")
+        mock_git.side_effect = command
+        errors = _check_version_bump("origin/main")
+        self.assertTrue(any("already tagged as an existing release" in e for e in errors))
+
+    @patch("pr_preflight.git")
+    def test_version_bump_exempt_with_no_release_label(self, mock_git):
+        from pr_preflight import _check_version_bump
+        def command(*args):
+            if args[0] == "diff":
+                return CompletedProcess(args, 0, "src/Clickra.Core/Service.cs\n", "")
+            return CompletedProcess(args, 0, "v3.16.1.0\n", "")
+        mock_git.side_effect = command
+        metadata = {"labels": [{"name": "no-release"}]}
+        errors = _check_version_bump("origin/main", metadata)
+        self.assertEqual([], errors)
+
+    @patch("pr_preflight.git")
+    def test_version_bump_passes_when_untagged_and_synced(self, mock_git):
+        from pr_preflight import _check_version_bump
+        def command(*args):
+            if args[0] == "diff":
+                return CompletedProcess(args, 0, "src/Clickra.Core/Service.cs\n", "")
+            # tag does not exist
+            return CompletedProcess(args, 0, "", "")
+        mock_git.side_effect = command
+        errors = _check_version_bump("origin/main")
+        self.assertEqual([], errors)
+
 
 
 class PrePushHookRefTests(unittest.TestCase):
