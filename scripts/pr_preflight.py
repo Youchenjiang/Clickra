@@ -285,7 +285,7 @@ def _check_version_bump(base, metadata=None):
         return ["cannot determine changed files against base for version bump check"]
     changed_files = [line.strip().replace("\\", "/") for line in diff.stdout.splitlines() if line.strip()]
 
-    affects_release = any(f.startswith("src/") or f.startswith("packaging/") for f in changed_files)
+    affects_release = any(f.startswith(("src/", "packaging/")) for f in changed_files)
     props_changed = "src/Directory.Build.props" in changed_files
 
     if not affects_release and not props_changed:
