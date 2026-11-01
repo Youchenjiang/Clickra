@@ -5,6 +5,16 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v3.16.2.0)'
+        required: false
+        type: string
+      publish:
+        description: 'Publish release to GitHub and Microsoft Store'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   # NativeAOT dominates release build time. Publish independent binaries on
@@ -33,6 +43,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Setup .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -65,6 +77,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       # Single source of truth for release triggers. Downstream publishing jobs
       # consume this output so manual workflow_dispatch runs can validate the
@@ -72,8 +86,15 @@ jobs:
       - name: Detect Release Trigger
         id: release-trigger
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          INPUT_PUBLISH: ${{ inputs.publish }}
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/v* ]]; then
+          if [[ "$EVENT_NAME" == "push" && "$REF" == refs/tags/v* ]]; then
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$EVENT_NAME" == "workflow_dispatch" && "$INPUT_PUBLISH" == "true" && "$INPUT_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "is_release=true" >> "$GITHUB_OUTPUT"
           else
             echo "is_release=false" >> "$GITHUB_OUTPUT"
@@ -137,12 +158,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Extract English Release Notes
         id: get_release_notes
         shell: pwsh
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          $tag = "${{ github.ref_name }}"
+          $tag = if (-not [string]::IsNullOrWhiteSpace($env:INPUT_TAG)) { $env:INPUT_TAG } else { $env:REF_NAME }
+          if ($tag -notmatch '^v\d+\.\d+\.\d+\.\d+$') {
+              throw "Invalid release tag format: '$tag'. Expected vX.X.X.X"
+          }
           Write-Host "Extracting English release notes for tag: $tag"
           $notes = ""
           $listingPath = "docs/store/StoreListing_EN.md"
@@ -166,10 +195,17 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
         run: |
-          cat << 'EOF' > release_notes.md
-          ## What's Changed in ${{ github.ref_name }}
-
+          TAG_NAME="${INPUT_TAG:-$REF_NAME}"
+          if [[ ! "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Invalid release tag format '$TAG_NAME'" >&2
+            exit 1
+          fi
+          printf "## What's Changed in %s\n\n" "$TAG_NAME" > release_notes.md
+          cat << 'EOF' >> release_notes.md
           ${{ steps.get_release_notes.outputs.release_notes }}
 
           ---
@@ -178,9 +214,9 @@ jobs:
 
           GitHub direct-download MSIX publication is disabled until a production code-signing provider is explicitly selected, integrated, and validated. No unsigned or untrusted MSIX asset is published here.
           EOF
-          gh release create "${{ github.ref_name }}" \
-            --repo "${{ github.repository }}" \
-            --title "${{ github.ref_name }}" --notes-file release_notes.md
+          gh release create "$TAG_NAME" \
+            --repo "$REPO" \
+            --title "$TAG_NAME" --notes-file release_notes.md
 
   store-publish:
     needs: assemble-msix
@@ -191,6 +227,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Download release package
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1

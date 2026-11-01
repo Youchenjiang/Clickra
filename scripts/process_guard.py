@@ -15,11 +15,13 @@ GIT_READ_OPERATIONS = {
     ("rev-parse", "HEAD"),
     ("rev-parse", MAIN_REF),
     ("ls-remote", "--heads", "origin", "main"),
+    ("ls-remote", "--tags", "origin"),
     ("merge-base", "--is-ancestor", MAIN_REF, "HEAD"),
     ("log", "--format=%B%x00", f"{MAIN_REF}..HEAD"),
     ("diff", "--quiet", MAIN_REF, "HEAD"),
     ("diff", "--name-only", f"{MAIN_REF}...HEAD"),
     ("status", "--porcelain"),
+    ("tag", "-l"),
 }
 GH_READ_VERBS = {("pr", "view"), ("pr", "checks"), ("pr", "list"),
                  ("run", "view"), ("run", "list"), ("workflow", "list")}

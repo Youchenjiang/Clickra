@@ -6,6 +6,8 @@ namespace Clickra.Core.Tests;
 static partial class TestSuite
 {
     private static readonly TimeSpan MsixToolingRegexTimeout = TimeSpan.FromSeconds(1);
+    private const string PackagingDirName = "packaging";
+    private const string AppxManifestFileName = "AppxManifest.xml";
 
     public static void RegisterMsixToolingTests(TestRunner runner)
     {
@@ -14,7 +16,7 @@ static partial class TestSuite
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
-            string manifestPath = Path.Combine(root, "packaging", "msix", "AppxManifest.xml");
+            string manifestPath = Path.Combine(root, PackagingDirName, "msix", AppxManifestFileName);
             var manifest = XDocument.Load(manifestPath);
             string? manifestIdentity = manifest.Root?
                 .Elements()
@@ -54,11 +56,48 @@ static partial class TestSuite
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
-            string manifestPath = Path.Combine(root, "packaging", "msix", "AppxManifest.xml");
+            string manifestPath = Path.Combine(root, PackagingDirName, "msix", AppxManifestFileName);
             string manifestText = File.ReadAllText(manifestPath);
 
             Assert.False(manifestText.Contains("windows.fileTypeAssociation", StringComparison.OrdinalIgnoreCase),
                 "AppxManifest.xml must not declare windows.fileTypeAssociation to prevent hijacking default file open handlers.");
+        });
+
+        runner.RunGuard("MSIX manifests match Directory.Build.props version", () =>
+        {
+            string? root = FindRepoRoot();
+            if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
+
+            string propsPath = Path.Combine(root, "src", "Directory.Build.props");
+            string propsText = File.ReadAllText(propsPath);
+            Match versionMatch = Regex.Match(
+                propsText,
+                @"<Version>(?<version>[^<]+)</Version>",
+                RegexOptions.None,
+                MsixToolingRegexTimeout);
+            Assert.True(versionMatch.Success, "src/Directory.Build.props must declare <Version>.");
+            string expectedVersion = versionMatch.Groups["version"].Value.Trim();
+
+            string[] manifestRelativePaths =
+            [
+                Path.Combine(PackagingDirName, "msix", AppxManifestFileName),
+                Path.Combine(PackagingDirName, "msix", "AppxManifest.Fluent.xml"),
+                Path.Combine("src", "resources", AppxManifestFileName),
+            ];
+
+            foreach (string relativePath in manifestRelativePaths)
+            {
+                string path = Path.Combine(root, relativePath);
+                Assert.True(File.Exists(path), $"Manifest file must exist: {relativePath}");
+                string manifestText = File.ReadAllText(path);
+                Match match = Regex.Match(
+                    manifestText,
+                    @"Version=""(?<version>[^""]+)""",
+                    RegexOptions.None,
+                    MsixToolingRegexTimeout);
+                Assert.True(match.Success, $"{relativePath} must declare Version attribute.");
+                Assert.Equal(expectedVersion, match.Groups["version"].Value.Trim());
+            }
         });
     }
 }

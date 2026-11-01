@@ -220,6 +220,106 @@ def _publication_metadata():
     return _github_metadata()
 
 
+def _tag_is_released(tag_name):
+    local_tags = git("tag", "-l")
+    if local_tags.returncode == 0:
+        existing = {line.strip() for line in local_tags.stdout.splitlines() if line.strip()}
+        if tag_name in existing:
+            return True
+    remote_tags = git("ls-remote", "--tags", "origin")
+    if remote_tags.returncode == 0:
+        for line in remote_tags.stdout.splitlines():
+            parts = line.strip().split()
+            if len(parts) >= 2 and parts[1] == f"refs/tags/{tag_name}":
+                return True
+    return False
+
+
+def _check_manifest_versions(repo_root, version):
+    errors = []
+    manifest_paths = (
+        repo_root / "packaging" / "msix" / "AppxManifest.xml",
+        repo_root / "packaging" / "msix" / "AppxManifest.Fluent.xml",
+        repo_root / "src" / "resources" / "AppxManifest.xml",
+    )
+    for mpath in manifest_paths:
+        if not mpath.is_file():
+            continue
+        text_m = mpath.read_text(encoding="utf-8")
+        m = re.search(r'Version="([^"]+)"', text_m)
+        if not m:
+            errors.append(f"{mpath.relative_to(repo_root)} does not declare Version attribute")
+        elif m.group(1).strip() != version:
+            errors.append(
+                f"{mpath.relative_to(repo_root)} declares Version=\"{m.group(1).strip()}\", expected \"{version}\""
+            )
+    return errors
+
+
+def _check_changelog_and_listings(repo_root, version, tag_name):
+    errors = []
+    changelog_path = repo_root / "CHANGELOG.md"
+    if changelog_path.is_file():
+        text_c = changelog_path.read_text(encoding="utf-8")
+        if f"[{tag_name}]" not in text_c and f"[{version}]" not in text_c:
+            errors.append(f"CHANGELOG.md missing header for version {tag_name} (expected '## [{tag_name}]')")
+
+    store_listings = (
+        repo_root / "docs" / "store" / "StoreListing_EN.md",
+        repo_root / "docs" / "store" / "StoreListing_ZH.md",
+        repo_root / "docs" / "store" / "StoreListing_JA.md",
+        repo_root / "docs" / "store" / "StoreListing_KO.md",
+        repo_root / "docs" / "store" / "StoreListing_ZH-CN.md",
+    )
+    for lpath in store_listings:
+        if lpath.is_file():
+            text_l = lpath.read_text(encoding="utf-8")
+            if tag_name not in text_l and version not in text_l:
+                errors.append(f"{lpath.relative_to(repo_root)} does not reference version {tag_name}")
+    return errors
+
+
+def _check_version_bump(base, metadata=None):
+    diff = git("diff", "--name-only", f"{base}...HEAD")
+    if diff.returncode != 0:
+        return ["cannot determine changed files against base for version bump check"]
+    changed_files = [line.strip().replace("\\", "/") for line in diff.stdout.splitlines() if line.strip()]
+
+    affects_release = any(f.startswith(("src/", "packaging/")) for f in changed_files)
+    props_changed = "src/Directory.Build.props" in changed_files
+
+    if not affects_release and not props_changed:
+        return []
+
+    if metadata:
+        labels = {item.get("name", "").lower() for item in metadata.get("labels", [])}
+        if "no-release" in labels:
+            return []
+
+    repo_root = Path(__file__).resolve().parent.parent
+    props_path = repo_root / "src" / "Directory.Build.props"
+    if not props_path.is_file():
+        return ["src/Directory.Build.props missing for version check"]
+
+    content = props_path.read_text(encoding="utf-8")
+    match = re.search(r"<Version>(.*?)</Version>", content)
+    if not match:
+        return ["src/Directory.Build.props does not declare <Version>"]
+    version = match.group(1).strip()
+    tag_name = f"v{version}"
+
+    errors = []
+    if affects_release and _tag_is_released(tag_name):
+        errors.append(
+            f"PR modifies src/ or packaging/ but version '{version}' is already tagged as an existing release ({tag_name}). "
+            f"Bump version in src/Directory.Build.props and associated files using scripts/bump_version.ps1"
+        )
+
+    errors.extend(_check_manifest_versions(repo_root, version))
+    errors.extend(_check_changelog_and_listings(repo_root, version, tag_name))
+    return errors
+
+
 def check(base, body_file=None, pushed_ref=None, pushed_oid=None, metadata=None):
     try:
         return _check(base, body_file, pushed_ref, pushed_oid, metadata)
@@ -246,6 +346,7 @@ def _check(base, body_file, pushed_ref, pushed_oid, metadata=None):
     local = git("rev-parse", base)
     if remote.returncode or local.returncode or not remote.stdout.strip() or local.stdout.strip() != remote.stdout.split()[0]:
         errors.append("origin/main changed or cannot be verified at end of preflight")
+    errors.extend(_check_version_bump(base, metadata))
     return errors
 
 
