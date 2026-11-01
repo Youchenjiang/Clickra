@@ -75,27 +75,6 @@
           </desktop9:FileExplorerClassicContextMenuHandler>
         </desktop9:Extension>
 
-        <uap:Extension Category="windows.fileTypeAssociation">
-          <uap:FileTypeAssociation Name="clickra">
-            <uap:SupportedFileTypes>
-              <uap:FileType>.pdf</uap:FileType>
-              <uap:FileType>.docx</uap:FileType>
-              <uap:FileType>.doc</uap:FileType>
-              <uap:FileType>.pptx</uap:FileType>
-              <uap:FileType>.ppt</uap:FileType>
-              <uap:FileType>.xlsx</uap:FileType>
-              <uap:FileType>.xls</uap:FileType>
-              <uap:FileType>.md</uap:FileType>
-              <uap:FileType>.markdown</uap:FileType>
-              <uap:FileType>.png</uap:FileType>
-              <uap:FileType>.jpg</uap:FileType>
-              <uap:FileType>.jpeg</uap:FileType>
-              <uap:FileType>.webp</uap:FileType>
-              <uap:FileType>.bmp</uap:FileType>
-            </uap:SupportedFileTypes>
-          </uap:FileTypeAssociation>
-        </uap:Extension>
-
         <com:Extension Category="windows.comServer">
           <com:ComServer>
             <com:SurrogateServer DisplayName="Clickra Context Menu Handler">

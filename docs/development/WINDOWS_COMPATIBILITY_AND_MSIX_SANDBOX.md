@@ -1,4 +1,4 @@
-﻿# Windows 10/11 相容性與 MSIX 沙盒重定向指南
+# Windows 10/11 相容性與 MSIX 沙盒重定向指南
 
 ## 1. Windows 10 vs Windows 11 右鍵選單相容性
 
@@ -7,10 +7,10 @@
 - **Windows 10 檔案資源管理員會直接忽略 `desktop4` / `desktop5` 標籤**。
 
 ### 1.2 相容解決方案 (`packaging/msix/AppxManifest.xml`)
-Manifest 中已配置雙軌宣告：
+Manifest 中已配置雙軌選單宣告：
 1. **Win11 Modern 選單**：保留 `desktop4:FileExplorerContextMenus`。
 2. **Win10 20H2+ / Win11 傳統選單**：`desktop9:FileExplorerClassicContextMenuHandler` 包含 `*`、`Directory` 與 `Directory\Background`。
-3. **Win10 傳統檔案關聯**：新增 `uap:FileTypeAssociation` 宣告，覆蓋常見副檔名（`.pdf`, `.docx`, `.doc`, `.pptx`, `.ppt`, `.xlsx`, `.xls`, `.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`）。
+（注意：不宣告 `uap:FileTypeAssociation`，避免搶占 Office/PDF/圖片之系統預設開啟程式；右鍵選單由上述 COM 擴展完整覆蓋）。
 
 ---
 

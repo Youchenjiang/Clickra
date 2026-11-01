@@ -40,7 +40,7 @@
 ### 4. Windows 10 右鍵選單消失
 - **現象**：右鍵選單在 Win11 正常顯示，但在 Win10 檔案總管完全看不到 Clickra。
 - **原因**：`AppxManifest.xml` 僅宣告了 Win11 專用的 `desktop4` / `desktop5` (`windows.fileExplorerContextMenus`)，Win10 系統解析時會自動忽略。
-- **解決方案**：在 Manifest 中補齊 `desktop9:FileExplorerClassicContextMenuHandler`（`*`, `Directory`, `Directory\Background`）與 `uap:FileTypeAssociation` 傳統檔案關聯宣告。
+- **解決方案**：在 Manifest 中補齊 `desktop9:FileExplorerClassicContextMenuHandler`（`*`, `Directory`, `Directory\Background`）。（注意：不可宣告 `uap:FileTypeAssociation`，以免搶占系統副檔名預設開啟程式）。
 
 ---
 

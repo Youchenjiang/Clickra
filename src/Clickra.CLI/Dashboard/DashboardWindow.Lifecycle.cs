@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Clickra.Core;
+using Clickra.Core.Presentation.Dashboard;
 
 using static Clickra.UI.Native.Win32;
 
@@ -10,8 +12,20 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
-        public static void Show()
+        public static void Show(IEnumerable<string>? initialFiles = null)
         {
+            if (initialFiles != null)
+            {
+                var filesList = initialFiles
+                    .Where(f => !string.IsNullOrWhiteSpace(f) && (File.Exists(f) || Directory.Exists(f)))
+                    .ToList();
+                if (filesList.Count > 0)
+                {
+                    _dashboardPresentation.Select(DashboardSection.Convert);
+                    ImportFiles(filesList);
+                }
+            }
+
             bool createdNew;
             _mutex = new System.Threading.Mutex(true, "Global\\Clickra_Dashboard_Mutex", out createdNew);
             if (!createdNew)
