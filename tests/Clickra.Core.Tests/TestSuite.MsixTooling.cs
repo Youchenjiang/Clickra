@@ -60,5 +60,42 @@ static partial class TestSuite
             Assert.False(manifestText.Contains("windows.fileTypeAssociation", StringComparison.OrdinalIgnoreCase),
                 "AppxManifest.xml must not declare windows.fileTypeAssociation to prevent hijacking default file open handlers.");
         });
+
+        runner.RunGuard("MSIX manifests match Directory.Build.props version", () =>
+        {
+            string? root = FindRepoRoot();
+            if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
+
+            string propsPath = Path.Combine(root, "src", "Directory.Build.props");
+            string propsText = File.ReadAllText(propsPath);
+            Match versionMatch = Regex.Match(
+                propsText,
+                @"<Version>(?<version>[^<]+)</Version>",
+                RegexOptions.None,
+                MsixToolingRegexTimeout);
+            Assert.True(versionMatch.Success, "src/Directory.Build.props must declare <Version>.");
+            string expectedVersion = versionMatch.Groups["version"].Value.Trim();
+
+            string[] manifestRelativePaths =
+            [
+                Path.Combine("packaging", "msix", "AppxManifest.xml"),
+                Path.Combine("packaging", "msix", "AppxManifest.Fluent.xml"),
+                Path.Combine("src", "resources", "AppxManifest.xml"),
+            ];
+
+            foreach (string relativePath in manifestRelativePaths)
+            {
+                string path = Path.Combine(root, relativePath);
+                Assert.True(File.Exists(path), $"Manifest file must exist: {relativePath}");
+                string manifestText = File.ReadAllText(path);
+                Match match = Regex.Match(
+                    manifestText,
+                    @"Version=""(?<version>[^""]+)""",
+                    RegexOptions.None,
+                    MsixToolingRegexTimeout);
+                Assert.True(match.Success, $"{relativePath} must declare Version attribute.");
+                Assert.Equal(expectedVersion, match.Groups["version"].Value.Trim());
+            }
+        });
     }
 }
