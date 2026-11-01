@@ -14,11 +14,16 @@ namespace Clickra.UI
     {
         public static void Show(IEnumerable<string>? initialFiles = null)
         {
-            var filesList = initialFiles?.Where(f => !string.IsNullOrWhiteSpace(f) && (File.Exists(f) || Directory.Exists(f))).ToList();
-            if (filesList != null && filesList.Count > 0)
+            if (initialFiles != null)
             {
-                _dashboardPresentation.Select(DashboardSection.Convert);
-                ImportFiles(filesList);
+                var filesList = initialFiles
+                    .Where(f => !string.IsNullOrWhiteSpace(f) && (File.Exists(f) || Directory.Exists(f)))
+                    .ToList();
+                if (filesList.Count > 0)
+                {
+                    _dashboardPresentation.Select(DashboardSection.Convert);
+                    ImportFiles(filesList);
+                }
             }
 
             bool createdNew;
