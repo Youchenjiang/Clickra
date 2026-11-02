@@ -156,7 +156,7 @@ public static class DashboardLayout
     public const int ConvertZoneOutputOffset = 51;
 
     /// <summary>Number of conversion command groups rendered by the Dashboard.</summary>
-    public const int ConvertGroupCount = 3;
+    public const int ConvertGroupCount = 4;
     /// <summary>Horizontal gap between conversion cards in a group.</summary>
     public const int ConvertGroupGap = 14;
     /// <summary>Vertical gap between successive conversion command groups.</summary>
@@ -209,9 +209,20 @@ public static class DashboardLayout
     /// <summary>
     /// 各分類在工作區使用的欄數。
     /// 依據卡片內含 18px 圖示 + 6px 間距 + 最長文字 (~86px) + 兩側邊距 (16px) 的卡片最小需求寬度（126px），
-    /// 在標準視窗可用寬度（520px）下，統一採用 3 欄（每欄寬度約 164px），保證各分類垂直格線完全對齊且圖文絕不溢出邊界。
+    /// 在標準視窗可用寬度（520px）下：
+    /// - 分類 0（格式轉換）：3 欄（每欄 164px）
+    /// - 分類 1（組織與拼合）：2 欄（每欄 253px）
+    /// - 分類 2（體積優化）：2 欄（每欄 253px）
+    /// - 分類 3（進階處理）：3 欄（每欄 164px）
+    /// 保證各分類圖文絕不溢出邊界。
     /// </summary>
-    public static int ConvertGroupColumns(int groupIndex) => 3;
+    public static int ConvertGroupColumns(int groupIndex) => groupIndex switch
+    {
+        1 => 2,
+        2 => 2,
+        3 => 3,
+        _ => 3
+    };
 
     /// <summary>指定分類在目前項目數下需要幾列。</summary>
     public static int ConvertGroupRows(int groupIndex, int itemCount)
