@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
   <!-- Base photo card -->
-  <rect x="24" y="24" width="168" height="144" rx="28" fill="#E8F5E9"/>
-  <circle cx="68" cy="68" r="14" fill="#2E7D32"/>
-  <path d="M 48,136 L 80,94 L 106,120 L 130,86 L 164,136" fill="none" stroke="#2E7D32" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- HEIC Format Pill Badge: Green #2E7D32 -->
-  <rect x="56" y="124" width="176" height="108" rx="26" fill="#2E7D32"/>
+  <rect x="24" y="24" width="168" height="144" rx="28" fill="#E0F2F1"/>
+  <circle cx="68" cy="68" r="14" fill="#00828C"/>
+  <path d="M 48,136 L 80,94 L 106,120 L 130,86 L 164,136" fill="none" stroke="#00828C" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- HEIC Format Pill Badge: Teal #00828C -->
+  <rect x="56" y="124" width="176" height="108" rx="26" fill="#00828C"/>
   <text x="144" y="194" font-family="Segoe UI, Arial, sans-serif" font-size="44" font-weight="900" fill="#FFFFFF" text-anchor="middle" letter-spacing="1">HEIC</text>
 </svg>
