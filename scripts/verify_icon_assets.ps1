@@ -252,4 +252,21 @@ foreach ($manifest in @('packaging/msix/AppxManifest.xml', 'packaging/msix/AppxM
 Assert-SparseManifestIconWiring 'src/resources/AppxManifest.xml'
 Assert-BuildIconWiring 'scripts/build_common.ps1'
 
+$featureCommands = @(
+    'word2pdf', 'excel2pdf', 'ppt2pdf', 'md2pdf', 'md2word',
+    'merge-pdf', 'compress-pdf', 'split-pdf', 'translate-pdf', 'decrypt-pdf', 'print-pdf',
+    'img2pdf', 'img-merge', 'img-stitch', 'img-compress',
+    'img-to-png', 'img-to-jpg', 'img-to-webp', 'img-to-gif', 'img-to-heic'
+)
+$featureIcoSizes = @(16, 20, 24, 32, 48, 64)
+
+foreach ($cmd in $featureCommands) {
+    $svgPath = "packaging/brand_assets/features/$cmd.svg"
+    if (-not (Test-Path -LiteralPath $svgPath)) {
+        throw "Missing feature SVG asset: $svgPath"
+    }
+    $icoPath = "src/resources/menu-$cmd.ico"
+    Assert-IcoFrames $icoPath $featureIcoSizes
+}
+
 Write-Host "Icon asset verification passed."

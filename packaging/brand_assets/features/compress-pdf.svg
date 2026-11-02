@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Solid PDF Red background -->
+  <rect x="24" y="24" width="208" height="208" rx="36" fill="#D32F2F"/>
+  <!-- Central document sheet -->
+  <rect x="80" y="72" width="96" height="112" rx="16" fill="#FFFFFF"/>
+  <path d="M 98,104 L 138,104 M 98,124 L 146,124 M 98,144 L 128,144" stroke="#D32F2F" stroke-width="10" stroke-linecap="round"/>
+  <!-- Left inward arrow (heavy) -->
+  <path d="M 38,128 L 66,128 M 52,114 L 66,128 L 52,142" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Right inward arrow (heavy) -->
+  <path d="M 218,128 L 190,128 M 204,114 L 190,128 L 204,142" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

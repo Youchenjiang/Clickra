@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Base photo card -->
+  <rect x="24" y="24" width="168" height="144" rx="28" fill="#FFF3E0"/>
+  <circle cx="68" cy="68" r="14" fill="#E65100"/>
+  <path d="M 48,136 L 80,94 L 106,120 L 130,86 L 164,136" fill="none" stroke="#E65100" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- JPG Format Pill Badge: Amber #E65100 -->
+  <rect x="64" y="124" width="168" height="108" rx="26" fill="#E65100"/>
+  <text x="148" y="196" font-family="Segoe UI, Arial, sans-serif" font-size="52" font-weight="900" fill="#FFFFFF" text-anchor="middle" letter-spacing="2">JPG</text>
+</svg>
