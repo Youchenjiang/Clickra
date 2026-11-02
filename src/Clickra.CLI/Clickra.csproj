@@ -34,9 +34,17 @@
     <ProjectReference Include="..\Clickra.Core\Clickra.Core.csproj" />
   </ItemGroup>
 
+  <Target Name="GenerateIconsBeforeBuild" BeforeTargets="BeforeBuild">
+    <Exec Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)..\..\scripts\tools\IconGen\IconGen.csproj&quot;" StandardOutputImportance="Low" />
+  </Target>
+
   <ItemGroup>
-    <Content Include="..\resources\menu-*.ico">
+    <Content Include="..\..\assets\icons\menu-*.ico">
       <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\assets\icons\app.ico">
+      <Link>app.ico</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

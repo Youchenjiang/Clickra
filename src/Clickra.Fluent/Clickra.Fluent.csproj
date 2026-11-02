@@ -20,9 +20,9 @@
     <WindowsAppSDKSelfContained Condition="'$(Configuration)' == 'Debug'">true</WindowsAppSDKSelfContained>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="..\resources\app.png" Link="Assets\AppIcon.png" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\resources\app.ico" Link="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\resources\app.ico" Link="app.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\assets\icons\app.png" Link="Assets\AppIcon.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\assets\icons\app.ico" Link="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\assets\icons\app.ico" Link="app.ico" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="..\..\packaging\msix\AppxManifest.Fluent.xml" />
