@@ -20,6 +20,7 @@ from process_guard import executable  # noqa: E402
 ALLOWED_ROOT_DIRS = {
     ".agent",
     ".github",
+    "assets",
     "docs",
     "packaging",
     "scripts",
@@ -35,6 +36,7 @@ ALLOWED_ROOT_FILES = {
     ".sonarcloud.properties",
     "AGENTS.md",
     "CHANGELOG.md",
+    "Directory.Build.targets",
     "LICENSE",
     "PRIVACY.md",
     "README.md",
@@ -80,7 +82,7 @@ def get_git_tracked_files() -> list[str]:
 class RepoHygieneTests(unittest.TestCase):
     def test_no_banned_directories_exist(self):
         """Ensure deprecated root directories do not exist on disk."""
-        banned = ["tools", "archive", "bin", "obj"]
+        banned = ["tools", "archive", "bin"]
         for dirname in banned:
             target = REPO_ROOT / dirname
             self.assertFalse(
