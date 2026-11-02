@@ -25,7 +25,7 @@ public static class Program
         string assetsDir = Path.Combine(repoRoot, "assets");
         string featuresDir = Path.Combine(assetsDir, "features");
         string primaryDir = Path.Combine(assetsDir, "primary");
-        string outputDir = Path.Combine(assetsDir, "icons");
+        string outputDir = Path.Combine(repoRoot, "obj", "icons");
 
         Directory.CreateDirectory(outputDir);
 
