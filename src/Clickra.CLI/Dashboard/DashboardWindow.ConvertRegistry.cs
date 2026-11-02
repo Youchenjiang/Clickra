@@ -72,19 +72,19 @@ public static partial class DashboardWindow
     /// <summary>
     /// Returns the brand color for a command, governed 100% by its input source file type.
     /// In Clickra's Design System, tag colors strictly reflect the input source domain
-    /// (Word=Blue, Excel=Green, PPT=Orange, Markdown=Purple, Image=PhotoTeal, PDF=ClassicRed).
+    /// (Word=Blue, Excel=Green, PPT=BrightOrange, Markdown=Purple, Image=PhotoTeal, PDF=SlateBlueGrey).
     /// </summary>
     private static Color GetCommandTagColor(string command)
     {
         string fileType = Clickra.Shared.ConvertCommandMetadata.GetFileTypeForCommand(command);
         return fileType switch
         {
-            "word" => Color.FromArgb(0, 120, 212),       // Word Blue
-            "excel" => Color.FromArgb(16, 124, 65),      // Excel Green
-            "ppt" => Color.FromArgb(180, 50, 30),        // PPT Orange/Red
-            "markdown" => Color.FromArgb(96, 72, 164),   // Markdown Purple
+            "word" => Color.FromArgb(0, 120, 212),       // Word Blue (#0078D4)
+            "excel" => Color.FromArgb(16, 124, 65),      // Excel Green (#107C41)
+            "ppt" => Color.FromArgb(216, 59, 1),         // PPT Bright Orange (#D83B01)
+            "markdown" => Color.FromArgb(96, 72, 164),   // Markdown Purple (#6048A4)
             "image" => Color.FromArgb(0, 130, 140),      // Photo Teal (#00828C)
-            "pdf" => Color.FromArgb(196, 62, 62),        // PDF Classic Red (#C43E3E)
+            "pdf" => Color.FromArgb(71, 85, 105),        // PDF Slate Blue-Grey (#475569)
             _ => Color.FromArgb(100, 100, 100)
         };
     }
