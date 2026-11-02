@@ -181,9 +181,9 @@ Microsoft Ingestion API 操作高度非同步。不要信任暫態 HTTP 回應�
 - **來源領域專屬色彩定義**：
   - `Word`（`.doc`, `.docx`）➜ Word 經典藍（`#0078D4`）
   - `Excel`（`.xls`, `.xlsx`）➜ Excel 經典綠（`#107C41`）
-  - `PowerPoint`（`.ppt`, `.pptx`）➜ PPT 經典橙紅（`#B4321E`）
+  - `PowerPoint`（`.ppt`, `.pptx`）➜ PPT 亮橘色（`#D83B01`）
   - `Markdown`（`.md`）➜ Markdown 官方深紫（`#6048A4`）
   - `Image`（`.png`, `.jpg`, `.webp`, `.heic`, `.gif` 等）➜ 相片青碧色（`#00828C`）
-  - `PDF`（`.pdf`）➜ PDF 官方經典紅（`#C43E3E`）
+  - `PDF`（`.pdf`）➜ PDF 冷靜石墨藍灰（`#475569`）
 - **硬性架構守門約束**：
   全數 20 項指令皆由測試守門 `TestCommandTagColorsFollowSourceFileGovernance` 自動稽核。任何試圖覆寫個別指令顏色的代碼變更將在 CI 與本地測試中被直接阻擋。

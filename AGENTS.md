@@ -61,8 +61,8 @@ to recover it before `push`, instead of invoking `gh pr view` directly.
 - **Source Domain Color Mapping**:
   - `Word` (.doc, .docx) -> Word Blue (`#0078D4`)
   - `Excel` (.xls, .xlsx) -> Excel Green (`#107C41`)
-  - `PowerPoint` (.ppt, .pptx) -> PPT Orange/Red (`#B4321E`)
+  - `PowerPoint` (.ppt, .pptx) -> PPT Bright Orange (`#D83B01`)
   - `Markdown` (.md) -> Markdown Purple (`#6048A4`)
   - `Image` (.png, .jpg, .webp, .heic, .gif) -> Photo Teal (`#00828C`)
-  - `PDF` (.pdf) -> PDF Classic Red (`#C43E3E`)
+  - `PDF` (.pdf) -> PDF Slate Blue-Grey (`#475569`)
 - **Strict Invariant**: No command may bypass this mapping. Icons, hover glows, card selection borders, and history tags must remain 100% synchronized with this source-driven palette. Architecture guards strictly enforce this in CI (`TestCommandTagColorsFollowSourceFileGovernance`).
