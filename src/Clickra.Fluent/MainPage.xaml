@@ -235,7 +235,8 @@
                                         <Button x:Name="BtnImg2Pdf" Content="PDF" Tag="img2pdf" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnImgMerge" Grid.Column="1" Content="Merge Images" Tag="img-merge" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnImgStitch" Grid.Column="2" Content="Stitch Images" Tag="img-stitch" HorizontalAlignment="Stretch"/>
-                                        <Button x:Name="BtnImgToPng" Grid.Column="3" Content="PNG" Tag="img-to-png" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnImgCompress" Grid.Column="3" Content="Compress Images" Tag="img-compress" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnImgToPng" Grid.Row="1" Content="PNG" Tag="img-to-png" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnImgToJpg" Grid.Row="1" Content="JPG" Tag="img-to-jpg" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnImgToWebp" Grid.Row="1" Grid.Column="1" Content="WebP" Tag="img-to-webp" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnImgToGif" Grid.Row="1" Grid.Column="2" Content="GIF" Tag="img-to-gif" HorizontalAlignment="Stretch"/>

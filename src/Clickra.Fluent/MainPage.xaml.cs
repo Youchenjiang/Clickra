@@ -181,8 +181,8 @@ public sealed partial class MainPage : Page
 
         ArrangeSequentialGrid(new FrameworkElement[]
         {
-            page.BtnImg2Pdf, page.BtnImgMerge, page.BtnImgStitch, page.BtnImgToPng,
-            page.BtnImgToJpg, page.BtnImgToWebp, page.BtnImgToGif, page.BtnImgToHeic
+            page.BtnImg2Pdf, page.BtnImgMerge, page.BtnImgStitch, page.BtnImgCompress,
+            page.BtnImgToPng, page.BtnImgToJpg, page.BtnImgToWebp, page.BtnImgToGif, page.BtnImgToHeic
         }, imgCols);
     }
 
@@ -321,7 +321,7 @@ public sealed partial class MainPage : Page
 
     private void HookCommandButtons()
     {
-        foreach (var button in new[] { BtnWord2Pdf, BtnExcel2Pdf, BtnPpt2Pdf, BtnMd2Pdf, BtnMd2Word, BtnMergePdf, BtnCompressPdf, BtnTranslatePdf, BtnDecryptPdf, BtnSplitPdf, BtnPrintPdf, BtnImg2Pdf, BtnImgMerge, BtnImgStitch, BtnImgToPng, BtnImgToJpg, BtnImgToWebp, BtnImgToGif, BtnImgToHeic })
+        foreach (var button in new[] { BtnWord2Pdf, BtnExcel2Pdf, BtnPpt2Pdf, BtnMd2Pdf, BtnMd2Word, BtnMergePdf, BtnCompressPdf, BtnTranslatePdf, BtnDecryptPdf, BtnSplitPdf, BtnPrintPdf, BtnImg2Pdf, BtnImgMerge, BtnImgStitch, BtnImgCompress, BtnImgToPng, BtnImgToJpg, BtnImgToWebp, BtnImgToGif, BtnImgToHeic })
         {
             if (button.Tag is string command)
             {
@@ -731,6 +731,7 @@ public sealed partial class MainPage : Page
         BtnImg2Pdf.Content = "PDF";
         BtnImgMerge.Content = L("cmd_merge_img");
         BtnImgStitch.Content = L("cmd_stitch_img");
+        BtnImgCompress.Content = L("cmd_img_compress");
         BtnImgToPng.Content = L("cmd_img_to_png");
         BtnImgToJpg.Content = L("cmd_img_to_jpg");
         BtnImgToWebp.Content = L("cmd_img_to_webp");
