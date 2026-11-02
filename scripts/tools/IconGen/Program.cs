@@ -30,49 +30,8 @@ public static class Program
         Directory.CreateDirectory(outputDir);
 
         var swTotal = Stopwatch.StartNew();
-        int generatedCount = 0;
-
-        // 1. Process 20 feature command icons
-        if (Directory.Exists(featuresDir))
-        {
-            foreach (string svgFile in Directory.GetFiles(featuresDir, "*.svg"))
-            {
-                string cmdName = Path.GetFileNameWithoutExtension(svgFile);
-                string outIco = Path.Combine(outputDir, $"menu-{cmdName}.ico");
-
-                if (!force && File.Exists(outIco) && File.GetLastWriteTimeUtc(outIco) >= File.GetLastWriteTimeUtc(svgFile))
-                {
-                    continue;
-                }
-
-                GenerateIco(svgFile, outIco, FeatureSizes);
-                generatedCount++;
-            }
-        }
-
-        // 2. Process primary app icon and PNG
-        string primaryIco = Path.Combine(primaryDir, "clickra-icon-primary.ico");
-        string primaryPng = Path.Combine(primaryDir, "clickra-icon-primary-256.png");
-        string outAppIco = Path.Combine(outputDir, "app.ico");
-        string outAppPng = Path.Combine(outputDir, "app.png");
-
-        if (File.Exists(primaryIco))
-        {
-            if (force || !File.Exists(outAppIco) || File.GetLastWriteTimeUtc(outAppIco) < File.GetLastWriteTimeUtc(primaryIco))
-            {
-                File.Copy(primaryIco, outAppIco, true);
-                generatedCount++;
-            }
-        }
-
-        if (File.Exists(primaryPng))
-        {
-            if (force || !File.Exists(outAppPng) || File.GetLastWriteTimeUtc(outAppPng) < File.GetLastWriteTimeUtc(primaryPng))
-            {
-                File.Copy(primaryPng, outAppPng, true);
-                generatedCount++;
-            }
-        }
+        int generatedCount = ProcessFeatureIcons(featuresDir, outputDir, force)
+                           + ProcessPrimaryAssets(primaryDir, outputDir, force);
 
         swTotal.Stop();
         if (generatedCount > 0)
@@ -85,6 +44,53 @@ public static class Program
         }
 
         return 0;
+    }
+
+    private static int ProcessFeatureIcons(string featuresDir, string outputDir, bool force)
+    {
+        if (!Directory.Exists(featuresDir))
+        {
+            return 0;
+        }
+
+        int count = 0;
+        foreach (string svgFile in Directory.GetFiles(featuresDir, "*.svg"))
+        {
+            string cmdName = Path.GetFileNameWithoutExtension(svgFile);
+            string outIco = Path.Combine(outputDir, $"menu-{cmdName}.ico");
+
+            if (!force && File.Exists(outIco) && File.GetLastWriteTimeUtc(outIco) >= File.GetLastWriteTimeUtc(svgFile))
+            {
+                continue;
+            }
+
+            GenerateIco(svgFile, outIco, FeatureSizes);
+            count++;
+        }
+        return count;
+    }
+
+    private static int ProcessPrimaryAssets(string primaryDir, string outputDir, bool force)
+    {
+        int count = 0;
+        string primaryIco = Path.Combine(primaryDir, "clickra-icon-primary.ico");
+        string primaryPng = Path.Combine(primaryDir, "clickra-icon-primary-256.png");
+        string outAppIco = Path.Combine(outputDir, "app.ico");
+        string outAppPng = Path.Combine(outputDir, "app.png");
+
+        if (File.Exists(primaryIco) && (force || !File.Exists(outAppIco) || File.GetLastWriteTimeUtc(outAppIco) < File.GetLastWriteTimeUtc(primaryIco)))
+        {
+            File.Copy(primaryIco, outAppIco, true);
+            count++;
+        }
+
+        if (File.Exists(primaryPng) && (force || !File.Exists(outAppPng) || File.GetLastWriteTimeUtc(outAppPng) < File.GetLastWriteTimeUtc(primaryPng)))
+        {
+            File.Copy(primaryPng, outAppPng, true);
+            count++;
+        }
+
+        return count;
     }
 
     private static void GenerateIco(string svgPath, string icoPath, int[] sizes)
