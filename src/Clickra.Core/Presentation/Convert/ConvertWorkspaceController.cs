@@ -32,31 +32,32 @@ public sealed record ConvertCommandPresentation(
 /// </summary>
 public sealed class ConvertWorkspaceController
 {
-    private const string OfficeGroup = "convert_group_office";
-    private const string PdfGroup = "convert_group_pdf";
-    private const string ImageGroup = "convert_group_image";
+    private const string ConvertGroup = "convert_group_convert";
+    private const string OrganizeGroup = "convert_group_organize";
+    private const string OptimizeGroup = "convert_group_optimize";
+    private const string ProcessGroup = "convert_group_process";
     private static readonly ConvertCommandPresentation[] CommandCatalogValue =
     [
-        new("word2pdf", "cmd_word_to_pdf", OfficeGroup, 0, true),
-        new("excel2pdf", "cmd_excel_to_pdf", OfficeGroup, 0, true),
-        new("ppt2pdf", "cmd_ppt_to_pdf", OfficeGroup, 0, true),
-        new("md2pdf", "cmd_md_to_pdf", OfficeGroup, 0, false),
-        new("md2word", "cmd_md_to_word", OfficeGroup, 0, false),
-        new("merge-pdf", "cmd_merge_pdf", PdfGroup, 1, false),
-        new("compress-pdf", "cmd_compress_pdf", PdfGroup, 1, false),
-        new("translate-pdf", "cmd_translate_pdf", PdfGroup, 1, false),
-        new("decrypt-pdf", "cmd_decrypt_pdf", PdfGroup, 1, false),
-        new("split-pdf", "cmd_split_pdf", PdfGroup, 1, false),
-        new("print-pdf", "cmd_print_pdf", PdfGroup, 1, false),
-        new("img2pdf", "cmd_img_to_pdf", ImageGroup, 2, false),
-        new("img-merge", "cmd_merge_img", ImageGroup, 2, false),
-        new("img-stitch", "cmd_stitch_img", ImageGroup, 2, false),
-        new("img-compress", "cmd_img_compress", ImageGroup, 2, false),
-        new("img-to-png", "cmd_img_to_png", ImageGroup, 2, false),
-        new("img-to-jpg", "cmd_img_to_jpg", ImageGroup, 2, false),
-        new("img-to-webp", "cmd_img_to_webp", ImageGroup, 2, false),
-        new("img-to-gif", "cmd_img_to_gif", ImageGroup, 2, false),
-        new("img-to-heic", "cmd_img_to_heic", ImageGroup, 2, false)
+        new("word2pdf", "cmd_word_to_pdf", ConvertGroup, 0, true),
+        new("excel2pdf", "cmd_excel_to_pdf", ConvertGroup, 0, true),
+        new("ppt2pdf", "cmd_ppt_to_pdf", ConvertGroup, 0, true),
+        new("md2pdf", "cmd_md_to_pdf", ConvertGroup, 0, false),
+        new("md2word", "cmd_md_to_word", ConvertGroup, 0, false),
+        new("img2pdf", "cmd_img_to_pdf", ConvertGroup, 0, false),
+        new("img-to-png", "cmd_img_to_png", ConvertGroup, 0, false),
+        new("img-to-jpg", "cmd_img_to_jpg", ConvertGroup, 0, false),
+        new("img-to-webp", "cmd_img_to_webp", ConvertGroup, 0, false),
+        new("img-to-gif", "cmd_img_to_gif", ConvertGroup, 0, false),
+        new("img-to-heic", "cmd_img_to_heic", ConvertGroup, 0, false),
+        new("merge-pdf", "cmd_merge_pdf", OrganizeGroup, 1, false),
+        new("split-pdf", "cmd_split_pdf", OrganizeGroup, 1, false),
+        new("img-merge", "cmd_merge_img", OrganizeGroup, 1, false),
+        new("img-stitch", "cmd_stitch_img", OrganizeGroup, 1, false),
+        new("compress-pdf", "cmd_compress_pdf", OptimizeGroup, 2, false),
+        new("img-compress", "cmd_img_compress", OptimizeGroup, 2, false),
+        new("translate-pdf", "cmd_translate_pdf", ProcessGroup, 3, false),
+        new("decrypt-pdf", "cmd_decrypt_pdf", ProcessGroup, 3, false),
+        new("print-pdf", "cmd_print_pdf", ProcessGroup, 3, false)
     ];
 
     private static readonly IReadOnlyDictionary<string, ConvertCommandPresentation> CommandByKey =
