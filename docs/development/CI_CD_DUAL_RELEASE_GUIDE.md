@@ -52,12 +52,9 @@ behavior. Do not infer a Store submission from a successful manual dispatch run.
 ## 3. GitHub Release notes
 
 For a tag-triggered release, the workflow looks up the PR associated with the tagged merge
-commit and uses that PR body as the GitHub Release notes. Under the project PR-writing
-rules, this should be the dedicated **release-preparation PR**, not an arbitrary content PR.
-
-Ordinary content PRs remain concise and reviewer-facing. The release-preparation PR should
-summarize the release in public-facing language because its body is the input consumed by
-the release workflow.
+commit and uses that PR body as the GitHub Release notes. Because any PR that modifies
+release paths bumps the version and triggers this workflow on merge, PR bodies should summarize
+the changes cleanly in public-facing language.
 
 Until the planned SignPath Foundation direct-signing integration is complete, GitHub Release
 is metadata/release-history only and must not imply that a direct-download MSIX is available.

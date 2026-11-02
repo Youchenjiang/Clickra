@@ -109,7 +109,7 @@ Use `scripts/build_msix.ps1` for the actual current Main package so the CLI, Lau
 The project provides built-in PowerShell scripts for automated version bumping and MSIX packaging:
 
 > [!IMPORTANT]
-> `bump_version.ps1` is a **release-preparation tool**, not an ordinary feature/bugfix step. Do not run it merely because product code changed; version bumps occur only at an authorized release boundary. For version-surface rules see [`release_guideline.md`](release_guideline.md).
+> `bump_version.ps1` is used to bump version surfaces for PRs that modify `src/` or `packaging/`. Any PR touching release code must increment the version so `pr_preflight.py` passes and CI can perform `auto-tag-release` upon merge to `main`. For version-surface rules see [`release_guideline.md`](release_guideline.md).
 
 *   **Bump Version & Build**:
     By default, the script increments the `patch` version (3rd digit) and resets the `revision` (4th digit) to `0` for Microsoft Store compatibility.
@@ -302,7 +302,7 @@ or
 - **Milestone**: required unless the PR is a `release` / `hotfix` / `dependencies` PR.
 - **Development**: link the issue(s) this PR closes, if any.
 
-**Release notes**: ordinary content PR bodies are for reviewers. The tag-triggered release workflow uses the PR associated with the tagged merge commit, which should be the dedicated **release-preparation PR**; that PR body therefore also serves as public GitHub Release notes and should summarize the release concisely.
+**Release notes**: The tag-triggered release workflow uses the PR associated with the tagged merge commit as GitHub Release notes; the PR body should therefore summarize the release concisely and in public-facing terms.
 
 **What to avoid** (from past mistakes):
 - Empty body (PR #1, #3)
