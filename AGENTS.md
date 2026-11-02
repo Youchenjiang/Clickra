@@ -49,10 +49,12 @@ to recover it before `push`, instead of invoking `gh pr view` directly.
 ## Branch Scope & Naming Discipline (Non-negotiable)
 
 - **Single Scope Rule**: Every branch must address exactly ONE focused capability or problem. If a task requires addressing multiple topics, it MUST be split into multiple PRs.
+- **Allowed Prefixes**: The branch prefix must be one of the allowlisted types defined in `scripts/branch_policy.py`: `feat`, `feature`, `fix`, `refactor`, `hotfix`, `chore`, `docs`, `test`, `perf`, `style` (e.g., `feat/`, `fix/`, `refactor/`, `feature/`).
 - **No Compound Suffixes**: Never concatenate multiple unrelated topic words with hyphens (e.g. `architecture-integrity-shared-classifiers` is strictly forbidden).
 - **Strict Word & Length Limits**:
-  - The branch suffix must consist of **2 to 3 words** only.
-  - The branch suffix length must **NOT exceed 25 characters** (e.g., `refactor/usecase-options` is 15 chars, `refactor/module-guards` is 13 chars).
+  - The branch suffix must consist of **2 to 3 words** only, separated by hyphens (e.g., `feat/modern-icons`, `refactor/usecase-options`).
+  - The branch suffix length must **NOT exceed 25 characters** (e.g., `feat/modern-icons` suffix is 12 chars, `refactor/usecase-options` is 15 chars, `refactor/module-guards` is 13 chars).
+- **Forbidden Identifiers**: Never include version identifiers (`vX.Y`), PR sequence tags (`-pr2`, `post-nine`, `phase-1`), or vague words (`cleanup`, `updates`, `misc`). Do not duplicate the prefix in the suffix.
 - **Pre-Branch Agreement**: Before creating or pushing any branch, state the proposed name and character count clearly to the user.
 
 ## Visual & Color Governance Discipline (Non-negotiable)

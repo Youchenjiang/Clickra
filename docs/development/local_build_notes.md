@@ -236,18 +236,16 @@ The `ComMethods.cs` arrays (`MenuKeys`, `SubArgs`) and the `IsSupported()`/`GetS
 
 ## Git & Development Workflow
 To keep the `main` branch stable, direct pushes to `main` are prohibited. All changes must be made via **Pull Requests (PR)**.
-*   **Feature Development (`feature/...`)**: For all new features or bug fixes, branch off from `main` to `feature/<branch-name>`.
-*   **Hotfixes (`hotfix/...`)**: For urgent bugs in the released version, branch off to `hotfix/<branch-name>`.
-*   **Merge Rules**: Once development is done, push your branch and open a PR. Merge into `main` after review.
-*   **Git Tags & Releases**: When releasing a new version, create a tag locally with the format `vX.Y.Z.0`. Push the tag directly using `git push origin vX.Y.Z.0`. Direct branch pushes to the remote main/release branches are strictly prohibited.
+*   **Branch Prefixes**: Must use one of the allowlisted types defined in `scripts/branch_policy.py`: `feat/`, `feature/`, `fix/`, `refactor/`, `hotfix/`, `chore/`, `docs/`, `test/`, `perf/`, `style/`.
+*   **Branch Suffixes**: Lowercase kebab-case strictly containing 2 to 3 meaningful words describing the capability or problem (e.g. `feat/modern-icons`, `fix/startup-crash`, `refactor/usecase-options`). Suffix length must not exceed 25 characters. Prohibited: version numbers (`vX.Y`), PR sequence markers (`-pr1`, `post-nine`), and vague suffixes (`cleanup`, `updates`, `misc`).
+*   **Merge Rules**: Once development and PR preflight are done, push your branch and open a PR. Merge into `main` after review and green CI checks.
+*   **Git Tags & Releases**: When a PR modifying release code merges into `main`, the CI `auto-tag-release` job automatically creates the Git tag `vX.Y.Z.0` and triggers the release workflow (`release.yml`). Direct branch pushes and manual tag pushes are strictly prohibited.
 
 ### AI Agent Authorization Gate
 
 The workflow rules above do not grant an agent permission to perform the workflow autonomously. Every external state change requires explicit, operation-specific authorization from the user in the current conversation. This includes branch creation or switching, commits, pushes and force-pushes, tag changes, PR creation or merge, review-thread resolution, release changes, workflow dispatch/rerun/cancel, and Microsoft Store submissions.
 
 Authorization is not transitive: authorization to push a tag does not authorize creating a branch, opening or merging a PR, changing the workflow, deleting a release, or submitting to Partner Center. If an authorized operation fails and a new operation is needed, stop and ask. After the user objects or revokes permission, stop all mutations; do not perform automatic rollback or cleanup.
-
-**Branch suffixes:** use lowercase kebab-case with normally 2?5 meaningful words describing the capability or problem. Avoid PR numbers, dates, versions, and vague `cleanup`/`updates`/`misc` suffixes. Examples: `feature/pdf-batch-export`, `hotfix/shell-startup-crash`. Existing prefix rules remain unchanged.
 
 ### GitHub CLI operation guard
 
