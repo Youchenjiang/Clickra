@@ -7,7 +7,7 @@ This directory is the **Single Source of Truth** for all visual and vector asset
 - `features/`: Master SVG vector graphics for all 20 file conversion features (e.g. `word2pdf.svg`, `img-compress.svg`, `translate-pdf.svg`).
 - `primary/`: Master SVG (`clickra-icon-primary-master.svg`) and rasterized multi-size PNG/ICO ladders for Clickra application branding.
 - `capability/`: Secondary brand identity vector and raster assets used for Microsoft Store logos.
-- `icons/`: Build-time generated `.ico` and `app.png` multi-frame assets (compiled by `.NET IconGen`).
+- `icons/`: Build-time generated `.ico` and `app.png` multi-frame assets (compiled by `.NET IconGen`, git-ignored).
 
 ## How to Edit or Add Icons
 

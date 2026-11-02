@@ -28,3 +28,6 @@ temp_store_metadata.json
 # Architecture diagram generated artifacts
 scripts/architecture/semantic-msbuild.json
 scripts/architecture/file_lines.json
+
+# Generated icon artifacts
+assets/icons/
