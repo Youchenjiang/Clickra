@@ -4,7 +4,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <RollForward>LatestMajor</RollForward>
-    <ApplicationIcon>../resources/app.ico</ApplicationIcon>
+    <ApplicationIcon>../../assets/icons/app.ico</ApplicationIcon>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Authors>Youchen Jiang</Authors>
@@ -33,10 +33,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Clickra.Core\Clickra.Core.csproj" />
   </ItemGroup>
-
-  <Target Name="GenerateIconsBeforeBuild" BeforeTargets="BeforeBuild">
-    <Exec Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)..\..\scripts\tools\IconGen\IconGen.csproj&quot;" StandardOutputImportance="Low" />
-  </Target>
 
   <ItemGroup>
     <Content Include="..\..\assets\icons\menu-*.ico">
