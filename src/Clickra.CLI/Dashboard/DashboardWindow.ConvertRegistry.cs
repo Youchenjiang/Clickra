@@ -69,30 +69,25 @@ public static partial class DashboardWindow
         return null;
     }
 
-    private static Color GetCommandTagColor(string command) => command switch
+    /// <summary>
+    /// Returns the brand color for a command, governed 100% by its input source file type.
+    /// In Clickra's Design System, tag colors strictly reflect the input source domain
+    /// (Word=Blue, Excel=Green, PPT=Orange, Markdown=Purple, Image=PhotoTeal, PDF=ClassicRed).
+    /// </summary>
+    private static Color GetCommandTagColor(string command)
     {
-        "word2pdf" => Color.FromArgb(0, 120, 212),
-        "excel2pdf" => Color.FromArgb(16, 124, 65),
-        "ppt2pdf" => Color.FromArgb(180, 50, 30),
-        "md2pdf" => Color.FromArgb(96, 72, 164),
-        "md2word" => Color.FromArgb(43, 87, 154),
-        "img2pdf" => Color.FromArgb(100, 60, 180),
-        "img-to-png" => Color.FromArgb(0, 130, 140),
-        "img-to-jpg" => Color.FromArgb(0, 130, 140),
-        "img-to-webp" => Color.FromArgb(0, 130, 140),
-        "img-to-gif" => Color.FromArgb(0, 130, 140),
-        "img-to-heic" => Color.FromArgb(0, 130, 140),
-        "merge-pdf" => Color.FromArgb(142, 68, 173),
-        "split-pdf" => Color.FromArgb(156, 39, 176),
-        "img-merge" => Color.FromArgb(142, 68, 173),
-        "img-stitch" => Color.FromArgb(92, 79, 181),
-        "compress-pdf" => Color.FromArgb(230, 81, 0),
-        "img-compress" => Color.FromArgb(217, 119, 6),
-        "translate-pdf" => Color.FromArgb(0, 131, 143),
-        "decrypt-pdf" => Color.FromArgb(46, 125, 50),
-        "print-pdf" => Color.FromArgb(70, 102, 176),
-        _ => Color.FromArgb(100, 100, 100)
-    };
+        string fileType = Clickra.Shared.ConvertCommandMetadata.GetFileTypeForCommand(command);
+        return fileType switch
+        {
+            "word" => Color.FromArgb(0, 120, 212),       // Word Blue
+            "excel" => Color.FromArgb(16, 124, 65),      // Excel Green
+            "ppt" => Color.FromArgb(180, 50, 30),        // PPT Orange/Red
+            "markdown" => Color.FromArgb(96, 72, 164),   // Markdown Purple
+            "image" => Color.FromArgb(0, 130, 140),      // Photo Teal (#00828C)
+            "pdf" => Color.FromArgb(196, 62, 62),        // PDF Classic Red (#C43E3E)
+            _ => Color.FromArgb(100, 100, 100)
+        };
+    }
 
     private static int GetCommandIndex(string command) =>
         Array.FindIndex(ConvertCommands, item => item.Command.Equals(command, StringComparison.OrdinalIgnoreCase));
