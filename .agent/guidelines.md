@@ -171,3 +171,19 @@ Microsoft Ingestion API 操作高度非同步。不要信任暫態 HTTP 回應�
 6. 結論：「原來如此，我之前根本不知道它需要 session。」
 
 差別不在於最後有沒有解決問題，而在於第二種方式讓你獲得了關於系統的知識。下次遇到類似問題，不需要再從頭摸索。
+
+---
+
+## 視覺與色彩治理紀律（Visual & Color Governance Discipline - Non-negotiable）
+
+- **100% 來源檔案驅動原則（Source File-Driven Policy）**：
+  Clickra 的所有卡片色彩、邊框、光暈與歷史標籤，必須 100% 嚴格依賴「輸入來源檔案類型」（`ConvertCommandMetadata.GetFileTypeForCommand`）。絕對嚴禁依目標產出物、動作分類或個人隨機喜好填色。
+- **來源領域專屬色彩定義**：
+  - `Word`（`.doc`, `.docx`）➜ Word 經典藍（`#0078D4`）
+  - `Excel`（`.xls`, `.xlsx`）➜ Excel 經典綠（`#107C41`）
+  - `PowerPoint`（`.ppt`, `.pptx`）➜ PPT 經典橙紅（`#B4321E`）
+  - `Markdown`（`.md`）➜ Markdown 官方深紫（`#6048A4`）
+  - `Image`（`.png`, `.jpg`, `.webp`, `.heic`, `.gif` 等）➜ 相片青碧色（`#00828C`）
+  - `PDF`（`.pdf`）➜ PDF 官方經典紅（`#C43E3E`）
+- **硬性架構守門約束**：
+  全數 20 項指令皆由測試守門 `TestCommandTagColorsFollowSourceFileGovernance` 自動稽核。任何試圖覆寫個別指令顏色的代碼變更將在 CI 與本地測試中被直接阻擋。

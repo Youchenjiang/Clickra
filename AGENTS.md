@@ -54,3 +54,15 @@ to recover it before `push`, instead of invoking `gh pr view` directly.
   - The branch suffix must consist of **2 to 3 words** only.
   - The branch suffix length must **NOT exceed 25 characters** (e.g., `refactor/usecase-options` is 15 chars, `refactor/module-guards` is 13 chars).
 - **Pre-Branch Agreement**: Before creating or pushing any branch, state the proposed name and character count clearly to the user.
+
+## Visual & Color Governance Discipline (Non-negotiable)
+
+- **100% Source File-Driven Policy**: Clickra's color palette strictly derives from the input source file type (`ConvertCommandMetadata.GetFileTypeForCommand`). Colors NEVER represent target outputs, categories, or ad-hoc action styles.
+- **Source Domain Color Mapping**:
+  - `Word` (.doc, .docx) -> Word Blue (`#0078D4`)
+  - `Excel` (.xls, .xlsx) -> Excel Green (`#107C41`)
+  - `PowerPoint` (.ppt, .pptx) -> PPT Orange/Red (`#B4321E`)
+  - `Markdown` (.md) -> Markdown Purple (`#6048A4`)
+  - `Image` (.png, .jpg, .webp, .heic, .gif) -> Photo Teal (`#00828C`)
+  - `PDF` (.pdf) -> PDF Classic Red (`#C43E3E`)
+- **Strict Invariant**: No command may bypass this mapping. Icons, hover glows, card selection borders, and history tags must remain 100% synchronized with this source-driven palette. Architecture guards strictly enforce this in CI (`TestCommandTagColorsFollowSourceFileGovernance`).
