@@ -302,8 +302,16 @@ static partial class TestSuite
             "MenuKeys and SubArgs must have the same number of entries.");
         Assert.True(iconFiles.Length == subArgs.Length,
             "IconFiles and SubArgs must have the same number of entries.");
+        Assert.True(iconFiles.Length == iconFiles.Distinct(StringComparer.Ordinal).Count(),
+            "Shell IconFiles must not contain duplicate icons.");
         Assert.True(subArgs.Length == subArgs.Distinct(StringComparer.Ordinal).Count(),
             "Shell SubArgs must not contain duplicate command ids.");
+
+        foreach (string icon in iconFiles)
+        {
+            Assert.True(File.Exists(Path.Combine(root, "src", "resources", icon)),
+                $"Shell icon '{icon}' must exist in src/resources.");
+        }
 
         string[] registryCommands = new[] { "pdf", "word", "excel", "ppt", "markdown", "image" }
             .SelectMany(ConvertCommandMetadata.GetCommandsForType)

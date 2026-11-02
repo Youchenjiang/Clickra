@@ -133,7 +133,7 @@ static partial class TestSuite
         string[] iconItems = Items(icons);
         Assert.Equal(commandItems.Length, keyItems.Length);
         Assert.Equal(commandItems.Length, iconItems.Length);
-        foreach (var (command, key, icon) in new[] { ("md2pdf", "Menu_Md2Pdf", "menu-md2pdf.ico"), ("md2word", "Menu_Md2Word", "menu-word2pdf.ico") })
+        foreach (var (command, key, icon) in new[] { ("md2pdf", "Menu_Md2Pdf", "menu-md2pdf.ico"), ("md2word", "Menu_Md2Word", "menu-md2word.ico") })
         {
             int index = Array.IndexOf(commandItems, command);
             Assert.True(index >= 0, $"Explorer must expose {command}.");
