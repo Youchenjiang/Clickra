@@ -43,7 +43,7 @@ namespace ClickraShell
             "menu-compress-pdf.ico", "menu-img2pdf.ico", "menu-img-merge.ico", "menu-img-stitch.ico",
             "menu-img-compress.ico", "menu-translate-pdf.ico", "menu-decrypt-pdf.ico", "menu-split-pdf.ico", "menu-print-pdf.ico",
             "menu-img-to-png.ico", "menu-img-to-jpg.ico", "menu-img-to-webp.ico", "menu-img-to-gif.ico", "menu-img-to-heic.ico",
-            "menu-md2pdf.ico", "menu-word2pdf.ico"
+            "menu-md2pdf.ico", "menu-md2word.ico"
         };
 
         /// <summary>Allocates a COM object with the given vtable and type, then performs a
