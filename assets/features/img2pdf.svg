@@ -4,7 +4,7 @@
   <!-- Photo landscape (sun + twin mountains) -->
   <circle cx="64" cy="64" r="14" fill="#FFFFFF"/>
   <path d="M 46,136 L 76,96 L 100,120 L 122,88 L 152,136" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- Target badge: PDF Red #D32F2F with diagonal arrow -->
-  <rect x="104" y="104" width="128" height="128" rx="28" fill="#D32F2F"/>
+  <!-- Target badge: PDF Slate Blue-Grey #475569 with diagonal arrow -->
+  <rect x="104" y="104" width="128" height="128" rx="28" fill="#475569"/>
   <path d="M 144,192 L 192,144 M 160,144 L 192,144 L 192,176" fill="none" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

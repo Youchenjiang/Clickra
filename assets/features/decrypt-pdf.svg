@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <rect x="24" y="24" width="208" height="208" rx="36" fill="#D32F2F"/>
+  <rect x="24" y="24" width="208" height="208" rx="36" fill="#475569"/>
   <!-- Bold unlocked shackle -->
   <path d="M 96,104 L 96,72 C 96,52 110,40 128,40 C 146,40 160,52 160,72 L 160,86" fill="none" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round"/>
   <!-- Padlock body -->
   <rect x="72" y="104" width="112" height="96" rx="22" fill="#FFFFFF"/>
-  <circle cx="128" cy="144" r="12" fill="#D32F2F"/>
-  <path d="M 128,154 L 128,176" stroke="#D32F2F" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="128" cy="144" r="12" fill="#475569"/>
+  <path d="M 128,154 L 128,176" stroke="#475569" stroke-width="10" stroke-linecap="round"/>
 </svg>

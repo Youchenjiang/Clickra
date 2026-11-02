@@ -7,11 +7,11 @@ Add-Type -AssemblyName System.Drawing
 
 $iconSizes = @(16, 20, 24, 32, 48, 64)
 $icons = @(
-    @{ Name = "menu-ppt2pdf.ico";      Color = "#D35230"; Kind = "Letter"; Letter = "P" },
+    @{ Name = "menu-ppt2pdf.ico";      Color = "#D83B01"; Kind = "Letter"; Letter = "P" },
     @{ Name = "menu-word2pdf.ico";     Color = "#2B579A"; Kind = "Letter"; Letter = "W" },
     @{ Name = "menu-excel2pdf.ico";    Color = "#217346"; Kind = "Letter"; Letter = "X" },
-    @{ Name = "menu-merge-pdf.ico";    Color = "#C43E3E"; Kind = "Merge" },
-    @{ Name = "menu-compress-pdf.ico"; Color = "#C43E3E"; Kind = "Compress" },
+    @{ Name = "menu-merge-pdf.ico";    Color = "#475569"; Kind = "Merge" },
+    @{ Name = "menu-compress-pdf.ico"; Color = "#475569"; Kind = "Compress" },
     @{ Name = "menu-img2pdf.ico";      Color = "#00828C"; Kind = "ImageToPage" },
     @{ Name = "menu-img-merge.ico";    Color = "#00828C"; Kind = "ImageMerge" },
     @{ Name = "menu-img-stitch.ico";   Color = "#00828C"; Kind = "Stitch" },
@@ -21,10 +21,10 @@ $icons = @(
     @{ Name = "menu-img-to-webp.ico";  Color = "#00828C"; Kind = "Format"; Letter = "WEBP" },
     @{ Name = "menu-img-to-gif.ico";   Color = "#00828C"; Kind = "Format"; Letter = "GIF" },
     @{ Name = "menu-img-to-heic.ico";  Color = "#00828C"; Kind = "Format"; Letter = "HEIC" },
-    @{ Name = "menu-translate-pdf.ico";Color = "#C43E3E"; Kind = "Translate" },
-    @{ Name = "menu-decrypt-pdf.ico";  Color = "#C43E3E"; Kind = "Unlock" },
-    @{ Name = "menu-split-pdf.ico";    Color = "#C43E3E"; Kind = "Split" },
-    @{ Name = "menu-print-pdf.ico";    Color = "#C43E3E"; Kind = "Print" },
+    @{ Name = "menu-translate-pdf.ico";Color = "#475569"; Kind = "Translate" },
+    @{ Name = "menu-decrypt-pdf.ico";  Color = "#475569"; Kind = "Unlock" },
+    @{ Name = "menu-split-pdf.ico";    Color = "#475569"; Kind = "Split" },
+    @{ Name = "menu-print-pdf.ico";    Color = "#475569"; Kind = "Print" },
     @{ Name = "menu-md2pdf.ico";       Color = "#6048A4"; Kind = "Letter"; Letter = "MD" }
 )
 

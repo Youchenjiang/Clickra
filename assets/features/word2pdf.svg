@@ -3,7 +3,7 @@
   <rect x="24" y="24" width="144" height="152" rx="28" fill="#185ABD"/>
   <!-- Bold W (stroke 16) -->
   <path d="M 52,62 L 68,136 L 96,82 L 124,136 L 140,62" fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- Target badge: PDF Red #D32F2F with diagonal arrow -->
-  <rect x="104" y="104" width="128" height="128" rx="28" fill="#D32F2F"/>
+  <!-- Target badge: PDF Slate Blue-Grey #475569 with diagonal arrow -->
+  <rect x="104" y="104" width="128" height="128" rx="28" fill="#475569"/>
   <path d="M 144,192 L 192,144 M 160,144 L 192,144 L 192,176" fill="none" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
