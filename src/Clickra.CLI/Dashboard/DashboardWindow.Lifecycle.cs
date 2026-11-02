@@ -164,7 +164,14 @@ namespace Clickra.UI
 
             foreach (var icon in ConvertCommandIcons.Values)
             {
-                try { icon.Dispose(); } catch { }
+                try
+                {
+                    icon.Dispose();
+                }
+                catch
+                {
+                    // Ignore disposal exceptions on window shutdown.
+                }
             }
             ConvertCommandIcons.Clear();
         }

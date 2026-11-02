@@ -64,7 +64,10 @@ public static partial class DashboardWindow
                 ConvertCommandIcons[command] = cached;
                 return cached;
             }
-            catch { }
+            catch
+            {
+                // Ignore icon loading or decoding exceptions; fallback to null for default rendering.
+            }
         }
         return null;
     }
