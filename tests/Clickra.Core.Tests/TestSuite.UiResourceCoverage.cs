@@ -187,6 +187,7 @@ static partial class TestSuite
         runner.RunGuard("Convert registry: every command label key is declared and translated in all 5 languages", TestConvertRegistryLabelCoverage);
         runner.RunGuard("Shell menu: commands reconcile with ConvertCommandRegistry metadata", TestShellCommandRegistryCoverage);
         runner.RunGuard("Store listing: docs/store/StoreListing_*.md covers all supported languages with complete fields", TestStoreListingCoverage);
+        runner.RunGuard("Color governance: every command tag color strictly adheres to input source file policy", TestCommandTagColorsFollowSourceFileGovernance);
     }
 
     private static void TestShellResourceCoverage()
@@ -434,5 +435,46 @@ static partial class TestSuite
             Assert.True(sections["Copyright and trademark info"].Contains("Youchen Jiang", StringComparison.OrdinalIgnoreCase),
                 fileName + " Copyright info must credit the author.");
         }
+    }
+
+    private static void TestCommandTagColorsFollowSourceFileGovernance()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
+
+        string dashboardRegistrySource = File.ReadAllText(Path.Combine(
+            root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.ConvertRegistry.cs"));
+
+        Assert.True(dashboardRegistrySource.Contains("ConvertCommandMetadata.GetFileTypeForCommand(command)", StringComparison.Ordinal),
+            "DashboardWindow.ConvertRegistry must strictly derive command tag colors from ConvertCommandMetadata.GetFileTypeForCommand.");
+
+        // Clickra Color System: 100% Source File-Driven Policy
+        // All 20 commands must strictly map to their input source domain:
+        // - word -> Word Blue
+        // - excel -> Excel Green
+        // - ppt -> PPT Orange
+        // - markdown -> Markdown Purple
+        // - image -> Photo Teal
+        // - pdf -> PDF Classic Red
+        string[] allCommands = new[] { "pdf", "word", "excel", "ppt", "markdown", "image" }
+            .SelectMany(ConvertCommandMetadata.GetCommandsForType)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(20, allCommands.Length);
+
+        foreach (string command in allCommands)
+        {
+            string fileType = ConvertCommandMetadata.GetFileTypeForCommand(command);
+            Assert.False(string.IsNullOrEmpty(fileType), $"Command '{command}' must declare a valid source fileType.");
+        }
+
+        // Verify that DashboardWindow.ConvertRegistry does NOT declare ad-hoc command-level overrides
+        Assert.False(Regex.IsMatch(
+                         dashboardRegistrySource,
+                         @"""(?:merge-pdf|split-pdf|compress-pdf|print-pdf|translate-pdf|decrypt-pdf|img-stitch|img-merge|img-compress)""\s*=>",
+                         RegexOptions.None,
+                         UiResourceRegexTimeout),
+            "Command tag colors must NEVER define ad-hoc command branches; all commands must strictly follow source file governance.");
     }
 }
