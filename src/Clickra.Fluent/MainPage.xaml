@@ -206,7 +206,7 @@
                                     <TextBlock x:Name="ConvertCommandLabel" Text="File Conversion" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                     <Grid x:Name="ConvertCommandGrid" ColumnSpacing="8" RowSpacing="8">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                         <Button x:Name="BtnWord2Pdf" Content="Word" Tag="word2pdf" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnExcel2Pdf" Grid.Column="1" Content="Excel" Tag="excel2pdf" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnPpt2Pdf" Grid.Column="2" Content="PPT" Tag="ppt2pdf" HorizontalAlignment="Stretch"/>
@@ -244,7 +244,7 @@
                                     <TextBlock x:Name="ProcessCommandLabel" Text="Advanced Processing" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                     <Grid x:Name="ProcessCommandGrid" ColumnSpacing="8" RowSpacing="8">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                         <Button x:Name="BtnTranslatePdf" Content="Translate PDF" Tag="translate-pdf" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnDecryptPdf" Grid.Column="1" Content="Decrypt PDF" Tag="decrypt-pdf" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnPrintPdf" Grid.Column="2" Content="Print PDF" Tag="print-pdf" HorizontalAlignment="Stretch"/>

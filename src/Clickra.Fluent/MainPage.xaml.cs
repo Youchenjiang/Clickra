@@ -159,7 +159,7 @@ public sealed partial class MainPage : Page
         int optimizeCols = 2;
         int processCols = narrow ? 2 : 3;
 
-        ArrangeSequentialGrid(new FrameworkElement[]
+        ArrangeSequentialGrid(page.ConvertCommandGrid, new FrameworkElement[]
         {
             page.BtnWord2Pdf, page.BtnExcel2Pdf, page.BtnPpt2Pdf,
             page.BtnMd2Pdf, page.BtnMd2Word, page.BtnImg2Pdf,
@@ -167,24 +167,30 @@ public sealed partial class MainPage : Page
             page.BtnImgToGif, page.BtnImgToHeic
         }, convertCols);
 
-        ArrangeSequentialGrid(new FrameworkElement[]
+        ArrangeSequentialGrid(page.OrganizeCommandGrid, new FrameworkElement[]
         {
             page.BtnMergePdf, page.BtnSplitPdf, page.BtnImgMerge, page.BtnImgStitch
         }, organizeCols);
 
-        ArrangeSequentialGrid(new FrameworkElement[]
+        ArrangeSequentialGrid(page.OptimizeCommandGrid, new FrameworkElement[]
         {
             page.BtnCompressPdf, page.BtnImgCompress
         }, optimizeCols);
 
-        ArrangeSequentialGrid(new FrameworkElement[]
+        ArrangeSequentialGrid(page.ProcessCommandGrid, new FrameworkElement[]
         {
             page.BtnTranslatePdf, page.BtnDecryptPdf, page.BtnPrintPdf
         }, processCols);
     }
 
-    private static void ArrangeSequentialGrid(FrameworkElement[] elements, int columns)
+    private static void ArrangeSequentialGrid(Grid grid, FrameworkElement[] elements, int columns)
     {
+        int requiredRows = (elements.Length + columns - 1) / columns;
+        while (grid.RowDefinitions.Count < requiredRows)
+        {
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        }
+
         for (int i = 0; i < elements.Length; i++)
         {
             SetGridCell(elements[i], i / columns, i % columns);
