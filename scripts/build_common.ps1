@@ -46,14 +46,14 @@ function Copy-IconAssets {
         [string]$PackagingDir,
         [string]$LayoutDir
     )
-    if (Test-Path "assets/icons/app.png") {
-        Copy-Item "assets/icons/app.png" "$LayoutDir/app.png"
+    if (Test-Path "obj/icons/app.png") {
+        Copy-Item "obj/icons/app.png" "$LayoutDir/app.png"
     }
-    if (Test-Path "assets/icons/app.ico") {
-        Copy-Item "assets/icons/app.ico" "$LayoutDir/"
+    if (Test-Path "obj/icons/app.ico") {
+        Copy-Item "obj/icons/app.ico" "$LayoutDir/"
     }
-    if (Test-Path "assets/icons/menu-*.ico") {
-        Copy-Item "assets/icons/menu-*.ico" "$LayoutDir/"
+    if (Test-Path "obj/icons/menu-*.ico") {
+        Copy-Item "obj/icons/menu-*.ico" "$LayoutDir/"
     }
 }
 function Remove-ForceDir {
