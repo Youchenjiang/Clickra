@@ -2,6 +2,12 @@ $ErrorActionPreference = "Stop"
 
 Add-Type -AssemblyName System.Drawing
 
+# Automatically ensure generated icons exist via IconGen
+$iconGenProj = Join-Path $PSScriptRoot "tools/IconGen/IconGen.csproj"
+if (Test-Path -LiteralPath $iconGenProj) {
+    dotnet run --project $iconGenProj | Out-Null
+}
+
 function Assert-Png {
     param(
         [string]$Path,
