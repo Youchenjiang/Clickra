@@ -309,8 +309,8 @@ static partial class TestSuite
 
         foreach (string icon in iconFiles)
         {
-            Assert.True(File.Exists(Path.Combine(root, "src", "resources", icon)),
-                $"Shell icon '{icon}' must exist in src/resources.");
+            Assert.True(File.Exists(Path.Combine(root, "assets", "icons", icon)),
+                $"Shell icon '{icon}' must exist in assets/icons.");
         }
 
         string[] registryCommands = new[] { "pdf", "word", "excel", "ppt", "markdown", "image" }
