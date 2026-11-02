@@ -275,7 +275,7 @@ def generate_icons(repo_root=None):
     if repo_root is None:
         repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         
-    svg_dir = os.path.join(repo_root, "packaging", "brand_assets", "features")
+    svg_dir = os.path.join(repo_root, "assets", "features")
     res_dir = os.path.join(repo_root, "src", "resources")
     os.makedirs(svg_dir, exist_ok=True)
     os.makedirs(res_dir, exist_ok=True)
@@ -291,7 +291,7 @@ def generate_icons(repo_root=None):
     definitions = get_svg_definitions()
     sizes = [(16, 16), (20, 20), (24, 24), (32, 32), (48, 48), (64, 64)]
     
-    temp_dir = os.path.join(repo_root, "packaging", "brand_assets", "features", ".temp")
+    temp_dir = os.path.join(repo_root, "assets", "features", ".temp")
     os.makedirs(temp_dir, exist_ok=True)
     
     print(f"Generating {len(definitions)} improved feature icons...")

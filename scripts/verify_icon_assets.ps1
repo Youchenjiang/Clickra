@@ -210,12 +210,12 @@ function Assert-BuildIconWiring {
 
 $primarySizes = @(16, 24, 32, 44, 48, 64, 128, 150, 256, 1024)
 foreach ($size in $primarySizes) {
-    Assert-Png "packaging/brand_assets/primary/clickra-icon-primary-$size.png" $size $size
+    Assert-Png "assets/primary/clickra-icon-primary-$size.png" $size $size
 }
 
 $capabilitySizes = @(50, 256, 1024)
 foreach ($size in $capabilitySizes) {
-    Assert-Png "packaging/brand_assets/capability/clickra-icon-capability-$size.png" $size $size
+    Assert-Png "assets/capability/clickra-icon-capability-$size.png" $size $size
 }
 
 function Assert-FluentIconLinking {
@@ -265,19 +265,19 @@ $unplatedTargetSizes = @(16, 24, 32, 44, 48, 256)
 foreach ($size in $unplatedTargetSizes) {
     $asset = "packaging/msix/Assets/Square44x44Logo.targetsize-${size}_altform-unplated.png"
     Assert-Png $asset $size $size
-    Assert-SameFile "packaging/brand_assets/primary/clickra-icon-primary-$size.png" $asset
+    Assert-SameFile "assets/primary/clickra-icon-primary-$size.png" $asset
 }
 
 $icoSizes = @(16, 24, 32, 48, 64, 128, 256)
-Assert-IcoFrames "packaging/brand_assets/primary/clickra-icon-primary.ico" $icoSizes
+Assert-IcoFrames "assets/primary/clickra-icon-primary.ico" $icoSizes
 Assert-IcoFrames "src/resources/app.ico" $icoSizes
 
-Assert-SameFile "packaging/brand_assets/primary/clickra-icon-primary-256.png" "src/resources/app.png"
-Assert-SameFile "packaging/brand_assets/primary/clickra-icon-primary.ico" "src/resources/app.ico"
-Assert-SameFile "packaging/brand_assets/primary/clickra-icon-primary-44.png" "packaging/msix/Assets/Square44x44Logo.png"
-Assert-SameFile "packaging/brand_assets/primary/clickra-icon-primary-150.png" "packaging/msix/Assets/Square150x150Logo.png"
-Assert-SameFile "packaging/brand_assets/capability/clickra-icon-capability-50.png" "packaging/msix/Assets/StoreLogo.png"
-Assert-WideLogoComposition "packaging/msix/Assets/Wide310x150Logo.png" "packaging/brand_assets/primary/clickra-icon-primary-128.png"
+Assert-SameFile "assets/primary/clickra-icon-primary-256.png" "src/resources/app.png"
+Assert-SameFile "assets/primary/clickra-icon-primary.ico" "src/resources/app.ico"
+Assert-SameFile "assets/primary/clickra-icon-primary-44.png" "packaging/msix/Assets/Square44x44Logo.png"
+Assert-SameFile "assets/primary/clickra-icon-primary-150.png" "packaging/msix/Assets/Square150x150Logo.png"
+Assert-SameFile "assets/capability/clickra-icon-capability-50.png" "packaging/msix/Assets/StoreLogo.png"
+Assert-WideLogoComposition "packaging/msix/Assets/Wide310x150Logo.png" "assets/primary/clickra-icon-primary-128.png"
 
 Assert-FluentIconLinking "src/Clickra.Fluent/Clickra.Fluent.csproj"
 Assert-CliMenuIconLinking "src/Clickra.CLI/Clickra.csproj"
@@ -297,7 +297,7 @@ $featureCommands = @(
 $featureIcoSizes = @(16, 20, 24, 32, 48, 64)
 
 foreach ($cmd in $featureCommands) {
-    $svgPath = "packaging/brand_assets/features/$cmd.svg"
+    $svgPath = "assets/features/$cmd.svg"
     if (-not (Test-Path -LiteralPath $svgPath)) {
         throw "Missing feature SVG asset: $svgPath"
     }
