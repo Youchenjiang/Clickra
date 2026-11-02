@@ -450,12 +450,29 @@ static partial class TestSuite
 
         // Clickra Color System: 100% Source File-Driven Policy
         // All 20 commands must strictly map to their input source domain:
-        // - word -> Word Blue
-        // - excel -> Excel Green
-        // - ppt -> PPT Bright Orange
-        // - markdown -> Markdown Purple
-        // - image -> Photo Teal
-        // - pdf -> PDF Slate Blue-Grey
+        // - word -> Word Blue (#0078D4) -> RGB(0, 120, 212)
+        // - excel -> Excel Green (#107C41) -> RGB(16, 124, 65)
+        // - ppt -> PPT Bright Orange (#D83B01) -> RGB(216, 59, 1)
+        // - markdown -> Markdown Purple (#6048A4) -> RGB(96, 72, 164)
+        // - image -> Photo Teal (#00828C) -> RGB(0, 130, 140)
+        // - pdf -> PDF Slate Blue-Grey (#475569) -> RGB(71, 85, 105)
+        var expectedFileTypes = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["word"] = "0, 120, 212",
+            ["excel"] = "16, 124, 65",
+            ["ppt"] = "216, 59, 1",
+            ["markdown"] = "96, 72, 164",
+            ["image"] = "0, 130, 140",
+            ["pdf"] = "71, 85, 105"
+        };
+
+        foreach (var (fileType, rgb) in expectedFileTypes)
+        {
+            string pattern = $@"""{fileType}""\s*=>\s*Color\.FromArgb\({rgb}\)";
+            Assert.True(Regex.IsMatch(dashboardRegistrySource, pattern),
+                $"DashboardWindow.ConvertRegistry must map '{fileType}' to Color.FromArgb({rgb}).");
+        }
+
         string[] allCommands = new[] { "pdf", "word", "excel", "ppt", "markdown", "image" }
             .SelectMany(ConvertCommandMetadata.GetCommandsForType)
             .Distinct(StringComparer.Ordinal)
@@ -466,7 +483,8 @@ static partial class TestSuite
         foreach (string command in allCommands)
         {
             string fileType = ConvertCommandMetadata.GetFileTypeForCommand(command);
-            Assert.False(string.IsNullOrEmpty(fileType), $"Command '{command}' must declare a valid source fileType.");
+            Assert.True(expectedFileTypes.ContainsKey(fileType),
+                $"Command '{command}' maps to '{fileType}', which is not a governed source file type.");
         }
 
         // Verify that DashboardWindow.ConvertRegistry does NOT declare ad-hoc command-level overrides

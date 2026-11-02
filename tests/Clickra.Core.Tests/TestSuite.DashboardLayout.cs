@@ -298,6 +298,8 @@ static partial class TestSuite
             for (int item = 0; item < groupSizes[group]; item++)
             {
                 LayoutRect card = DashboardLayout.ConvertCardRect(group, item, zone.X, zone.Width, groupSizes);
+                Assert.True(card.Width >= DashboardLayout.ConvertCardMinRequiredWidth,
+                    $"Card in group {group} item {item} width ({card.Width}) must meet minimum required width ({DashboardLayout.ConvertCardMinRequiredWidth}).");
 
                 // 格線在拖放區之下，不是疊在它上面。
                 Assert.True(card.Y >= zone.Bottom, "The command grid must sit below the drop zone.");
@@ -356,6 +358,9 @@ static partial class TestSuite
         Assert.Equal(1, DashboardLayout.ConvertGroupRows(3, groupSizes[3]));
 
         LayoutRect zone = DashboardLayout.ConvertZoneRect(contentX: 260, logW: 1520);
+        LayoutRect sampleCard = DashboardLayout.ConvertCardRect(0, 0, zone.X, zone.Width, groupSizes);
+        Assert.True(sampleCard.Width >= DashboardLayout.ConvertCardMinRequiredWidth,
+            "Card width at standard content layout must meet ConvertCardMinRequiredWidth.");
         LayoutRect start = DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, groupSizes);
         LayoutRect stickyStart = DashboardLayout.ConvertStickyStartButtonRect(
             zone.X, zone.Width, DashboardLayout.MinContentHeight);
