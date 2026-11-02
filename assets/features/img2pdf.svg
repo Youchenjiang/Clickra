@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <!-- Base sheet: Image Goldenrod #E65100 -->
-  <rect x="24" y="24" width="144" height="152" rx="28" fill="#E65100"/>
+  <!-- Base sheet: Image Teal #00828C -->
+  <rect x="24" y="24" width="144" height="152" rx="28" fill="#00828C"/>
   <!-- Photo landscape (sun + twin mountains) -->
   <circle cx="64" cy="64" r="14" fill="#FFFFFF"/>
   <path d="M 46,136 L 76,96 L 100,120 L 122,88 L 152,136" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>

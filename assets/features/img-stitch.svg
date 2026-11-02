@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
   <!-- Top photo strip -->
-  <rect x="36" y="24" width="184" height="96" rx="22" fill="#5C4FB5"/>
+  <rect x="36" y="24" width="184" height="96" rx="22" fill="#00828C"/>
   <circle cx="72" cy="54" r="10" fill="#FFFFFF"/>
   <path d="M 60,94 L 88,64 L 112,86 L 136,58 L 166,94" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
   <!-- Bottom photo strip -->
-  <rect x="36" y="136" width="184" height="96" rx="22" fill="#5C4FB5"/>
+  <rect x="36" y="136" width="184" height="96" rx="22" fill="#00828C"/>
   <circle cx="72" cy="166" r="10" fill="#FFFFFF"/>
   <path d="M 60,206 L 88,176 L 112,198 L 136,170 L 166,206" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
   <!-- Center stitch link pin -->
