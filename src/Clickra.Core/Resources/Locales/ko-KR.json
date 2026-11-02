@@ -83,8 +83,8 @@
   "cmd_word_to_pdf": "Word → PDF",
   "cmd_excel_to_pdf": "Excel → PDF",
   "cmd_ppt_to_pdf": "PPT → PDF",
-  "cmd_md_to_pdf": "Markdown → PDF",
-  "cmd_md_to_word": "Markdown → Word",
+  "cmd_md_to_pdf": "MD → PDF",
+  "cmd_md_to_word": "MD → Word",
   "md_options_title": "Markdown 변환 옵션",
   "md_options_hint": "기본 레이아웃이 선택되어 있습니다. 다른 표현이 필요할 때만 변경하세요.",
   "md_options_style": "스타일",
@@ -241,11 +241,11 @@
   "pdf_split_zoom_hint": "휠 확대 · 드래그 이동 · Space/Esc 닫기",
   "pdf_split_zoom_close": "X 닫기",
   "pdf_split_zoom_fit": "맞춤",
-  "cmd_img_to_png": "이미지를 PNG로",
-  "cmd_img_to_jpg": "이미지를 JPG로",
-  "cmd_img_to_webp": "이미지를 WebP로",
-  "cmd_img_to_heic": "이미지를 HEIC로",
-  "cmd_img_to_gif": "이미지를 GIF로",
+  "cmd_img_to_png": "이미지 → PNG",
+  "cmd_img_to_jpg": "이미지 → JPG",
+  "cmd_img_to_webp": "이미지 → WebP",
+  "cmd_img_to_heic": "이미지 → HEIC",
+  "cmd_img_to_gif": "이미지 → GIF",
   "cmd_img_compress": "이미지 압축",
   "md_pdf_progress_parsing": "Markdown 분석 중: {0}",
   "md_pdf_progress_rendering": "PDF 레이아웃 렌더링 중: {0}",
@@ -503,4 +503,4 @@
   "cli_progress_printing_pdf": "PDF 인쇄 중: {0} ({1}/{2})...",
   "cli_progress_printing_pdf_stage": "[PDF 인쇄] {0} ({1}/{2})",
   "cli_progress_printing_pdf_done": "PDF 인쇄 완료."
-}
+}

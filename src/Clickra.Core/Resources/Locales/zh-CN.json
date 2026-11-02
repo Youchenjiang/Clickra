@@ -83,8 +83,8 @@
   "cmd_word_to_pdf": "Word → PDF",
   "cmd_excel_to_pdf": "Excel → PDF",
   "cmd_ppt_to_pdf": "PPT → PDF",
-  "cmd_md_to_pdf": "Markdown → PDF",
-  "cmd_md_to_word": "Markdown → Word",
+  "cmd_md_to_pdf": "MD → PDF",
+  "cmd_md_to_word": "MD → Word",
   "md_options_title": "Markdown 转换选项",
   "md_options_hint": "已应用默认排版；需要不同呈现时再调整即可。",
   "md_options_style": "样式",
@@ -241,11 +241,11 @@
   "pdf_split_zoom_hint": "滚轮缩放 · 拖拽平移 · 空格/Esc 关闭",
   "pdf_split_zoom_close": "X 关闭",
   "pdf_split_zoom_fit": "适配",
-  "cmd_img_to_png": "图片转 PNG",
-  "cmd_img_to_jpg": "图片转 JPG",
-  "cmd_img_to_webp": "图片转 WebP",
-  "cmd_img_to_heic": "图片转 HEIC",
-  "cmd_img_to_gif": "图片转 GIF",
+  "cmd_img_to_png": "图片 → PNG",
+  "cmd_img_to_jpg": "图片 → JPG",
+  "cmd_img_to_webp": "图片 → WebP",
+  "cmd_img_to_heic": "图片 → HEIC",
+  "cmd_img_to_gif": "图片 → GIF",
   "cmd_img_compress": "压缩图片",
   "md_pdf_progress_parsing": "正在解析 Markdown：{0}",
   "md_pdf_progress_rendering": "正在排版 PDF：{0}",
@@ -503,4 +503,4 @@
   "cli_progress_printing_pdf": "正在打印 PDF: {0} ({1}/{2})...",
   "cli_progress_printing_pdf_stage": "[PDF 打印] {0} ({1}/{2})",
   "cli_progress_printing_pdf_done": "PDF 打印完成。"
-}
+}

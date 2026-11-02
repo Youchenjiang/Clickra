@@ -83,8 +83,8 @@
   "cmd_word_to_pdf": "Word → PDF",
   "cmd_excel_to_pdf": "Excel → PDF",
   "cmd_ppt_to_pdf": "PPT → PDF",
-  "cmd_md_to_pdf": "Markdown → PDF",
-  "cmd_md_to_word": "Markdown → Word",
+  "cmd_md_to_pdf": "MD → PDF",
+  "cmd_md_to_word": "MD → Word",
   "md_options_title": "Markdown 変換オプション",
   "md_options_hint": "既定のレイアウトが選択されています。別の表示が必要な場合のみ変更してください。",
   "md_options_style": "スタイル",
@@ -241,11 +241,11 @@
   "pdf_split_zoom_hint": "ホイールで拡大 · ドラッグで移動 · Space/Esc で閉じる",
   "pdf_split_zoom_close": "X 閉じる",
   "pdf_split_zoom_fit": "フィット",
-  "cmd_img_to_png": "画像から PNG",
-  "cmd_img_to_jpg": "画像から JPG",
-  "cmd_img_to_webp": "画像から WebP",
-  "cmd_img_to_heic": "画像から HEIC",
-  "cmd_img_to_gif": "画像から GIF",
+  "cmd_img_to_png": "画像 → PNG",
+  "cmd_img_to_jpg": "画像 → JPG",
+  "cmd_img_to_webp": "画像 → WebP",
+  "cmd_img_to_heic": "画像 → HEIC",
+  "cmd_img_to_gif": "画像 → GIF",
   "cmd_img_compress": "画像圧縮",
   "md_pdf_progress_parsing": "Markdown を解析中: {0}",
   "md_pdf_progress_rendering": "PDF レイアウトを生成中: {0}",
@@ -503,4 +503,4 @@
   "cli_progress_printing_pdf": "PDF を印刷中: {0} ({1}/{2})...",
   "cli_progress_printing_pdf_stage": "[PDF 印刷] {0} ({1}/{2})",
   "cli_progress_printing_pdf_done": "PDF 印刷が完了しました。"
-}
+}
