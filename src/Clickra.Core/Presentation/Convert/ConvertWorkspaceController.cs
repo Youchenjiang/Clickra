@@ -51,6 +51,7 @@ public sealed class ConvertWorkspaceController
         new("img2pdf", "cmd_img_to_pdf", ImageGroup, 2, false),
         new("img-merge", "cmd_merge_img", ImageGroup, 2, false),
         new("img-stitch", "cmd_stitch_img", ImageGroup, 2, false),
+        new("img-compress", "cmd_img_compress", ImageGroup, 2, false),
         new("img-to-png", "cmd_img_to_png", ImageGroup, 2, false),
         new("img-to-jpg", "cmd_img_to_jpg", ImageGroup, 2, false),
         new("img-to-webp", "cmd_img_to_webp", ImageGroup, 2, false),
