@@ -1,4 +1,4 @@
-﻿# Clickra Store Submission Build
+# Clickra Store Submission Build
 # Produces two MSIX files ready for Microsoft Store upload:
 #   1. Clickra_Main.msix    — NativeAOT with bundled image codec runtime
 #   2. Clickra_Fluent.msix   — WinUI 3 optional, carries Windows App Runtime
@@ -73,8 +73,9 @@ Get-ChildItem $fluentSource -File |
     } |
     ForEach-Object { Copy-Item $_.FullName "$optionalLayout/" }
 
-if (Test-Path "src/Clickra.Fluent/Assets/AppIcon.png") {
-    Copy-Item "src/Clickra.Fluent/Assets/AppIcon.png" "$optionalLayout/Assets/AppIcon.png"
+if (Test-Path "obj/icons/app.png") {
+    New-Item -ItemType Directory -Path "$optionalLayout/Assets" -Force | Out-Null
+    Copy-Item "obj/icons/app.png" "$optionalLayout/Assets/AppIcon.png"
 }
 Copy-Item "$root/$($script:ThirdPartyNoticesFile)" "$optionalLayout/"
 

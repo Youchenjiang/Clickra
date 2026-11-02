@@ -53,13 +53,16 @@ public static class Program
             return 0;
         }
 
+        DateTime generatorTime = File.GetLastWriteTimeUtc(typeof(Program).Assembly.Location);
         int count = 0;
         foreach (string svgFile in Directory.GetFiles(featuresDir, "*.svg"))
         {
             string cmdName = Path.GetFileNameWithoutExtension(svgFile);
             string outIco = Path.Combine(outputDir, $"menu-{cmdName}.ico");
 
-            if (!force && File.Exists(outIco) && File.GetLastWriteTimeUtc(outIco) >= File.GetLastWriteTimeUtc(svgFile))
+            if (!force && File.Exists(outIco) &&
+                File.GetLastWriteTimeUtc(outIco) >= File.GetLastWriteTimeUtc(svgFile) &&
+                File.GetLastWriteTimeUtc(outIco) >= generatorTime)
             {
                 continue;
             }
@@ -70,23 +73,46 @@ public static class Program
         return count;
     }
 
+    /// <summary>
+    /// Synchronizes primary application icons from the raster assets.
+    /// The pre-rasterized primary assets in assets/primary are the authoritative source of truth
+    /// for app branding, ensuring byte-for-byte fidelity with store packaging requirements.
+    /// If primary raster assets are absent but the master SVG exists, generates from the SVG fallback.
+    /// </summary>
     private static int ProcessPrimaryAssets(string primaryDir, string outputDir, bool force)
     {
         int count = 0;
         string primaryIco = Path.Combine(primaryDir, "clickra-icon-primary.ico");
         string primaryPng = Path.Combine(primaryDir, "clickra-icon-primary-256.png");
+        string masterSvg = Path.Combine(primaryDir, "clickra-icon-primary-master.svg");
         string outAppIco = Path.Combine(outputDir, "app.ico");
         string outAppPng = Path.Combine(outputDir, "app.png");
 
-        if (File.Exists(primaryIco) && (force || !File.Exists(outAppIco) || File.GetLastWriteTimeUtc(outAppIco) < File.GetLastWriteTimeUtc(primaryIco)))
+        if (File.Exists(primaryIco))
         {
-            File.Copy(primaryIco, outAppIco, true);
+            if (force || !File.Exists(outAppIco) || File.GetLastWriteTimeUtc(outAppIco) < File.GetLastWriteTimeUtc(primaryIco))
+            {
+                File.Copy(primaryIco, outAppIco, true);
+                count++;
+            }
+        }
+        else if (File.Exists(masterSvg))
+        {
+            GenerateIco(masterSvg, outAppIco, PrimaryIcoSizes);
             count++;
         }
 
-        if (File.Exists(primaryPng) && (force || !File.Exists(outAppPng) || File.GetLastWriteTimeUtc(outAppPng) < File.GetLastWriteTimeUtc(primaryPng)))
+        if (File.Exists(primaryPng))
         {
-            File.Copy(primaryPng, outAppPng, true);
+            if (force || !File.Exists(outAppPng) || File.GetLastWriteTimeUtc(outAppPng) < File.GetLastWriteTimeUtc(primaryPng))
+            {
+                File.Copy(primaryPng, outAppPng, true);
+                count++;
+            }
+        }
+        else if (File.Exists(masterSvg))
+        {
+            GeneratePng(masterSvg, outAppPng, 256, 256);
             count++;
         }
 
@@ -105,24 +131,24 @@ public static class Program
         bw.Write((short)sizes.Length);
 
         var pngBytes = new byte[sizes.Length][];
-        for (int i = 0; i < sizes.Length; i++)
+        for (int frameIndex = 0; frameIndex < sizes.Length; frameIndex++)
         {
-            int s = sizes[i];
-            using var bmp = svgDoc.Draw(s, s);
+            int frameSize = sizes[frameIndex];
+            using var bmp = svgDoc.Draw(frameSize, frameSize);
             using var msPng = new MemoryStream();
             bmp.Save(msPng, ImageFormat.Png);
-            pngBytes[i] = msPng.ToArray();
+            pngBytes[frameIndex] = msPng.ToArray();
         }
 
         // Directory entries: 16 bytes each
         int offset = 6 + (16 * sizes.Length);
-        for (int i = 0; i < sizes.Length; i++)
+        for (int frameIndex = 0; frameIndex < sizes.Length; frameIndex++)
         {
-            int s = sizes[i];
-            int length = pngBytes[i].Length;
+            int frameSize = sizes[frameIndex];
+            int length = pngBytes[frameIndex].Length;
 
-            bw.Write((byte)(s >= 256 ? 0 : s)); // Width
-            bw.Write((byte)(s >= 256 ? 0 : s)); // Height
+            bw.Write((byte)(frameSize >= 256 ? 0 : frameSize)); // Width
+            bw.Write((byte)(frameSize >= 256 ? 0 : frameSize)); // Height
             bw.Write((byte)0); // Color palette
             bw.Write((byte)0); // Reserved
             bw.Write((short)1); // Planes
@@ -133,12 +159,25 @@ public static class Program
         }
 
         // Write raw PNG bytes
-        for (int i = 0; i < sizes.Length; i++)
+        for (int frameIndex = 0; frameIndex < sizes.Length; frameIndex++)
         {
-            bw.Write(pngBytes[i]);
+            bw.Write(pngBytes[frameIndex]);
         }
 
-        File.WriteAllBytes(icoPath, msIco.ToArray());
+        string tempIco = $"{icoPath}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            File.WriteAllBytes(tempIco, msIco.ToArray());
+            File.Move(tempIco, icoPath, overwrite: true);
+        }
+        catch
+        {
+            if (File.Exists(tempIco))
+            {
+                try { File.Delete(tempIco); } catch { /* ignore cleanup error */ }
+            }
+            throw;
+        }
     }
 
     private static void GeneratePng(string svgPath, string pngPath, int width, int height)

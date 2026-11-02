@@ -6,6 +6,9 @@ Add-Type -AssemblyName System.Drawing
 $iconGenProj = Join-Path $PSScriptRoot "tools/IconGen/IconGen.csproj"
 if (Test-Path -LiteralPath $iconGenProj) {
     dotnet run --project $iconGenProj | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "IconGen failed with exit code $LASTEXITCODE"
+    }
 }
 
 function Assert-Png {
