@@ -452,10 +452,10 @@ static partial class TestSuite
         // All 20 commands must strictly map to their input source domain:
         // - word -> Word Blue
         // - excel -> Excel Green
-        // - ppt -> PPT Orange
+        // - ppt -> PPT Bright Orange
         // - markdown -> Markdown Purple
         // - image -> Photo Teal
-        // - pdf -> PDF Classic Red
+        // - pdf -> PDF Slate Blue-Grey
         string[] allCommands = new[] { "pdf", "word", "excel", "ppt", "markdown", "image" }
             .SelectMany(ConvertCommandMetadata.GetCommandsForType)
             .Distinct(StringComparer.Ordinal)
