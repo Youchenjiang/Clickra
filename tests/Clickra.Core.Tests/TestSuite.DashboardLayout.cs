@@ -341,12 +341,17 @@ static partial class TestSuite
     private static void TestAotConvertStickyAction()
     {
         int[] groupSizes = { 5, 5, 8 };
+        Assert.Equal(18, DashboardLayout.ConvertCardIconSize);
+        Assert.Equal(6, DashboardLayout.ConvertCardIconSpacing);
+        Assert.Equal(8, DashboardLayout.ConvertCardMinPadding);
+        Assert.True(DashboardLayout.ConvertCardMinRequiredWidth <= 164,
+            "Minimum required card width with icon and text must fit within 3-column layout width.");
         Assert.Equal(3, DashboardLayout.ConvertGroupColumns(0));
-        Assert.Equal(5, DashboardLayout.ConvertGroupColumns(1));
-        Assert.Equal(4, DashboardLayout.ConvertGroupColumns(2));
+        Assert.Equal(3, DashboardLayout.ConvertGroupColumns(1));
+        Assert.Equal(3, DashboardLayout.ConvertGroupColumns(2));
         Assert.Equal(2, DashboardLayout.ConvertGroupRows(0, groupSizes[0]));
-        Assert.Equal(1, DashboardLayout.ConvertGroupRows(1, groupSizes[1]));
-        Assert.Equal(2, DashboardLayout.ConvertGroupRows(2, groupSizes[2]));
+        Assert.Equal(2, DashboardLayout.ConvertGroupRows(1, groupSizes[1]));
+        Assert.Equal(3, DashboardLayout.ConvertGroupRows(2, groupSizes[2]));
 
         LayoutRect zone = DashboardLayout.ConvertZoneRect(contentX: 260, logW: 1520);
         LayoutRect start = DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, groupSizes);
