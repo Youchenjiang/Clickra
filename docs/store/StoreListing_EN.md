@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.16.2.0.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.16.3.0.
 
 ---
 
@@ -15,11 +15,11 @@ Core document operations run completely offline on your local PC to keep your da
 Source Code: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- Print orientation controls (Auto, Portrait, Landscape) preventing slides and wide pages from being squashed
-- Aspect-preserving scaling and 3% safe print margins ensuring 1:1 preview-to-print parity without hardware edge clipping
-- DEVMODE landscape initialization for broad printer driver compatibility across all manufacturers
-- Intelligent detection of rotated PDF pages (90° / 270°) with automatic orientation adaptation
-- CLI support for `--orientation <auto|portrait|landscape>` option
+- Modern Fluent 2 vector icon system rendering sharply at all DPI scales and resolutions
+- Strict source-driven color governance: PDF in slate blue-grey and PowerPoint in bright orange
+- Unified conversion card labels with arrow notation (e.g. Word → PDF, MD → PDF) and streamlined group headers
+- Standardized verb-noun action cards (Merge Images, Stitch Images, Translate PDF, Decrypt PDF)
+- Synchronized localization across Traditional Chinese, Simplified Chinese, English, Japanese, and Korean
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
