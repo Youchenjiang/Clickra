@@ -240,6 +240,7 @@ namespace Clickra.UI
                     bool isHovered = _hoveredElement == (50 + i);
                     bool isEnabled = !_convertWorkspace.IsRunning && _convertWorkspace.IsCommandCompatible(ConvertCommands[i].Command);
 
+                    Color brandColor = ConvertCommands[i].TagColor;
                     Color cardBg;
                     Color cardBorder;
                     Color textColor;
@@ -252,15 +253,21 @@ namespace Clickra.UI
                     }
                     else if (isSelected)
                     {
-                        cardBg = Color.FromArgb(45, 45, 55);
-                        cardBorder = UIHelper.GetSystemColorizationColor();
+                        cardBg = Color.FromArgb(36, brandColor.R, brandColor.G, brandColor.B);
+                        cardBorder = brandColor;
+                        textColor = Color.White;
+                    }
+                    else if (isHovered)
+                    {
+                        cardBg = Color.FromArgb(22, brandColor.R, brandColor.G, brandColor.B);
+                        cardBorder = Color.FromArgb(140, brandColor.R, brandColor.G, brandColor.B);
                         textColor = Color.White;
                     }
                     else
                     {
-                        cardBg = isHovered ? Color.FromArgb(50, 50, 50) : Color.FromArgb(36, 36, 36);
-                        cardBorder = isHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(48, 48, 48);
-                        textColor = isHovered ? Color.White : Color.FromArgb(200, 200, 200);
+                        cardBg = Color.FromArgb(36, 36, 36);
+                        cardBorder = Color.FromArgb(48, 48, 48);
+                        textColor = Color.FromArgb(210, 210, 210);
                     }
 
                     using var path = UIHelper.GetRoundedRectPath(new RectangleF(card.X * s, card.Y * s, card.Width * s, card.Height * s), 5 * s);
