@@ -200,8 +200,8 @@ function Assert-BuildIconWiring {
     param([string]$Path)
 
     $source = Get-Content -LiteralPath $Path -Raw
-    if ($source -notmatch 'Copy-Item\s+"src/resources/app\.png"\s+"\$LayoutDir/app\.png"') {
-        throw "Copy-IconAssets must stage A1 src/resources/app.png as layout app.png"
+    if ($source -notmatch 'Copy-Item\s+"assets/icons/app\.png"\s+"\$LayoutDir/app\.png"') {
+        throw "Copy-IconAssets must stage A1 assets/icons/app.png as layout app.png"
     }
     if ($source -match 'Copy-Item\s+"\$PackagingDir/Assets/StoreLogo\.png"\s+"\$LayoutDir/app\.png"') {
         throw "Store A3 must not leak into sparse/system layout app.png"
@@ -232,11 +232,11 @@ function Assert-FluentIconLinking {
             $links[$link.Trim()] = $item.GetAttribute('Include').Trim()
         }
     }
-    if ($links['Assets\AppIcon.png'] -ne '..\resources\app.png') {
-        throw "Clickra.Fluent.csproj must link Assets\AppIcon.png to ..\resources\app.png"
+    if ($links['Assets\AppIcon.png'] -ne '..\..\assets\icons\app.png') {
+        throw "Clickra.Fluent.csproj must link Assets\AppIcon.png to ..\..\assets\icons\app.png"
     }
-    if ($links['Assets\AppIcon.ico'] -ne '..\resources\app.ico') {
-        throw "Clickra.Fluent.csproj must link Assets\AppIcon.ico to ..\resources\app.ico"
+    if ($links['Assets\AppIcon.ico'] -ne '..\..\assets\icons\app.ico') {
+        throw "Clickra.Fluent.csproj must link Assets\AppIcon.ico to ..\..\assets\icons\app.ico"
     }
 }
 
@@ -245,17 +245,17 @@ function Assert-CliMenuIconLinking {
     [xml]$proj = Get-Content -LiteralPath $Path -Raw
     $hasLink = $false
     foreach ($item in $proj.SelectNodes("//*[local-name()='Content']")) {
-        if ($item.GetAttribute('Include') -eq '..\resources\menu-*.ico') {
+        if ($item.GetAttribute('Include') -eq '..\..\assets\icons\menu-*.ico') {
             $hasLink = $true
             break
         }
     }
     if (-not $hasLink) {
-        throw "Clickra.csproj must link ..\resources\menu-*.ico to output directory"
+        throw "Clickra.csproj must link ..\..\assets\icons\menu-*.ico to output directory"
     }
 }
 
-Assert-Png "src/resources/app.png" 256 256
+Assert-Png "assets/icons/app.png" 256 256
 Assert-Png "packaging/msix/Assets/Square44x44Logo.png" 44 44
 Assert-Png "packaging/msix/Assets/Square150x150Logo.png" 150 150
 Assert-Png "packaging/msix/Assets/StoreLogo.png" 50 50
@@ -270,10 +270,10 @@ foreach ($size in $unplatedTargetSizes) {
 
 $icoSizes = @(16, 24, 32, 48, 64, 128, 256)
 Assert-IcoFrames "assets/primary/clickra-icon-primary.ico" $icoSizes
-Assert-IcoFrames "src/resources/app.ico" $icoSizes
+Assert-IcoFrames "assets/icons/app.ico" $icoSizes
 
-Assert-SameFile "assets/primary/clickra-icon-primary-256.png" "src/resources/app.png"
-Assert-SameFile "assets/primary/clickra-icon-primary.ico" "src/resources/app.ico"
+Assert-SameFile "assets/primary/clickra-icon-primary-256.png" "assets/icons/app.png"
+Assert-SameFile "assets/primary/clickra-icon-primary.ico" "assets/icons/app.ico"
 Assert-SameFile "assets/primary/clickra-icon-primary-44.png" "packaging/msix/Assets/Square44x44Logo.png"
 Assert-SameFile "assets/primary/clickra-icon-primary-150.png" "packaging/msix/Assets/Square150x150Logo.png"
 Assert-SameFile "assets/capability/clickra-icon-capability-50.png" "packaging/msix/Assets/StoreLogo.png"
@@ -301,7 +301,7 @@ foreach ($cmd in $featureCommands) {
     if (-not (Test-Path -LiteralPath $svgPath)) {
         throw "Missing feature SVG asset: $svgPath"
     }
-    $icoPath = "src/resources/menu-$cmd.ico"
+    $icoPath = "assets/icons/menu-$cmd.ico"
     Assert-IcoFrames $icoPath $featureIcoSizes
 }
 

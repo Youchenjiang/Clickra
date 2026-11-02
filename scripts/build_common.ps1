@@ -1,4 +1,4 @@
-﻿# Shared helpers for Clickra MSIX build scripts.
+# Shared helpers for Clickra MSIX build scripts.
 # Dot-sourced by build_msix.ps1 and build_store.ps1
 # so all build tracks keep a single copy of environment setup, build steps, and signing.
 $ErrorActionPreference = "Stop"
@@ -46,14 +46,14 @@ function Copy-IconAssets {
         [string]$PackagingDir,
         [string]$LayoutDir
     )
-    if (Test-Path "src/resources/app.png") {
-        Copy-Item "src/resources/app.png" "$LayoutDir/app.png"
+    if (Test-Path "assets/icons/app.png") {
+        Copy-Item "assets/icons/app.png" "$LayoutDir/app.png"
     }
-    if (Test-Path "src/resources/app.ico") {
-        Copy-Item "src/resources/app.ico" "$LayoutDir/"
+    if (Test-Path "assets/icons/app.ico") {
+        Copy-Item "assets/icons/app.ico" "$LayoutDir/"
     }
-    if (Test-Path "src/resources/menu-*.ico") {
-        Copy-Item "src/resources/menu-*.ico" "$LayoutDir/"
+    if (Test-Path "assets/icons/menu-*.ico") {
+        Copy-Item "assets/icons/menu-*.ico" "$LayoutDir/"
     }
 }
 function Remove-ForceDir {
