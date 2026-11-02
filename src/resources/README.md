@@ -1,11 +1,9 @@
-# Runtime & Native Resources
+# Native Application Manifests
 
-This directory contains runtime binaries, manifest files, and icons compiled or linked into Clickra projects.
+This directory contains native assembly and deployment manifests for Clickra components:
 
-## Contents
+- `AppxManifest.xml`: Sparse package identity manifest used by `--deploy` registration.
+- `Clickra.exe.manifest`: Native application manifest for the CLI process.
+- `ClickraShell.dll.manifest`: Native COM server registration manifest for the Windows 11 shell extension.
 
-- `app.ico` / `app.png`: Main application icons linked virtually into `Clickra.Fluent` and `Clickra.CLI`.
-- `menu-*.ico`: 20 context menu and dashboard icons (6-frame ladders: 16, 20, 24, 32, 48, 64px) loaded by `ClickraShell.dll` and `Clickra.CLI`.
-- `AppxManifest.xml`, `*.manifest`: Native assembly and deployment manifests.
-
-> **Warning**: Do NOT manually edit `menu-*.ico` files here. They are generated from vector sources in `assets/features/*.svg` via `scripts/generate_feature_icons.py`.
+> **Note**: All icon and visual assets are located in `assets/` and compiled by `IconGen` into `assets/icons/`. No image binaries are stored in this directory.
