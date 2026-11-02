@@ -31,6 +31,14 @@ static partial class TestSuite
     private static readonly TimeSpan UiResourceRegexTimeout = TimeSpan.FromSeconds(1);
     private const string ShellCommandMessagePrefix = "Shell command '";
     private const string ShellProjectDirectory = "ClickraShell";
+    private const string TypePdf = "pdf";
+    private const string TypeWord = "word";
+    private const string TypeExcel = "excel";
+    private const string TypePpt = "ppt";
+    private const string TypeMarkdown = "markdown";
+    private const string TypeImage = "image";
+    private static readonly string[] GovernedSourceFileTypes =
+        [TypePdf, TypeWord, TypeExcel, TypePpt, TypeMarkdown, TypeImage];
     /// <summary>UI 語言的程式碼（zh-TW）與 resw 資料夾名稱（zh-tw）互轉。</summary>
     private static string CultureFolder(string languageCode) => languageCode.ToLowerInvariant();
 
@@ -250,7 +258,7 @@ static partial class TestSuite
             .ToArray();
         Assert.True(declared.Length > 0, "The shared convert metadata must declare at least one label key.");
 
-        string[] reached = new[] { "pdf", "word", "excel", "ppt", "markdown", "image" }
+        string[] reached = GovernedSourceFileTypes
             .SelectMany(ConvertCommandMetadata.GetCommandsForType)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -314,7 +322,7 @@ static partial class TestSuite
                 $"Shell icon '{icon}' must exist in obj/icons.");
         }
 
-        string[] registryCommands = new[] { "pdf", "word", "excel", "ppt", "markdown", "image" }
+        string[] registryCommands = GovernedSourceFileTypes
             .SelectMany(ConvertCommandMetadata.GetCommandsForType)
             .Distinct(StringComparer.Ordinal)
             .OrderBy(command => command, StringComparer.Ordinal)
@@ -458,22 +466,22 @@ static partial class TestSuite
         // - pdf -> PDF Slate Blue-Grey (#475569) -> RGB(71, 85, 105)
         var expectedFileTypes = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["word"] = "0, 120, 212",
-            ["excel"] = "16, 124, 65",
-            ["ppt"] = "216, 59, 1",
-            ["markdown"] = "96, 72, 164",
-            ["image"] = "0, 130, 140",
-            ["pdf"] = "71, 85, 105"
+            [TypeWord] = "0, 120, 212",
+            [TypeExcel] = "16, 124, 65",
+            [TypePpt] = "216, 59, 1",
+            [TypeMarkdown] = "96, 72, 164",
+            [TypeImage] = "0, 130, 140",
+            [TypePdf] = "71, 85, 105"
         };
 
         foreach (var (fileType, rgb) in expectedFileTypes)
         {
             string pattern = $@"""{fileType}""\s*=>\s*Color\.FromArgb\({rgb}\)";
-            Assert.True(Regex.IsMatch(dashboardRegistrySource, pattern),
+            Assert.True(Regex.IsMatch(dashboardRegistrySource, pattern, RegexOptions.None, UiResourceRegexTimeout),
                 $"DashboardWindow.ConvertRegistry must map '{fileType}' to Color.FromArgb({rgb}).");
         }
 
-        string[] allCommands = new[] { "pdf", "word", "excel", "ppt", "markdown", "image" }
+        string[] allCommands = GovernedSourceFileTypes
             .SelectMany(ConvertCommandMetadata.GetCommandsForType)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
