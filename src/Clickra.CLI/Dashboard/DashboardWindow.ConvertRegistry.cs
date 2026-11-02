@@ -59,7 +59,7 @@ public static partial class DashboardWindow
         {
             try
             {
-                using var ico = new Icon(path, 20, 20);
+                using var ico = new Icon(path, 64, 64);
                 cached = ico.ToBitmap();
                 ConvertCommandIcons[command] = cached;
                 return cached;

@@ -281,12 +281,17 @@ namespace Clickra.UI
 
                         if (cmdIcon != null)
                         {
-                            float iconSize = 18f;
-                            float spacing = 6f;
+                            float iconSize = DashboardLayout.ConvertCardIconSize;
+                            float spacing = DashboardLayout.ConvertCardIconSpacing;
                             float contentW = iconSize + spacing + textW;
-                            float startX = card.X + (card.Width - contentW) / 2f;
+                            float startX = Math.Max(card.X + DashboardLayout.ConvertCardMinPadding, card.X + (card.Width - contentW) / 2f);
                             float iconY = card.Y + (card.Height - iconSize) / 2f;
                             float textY = card.Y + (card.Height - textH) / 2f;
+
+                            var prevInterp = g.InterpolationMode;
+                            var prevOffset = g.PixelOffsetMode;
+                            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
                             if (isEnabled)
                             {
@@ -308,6 +313,9 @@ namespace Clickra.UI
                                     new Rectangle((int)(startX * s), (int)(iconY * s), (int)(iconSize * s), (int)(iconSize * s)),
                                     0, 0, cmdIcon.Width, cmdIcon.Height, GraphicsUnit.Pixel, ia);
                             }
+
+                            g.InterpolationMode = prevInterp;
+                            g.PixelOffsetMode = prevOffset;
 
                             g.DrawString(cmdText, _tabFont, textBrush, (startX + iconSize + spacing) * s, textY * s);
                         }
