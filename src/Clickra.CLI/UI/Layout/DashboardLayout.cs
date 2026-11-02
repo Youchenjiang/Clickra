@@ -174,6 +174,21 @@ public static class DashboardLayout
     /// <summary>Vertical stride from one conversion card row to the next.</summary>
     public const int ConvertCardStride = ConvertCardHeight + ConvertCardGap;
 
+    /// <summary>Width and height of the feature icon rendered on a conversion card.</summary>
+    public const int ConvertCardIconSize = 18;
+    /// <summary>Horizontal gap between the feature icon and command label text.</summary>
+    public const int ConvertCardIconSpacing = 6;
+    /// <summary>Minimum horizontal padding between the card borders and inner content.</summary>
+    public const int ConvertCardMinPadding = 8;
+    /// <summary>Estimated text width for the longest conversion command label.</summary>
+    public const int ConvertCardEstimatedTextWidth = 86;
+    /// <summary>
+    /// Minimum required card width including icon, spacing, longest text, and margins.
+    /// Layout column calculations must satisfy this bound to prevent icon overflow.
+    /// </summary>
+    public const int ConvertCardMinRequiredWidth =
+        ConvertCardIconSize + ConvertCardIconSpacing + ConvertCardEstimatedTextWidth + ConvertCardMinPadding * 2;
+
     /// <summary>最後一排卡片與開始鈕之間的距離。</summary>
     public const int ConvertStartButtonGap = 8;
     /// <summary>Height of the primary conversion action button.</summary>
@@ -191,14 +206,12 @@ public static class DashboardLayout
             ConvertClearButtonWidth,
             ConvertClearButtonHeight);
 
-    /// <summary>各分類在寬版工作區使用的欄數：Office 3、PDF 5、圖片 4。</summary>
-    public static int ConvertGroupColumns(int groupIndex) => groupIndex switch
-    {
-        0 => 3,
-        1 => 5,
-        2 => 4,
-        _ => 1
-    };
+    /// <summary>
+    /// 各分類在工作區使用的欄數。
+    /// 依據卡片內含 18px 圖示 + 6px 間距 + 最長文字 (~86px) + 兩側邊距 (16px) 的卡片最小需求寬度（126px），
+    /// 在標準視窗可用寬度（520px）下，統一採用 3 欄（每欄寬度約 164px），保證各分類垂直格線完全對齊且圖文絕不溢出邊界。
+    /// </summary>
+    public static int ConvertGroupColumns(int groupIndex) => 3;
 
     /// <summary>指定分類在目前項目數下需要幾列。</summary>
     public static int ConvertGroupRows(int groupIndex, int itemCount)
