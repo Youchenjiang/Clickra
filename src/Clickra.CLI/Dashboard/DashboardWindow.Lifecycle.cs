@@ -161,6 +161,12 @@ namespace Clickra.UI
                 DestroyIcon(_hIcon);
                 _hIcon = IntPtr.Zero;
             }
+
+            foreach (var icon in ConvertCommandIcons.Values)
+            {
+                try { icon.Dispose(); } catch { }
+            }
+            ConvertCommandIcons.Clear();
         }
     }
 }

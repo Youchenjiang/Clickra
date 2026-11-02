@@ -43,6 +43,32 @@ public static partial class DashboardWindow
     private static readonly Dictionary<string, NativeConvertCommand> ConvertCommandByKey = ConvertCommands
         .ToDictionary(command => command.Command, StringComparer.OrdinalIgnoreCase);
 
+    internal static readonly Dictionary<string, Bitmap> ConvertCommandIcons = new(StringComparer.OrdinalIgnoreCase);
+
+    internal static Bitmap? GetConvertCommandIcon(string command)
+    {
+        if (ConvertCommandIcons.TryGetValue(command, out var cached)) return cached;
+        string fileName = $"menu-{command}.ico";
+        string path = Path.Combine(AppContext.BaseDirectory, fileName);
+        if (!File.Exists(path))
+        {
+            string devPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "resources", fileName);
+            if (File.Exists(devPath)) path = devPath;
+        }
+        if (File.Exists(path))
+        {
+            try
+            {
+                using var ico = new Icon(path, 20, 20);
+                cached = ico.ToBitmap();
+                ConvertCommandIcons[command] = cached;
+                return cached;
+            }
+            catch { }
+        }
+        return null;
+    }
+
     private static Color GetCommandTagColor(string command) => command switch
     {
         "word2pdf" => Color.FromArgb(0, 120, 212),

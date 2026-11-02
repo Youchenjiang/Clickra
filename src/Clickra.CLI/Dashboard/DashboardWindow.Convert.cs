@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Clickra.Core;
@@ -269,14 +270,53 @@ namespace Clickra.UI
                     g.DrawPath(borderPen, path);
 
                     string cmdText = ConvertCommands[i].DisplayName;
+                    Bitmap? cmdIcon = GetConvertCommandIcon(ConvertCommands[i].Command);
 
                     if (_tabFont != null)
                     {
                         using var textBrush = new SolidBrush(textColor);
                         var size = g.MeasureString(cmdText, _tabFont);
-                        g.DrawString(cmdText, _tabFont, textBrush,
-                            (card.X + (card.Width - size.Width / s) / 2) * s,
-                            (card.Y + (card.Height - size.Height / s) / 2) * s);
+                        float textW = size.Width / s;
+                        float textH = size.Height / s;
+
+                        if (cmdIcon != null)
+                        {
+                            float iconSize = 18f;
+                            float spacing = 6f;
+                            float contentW = iconSize + spacing + textW;
+                            float startX = card.X + (card.Width - contentW) / 2f;
+                            float iconY = card.Y + (card.Height - iconSize) / 2f;
+                            float textY = card.Y + (card.Height - textH) / 2f;
+
+                            if (isEnabled)
+                            {
+                                g.DrawImage(cmdIcon, new RectangleF(startX * s, iconY * s, iconSize * s, iconSize * s));
+                            }
+                            else
+                            {
+                                using var ia = new ImageAttributes();
+                                var cm = new ColorMatrix(new float[][]
+                                {
+                                    new float[] { 0.3f, 0.3f, 0.3f, 0, 0 },
+                                    new float[] { 0.3f, 0.3f, 0.3f, 0, 0 },
+                                    new float[] { 0.3f, 0.3f, 0.3f, 0, 0 },
+                                    new float[] { 0,    0,    0,    0.4f, 0 },
+                                    new float[] { 0,    0,    0,    0, 1 }
+                                });
+                                ia.SetColorMatrix(cm);
+                                g.DrawImage(cmdIcon,
+                                    new Rectangle((int)(startX * s), (int)(iconY * s), (int)(iconSize * s), (int)(iconSize * s)),
+                                    0, 0, cmdIcon.Width, cmdIcon.Height, GraphicsUnit.Pixel, ia);
+                            }
+
+                            g.DrawString(cmdText, _tabFont, textBrush, (startX + iconSize + spacing) * s, textY * s);
+                        }
+                        else
+                        {
+                            g.DrawString(cmdText, _tabFont, textBrush,
+                                (card.X + (card.Width - textW) / 2) * s,
+                                (card.Y + (card.Height - textH) / 2) * s);
+                        }
                     }
                 }
             }
