@@ -81,7 +81,7 @@ static partial class TestSuite
         Assert.Equal(14, DashboardLayout.ConvertGroupGap);
         Assert.Equal(32, DashboardLayout.ConvertStartButtonHeight);
         Assert.Equal(8, DashboardLayout.ConvertStartButtonGap);
-        Assert.Equal(3, DashboardLayout.ConvertGroupCount);
+        Assert.Equal(4, DashboardLayout.ConvertGroupCount);
 
         // 下拉選單與清單：控制項 240x30、列距 26、語言清單 180 高且同時顯示 5 列。
         Assert.Equal(240, DashboardLayout.DropdownWidth);
@@ -291,7 +291,7 @@ static partial class TestSuite
         Assert.True(zone.Width > 0 && zone.Height == DashboardLayout.ConvertZoneHeight,
             "The drop zone must fit inside the content area.");
 
-        int[] groupSizes = { 5, 5, 8 };
+        int[] groupSizes = { 11, 4, 2, 3 };
         for (int group = 0; group < DashboardLayout.ConvertGroupCount; group++)
         {
             int columns = DashboardLayout.ConvertGroupColumns(group);
@@ -320,7 +320,7 @@ static partial class TestSuite
             }
         }
 
-        LayoutRect lastCard = DashboardLayout.ConvertCardRect(2, groupSizes[2] - 1, zone.X, zone.Width, groupSizes);
+        LayoutRect lastCard = DashboardLayout.ConvertCardRect(3, groupSizes[3] - 1, zone.X, zone.Width, groupSizes);
         LayoutRect startButton = DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, groupSizes);
         Assert.Equal(lastCard.Y + DashboardLayout.ConvertCardStride + DashboardLayout.ConvertStartButtonGap, startButton.Y);
         Assert.True(startButton.Y >= lastCard.Bottom, "The start button must clear the last card.");
@@ -340,18 +340,20 @@ static partial class TestSuite
 
     private static void TestAotConvertStickyAction()
     {
-        int[] groupSizes = { 5, 5, 8 };
+        int[] groupSizes = { 11, 4, 2, 3 };
         Assert.Equal(18, DashboardLayout.ConvertCardIconSize);
         Assert.Equal(6, DashboardLayout.ConvertCardIconSpacing);
         Assert.Equal(8, DashboardLayout.ConvertCardMinPadding);
         Assert.True(DashboardLayout.ConvertCardMinRequiredWidth <= 164,
             "Minimum required card width with icon and text must fit within 3-column layout width.");
         Assert.Equal(3, DashboardLayout.ConvertGroupColumns(0));
-        Assert.Equal(3, DashboardLayout.ConvertGroupColumns(1));
-        Assert.Equal(3, DashboardLayout.ConvertGroupColumns(2));
-        Assert.Equal(2, DashboardLayout.ConvertGroupRows(0, groupSizes[0]));
+        Assert.Equal(2, DashboardLayout.ConvertGroupColumns(1));
+        Assert.Equal(2, DashboardLayout.ConvertGroupColumns(2));
+        Assert.Equal(3, DashboardLayout.ConvertGroupColumns(3));
+        Assert.Equal(4, DashboardLayout.ConvertGroupRows(0, groupSizes[0]));
         Assert.Equal(2, DashboardLayout.ConvertGroupRows(1, groupSizes[1]));
-        Assert.Equal(3, DashboardLayout.ConvertGroupRows(2, groupSizes[2]));
+        Assert.Equal(1, DashboardLayout.ConvertGroupRows(2, groupSizes[2]));
+        Assert.Equal(1, DashboardLayout.ConvertGroupRows(3, groupSizes[3]));
 
         LayoutRect zone = DashboardLayout.ConvertZoneRect(contentX: 260, logW: 1520);
         LayoutRect start = DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, groupSizes);
