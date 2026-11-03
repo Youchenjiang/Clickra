@@ -49,6 +49,7 @@ public sealed class ConvertWorkspaceController
         new("img-to-webp", "cmd_img_to_webp", ConvertGroup, 0, false),
         new("img-to-gif", "cmd_img_to_gif", ConvertGroup, 0, false),
         new("img-to-heic", "cmd_img_to_heic", ConvertGroup, 0, false),
+        new("pdf2img", "cmd_pdf_to_img", ConvertGroup, 0, false),
         new("merge-pdf", "cmd_merge_pdf", OrganizeGroup, 1, false),
         new("split-pdf", "cmd_split_pdf", OrganizeGroup, 1, false),
         new("img-merge", "cmd_merge_img", OrganizeGroup, 1, false),
