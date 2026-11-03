@@ -9,7 +9,7 @@ Welcome to the Clickra documentation index. All project documentation is organiz
 Architecture documentation, boundary invariants, layered structure maps, and ADRs:
 - [Architecture Overview](architecture/README.md): .NET 8 baseline, NativeAOT compilation, and subsystem boundaries.
 - [Layered Architecture Maps](architecture/diagrams/overview.html): Interactive L0–L4 layered diagrams.
-- [Decisions & Principles](architecture/decisions/): Architectural Decision Records (ADRs).
+- [Architecture Specifications](architecture/spec/): System architecture specifications and architectural audit reports.
 
 ## 🛠️ Development & Operations (`docs/development/`)
 Guides for building, testing, packaging, signing, and releasing Clickra:

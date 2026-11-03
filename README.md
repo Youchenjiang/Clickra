@@ -1,5 +1,5 @@
 <div align="center">
-<img src="src/resources/app.png" alt="Clickra Logo" width="80" height="80" />
+<img src="assets/primary/clickra-icon-primary-256.png" alt="Clickra Logo" width="80" height="80" />
 <h1>Clickra</h1>
 <p>High-performance context-menu utility suite for Windows 10 &amp; 11</p>
 <p>
