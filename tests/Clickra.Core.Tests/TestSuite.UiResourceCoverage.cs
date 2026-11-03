@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Clickra.Core;
+using Clickra.Core.Application;
 using Clickra.Core.Processors;
 using Clickra.Shared;
 
@@ -196,6 +197,7 @@ static partial class TestSuite
         runner.RunGuard("Shell menu: commands reconcile with ConvertCommandRegistry metadata", TestShellCommandRegistryCoverage);
         runner.RunGuard("Store listing: docs/store/StoreListing_*.md covers all supported languages with complete fields", TestStoreListingCoverage);
         runner.RunGuard("Color governance: every command tag color strictly adheres to input source file policy", TestCommandTagColorsFollowSourceFileGovernance);
+        runner.RunGuard("Convert execution: every ConvertCommandMetadata command is covered in NativeConversionExecutionAdapter and ConversionUseCases", TestConvertCommandExecutionCoverage);
     }
 
     private static void TestShellResourceCoverage()
@@ -502,5 +504,58 @@ static partial class TestSuite
                          RegexOptions.None,
                          UiResourceRegexTimeout),
             "Command tag colors must NEVER define ad-hoc command branches; all commands must strictly follow source file governance.");
+    }
+
+    private static void TestConvertCommandExecutionCoverage()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
+
+        string adapterPath = Path.Combine(root, "src", "Clickra.CLI", "Progress", "NativeConversionExecutionAdapter.cs");
+        Assert.True(File.Exists(adapterPath), "NativeConversionExecutionAdapter.cs must exist.");
+        string adapterSource = File.ReadAllText(adapterPath);
+
+        string[] allCommands = GovernedSourceFileTypes
+            .SelectMany(ConvertCommandMetadata.GetCommandsForType)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(command => command, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(21, allCommands.Length);
+
+        // 1. Every single registered command MUST exist in ConversionUseCases
+        foreach (string command in allCommands)
+        {
+            Assert.True(ConversionUseCases.TryGet(command, out IConversionUseCase? useCase) && useCase is not null,
+                $"Command '{command}' from ConvertCommandMetadata must be registered in ConversionUseCases.");
+            Assert.True(ConversionUseCases.Commands.Contains(command),
+                $"ConversionUseCases.Commands must advertise command '{command}'.");
+        }
+
+        // 2. NativeConversionExecutionAdapter must guarantee coverage for all commands
+        // either through explicit branch or through ConversionUseCases fallback.
+        Assert.True(adapterSource.Contains("ConversionUseCases.TryGet(command, out", StringComparison.Ordinal),
+            "NativeConversionExecutionAdapter.TryRun must include a ConversionUseCases fallback to prevent unhandled command drops.");
+
+        // 3. Specialized commands that require dedicated UI/interaction flows must have their dedicated dispatch
+        string[] specializedCommands =
+        [
+            "decrypt-pdf",
+            "split-pdf",
+            "compress-pdf",
+            "print-pdf",
+            "img2pdf",
+            "merge-pdf",
+            "img-merge",
+            "img-stitch",
+            "translate-pdf"
+        ];
+
+        foreach (string cmd in specializedCommands)
+        {
+            Assert.True(adapterSource.Contains(cmd, StringComparison.OrdinalIgnoreCase)
+                        || adapterSource.Contains(cmd.Replace("-", "", StringComparison.Ordinal), StringComparison.OrdinalIgnoreCase),
+                $"NativeConversionExecutionAdapter must explicitly route specialized workflow for '{cmd}'.");
+        }
     }
 }
