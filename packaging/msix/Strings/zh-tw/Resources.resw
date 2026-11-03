@@ -19,63 +19,63 @@
     <value>【系統需求】「簡報轉PDF」與「文件轉PDF」功能需於本機裝置安裝Microsoft Office (PowerPoint/Word)。此舉可確保轉換過程維持最高還原度。其餘所有功能（PDF合併、圖片轉換等）皆可原生執行，無需額外外部依賴。</value>
   </data>
   <data name="Menu_Ppt2Pdf" xml:space="preserve">
-    <value>簡報轉 PDF</value>
+    <value>轉為 PDF</value>
   </data>
   <data name="Menu_Word2Pdf" xml:space="preserve">
-    <value>文件轉 PDF (Word)</value>
+    <value>轉為 PDF</value>
   </data>
   <data name="Menu_Excel2Pdf" xml:space="preserve">
-    <value>試算表轉 PDF (Excel)</value>
+    <value>轉為 PDF</value>
   </data>
   <data name="Menu_MergePdf" xml:space="preserve">
-    <value>PDF 合併</value>
+    <value>合併</value>
   </data>
   <data name="Menu_CompressPdf" xml:space="preserve">
-    <value>壓縮 PDF</value>
+    <value>壓縮</value>
   </data>
   <data name="Menu_Img2Pdf" xml:space="preserve">
-    <value>圖片轉 PDF</value>
+    <value>轉為 PDF</value>
   </data>
   <data name="Menu_ImgMerge" xml:space="preserve">
-    <value>合併圖片成 PDF</value>
+    <value>合併成 PDF</value>
   </data>
   <data name="Menu_ImgStitch" xml:space="preserve">
-    <value>圖片垂直拼接</value>
+    <value>垂直拼接</value>
   </data>
   <data name="Menu_ImgCompress" xml:space="preserve">
-    <value>壓縮圖片</value>
+    <value>壓縮</value>
   </data>
   <data name="Menu_ImgToPng" xml:space="preserve">
-    <value>轉成 PNG</value>
+    <value>轉為 PNG</value>
   </data>
   <data name="Menu_ImgToJpg" xml:space="preserve">
-    <value>轉成 JPG</value>
+    <value>轉為 JPG</value>
   </data>
   <data name="Menu_ImgToWebp" xml:space="preserve">
-    <value>轉成 WEBP</value>
+    <value>轉為 WebP</value>
   </data>
   <data name="Menu_ImgToGif" xml:space="preserve">
-    <value>轉成 GIF</value>
+    <value>轉為 GIF</value>
   </data>
   <data name="Menu_ImgToHeic" xml:space="preserve">
-    <value>轉成 HEIC</value>
+    <value>轉為 HEIC</value>
   </data>
   <data name="Menu_TranslatePdf" xml:space="preserve">
-    <value>翻譯 PDF</value>
+    <value>翻譯</value>
   </data>
   <data name="Menu_DecryptPdf" xml:space="preserve">
-    <value>解密 PDF</value>
+    <value>解密</value>
   </data>
   <data name="Menu_SplitPdf" xml:space="preserve">
-    <value>分割 PDF</value>
+    <value>分割</value>
   </data>
   <data name="Menu_PrintPdf" xml:space="preserve">
-    <value>列印 PDF</value>
+    <value>列印</value>
   </data>
   <data name="Menu_Md2Pdf" xml:space="preserve">
-    <value>Markdown 轉 PDF</value>
+    <value>轉為 PDF</value>
   </data>
   <data name="Menu_Md2Word" xml:space="preserve">
-    <value>Markdown 轉 Word</value>
+    <value>轉為 Word</value>
   </data>
 </root>

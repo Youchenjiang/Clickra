@@ -1,6 +1,6 @@
 # Microsoft Store リスト - 日本語
 
-以下は、Microsoft パートナー センター (Partner Center) に直接コピー＆ペーストできる完全な情報です（v3.16.4.0 対応）。
+以下は、Microsoft パートナー センター (Partner Center) に直接コピー＆ペーストできる完全な情報です（v3.16.5.0 対応）。
 
 ---
 

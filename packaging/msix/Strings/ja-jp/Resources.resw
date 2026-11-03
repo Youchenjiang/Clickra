@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -19,31 +19,31 @@
     <value>[システム要件]「PPT → PDF」および「Word → PDF」機能を使用するには、ローカルデバイスに Microsoft Office (PowerPoint/Word) がインストールされている必要があります。これにより、変換プロセスの再現性を最大限に高めることができます。その他のすべての機能（PDF結合、画像変換など）はネイティブで動作し、外部の依存関係は不要です。</value>
   </data>
   <data name="Menu_Ppt2Pdf" xml:space="preserve">
-    <value>スライドを PDF に変換</value>
+    <value>PDF に変換</value>
   </data>
   <data name="Menu_Word2Pdf" xml:space="preserve">
-    <value>Word → PDF 変換</value>
+    <value>PDF に変換</value>
   </data>
   <data name="Menu_Excel2Pdf" xml:space="preserve">
-    <value>Excel → PDF 変換</value>
+    <value>PDF に変換</value>
   </data>
   <data name="Menu_MergePdf" xml:space="preserve">
-    <value>PDF 結合</value>
+    <value>結合</value>
   </data>
   <data name="Menu_CompressPdf" xml:space="preserve">
-    <value>PDF 圧縮</value>
+    <value>圧縮</value>
   </data>
   <data name="Menu_Img2Pdf" xml:space="preserve">
-    <value>画像を PDF に変換</value>
+    <value>PDF に変換</value>
   </data>
   <data name="Menu_ImgMerge" xml:space="preserve">
-    <value>画像を PDF に結合</value>
+    <value>PDF に結合</value>
   </data>
   <data name="Menu_ImgStitch" xml:space="preserve">
-    <value>画像を縦に結合</value>
+    <value>縦に結合</value>
   </data>
   <data name="Menu_ImgCompress" xml:space="preserve">
-    <value>画像を圧縮</value>
+    <value>圧縮</value>
   </data>
   <data name="Menu_ImgToPng" xml:space="preserve">
     <value>PNG に変換</value>
@@ -52,7 +52,7 @@
     <value>JPG に変換</value>
   </data>
   <data name="Menu_ImgToWebp" xml:space="preserve">
-    <value>WEBP に変換</value>
+    <value>WebP に変換</value>
   </data>
   <data name="Menu_ImgToGif" xml:space="preserve">
     <value>GIF に変換</value>
@@ -61,21 +61,21 @@
     <value>HEIC に変換</value>
   </data>
   <data name="Menu_TranslatePdf" xml:space="preserve">
-    <value>PDF 一括翻訳</value>
+    <value>翻訳</value>
   </data>
   <data name="Menu_DecryptPdf" xml:space="preserve">
-    <value>PDF パスワード解除</value>
+    <value>パスワード解除</value>
   </data>
   <data name="Menu_SplitPdf" xml:space="preserve">
-    <value>PDF 分割</value>
+    <value>分割</value>
   </data>
   <data name="Menu_PrintPdf" xml:space="preserve">
-    <value>PDFを印刷</value>
+    <value>印刷</value>
   </data>
   <data name="Menu_Md2Pdf" xml:space="preserve">
-    <value>Markdown から PDF</value>
+    <value>PDF に変換</value>
   </data>
   <data name="Menu_Md2Word" xml:space="preserve">
-    <value>Markdown から Word</value>
+    <value>Word に変換</value>
   </data>
 </root>
