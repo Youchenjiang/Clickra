@@ -168,6 +168,19 @@ internal sealed class NativeConversionExecutionAdapter
                     CommandOptions: _commandOptions));
             return true;
         }
+        if (ConversionUseCases.TryGet(command, out _))
+        {
+            RunSimple(
+                command,
+                files,
+                progressCallback,
+                new SimpleApplicationRunOptions(
+                    _outputDirOverride,
+                    true,
+                    new TaskIdExecutionObserver(_taskStarted, _recordTaskIndex),
+                    CommandOptions: _commandOptions));
+            return true;
+        }
         return false;
     }
 
