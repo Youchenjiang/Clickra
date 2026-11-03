@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -19,31 +19,31 @@
     <value>[시스템 요구사항] 'PPT를 PDF로 변환' 및 'Word를 PDF로 변환' 기능은 로컬 디바이스에 Microsoft Office (PowerPoint/Word)가 설치되어 있어야 합니다. 이를 통해 변환 프로세스의 복원력을 최대로 보장합니다. 다른 모든 기능(PDF 병합, 이미지 변환 등)은 외부 종속성 없이 자체적으로 실행됩니다.</value>
   </data>
   <data name="Menu_Ppt2Pdf" xml:space="preserve">
-    <value>PPT를 PDF로 변환</value>
+    <value>PDF로 변환</value>
   </data>
   <data name="Menu_Word2Pdf" xml:space="preserve">
-    <value>Word → PDF 변환</value>
+    <value>PDF로 변환</value>
   </data>
   <data name="Menu_Excel2Pdf" xml:space="preserve">
-    <value>Excel → PDF 변환</value>
+    <value>PDF로 변환</value>
   </data>
   <data name="Menu_MergePdf" xml:space="preserve">
-    <value>PDF 병합</value>
+    <value>병합</value>
   </data>
   <data name="Menu_CompressPdf" xml:space="preserve">
-    <value>PDF 압축</value>
+    <value>압축</value>
   </data>
   <data name="Menu_Img2Pdf" xml:space="preserve">
-    <value>이미지를 PDF로 변환</value>
+    <value>PDF로 변환</value>
   </data>
   <data name="Menu_ImgMerge" xml:space="preserve">
-    <value>이미지를 PDF로 병합</value>
+    <value>PDF로 병합</value>
   </data>
   <data name="Menu_ImgStitch" xml:space="preserve">
-    <value>이미지 세로로 이어붙이기</value>
+    <value>세로로 이어붙이기</value>
   </data>
   <data name="Menu_ImgCompress" xml:space="preserve">
-    <value>이미지 압축</value>
+    <value>압축</value>
   </data>
   <data name="Menu_ImgToPng" xml:space="preserve">
     <value>PNG로 변환</value>
@@ -52,7 +52,7 @@
     <value>JPG로 변환</value>
   </data>
   <data name="Menu_ImgToWebp" xml:space="preserve">
-    <value>WEBP로 변환</value>
+    <value>WebP로 변환</value>
   </data>
   <data name="Menu_ImgToGif" xml:space="preserve">
     <value>GIF로 변환</value>
@@ -61,21 +61,21 @@
     <value>HEIC로 변환</value>
   </data>
   <data name="Menu_TranslatePdf" xml:space="preserve">
-    <value>PDF 일괄 번역</value>
+    <value>번역</value>
   </data>
   <data name="Menu_DecryptPdf" xml:space="preserve">
-    <value>PDF 비밀번호 제거</value>
+    <value>비밀번호 해제</value>
   </data>
   <data name="Menu_SplitPdf" xml:space="preserve">
-    <value>PDF 분할</value>
+    <value>분할</value>
   </data>
   <data name="Menu_PrintPdf" xml:space="preserve">
-    <value>PDF 인쇄</value>
+    <value>인쇄</value>
   </data>
   <data name="Menu_Md2Pdf" xml:space="preserve">
-    <value>Markdown을 PDF로 변환</value>
+    <value>PDF로 변환</value>
   </data>
   <data name="Menu_Md2Word" xml:space="preserve">
-    <value>Markdown을 Word로 변환</value>
+    <value>Word로 변환</value>
   </data>
 </root>

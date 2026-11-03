@@ -19,31 +19,31 @@
     <value>[System Requirements] The "PPT to PDF" and "Word to PDF" features require Microsoft Office (PowerPoint/Word) to be installed on the local device. This ensures the highest conversion fidelity. All other features (PDF merging, image conversion, etc.) run natively without external dependencies.</value>
   </data>
   <data name="Menu_Ppt2Pdf" xml:space="preserve">
-    <value>PPT to PDF</value>
+    <value>Convert to PDF</value>
   </data>
   <data name="Menu_MergePdf" xml:space="preserve">
-    <value>Merge PDF</value>
+    <value>Merge</value>
   </data>
   <data name="Menu_CompressPdf" xml:space="preserve">
-    <value>Compress PDF</value>
+    <value>Compress</value>
   </data>
   <data name="Menu_Word2Pdf" xml:space="preserve">
-    <value>Word to PDF</value>
+    <value>Convert to PDF</value>
   </data>
   <data name="Menu_Excel2Pdf" xml:space="preserve">
-    <value>Excel to PDF</value>
+    <value>Convert to PDF</value>
   </data>
   <data name="Menu_Img2Pdf" xml:space="preserve">
-    <value>Image to PDF</value>
+    <value>Convert to PDF</value>
   </data>
   <data name="Menu_ImgMerge" xml:space="preserve">
-    <value>Merge Images to PDF</value>
+    <value>Merge to PDF</value>
   </data>
   <data name="Menu_ImgStitch" xml:space="preserve">
-    <value>Stitch Images Vertically</value>
+    <value>Stitch Vertically</value>
   </data>
   <data name="Menu_ImgCompress" xml:space="preserve">
-    <value>Compress Images</value>
+    <value>Compress</value>
   </data>
   <data name="Menu_ImgToPng" xml:space="preserve">
     <value>Convert to PNG</value>
@@ -52,7 +52,7 @@
     <value>Convert to JPG</value>
   </data>
   <data name="Menu_ImgToWebp" xml:space="preserve">
-    <value>Convert to WEBP</value>
+    <value>Convert to WebP</value>
   </data>
   <data name="Menu_ImgToGif" xml:space="preserve">
     <value>Convert to GIF</value>
@@ -61,21 +61,21 @@
     <value>Convert to HEIC</value>
   </data>
   <data name="Menu_TranslatePdf" xml:space="preserve">
-    <value>Translate PDF</value>
+    <value>Translate</value>
   </data>
   <data name="Menu_DecryptPdf" xml:space="preserve">
-    <value>Decrypt PDF</value>
+    <value>Decrypt</value>
   </data>
   <data name="Menu_SplitPdf" xml:space="preserve">
-    <value>Split PDF</value>
+    <value>Split</value>
   </data>
   <data name="Menu_PrintPdf" xml:space="preserve">
-    <value>Print PDF</value>
+    <value>Print</value>
   </data>
   <data name="Menu_Md2Pdf" xml:space="preserve">
-    <value>Markdown to PDF</value>
+    <value>Convert to PDF</value>
   </data>
   <data name="Menu_Md2Word" xml:space="preserve">
-    <value>Markdown to Word</value>
+    <value>Convert to Word</value>
   </data>
 </root>
