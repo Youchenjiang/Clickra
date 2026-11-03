@@ -80,6 +80,16 @@ jobs:
         with:
           ref: ${{ inputs.tag || github.ref }}
 
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Generate product icon assets
+        shell: pwsh
+        run: |
+          dotnet run --project scripts/tools/IconGen/IconGen.csproj
+
       # Single source of truth for release triggers. Downstream publishing jobs
       # consume this output so manual workflow_dispatch runs can validate the
       # package without creating a GitHub Release or shipping to the Store.
