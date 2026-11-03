@@ -111,6 +111,7 @@
   "md_options_template_picker": "导入 Word 样式模板",
   "md_options_convert": "开始转换",
   "cmd_merge_pdf": "合并 PDF",
+  "cmd_pdf_to_img": "PDF → 图片",
   "cmd_img_to_pdf": "图片 → PDF",
   "cmd_merge_img": "合并图片",
   "cmd_stitch_img": "拼接图片",

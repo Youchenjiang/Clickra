@@ -78,4 +78,7 @@
   <data name="Menu_Md2Word" xml:space="preserve">
     <value>转为 Word</value>
   </data>
+  <data name="Menu_Pdf2Img" xml:space="preserve">
+    <value>转为图片</value>
+  </data>
 </root>

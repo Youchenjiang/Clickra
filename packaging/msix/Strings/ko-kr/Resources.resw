@@ -78,4 +78,7 @@
   <data name="Menu_Md2Word" xml:space="preserve">
     <value>Word로 변환</value>
   </data>
+  <data name="Menu_Pdf2Img" xml:space="preserve">
+    <value>이미지로 변환</value>
+  </data>
 </root>
