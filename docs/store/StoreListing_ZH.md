@@ -1,6 +1,6 @@
 # Microsoft Store 清單 - 中文 (台灣)
 
-以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.16.3.0。
+以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.16.4.0。
 
 ---
 
@@ -15,11 +15,9 @@ Clickra 是一款專為 Windows 檔案總管打造的原生右鍵擴充工具。
 原始碼：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 全新 Fluent 2 原生向量圖示系統，高解析度與各級縮放皆銳利呈現
-- 輸入來源驅動色彩規範，PDF 採用冷靜石墨藍灰、PPT 採用活力亮橘，色彩辨識更直覺
-- 儀表板轉換卡片全面統一箭頭標記（如 Word → PDF、MD → PDF）與精煉群組標題
-- 動作卡片文案全面標準化為動詞+名詞語法（合併圖片、拼接圖片、翻譯 PDF、解密 PDF）
-- 繁體中文、簡體中文、英文、日文、韓文五國語言介面文案全面對齊同步
+- 修復 MSIX 安裝包在部分系統環境下缺失圖示的問題
+- 打包流程加入圖示資源完整性自動校驗與補全機制
+- 提升發布流程穩定度與版本守護機制
 
 ## Product Features
 *(最多 20 個，以項目符號顯示)*

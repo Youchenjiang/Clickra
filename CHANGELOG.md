@@ -1,5 +1,10 @@
 # Changelog
 
+## [v3.16.4.0] - 2026-11-03
+
+- **修復 MSIX 安裝包缺失應用程式圖示 (Fix Missing App & Menu Icons in MSIX Package)**：修復 Release CI 建置在獨立環境打包 MSIX 時未執行圖示生成管線，導致安裝後圖示缺失的問題；打包腳本加入圖示自癒補編與完整性嚴格斷言。
+- **強化發布預檢與分支前綴版本守門 (Strict Preflight Branch & Release Bump Enforcement)**：在 `pr_preflight.py` 預檢工具中將 `hotfix/` 與 `release/` 分支前綴、PR Labels 以及發布工作流變更納入強制版本遞增判斷，確保發布版本與修復更新不再遺漏版本升級。
+
 ## [v3.16.3.0] - 2026-11-03
 
 - **現代化 Fluent 2 原生向量圖示系統 (Modern Fluent 2 Vector Icon System)**：全面重構儀表板與右鍵選單功能圖示，以原生 GDI+ 幾何向量路徑（SVG 規範）繪製，支援 16px 至 256px 全尺寸抗鋸齒渲染與任意 DPI 縮放；統一紙張、折角、箭頭與微光（Glow）視覺語彙。

@@ -1,6 +1,6 @@
 # Microsoft Store 清单 - 中文 (简体)
 
-以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.16.3.0。
+以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.16.4.0。
 
 ---
 
@@ -15,11 +15,9 @@ Clickra 是一款专为 Windows 资源管理器打造的原生右键扩展工具
 源代码：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 全新 Fluent 2 原生矢量图标系统，高分辨率与各级缩放均锐利呈现
-- 输入来源驱动色彩规范，PDF 采用沉稳石墨蓝灰、PPT 采用活力亮橙，色彩识别更直观
-- 仪表板转换卡片全面统一箭头标记（如 Word → PDF、MD → PDF）与精练分组标题
-- 动作卡片文案全面标准化为动词+名词语法（合并图片、拼接图片、翻译 PDF、解密 PDF）
-- 繁体中文、简体中文、英文、日文、韩文五国语言界面文案全面对齐同步
+- 修复 MSIX 安装包在部分系统环境下缺失图标的问题
+- 打包流程加入图标资源完整性自动校验与补全机制
+- 提升发布流程稳定性与版本守护机制
 
 ## Product Features
 *(最多 20 个，以项目符号显示)*
