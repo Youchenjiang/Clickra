@@ -1,5 +1,14 @@
 # Changelog
 
+## [v3.17.0.0] - 2026-11-04
+
+- **PDF 轉圖片功能 (PDF to Images)**：全新推出 PDF 逐頁轉為圖片功能 (`pdf2img`)，支援將多頁 PDF 文件批次轉換為高品質 PNG 影像序列，並無縫整合至 Windows Explorer 右鍵選單與 Fluent UI 儀表板。
+- **原生 Direct2D / WIC 渲染架構 (Native Direct2D Rendering Engine)**：採用純原生 Windows Direct2D 與 WIC API 渲染，維持 NativeAOT 極致效能與零肥大外部相依性。
+- **轉換命令三重安全防線 (Conversion Execution Safeguards)**：
+  - 新增架構守門測試 (`TestConvertCommandExecutionCoverage`)，強制 100% 覆蓋所有 21 項轉換命令在 Adapter 與 UseCase 目錄的註冊。
+  - `NativeConversionExecutionAdapter` 加入自動兜底查表機制，防止未來新功能遺漏接合。
+  - 建立新增轉換命令標準作業程序（SOP）與查核清單 (`docs/development/new_command_checklist.md`)。
+
 ## [v3.16.5.0] - 2026-11-03
 
 - **Windows 檔案總管右鍵選單語境感知文案統一 (Context-Aware Shell Menu Phrasing)**：全面重構 5 國語言（繁中、簡中、英文、日文、韓文）右鍵選單標籤；去除「Word 轉 PDF」、「圖片轉 PDF」等冗餘來源前綴，統一採用語境感知動詞短語（如「轉為 PDF」、「轉為圖片」、「合併」、「壓縮」、「分割」），大幅提升右鍵操作清爽度與語意一致性。
