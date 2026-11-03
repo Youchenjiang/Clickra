@@ -309,6 +309,74 @@ class PrPreflightTests(unittest.TestCase):
         errors = _check_version_bump("origin/main")
         self.assertEqual([], errors)
 
+    @patch("pr_preflight.git")
+    def test_version_bump_required_when_hotfix_branch_and_version_tagged(self, mock_git):
+        from pr_preflight import _check_version_bump
+        props = (Path(__file__).resolve().parent.parent.parent / "src" / "Directory.Build.props").read_text(encoding="utf-8")
+        m = re.search(r"<Version>(.*?)</Version>", props)
+        current_tag = f"v{m.group(1).strip()}" if m else "v3.16.4.0"
+        def command(*args):
+            if args[0] == "diff":
+                return CompletedProcess(args, 0, "scripts/helper.ps1\n", "")
+            if args[0] == "tag":
+                return CompletedProcess(args, 0, f"{current_tag}\n", "")
+            if args[0] == "branch" and "--show-current" in args:
+                return CompletedProcess(args, 0, "hotfix/missing-icons\n", "")
+            return CompletedProcess(args, 0, "", "")
+        mock_git.side_effect = command
+        errors = _check_version_bump("origin/main")
+        self.assertTrue(any("already tagged as an existing release" in e for e in errors))
+
+    @patch("pr_preflight.git")
+    def test_version_bump_required_when_release_workflow_modified(self, mock_git):
+        from pr_preflight import _check_version_bump
+        props = (Path(__file__).resolve().parent.parent.parent / "src" / "Directory.Build.props").read_text(encoding="utf-8")
+        m = re.search(r"<Version>(.*?)</Version>", props)
+        current_tag = f"v{m.group(1).strip()}" if m else "v3.16.4.0"
+        def command(*args):
+            if args[0] == "diff":
+                return CompletedProcess(args, 0, ".github/workflows/release.yml\n", "")
+            if args[0] == "tag":
+                return CompletedProcess(args, 0, f"{current_tag}\n", "")
+            if args[0] == "branch" and "--show-current" in args:
+                return CompletedProcess(args, 0, "fix/release-workflow\n", "")
+            return CompletedProcess(args, 0, "", "")
+        mock_git.side_effect = command
+        errors = _check_version_bump("origin/main")
+        self.assertTrue(any("already tagged as an existing release" in e for e in errors))
+
+    @patch("pr_preflight.git")
+    def test_version_bump_rejected_on_chore_branch(self, mock_git):
+        from pr_preflight import _check_version_bump
+        def command(*args):
+            if args[0] == "diff":
+                return CompletedProcess(args, 0, "src/Directory.Build.props\n", "")
+            if args[0] == "branch" and "--show-current" in args:
+                return CompletedProcess(args, 0, "chore/bump-version\n", "")
+            return CompletedProcess(args, 0, "", "")
+        mock_git.side_effect = command
+        errors = _check_version_bump("origin/main")
+        self.assertTrue(any("reserved for non-release maintenance" in e for e in errors))
+
+    @patch("pr_preflight.git")
+    def test_version_bump_required_when_hotfix_label_and_version_tagged(self, mock_git):
+        from pr_preflight import _check_version_bump
+        props = (Path(__file__).resolve().parent.parent.parent / "src" / "Directory.Build.props").read_text(encoding="utf-8")
+        m = re.search(r"<Version>(.*?)</Version>", props)
+        current_tag = f"v{m.group(1).strip()}" if m else "v3.16.4.0"
+        def command(*args):
+            if args[0] == "diff":
+                return CompletedProcess(args, 0, "scripts/helper.ps1\n", "")
+            if args[0] == "tag":
+                return CompletedProcess(args, 0, f"{current_tag}\n", "")
+            if args[0] == "branch" and "--show-current" in args:
+                return CompletedProcess(args, 0, "chore/misc\n", "")
+            return CompletedProcess(args, 0, "", "")
+        mock_git.side_effect = command
+        metadata = {"labels": [{"name": "hotfix"}]}
+        errors = _check_version_bump("origin/main", metadata=metadata)
+        self.assertTrue(any("already tagged as an existing release" in e for e in errors))
+
 
 
 class PrePushHookRefTests(unittest.TestCase):
