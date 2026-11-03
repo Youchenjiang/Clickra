@@ -1,0 +1,6 @@
+<Project>
+  <Target Name="EnsureClickraIcons" BeforeTargets="BeforeBuild" Condition="'$(MSBuildProjectName)' != 'IconGen' and '$(ClickraSkipIconGen)' != 'true'">
+    <Exec Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)scripts\tools\IconGen\IconGen.csproj&quot;"
+          StandardOutputImportance="Low" />
+  </Target>
+</Project>

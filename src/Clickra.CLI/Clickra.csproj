@@ -4,7 +4,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <RollForward>LatestMajor</RollForward>
-    <ApplicationIcon>../resources/app.ico</ApplicationIcon>
+    <ApplicationIcon>../../obj/icons/app.ico</ApplicationIcon>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Authors>Youchen Jiang</Authors>
@@ -33,5 +33,20 @@
   <ItemGroup>
     <ProjectReference Include="..\Clickra.Core\Clickra.Core.csproj" />
   </ItemGroup>
+
+  <Target Name="IncludeGeneratedIcons" BeforeTargets="AssignTargetPaths;GetCopyToOutputDirectoryItems" DependsOnTargets="EnsureClickraIcons">
+    <ItemGroup>
+      <Content Include="..\..\obj\icons\menu-*.ico">
+        <Link>%(Filename)%(Extension)</Link>
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <Visible>false</Visible>
+      </Content>
+      <Content Include="..\..\obj\icons\app.ico">
+        <Link>app.ico</Link>
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <Visible>false</Visible>
+      </Content>
+    </ItemGroup>
+  </Target>
 
 </Project>

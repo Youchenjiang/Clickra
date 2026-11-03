@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Clickra.Core;
@@ -239,6 +240,7 @@ namespace Clickra.UI
                     bool isHovered = _hoveredElement == (50 + i);
                     bool isEnabled = !_convertWorkspace.IsRunning && _convertWorkspace.IsCommandCompatible(ConvertCommands[i].Command);
 
+                    Color brandColor = ConvertCommands[i].TagColor;
                     Color cardBg;
                     Color cardBorder;
                     Color textColor;
@@ -251,15 +253,21 @@ namespace Clickra.UI
                     }
                     else if (isSelected)
                     {
-                        cardBg = Color.FromArgb(45, 45, 55);
-                        cardBorder = UIHelper.GetSystemColorizationColor();
+                        cardBg = Color.FromArgb(36, brandColor.R, brandColor.G, brandColor.B);
+                        cardBorder = brandColor;
+                        textColor = Color.White;
+                    }
+                    else if (isHovered)
+                    {
+                        cardBg = Color.FromArgb(22, brandColor.R, brandColor.G, brandColor.B);
+                        cardBorder = Color.FromArgb(140, brandColor.R, brandColor.G, brandColor.B);
                         textColor = Color.White;
                     }
                     else
                     {
-                        cardBg = isHovered ? Color.FromArgb(50, 50, 50) : Color.FromArgb(36, 36, 36);
-                        cardBorder = isHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(48, 48, 48);
-                        textColor = isHovered ? Color.White : Color.FromArgb(200, 200, 200);
+                        cardBg = Color.FromArgb(36, 36, 36);
+                        cardBorder = Color.FromArgb(48, 48, 48);
+                        textColor = Color.FromArgb(210, 210, 210);
                     }
 
                     using var path = UIHelper.GetRoundedRectPath(new RectangleF(card.X * s, card.Y * s, card.Width * s, card.Height * s), 5 * s);
@@ -269,14 +277,61 @@ namespace Clickra.UI
                     g.DrawPath(borderPen, path);
 
                     string cmdText = ConvertCommands[i].DisplayName;
+                    Bitmap? cmdIcon = GetConvertCommandIcon(ConvertCommands[i].Command);
 
                     if (_tabFont != null)
                     {
                         using var textBrush = new SolidBrush(textColor);
                         var size = g.MeasureString(cmdText, _tabFont);
-                        g.DrawString(cmdText, _tabFont, textBrush,
-                            (card.X + (card.Width - size.Width / s) / 2) * s,
-                            (card.Y + (card.Height - size.Height / s) / 2) * s);
+                        float textW = size.Width / s;
+                        float textH = size.Height / s;
+
+                        if (cmdIcon != null)
+                        {
+                            float iconSize = DashboardLayout.ConvertCardIconSize;
+                            float spacing = DashboardLayout.ConvertCardIconSpacing;
+                            float contentW = iconSize + spacing + textW;
+                            float startX = Math.Max(card.X + DashboardLayout.ConvertCardMinPadding, card.X + (card.Width - contentW) / 2f);
+                            float iconY = card.Y + (card.Height - iconSize) / 2f;
+                            float textY = card.Y + (card.Height - textH) / 2f;
+
+                            var prevInterp = g.InterpolationMode;
+                            var prevOffset = g.PixelOffsetMode;
+                            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+                            if (isEnabled)
+                            {
+                                g.DrawImage(cmdIcon, new RectangleF(startX * s, iconY * s, iconSize * s, iconSize * s));
+                            }
+                            else
+                            {
+                                using var ia = new ImageAttributes();
+                                var cm = new ColorMatrix(new float[][]
+                                {
+                                    new float[] { 0.3f, 0.3f, 0.3f, 0, 0 },
+                                    new float[] { 0.3f, 0.3f, 0.3f, 0, 0 },
+                                    new float[] { 0.3f, 0.3f, 0.3f, 0, 0 },
+                                    new float[] { 0,    0,    0,    0.4f, 0 },
+                                    new float[] { 0,    0,    0,    0, 1 }
+                                });
+                                ia.SetColorMatrix(cm);
+                                g.DrawImage(cmdIcon,
+                                    new Rectangle((int)(startX * s), (int)(iconY * s), (int)(iconSize * s), (int)(iconSize * s)),
+                                    0, 0, cmdIcon.Width, cmdIcon.Height, GraphicsUnit.Pixel, ia);
+                            }
+
+                            g.InterpolationMode = prevInterp;
+                            g.PixelOffsetMode = prevOffset;
+
+                            g.DrawString(cmdText, _tabFont, textBrush, (startX + iconSize + spacing) * s, textY * s);
+                        }
+                        else
+                        {
+                            g.DrawString(cmdText, _tabFont, textBrush,
+                                (card.X + (card.Width - textW) / 2) * s,
+                                (card.Y + (card.Height - textH) / 2) * s);
+                        }
                     }
                 }
             }

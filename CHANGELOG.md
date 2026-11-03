@@ -1,5 +1,12 @@
 # Changelog
 
+## [v3.16.3.0] - 2026-11-03
+
+- **現代化 Fluent 2 原生向量圖示系統 (Modern Fluent 2 Vector Icon System)**：全面重構儀表板與右鍵選單功能圖示，以原生 GDI+ 幾何向量路徑（SVG 規範）繪製，支援 16px 至 256px 全尺寸抗鋸齒渲染與任意 DPI 縮放；統一紙張、折角、箭頭與微光（Glow）視覺語彙。
+- **純輸入來源驅動色彩規範 (100% Source-Driven Color Governance)**：嚴格依據輸入來源檔案類型決定品牌色彩，徹底消除目標格式與分類混色；將 PDF 規範為深石墨藍灰（Slate Blue-Grey, `#475569`），PowerPoint 規範為亮橘色（Fluent Orange, `#D83B01`），通過嚴格 CI 架構守衛測試。
+- **卡片文案與群組標題精煉對齊 (Unified Action Cards & Group Labels)**：格式轉換卡片全面統一採用箭頭表示法（如 `Word → PDF`、`MD → PDF`、`圖片 → PNG`），動作卡片標準化為動詞+名詞語法（`合併圖片`、`拼接圖片`、`翻譯 PDF`、`解密 PDF`）；四大功能群組重整為四字精煉標題（格式轉換、合併分割、檔案壓縮、實用工具），繁簡英日韓五國語言同步對齊。
+- **自動化圖示生成管線 (Automated Vector Icon Generation Pipeline)**：新增 `IconGen` 工具專案與 `generate_shell_menu_icons.ps1` 腳本，直接將 SVG 規格編譯為多尺寸 ICO/PNG 資產，達成圖示生成零手動介入。
+
 ## [v3.16.2.0] - 2026-11-01
 
 - **自動化發佈與 CI Release Tag 整合 (Automated Tagging & Release CI)**：PR 合併至 `main` 且偵測到新版本時，CI 工作流程將自動建立並推送 Git Release Tag（`vX.X.X.X`），並自動觸發 GitHub Release 建置與發佈流程，大幅降低發布維護成本。

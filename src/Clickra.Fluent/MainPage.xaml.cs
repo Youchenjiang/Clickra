@@ -149,45 +149,48 @@ public sealed partial class MainPage : Page
         Grid.SetColumn(page.ConvertRunCard, narrow ? 0 : 1);
         Grid.SetRow(page.ConvertRunCard, narrow ? 3 : 1);
 
-        SetActiveColumns(page.OfficeCommandGrid, narrow ? 2 : 3);
-        SetActiveColumns(page.PdfCommandGrid, narrow ? 2 : 6);
-        SetActiveColumns(page.ImageCommandGrid, narrow ? 2 : 4);
+        SetActiveColumns(page.ConvertCommandGrid, narrow ? 2 : 3);
+        SetActiveColumns(page.OrganizeCommandGrid, narrow ? 2 : 4);
+        SetActiveColumns(page.OptimizeCommandGrid, 2);
+        SetActiveColumns(page.ProcessCommandGrid, narrow ? 2 : 3);
 
-        int pdfCols = narrow ? 2 : 6;
-        int imgCols = narrow ? 2 : 4;
+        int convertCols = narrow ? 2 : 3;
+        int organizeCols = narrow ? 2 : 4;
+        int optimizeCols = 2;
+        int processCols = narrow ? 2 : 3;
 
-        if (narrow)
+        ArrangeSequentialGrid(page.ConvertCommandGrid, new FrameworkElement[]
         {
-            SetGridCell(page.BtnWord2Pdf, 0, 0);
-            SetGridCell(page.BtnExcel2Pdf, 0, 1);
-            SetGridCell(page.BtnPpt2Pdf, 1, 0, 2);
-            SetGridCell(page.BtnMd2Pdf, 2, 0);
-            SetGridCell(page.BtnMd2Word, 2, 1);
-        }
-        else
-        {
-            SetGridCell(page.BtnWord2Pdf, 0, 0);
-            SetGridCell(page.BtnExcel2Pdf, 0, 1);
-            SetGridCell(page.BtnPpt2Pdf, 0, 2);
-            SetGridCell(page.BtnMd2Pdf, 1, 0, 2);
-            SetGridCell(page.BtnMd2Word, 1, 2);
-        }
+            page.BtnWord2Pdf, page.BtnExcel2Pdf, page.BtnPpt2Pdf,
+            page.BtnMd2Pdf, page.BtnMd2Word, page.BtnImg2Pdf,
+            page.BtnImgToPng, page.BtnImgToJpg, page.BtnImgToWebp,
+            page.BtnImgToGif, page.BtnImgToHeic
+        }, convertCols);
 
-        ArrangeSequentialGrid(new FrameworkElement[]
+        ArrangeSequentialGrid(page.OrganizeCommandGrid, new FrameworkElement[]
         {
-            page.BtnMergePdf, page.BtnCompressPdf, page.BtnTranslatePdf,
-            page.BtnDecryptPdf, page.BtnSplitPdf, page.BtnPrintPdf
-        }, pdfCols);
+            page.BtnMergePdf, page.BtnSplitPdf, page.BtnImgMerge, page.BtnImgStitch
+        }, organizeCols);
 
-        ArrangeSequentialGrid(new FrameworkElement[]
+        ArrangeSequentialGrid(page.OptimizeCommandGrid, new FrameworkElement[]
         {
-            page.BtnImg2Pdf, page.BtnImgMerge, page.BtnImgStitch, page.BtnImgToPng,
-            page.BtnImgToJpg, page.BtnImgToWebp, page.BtnImgToGif, page.BtnImgToHeic
-        }, imgCols);
+            page.BtnCompressPdf, page.BtnImgCompress
+        }, optimizeCols);
+
+        ArrangeSequentialGrid(page.ProcessCommandGrid, new FrameworkElement[]
+        {
+            page.BtnTranslatePdf, page.BtnDecryptPdf, page.BtnPrintPdf
+        }, processCols);
     }
 
-    private static void ArrangeSequentialGrid(FrameworkElement[] elements, int columns)
+    private static void ArrangeSequentialGrid(Grid grid, FrameworkElement[] elements, int columns)
     {
+        int requiredRows = (elements.Length + columns - 1) / columns;
+        while (grid.RowDefinitions.Count < requiredRows)
+        {
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        }
+
         for (int i = 0; i < elements.Length; i++)
         {
             SetGridCell(elements[i], i / columns, i % columns);
@@ -321,7 +324,7 @@ public sealed partial class MainPage : Page
 
     private void HookCommandButtons()
     {
-        foreach (var button in new[] { BtnWord2Pdf, BtnExcel2Pdf, BtnPpt2Pdf, BtnMd2Pdf, BtnMd2Word, BtnMergePdf, BtnCompressPdf, BtnTranslatePdf, BtnDecryptPdf, BtnSplitPdf, BtnPrintPdf, BtnImg2Pdf, BtnImgMerge, BtnImgStitch, BtnImgToPng, BtnImgToJpg, BtnImgToWebp, BtnImgToGif, BtnImgToHeic })
+        foreach (var button in new[] { BtnWord2Pdf, BtnExcel2Pdf, BtnPpt2Pdf, BtnMd2Pdf, BtnMd2Word, BtnMergePdf, BtnCompressPdf, BtnTranslatePdf, BtnDecryptPdf, BtnSplitPdf, BtnPrintPdf, BtnImg2Pdf, BtnImgMerge, BtnImgStitch, BtnImgCompress, BtnImgToPng, BtnImgToJpg, BtnImgToWebp, BtnImgToGif, BtnImgToHeic })
         {
             if (button.Tag is string command)
             {
@@ -714,9 +717,10 @@ public sealed partial class MainPage : Page
         CommandStatusText.Text = _convertWorkspace.SelectedCommand is null
             ? L(ChooseCommandLocalizationKey)
             : string.Format(L("fluent_selected_command"), L(ConvertWorkspaceController.GetCommandLabelKey(_convertWorkspace.SelectedCommand)));
-        OfficeCommandLabel.Text = L("convert_group_office");
-        PdfCommandLabel.Text = "PDF";
-        ImageCommandLabel.Text = L("fluent_images");
+        ConvertCommandLabel.Text = L("convert_group_convert");
+        OrganizeCommandLabel.Text = L("convert_group_organize");
+        OptimizeCommandLabel.Text = L("convert_group_optimize");
+        ProcessCommandLabel.Text = L("convert_group_process");
         BtnWord2Pdf.Content = "Word";
         BtnExcel2Pdf.Content = "Excel";
         BtnPpt2Pdf.Content = "PPT";
@@ -731,6 +735,7 @@ public sealed partial class MainPage : Page
         BtnImg2Pdf.Content = "PDF";
         BtnImgMerge.Content = L("cmd_merge_img");
         BtnImgStitch.Content = L("cmd_stitch_img");
+        BtnImgCompress.Content = L("cmd_img_compress");
         BtnImgToPng.Content = L("cmd_img_to_png");
         BtnImgToJpg.Content = L("cmd_img_to_jpg");
         BtnImgToWebp.Content = L("cmd_img_to_webp");

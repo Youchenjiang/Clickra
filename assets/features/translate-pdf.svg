@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Base card: PDF Slate Blue-Grey #475569 -->
+  <rect x="24" y="24" width="144" height="152" rx="28" fill="#475569"/>
+  <!-- Bold A (stroke 16) -->
+  <path d="M 64,136 L 96,62 L 128,136 M 74,112 L 118,112" fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Target badge: Darker PDF Slate Blue-Grey #B71C1C with exchange cycle arrows -->
+  <rect x="104" y="104" width="128" height="128" rx="28" fill="#B71C1C"/>
+  <!-- Top arrow pointing right -->
+  <path d="M 136,152 L 192,152 M 178,140 L 192,152 L 178,164" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Bottom arrow pointing left -->
+  <path d="M 200,184 L 144,184 M 158,172 L 144,184 L 158,196" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

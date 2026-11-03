@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Base sheet: Excel Green #107C41 -->
+  <rect x="24" y="24" width="144" height="152" rx="28" fill="#107C41"/>
+  <!-- Bold X (stroke 18) -->
+  <path d="M 60,62 L 132,138 M 132,62 L 60,138" fill="none" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round"/>
+  <!-- Target badge: PDF Slate Blue-Grey #475569 with diagonal arrow -->
+  <rect x="104" y="104" width="128" height="128" rx="28" fill="#475569"/>
+  <path d="M 144,192 L 192,144 M 160,144 L 192,144 L 192,176" fill="none" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

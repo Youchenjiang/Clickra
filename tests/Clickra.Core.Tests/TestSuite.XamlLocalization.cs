@@ -98,24 +98,27 @@ static partial class TestSuite
             .ToArray();
         string[] expectedTags =
         {
-            "compress-pdf", "decrypt-pdf", "excel2pdf", "img-merge", "img-stitch", "img-to-gif", "img-to-heic", "img-to-jpg",
+            "compress-pdf", "decrypt-pdf", "excel2pdf", "img-compress", "img-merge", "img-stitch", "img-to-gif", "img-to-heic", "img-to-jpg",
             "img-to-png", "img-to-webp", "img2pdf", "md2pdf", "md2word", "merge-pdf", "ppt2pdf", "print-pdf", "split-pdf", "translate-pdf", "word2pdf"
         };
 
         Assert.True(actualTags.SequenceEqual(expectedTags),
-            "The Fluent convert workspace must expose exactly the registered 19 command buttons. " +
+            "The Fluent convert workspace must expose exactly the registered 20 command buttons. " +
             $"Expected: [{string.Join(", ", expectedTags)}]; actual: [{string.Join(", ", actualTags)}].");
-        Assert.Equal(3, CountGridColumns(FindNamedXamlElement(xaml, "OfficeCommandGrid")));
-        Assert.Equal(6, CountGridColumns(FindNamedXamlElement(xaml, "PdfCommandGrid")));
-        Assert.Equal(4, CountGridColumns(FindNamedXamlElement(xaml, "ImageCommandGrid")));
+        Assert.Equal(3, CountGridColumns(FindNamedXamlElement(xaml, "ConvertCommandGrid")));
+        Assert.Equal(4, CountGridColumns(FindNamedXamlElement(xaml, "OrganizeCommandGrid")));
+        Assert.Equal(2, CountGridColumns(FindNamedXamlElement(xaml, "OptimizeCommandGrid")));
+        Assert.Equal(3, CountGridColumns(FindNamedXamlElement(xaml, "ProcessCommandGrid")));
 
         string codeBehind = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml.cs"));
-        Assert.True(codeBehind.Contains("SetActiveColumns(page.OfficeCommandGrid, narrow ? 2 : 3);", StringComparison.Ordinal),
-            "Office commands must reflow from three wide columns to two narrow columns.");
-        Assert.True(codeBehind.Contains("SetActiveColumns(page.PdfCommandGrid, narrow ? 2 : 6);", StringComparison.Ordinal),
-            "PDF commands must reflow from six wide columns to two narrow columns.");
-        Assert.True(codeBehind.Contains("SetActiveColumns(page.ImageCommandGrid, narrow ? 2 : 4);", StringComparison.Ordinal),
-            "Image commands must reflow from four wide columns to two narrow columns.");
+        Assert.True(codeBehind.Contains("SetActiveColumns(page.ConvertCommandGrid, narrow ? 2 : 3);", StringComparison.Ordinal),
+            "Convert commands must reflow from three wide columns to two narrow columns.");
+        Assert.True(codeBehind.Contains("SetActiveColumns(page.OrganizeCommandGrid, narrow ? 2 : 4);", StringComparison.Ordinal),
+            "Organize commands must reflow from four wide columns to two narrow columns.");
+        Assert.True(codeBehind.Contains("SetActiveColumns(page.OptimizeCommandGrid, 2);", StringComparison.Ordinal),
+            "Optimize commands must keep two columns.");
+        Assert.True(codeBehind.Contains("SetActiveColumns(page.ProcessCommandGrid, narrow ? 2 : 3);", StringComparison.Ordinal),
+            "Process commands must reflow from three wide columns to two narrow columns.");
     }
 
     private static XElement FindNamedXamlElement(XDocument xaml, string name)

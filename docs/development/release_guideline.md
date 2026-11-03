@@ -33,14 +33,17 @@
 - [ ] 殘留舊版號檢查：將下方指令中的 `3.6.5.0` 換成 **Step 2 輸出「Upgrading version from X to Y」中的 X（上一版號）** 後執行，確認除歷史文件（CHANGELOG / README / ROADMAP / refactor_backlog）外無任何輸出：
       `grep -rn "3.6.5.0" --include="*.xml" --include="*.props" --include="*.md" . | grep -v CHANGELOG | grep -v README | grep -v ROADMAP | grep -v refactor_backlog`
 
-### Step 5：release-preparation PR
-- [ ] 原子化提交：版本號升級一個 commit，文件內容更新可分開提交
-- [ ] 依當次 PR preparation gate 推送並建立獨立 release-preparation PR
-- [ ] PR merge 後重新驗證最新 `main` 與 release checks；**不得用直接推 tag 取代 release-preparation PR**
+### Step 5：PR 提交與自動驗證
+- [ ] 原子化提交：版本號升級與 manifests 同步一個 commit，文件/Store Listing 更新分開提交
+- [ ] 依 PR preflight gate 執行 `python scripts/pr_tool.py prepare` 驗證版本一致性
+- [ ] 經使用者明確授權後 push 分支並建立 PR
 
-### Step 6：tag / release
-- [ ] 只有在 release-preparation 已 merge、必要 main checks 完成且取得明確 tag/release 授權後，才建立並 push `vX.Y.Z.0`
-- [ ] tag-triggered `.github/workflows/release.yml` 才是正式 GitHub Release / Store submission 入口；manual dispatch 只做 package validation
+### Step 6：CI 自動打標與發布 (Auto-Tag-Release)
+- [ ] PR 經審查通過並合併至 `main` 分支
+- [ ] CI（`.github/workflows/ci.yml` 的 `auto-tag-release` job）自動偵測版本號變更
+- [ ] CI 自動建立並推送 `vX.Y.Z.0` Git Tag
+- [ ] CI 自動 dispatch `.github/workflows/release.yml`（進行 MSIX 打包與 Microsoft Store 提交上架）
+- [ ] 不再需要手動建立獨立 release-preparation 分支或手動推送 Tag
 - [ ] Microsoft Store submission 使用 source tree 中的 Store package identity；Store 會在 certification 後重新簽署 MSIX
 - [ ] GitHub direct-download MSIX 的 production signer 必須先由使用者明確選定並完成 provider-specific integration；能力需求不得自行推導成任何具名 signing provider
 - [ ] direct build 必須以實際 production signing certificate 的完整 Subject 作為 package/sparse Publisher，重新編譯 unsigned MSIX，並在 build 後還原原始 Store identity 檔案
@@ -127,16 +130,12 @@ $$\text{Version} = \text{Major} . \text{Minor} . \text{Patch} . \mathbf{0}$$
 
 ---
 
-## 4. Git 標籤 (Tag) 與發布規範
+## 4. Git 標籤 (Tag) 與自動發布規範 (Auto-Tag-Release)
 
 *   **標籤命名格式**：必須與版本號完全一致，即 `vX.Y.Z.0`（例如 `v3.0.8.0`）。
-*   **標籤時機**：tag 只能建立在已 merge 且已驗證的 release-preparation 結果上，並需有明確 release/tag 授權。不要因為本文件的版本清單已完成就自行建立 tag。
-*   **Git 標籤指令**：
-    ```bash
-    git tag v3.0.8.0
-    git push origin v3.0.8.0
-    ```
-*   **注意**：Clickra 專案**禁止直接推送至主要分支或發布分支**（例如 `main` 與 release branches）。正式發布由經核准的 tag push 觸發 `.github/workflows/release.yml`；該 tag 必須在 release-preparation PR merge/validation 之後，而不是 content work 的捷徑。
+*   **自動化打標與發布**：自 PR #219 引進自動發布管線後，只要 PR 包含版本號遞增且成功合併至 `main` 分支，`.github/workflows/ci.yml` 的 `auto-tag-release` job 便會自動在 `main` 節點上建立 `vX.Y.Z.0` Tag 並推送到遠端，隨後自動觸發 `release.yml` 發布工作流。
+*   **禁止手動推 Tag**：除緊急災難復原外，禁止手動執行 `git tag` 或 `git push origin <tag>`。所有正式發布均由 PR 審查合併後由 CI 自動化完成。
+*   **注意**：Clickra 專案**禁止直接推送至主要分支**（`main`）。所有變更均必須透過 PR 進行。
 
 ---
 

@@ -31,6 +31,14 @@ static partial class TestSuite
     private static readonly TimeSpan UiResourceRegexTimeout = TimeSpan.FromSeconds(1);
     private const string ShellCommandMessagePrefix = "Shell command '";
     private const string ShellProjectDirectory = "ClickraShell";
+    private const string TypePdf = "pdf";
+    private const string TypeWord = "word";
+    private const string TypeExcel = "excel";
+    private const string TypePpt = "ppt";
+    private const string TypeMarkdown = "markdown";
+    private const string TypeImage = "image";
+    private static readonly string[] GovernedSourceFileTypes =
+        [TypePdf, TypeWord, TypeExcel, TypePpt, TypeMarkdown, TypeImage];
     /// <summary>UI 語言的程式碼（zh-TW）與 resw 資料夾名稱（zh-tw）互轉。</summary>
     private static string CultureFolder(string languageCode) => languageCode.ToLowerInvariant();
 
@@ -187,6 +195,7 @@ static partial class TestSuite
         runner.RunGuard("Convert registry: every command label key is declared and translated in all 5 languages", TestConvertRegistryLabelCoverage);
         runner.RunGuard("Shell menu: commands reconcile with ConvertCommandRegistry metadata", TestShellCommandRegistryCoverage);
         runner.RunGuard("Store listing: docs/store/StoreListing_*.md covers all supported languages with complete fields", TestStoreListingCoverage);
+        runner.RunGuard("Color governance: every command tag color strictly adheres to input source file policy", TestCommandTagColorsFollowSourceFileGovernance);
     }
 
     private static void TestShellResourceCoverage()
@@ -249,7 +258,7 @@ static partial class TestSuite
             .ToArray();
         Assert.True(declared.Length > 0, "The shared convert metadata must declare at least one label key.");
 
-        string[] reached = new[] { "pdf", "word", "excel", "ppt", "markdown", "image" }
+        string[] reached = GovernedSourceFileTypes
             .SelectMany(ConvertCommandMetadata.GetCommandsForType)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -302,10 +311,18 @@ static partial class TestSuite
             "MenuKeys and SubArgs must have the same number of entries.");
         Assert.True(iconFiles.Length == subArgs.Length,
             "IconFiles and SubArgs must have the same number of entries.");
+        Assert.True(iconFiles.Length == iconFiles.Distinct(StringComparer.Ordinal).Count(),
+            "Shell IconFiles must not contain duplicate icons.");
         Assert.True(subArgs.Length == subArgs.Distinct(StringComparer.Ordinal).Count(),
             "Shell SubArgs must not contain duplicate command ids.");
 
-        string[] registryCommands = new[] { "pdf", "word", "excel", "ppt", "markdown", "image" }
+        foreach (string icon in iconFiles)
+        {
+            Assert.True(File.Exists(Path.Combine(root, "obj", "icons", icon)),
+                $"Shell icon '{icon}' must exist in obj/icons.");
+        }
+
+        string[] registryCommands = GovernedSourceFileTypes
             .SelectMany(ConvertCommandMetadata.GetCommandsForType)
             .Distinct(StringComparer.Ordinal)
             .OrderBy(command => command, StringComparer.Ordinal)
@@ -426,5 +443,64 @@ static partial class TestSuite
             Assert.True(sections["Copyright and trademark info"].Contains("Youchen Jiang", StringComparison.OrdinalIgnoreCase),
                 fileName + " Copyright info must credit the author.");
         }
+    }
+
+    private static void TestCommandTagColorsFollowSourceFileGovernance()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
+
+        string dashboardRegistrySource = File.ReadAllText(Path.Combine(
+            root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.ConvertRegistry.cs"));
+
+        Assert.True(dashboardRegistrySource.Contains("ConvertCommandMetadata.GetFileTypeForCommand(command)", StringComparison.Ordinal),
+            "DashboardWindow.ConvertRegistry must strictly derive command tag colors from ConvertCommandMetadata.GetFileTypeForCommand.");
+
+        // Clickra Color System: 100% Source File-Driven Policy
+        // All 20 commands must strictly map to their input source domain:
+        // - word -> Word Blue (#0078D4) -> RGB(0, 120, 212)
+        // - excel -> Excel Green (#107C41) -> RGB(16, 124, 65)
+        // - ppt -> PPT Bright Orange (#D83B01) -> RGB(216, 59, 1)
+        // - markdown -> Markdown Purple (#6048A4) -> RGB(96, 72, 164)
+        // - image -> Photo Teal (#00828C) -> RGB(0, 130, 140)
+        // - pdf -> PDF Slate Blue-Grey (#475569) -> RGB(71, 85, 105)
+        var expectedFileTypes = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [TypeWord] = "0, 120, 212",
+            [TypeExcel] = "16, 124, 65",
+            [TypePpt] = "216, 59, 1",
+            [TypeMarkdown] = "96, 72, 164",
+            [TypeImage] = "0, 130, 140",
+            [TypePdf] = "71, 85, 105"
+        };
+
+        foreach (var (fileType, rgb) in expectedFileTypes)
+        {
+            string pattern = $@"""{fileType}""\s*=>\s*Color\.FromArgb\({rgb}\)";
+            Assert.True(Regex.IsMatch(dashboardRegistrySource, pattern, RegexOptions.None, UiResourceRegexTimeout),
+                $"DashboardWindow.ConvertRegistry must map '{fileType}' to Color.FromArgb({rgb}).");
+        }
+
+        string[] allCommands = GovernedSourceFileTypes
+            .SelectMany(ConvertCommandMetadata.GetCommandsForType)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(20, allCommands.Length);
+
+        foreach (string command in allCommands)
+        {
+            string fileType = ConvertCommandMetadata.GetFileTypeForCommand(command);
+            Assert.True(expectedFileTypes.ContainsKey(fileType),
+                $"Command '{command}' maps to '{fileType}', which is not a governed source file type.");
+        }
+
+        // Verify that DashboardWindow.ConvertRegistry does NOT declare ad-hoc command-level overrides
+        Assert.False(Regex.IsMatch(
+                         dashboardRegistrySource,
+                         @"""(?:merge-pdf|split-pdf|compress-pdf|print-pdf|translate-pdf|decrypt-pdf|img-stitch|img-merge|img-compress)""\s*=>",
+                         RegexOptions.None,
+                         UiResourceRegexTimeout),
+            "Command tag colors must NEVER define ad-hoc command branches; all commands must strictly follow source file governance.");
     }
 }

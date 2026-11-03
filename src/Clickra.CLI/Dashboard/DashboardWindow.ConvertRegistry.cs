@@ -43,28 +43,54 @@ public static partial class DashboardWindow
     private static readonly Dictionary<string, NativeConvertCommand> ConvertCommandByKey = ConvertCommands
         .ToDictionary(command => command.Command, StringComparer.OrdinalIgnoreCase);
 
-    private static Color GetCommandTagColor(string command) => command switch
+    internal static readonly Dictionary<string, Bitmap> ConvertCommandIcons = new(StringComparer.OrdinalIgnoreCase);
+
+    internal static Bitmap? GetConvertCommandIcon(string command)
     {
-        "word2pdf" => Color.FromArgb(0, 120, 212),
-        "excel2pdf" => Color.FromArgb(16, 124, 65),
-        "ppt2pdf" => Color.FromArgb(180, 50, 30),
-        "md2pdf" => Color.FromArgb(96, 72, 164),
-        "md2word" => Color.FromArgb(43, 87, 154),
-        "merge-pdf" => Color.FromArgb(16, 124, 65),
-        "compress-pdf" => Color.FromArgb(0, 120, 120),
-        "translate-pdf" => Color.FromArgb(138, 43, 226),
-        "decrypt-pdf" => Color.FromArgb(0, 150, 136),
-        "split-pdf" => Color.FromArgb(0, 188, 212),
-        "img2pdf" => Color.FromArgb(100, 60, 180),
-        "img-merge" => Color.FromArgb(0, 130, 135),
-        "img-stitch" => Color.FromArgb(216, 59, 1),
-        "img-to-png" => Color.FromArgb(0, 120, 212),
-        "img-to-jpg" => Color.FromArgb(255, 140, 0),
-        "img-to-webp" => Color.FromArgb(0, 153, 188),
-        "img-to-gif" => Color.FromArgb(163, 73, 164),
-        "img-to-heic" => Color.FromArgb(16, 124, 65),
-        _ => Color.FromArgb(100, 100, 100)
-    };
+        if (ConvertCommandIcons.TryGetValue(command, out var cached)) return cached;
+        string fileName = $"menu-{command}.ico";
+        string path = Path.Combine(AppContext.BaseDirectory, fileName);
+        if (!File.Exists(path))
+        {
+            string devPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "resources", fileName);
+            if (File.Exists(devPath)) path = devPath;
+        }
+        if (File.Exists(path))
+        {
+            try
+            {
+                using var ico = new Icon(path, 64, 64);
+                cached = ico.ToBitmap();
+                ConvertCommandIcons[command] = cached;
+                return cached;
+            }
+            catch
+            {
+                // Ignore icon loading or decoding exceptions; fallback to null for default rendering.
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Returns the brand color for a command, governed 100% by its input source file type.
+    /// In Clickra's Design System, tag colors strictly reflect the input source domain
+    /// (Word=Blue, Excel=Green, PPT=BrightOrange, Markdown=Purple, Image=PhotoTeal, PDF=SlateBlueGrey).
+    /// </summary>
+    private static Color GetCommandTagColor(string command)
+    {
+        string fileType = Clickra.Shared.ConvertCommandMetadata.GetFileTypeForCommand(command);
+        return fileType switch
+        {
+            "word" => Color.FromArgb(0, 120, 212),       // Word Blue (#0078D4)
+            "excel" => Color.FromArgb(16, 124, 65),      // Excel Green (#107C41)
+            "ppt" => Color.FromArgb(216, 59, 1),         // PPT Bright Orange (#D83B01)
+            "markdown" => Color.FromArgb(96, 72, 164),   // Markdown Purple (#6048A4)
+            "image" => Color.FromArgb(0, 130, 140),      // Photo Teal (#00828C)
+            "pdf" => Color.FromArgb(71, 85, 105),        // PDF Slate Blue-Grey (#475569)
+            _ => Color.FromArgb(100, 100, 100)
+        };
+    }
 
     private static int GetCommandIndex(string command) =>
         Array.FindIndex(ConvertCommands, item => item.Command.Equals(command, StringComparison.OrdinalIgnoreCase));

@@ -1,6 +1,6 @@
 # Microsoft Store 清單 - 中文 (台灣)
 
-以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.16.2.0。
+以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.16.3.0。
 
 ---
 
@@ -15,11 +15,11 @@ Clickra 是一款專為 Windows 檔案總管打造的原生右鍵擴充工具。
 原始碼：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 新增 PDF 列印方向控制（自動 / 直向 / 橫向），解決簡報或寬版頁面印出被壓縮變形之問題
-- 列印預覽與實體紙張達成 1:1 所見即所得，並套用 3% 安全邊距防止印表機硬體裁切邊界
-- 印表機啟動前預先配置橫向 DEVMODE，全面相容各廠牌印表機驅動程式之動態轉向
-- 自動解析 PDF 旋轉視角（90° / 270°），旋轉頁面預設方向更智慧精確
-- CLI 同步支援 `--orientation <auto|portrait|landscape>` 參數控制
+- 全新 Fluent 2 原生向量圖示系統，高解析度與各級縮放皆銳利呈現
+- 輸入來源驅動色彩規範，PDF 採用冷靜石墨藍灰、PPT 採用活力亮橘，色彩辨識更直覺
+- 儀表板轉換卡片全面統一箭頭標記（如 Word → PDF、MD → PDF）與精煉群組標題
+- 動作卡片文案全面標準化為動詞+名詞語法（合併圖片、拼接圖片、翻譯 PDF、解密 PDF）
+- 繁體中文、簡體中文、英文、日文、韓文五國語言介面文案全面對齊同步
 
 ## Product Features
 *(最多 20 個，以項目符號顯示)*

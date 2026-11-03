@@ -502,26 +502,55 @@ namespace Clickra.UI
             float s = _dpiScale;
             Color tagBg = Color.FromArgb(100, 100, 100);
             string text = GetText(item.CommandLabelKey);
-            if (ConvertCommandByKey.TryGetValue(item.Entry.Command ?? string.Empty, out var def))
+            string cmd = item.Entry.Command ?? string.Empty;
+            if (ConvertCommandByKey.TryGetValue(cmd, out var def))
             {
                 tagBg = def.TagColor;
             }
+
+            Bitmap? cmdIcon = GetConvertCommandIcon(cmd);
+            float iconSize = cmdIcon != null ? 14f : 0f;
+            float iconSpacing = cmdIcon != null ? 5f : 0f;
 
             float textW = 0;
             if (_tagFont != null)
             {
                 textW = g.MeasureString(text, _tagFont).Width / s;
             }
-            float w = Math.Max(82f, textW + 16f);
+            float contentW = iconSize + iconSpacing + textW;
+            float w = Math.Max(84f, contentW + 16f);
             int h = 22;
+
+            // Subtle themed pill: dark background tinted with brand color + brand color border
+            Color pillBg = Color.FromArgb(32, tagBg.R, tagBg.G, tagBg.B);
+            Color pillBorder = Color.FromArgb(120, tagBg.R, tagBg.G, tagBg.B);
+
             using var path = UIHelper.GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, h * s), 4 * s);
-            using var brush = new SolidBrush(tagBg);
-            g.FillPath(brush, path);
+            using var bgBrush = new SolidBrush(pillBg);
+            using var borderPen = new Pen(pillBorder, 1f * s);
+            g.FillPath(bgBrush, path);
+            g.DrawPath(borderPen, path);
+
+            float startX = x + (w - contentW) / 2f;
+            if (cmdIcon != null)
+            {
+                float iconY = y + (h - iconSize) / 2f;
+                var prevInterp = g.InterpolationMode;
+                var prevOffset = g.PixelOffsetMode;
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                g.DrawImage(cmdIcon, new RectangleF(startX * s, iconY * s, iconSize * s, iconSize * s));
+                g.InterpolationMode = prevInterp;
+                g.PixelOffsetMode = prevOffset;
+            }
 
             if (_tagFont != null)
             {
                 var size = g.MeasureString(text, _tagFont);
-                g.DrawString(text, _tagFont, Brushes.White, (x + (w - size.Width / s) / 2) * s, (y + (h - size.Height / s) / 2) * s);
+                float textX = startX + (cmdIcon != null ? iconSize + iconSpacing : 0);
+                float textY = y + (h - size.Height / s) / 2f;
+                using var textBrush = new SolidBrush(Color.FromArgb(235, 235, 235));
+                g.DrawString(text, _tagFont, textBrush, textX * s, textY * s);
             }
             return w;
         }

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -37,7 +37,7 @@
     <value>圖片轉 PDF</value>
   </data>
   <data name="Menu_ImgMerge" xml:space="preserve">
-    <value>圖片合併成 PDF</value>
+    <value>合併圖片成 PDF</value>
   </data>
   <data name="Menu_ImgStitch" xml:space="preserve">
     <value>圖片垂直拼接</value>
@@ -61,10 +61,10 @@
     <value>轉成 HEIC</value>
   </data>
   <data name="Menu_TranslatePdf" xml:space="preserve">
-    <value>PDF 一鍵翻譯</value>
+    <value>翻譯 PDF</value>
   </data>
   <data name="Menu_DecryptPdf" xml:space="preserve">
-    <value>去除 PDF 密碼</value>
+    <value>解密 PDF</value>
   </data>
   <data name="Menu_SplitPdf" xml:space="preserve">
     <value>分割 PDF</value>

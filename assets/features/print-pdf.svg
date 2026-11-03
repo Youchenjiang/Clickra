@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <rect x="24" y="24" width="208" height="208" rx="36" fill="#475569"/>
+  <!-- Paper input top -->
+  <path d="M 82,56 L 174,56 L 174,96 L 82,96 Z" fill="#FFFFFF"/>
+  <!-- Printer body -->
+  <rect x="54" y="94" width="148" height="76" rx="16" fill="#FFFFFF"/>
+  <circle cx="176" cy="116" r="6" fill="#475569"/>
+  <!-- Output slot -->
+  <rect x="76" y="146" width="104" height="12" rx="4" fill="#475569"/>
+  <!-- Paper output sheet -->
+  <path d="M 82,154 L 174,154 L 174,204 L 82,204 Z" fill="#FFFFFF"/>
+  <line x1="98" y1="174" x2="158" y2="174" stroke="#475569" stroke-width="8" stroke-linecap="round"/>
+  <line x1="98" y1="188" x2="142" y2="188" stroke="#475569" stroke-width="8" stroke-linecap="round"/>
+</svg>

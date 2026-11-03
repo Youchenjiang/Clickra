@@ -2,6 +2,15 @@ $ErrorActionPreference = "Stop"
 
 Add-Type -AssemblyName System.Drawing
 
+# Automatically ensure generated icons exist via IconGen
+$iconGenProj = Join-Path $PSScriptRoot "tools/IconGen/IconGen.csproj"
+if (Test-Path -LiteralPath $iconGenProj) {
+    dotnet run --project $iconGenProj | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "IconGen failed with exit code $LASTEXITCODE"
+    }
+}
+
 function Assert-Png {
     param(
         [string]$Path,
@@ -200,8 +209,8 @@ function Assert-BuildIconWiring {
     param([string]$Path)
 
     $source = Get-Content -LiteralPath $Path -Raw
-    if ($source -notmatch 'Copy-Item\s+"src/resources/app\.png"\s+"\$LayoutDir/app\.png"') {
-        throw "Copy-IconAssets must stage A1 src/resources/app.png as layout app.png"
+    if ($source -notmatch 'Copy-Item\s+"obj/icons/app\.png"\s+"\$LayoutDir/app\.png"') {
+        throw "Copy-IconAssets must stage A1 obj/icons/app.png as layout app.png"
     }
     if ($source -match 'Copy-Item\s+"\$PackagingDir/Assets/StoreLogo\.png"\s+"\$LayoutDir/app\.png"') {
         throw "Store A3 must not leak into sparse/system layout app.png"
@@ -210,16 +219,52 @@ function Assert-BuildIconWiring {
 
 $primarySizes = @(16, 24, 32, 44, 48, 64, 128, 150, 256, 1024)
 foreach ($size in $primarySizes) {
-    Assert-Png "packaging/brand_assets/primary/clickra-icon-primary-$size.png" $size $size
+    Assert-Png "assets/primary/clickra-icon-primary-$size.png" $size $size
 }
 
 $capabilitySizes = @(50, 256, 1024)
 foreach ($size in $capabilitySizes) {
-    Assert-Png "packaging/brand_assets/capability/clickra-icon-capability-$size.png" $size $size
+    Assert-Png "assets/capability/clickra-icon-capability-$size.png" $size $size
 }
 
-Assert-Png "src/resources/app.png" 256 256
-Assert-Png "src/Clickra.Fluent/Assets/AppIcon.png" 256 256
+function Assert-FluentIconLinking {
+    param([string]$Path)
+    [xml]$proj = Get-Content -LiteralPath $Path -Raw
+    $links = @{}
+    foreach ($item in $proj.SelectNodes("//*[local-name()='Content']")) {
+        $link = $item.GetAttribute('Link')
+        if (-not $link) {
+            $child = $item.SelectSingleNode("*[local-name()='Link']")
+            if ($null -ne $child) { $link = $child.InnerText }
+        }
+        if ($link) {
+            $links[$link.Trim()] = $item.GetAttribute('Include').Trim()
+        }
+    }
+    if ($links['Assets\AppIcon.png'] -ne '..\..\obj\icons\app.png') {
+        throw "Clickra.Fluent.csproj must link Assets\AppIcon.png to ..\..\obj\icons\app.png"
+    }
+    if ($links['Assets\AppIcon.ico'] -ne '..\..\obj\icons\app.ico') {
+        throw "Clickra.Fluent.csproj must link Assets\AppIcon.ico to ..\..\obj\icons\app.ico"
+    }
+}
+
+function Assert-CliMenuIconLinking {
+    param([string]$Path)
+    [xml]$proj = Get-Content -LiteralPath $Path -Raw
+    $hasLink = $false
+    foreach ($item in $proj.SelectNodes("//*[local-name()='Content']")) {
+        if ($item.GetAttribute('Include') -eq '..\..\obj\icons\menu-*.ico') {
+            $hasLink = $true
+            break
+        }
+    }
+    if (-not $hasLink) {
+        throw "Clickra.csproj must link ..\..\obj\icons\menu-*.ico to output directory"
+    }
+}
+
+Assert-Png "obj/icons/app.png" 256 256
 Assert-Png "packaging/msix/Assets/Square44x44Logo.png" 44 44
 Assert-Png "packaging/msix/Assets/Square150x150Logo.png" 150 150
 Assert-Png "packaging/msix/Assets/StoreLogo.png" 50 50
@@ -229,27 +274,44 @@ $unplatedTargetSizes = @(16, 24, 32, 44, 48, 256)
 foreach ($size in $unplatedTargetSizes) {
     $asset = "packaging/msix/Assets/Square44x44Logo.targetsize-${size}_altform-unplated.png"
     Assert-Png $asset $size $size
-    Assert-SameFile "packaging/brand_assets/primary/clickra-icon-primary-$size.png" $asset
+    Assert-SameFile "assets/primary/clickra-icon-primary-$size.png" $asset
 }
 
 $icoSizes = @(16, 24, 32, 48, 64, 128, 256)
-Assert-IcoFrames "packaging/brand_assets/primary/clickra-icon-primary.ico" $icoSizes
-Assert-IcoFrames "src/resources/app.ico" $icoSizes
-Assert-IcoFrames "src/Clickra.Fluent/Assets/AppIcon.ico" $icoSizes
+Assert-IcoFrames "assets/primary/clickra-icon-primary.ico" $icoSizes
+Assert-IcoFrames "obj/icons/app.ico" $icoSizes
 
-Assert-SameFile "packaging/brand_assets/primary/clickra-icon-primary-256.png" "src/resources/app.png"
-Assert-SameFile "packaging/brand_assets/primary/clickra-icon-primary-256.png" "src/Clickra.Fluent/Assets/AppIcon.png"
-Assert-SameFile "packaging/brand_assets/primary/clickra-icon-primary.ico" "src/resources/app.ico"
-Assert-SameFile "packaging/brand_assets/primary/clickra-icon-primary.ico" "src/Clickra.Fluent/Assets/AppIcon.ico"
-Assert-SameFile "packaging/brand_assets/primary/clickra-icon-primary-44.png" "packaging/msix/Assets/Square44x44Logo.png"
-Assert-SameFile "packaging/brand_assets/primary/clickra-icon-primary-150.png" "packaging/msix/Assets/Square150x150Logo.png"
-Assert-SameFile "packaging/brand_assets/capability/clickra-icon-capability-50.png" "packaging/msix/Assets/StoreLogo.png"
-Assert-WideLogoComposition "packaging/msix/Assets/Wide310x150Logo.png" "packaging/brand_assets/primary/clickra-icon-primary-128.png"
+Assert-SameFile "assets/primary/clickra-icon-primary-256.png" "obj/icons/app.png"
+Assert-SameFile "assets/primary/clickra-icon-primary.ico" "obj/icons/app.ico"
+Assert-SameFile "assets/primary/clickra-icon-primary-44.png" "packaging/msix/Assets/Square44x44Logo.png"
+Assert-SameFile "assets/primary/clickra-icon-primary-150.png" "packaging/msix/Assets/Square150x150Logo.png"
+Assert-SameFile "assets/capability/clickra-icon-capability-50.png" "packaging/msix/Assets/StoreLogo.png"
+Assert-WideLogoComposition "packaging/msix/Assets/Wide310x150Logo.png" "assets/primary/clickra-icon-primary-128.png"
+
+Assert-FluentIconLinking "src/Clickra.Fluent/Clickra.Fluent.csproj"
+Assert-CliMenuIconLinking "src/Clickra.CLI/Clickra.csproj"
 
 foreach ($manifest in @('packaging/msix/AppxManifest.xml', 'packaging/msix/AppxManifest.Fluent.xml')) {
     Assert-ManifestIconWiring $manifest 'Assets\StoreLogo.png' 'Assets\Square44x44Logo.png' 'Assets\Square150x150Logo.png' 'Assets\Wide310x150Logo.png'
 }
 Assert-SparseManifestIconWiring 'src/resources/AppxManifest.xml'
 Assert-BuildIconWiring 'scripts/build_common.ps1'
+
+$featureCommands = @(
+    'word2pdf', 'excel2pdf', 'ppt2pdf', 'md2pdf', 'md2word',
+    'merge-pdf', 'compress-pdf', 'split-pdf', 'translate-pdf', 'decrypt-pdf', 'print-pdf',
+    'img2pdf', 'img-merge', 'img-stitch', 'img-compress',
+    'img-to-png', 'img-to-jpg', 'img-to-webp', 'img-to-gif', 'img-to-heic'
+)
+$featureIcoSizes = @(16, 20, 24, 32, 48, 64)
+
+foreach ($cmd in $featureCommands) {
+    $svgPath = "assets/features/$cmd.svg"
+    if (-not (Test-Path -LiteralPath $svgPath)) {
+        throw "Missing feature SVG asset: $svgPath"
+    }
+    $icoPath = "obj/icons/menu-$cmd.ico"
+    Assert-IcoFrames $icoPath $featureIcoSizes
+}
 
 Write-Host "Icon asset verification passed."
