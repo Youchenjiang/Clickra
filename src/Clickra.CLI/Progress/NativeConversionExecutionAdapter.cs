@@ -13,6 +13,7 @@ using Clickra.Core.Modules.PdfDecrypt.Application;
 using Clickra.Core.Modules.PdfMerge.Application;
 using Clickra.Core.Modules.PdfPrint.Application;
 using Clickra.Core.Modules.PdfSplit.Application;
+using Clickra.Core.Modules.PdfToImage.Application;
 using Clickra.Core.Modules.PdfTranslation.Application;
 using Clickra.Core.Processors;
 
@@ -154,6 +155,19 @@ internal sealed class NativeConversionExecutionAdapter
                     CommandOptions: _commandOptions));
             return true;
         }
+        if (command.Equals(PdfToImageUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+        {
+            RunSimple(
+                command,
+                files,
+                progressCallback,
+                new SimpleApplicationRunOptions(
+                    _outputDirOverride,
+                    true,
+                    new TaskIdExecutionObserver(_taskStarted, _recordTaskIndex),
+                    CommandOptions: _commandOptions));
+            return true;
+        }
         return false;
     }
 
@@ -243,7 +257,7 @@ internal sealed class NativeConversionExecutionAdapter
             planOptions: new ExecutionPlanOptions(_existingTaskId, true, _startIndex));
 
         var interaction = new DelegateConversionInteraction(
-            (_, _, _, _) => Task.FromResult<string?>(null),
+            (_, inputPath, isRetry, _) => Task.FromResult<string?>(_resolveDecryptPassword(inputPath, isRetry)),
             (_, _, _) => Task.FromResult<string?>(null),
             (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
 
@@ -319,7 +333,7 @@ internal sealed class NativeConversionExecutionAdapter
             planOptions: new ExecutionPlanOptions(_existingTaskId, true, options.Resume ? _startIndex : 0));
 
         var interaction = new DelegateConversionInteraction(
-            (_, _, _, _) => Task.FromResult<string?>(null),
+            (_, inputPath, isRetry, _) => Task.FromResult<string?>(_resolveDecryptPassword(inputPath, isRetry)),
             (_, _, _) => Task.FromResult<string?>(null),
             (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
         IProgress<ConversionProgress>? progress = command == Img2PdfUseCase.CommandName
@@ -383,7 +397,7 @@ internal sealed class NativeConversionExecutionAdapter
             ResumeStartIndex = _startIndex
         };
         var interaction = new DelegateConversionInteraction(
-            (_, _, _, _) => Task.FromResult<string?>(null),
+            (_, inputPath, isRetry, _) => Task.FromResult<string?>(_resolveDecryptPassword(inputPath, isRetry)),
             (_, _, _) => Task.FromResult<string?>(null),
             (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
         return (plan, interaction);
