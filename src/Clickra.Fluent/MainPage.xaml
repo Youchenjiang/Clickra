@@ -218,6 +218,7 @@
                                         <Button x:Name="BtnImgToWebp" Grid.Row="2" Grid.Column="2" Content="WebP" Tag="img-to-webp" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnImgToGif" Grid.Row="3" Content="GIF" Tag="img-to-gif" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnImgToHeic" Grid.Row="3" Grid.Column="1" Content="HEIC" Tag="img-to-heic" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnPdf2Img" Grid.Row="3" Grid.Column="2" Content="PDF to Images" Tag="pdf2img" HorizontalAlignment="Stretch"/>
                                     </Grid>
                                 </StackPanel>
                                 <StackPanel Spacing="8">

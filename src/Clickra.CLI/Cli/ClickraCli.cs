@@ -15,6 +15,7 @@ using Clickra.Core.Modules.PdfDecrypt.Application;
 using Clickra.Core.Modules.PdfMerge.Application;
 using Clickra.Core.Modules.PdfPrint.Application;
 using Clickra.Core.Modules.PdfSplit.Application;
+using Clickra.Core.Modules.PdfToImage.Application;
 using Clickra.Core.Modules.PdfTranslation.Application;
 using Clickra.Core.Processors;
 using Clickra.UI;
@@ -229,6 +230,9 @@ namespace Clickra
                 case "print-pdf":
                     return DispatchPdfCase(command, files, options.Quiet, 1,
                         () => HandlePrintPdfQuiet(files, options));
+                case "pdf2img":
+                    return DispatchPdfCase(command, files, options.Quiet, 1,
+                        () => HandlePdf2ImgQuiet(files, options));
                 default:
                     return false;
             }
@@ -306,6 +310,17 @@ namespace Clickra
                 files,
                 options,
                 StoragePathController.GetOutputDirectory(files[0]));
+        }
+
+        /// <summary>Runs the pdf2img command in quiet mode.</summary>
+        private static void HandlePdf2ImgQuiet(List<string> files, DispatchOptions cliOptions)
+        {
+            var planOptions = new Dictionary<string, object>();
+            if (!string.IsNullOrEmpty(cliOptions.PagesOption))
+            {
+                planOptions[PdfToImageOptions.PagesOptionKey] = cliOptions.PagesOption;
+            }
+            RunQuietUseCase(PdfToImageUseCase.CommandName, files, planOptions, cliOptions.OutputDir);
         }
 
         /// <summary>Handles image conversion, merge and stitching commands.</summary>
