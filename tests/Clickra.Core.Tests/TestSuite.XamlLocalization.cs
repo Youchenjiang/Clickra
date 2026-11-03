@@ -99,11 +99,11 @@ static partial class TestSuite
         string[] expectedTags =
         {
             "compress-pdf", "decrypt-pdf", "excel2pdf", "img-compress", "img-merge", "img-stitch", "img-to-gif", "img-to-heic", "img-to-jpg",
-            "img-to-png", "img-to-webp", "img2pdf", "md2pdf", "md2word", "merge-pdf", "ppt2pdf", "print-pdf", "split-pdf", "translate-pdf", "word2pdf"
+            "img-to-png", "img-to-webp", "img2pdf", "md2pdf", "md2word", "merge-pdf", "pdf2img", "ppt2pdf", "print-pdf", "split-pdf", "translate-pdf", "word2pdf"
         };
 
         Assert.True(actualTags.SequenceEqual(expectedTags),
-            "The Fluent convert workspace must expose exactly the registered 20 command buttons. " +
+            "The Fluent convert workspace must expose exactly the registered 21 command buttons. " +
             $"Expected: [{string.Join(", ", expectedTags)}]; actual: [{string.Join(", ", actualTags)}].");
         Assert.Equal(3, CountGridColumns(FindNamedXamlElement(xaml, "ConvertCommandGrid")));
         Assert.Equal(4, CountGridColumns(FindNamedXamlElement(xaml, "OrganizeCommandGrid")));

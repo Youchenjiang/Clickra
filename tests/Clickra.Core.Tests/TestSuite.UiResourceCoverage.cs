@@ -457,7 +457,7 @@ static partial class TestSuite
             "DashboardWindow.ConvertRegistry must strictly derive command tag colors from ConvertCommandMetadata.GetFileTypeForCommand.");
 
         // Clickra Color System: 100% Source File-Driven Policy
-        // All 20 commands must strictly map to their input source domain:
+        // All 21 commands must strictly map to their input source domain:
         // - word -> Word Blue (#0078D4) -> RGB(0, 120, 212)
         // - excel -> Excel Green (#107C41) -> RGB(16, 124, 65)
         // - ppt -> PPT Bright Orange (#D83B01) -> RGB(216, 59, 1)
@@ -486,7 +486,7 @@ static partial class TestSuite
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(20, allCommands.Length);
+        Assert.Equal(21, allCommands.Length);
 
         foreach (string command in allCommands)
         {
