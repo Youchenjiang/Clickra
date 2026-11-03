@@ -46,6 +46,20 @@ function Copy-IconAssets {
         [string]$PackagingDir,
         [string]$LayoutDir
     )
+    $repoRoot = if ($script:Root) { $script:Root } else { Split-Path $PSScriptRoot -Parent }
+    $iconDir = Join-Path $repoRoot "obj/icons"
+    $appIco = Join-Path $iconDir "app.ico"
+    $appPng = Join-Path $iconDir "app.png"
+    $menuIcons = Get-ChildItem -Path $iconDir -Filter "menu-*.ico" -ErrorAction SilentlyContinue
+
+    # Ensure icon assets are generated via IconGen if missing or incomplete
+    if (-not (Test-Path $appIco) -or -not (Test-Path $appPng) -or ($null -eq $menuIcons) -or ($menuIcons.Count -lt 20)) {
+        Write-Host "[Build] Compiling icon assets via IconGen..." -ForegroundColor Gray
+        $iconGenProj = Join-Path $repoRoot "scripts/tools/IconGen/IconGen.csproj"
+        & dotnet run --project "$iconGenProj"
+        Assert-NativeSuccess
+    }
+
     if (Test-Path "obj/icons/app.png") {
         Copy-Item "obj/icons/app.png" "$LayoutDir/app.png"
     }
@@ -55,6 +69,19 @@ function Copy-IconAssets {
     if (Test-Path "obj/icons/menu-*.ico") {
         Copy-Item "obj/icons/menu-*.ico" "$LayoutDir/"
     }
+
+    # Strict Fail-Fast Validation: package must never be assembled with missing icons
+    if (-not (Test-Path "$LayoutDir/app.ico")) {
+        throw "Packaging layout failure: app.ico is missing from '$LayoutDir'."
+    }
+    if (-not (Test-Path "$LayoutDir/app.png")) {
+        throw "Packaging layout failure: app.png is missing from '$LayoutDir'."
+    }
+    $layoutMenuIcons = Get-ChildItem -Path $LayoutDir -Filter "menu-*.ico"
+    if ($layoutMenuIcons.Count -lt 20) {
+        throw "Packaging layout failure: Expected at least 20 menu-*.ico in '$LayoutDir', found $($layoutMenuIcons.Count)."
+    }
+    Write-Host "[Build] Icon assets successfully copied and verified in layout ($($layoutMenuIcons.Count) context menu icons)." -ForegroundColor Gray
 }
 function Remove-ForceDir {
     param([string]$Path, [switch]$TolerateLocks)
@@ -126,13 +153,19 @@ function Test-LayoutComplete {
         "ClickraShell.dll",
         "AppxManifest.xml",
         "resources.pri",
+        "app.ico",
+        "app.png",
         $script:ThirdPartyNoticesFile
     ) + $script:WebpRuntimeFiles
     $missing = $required | Where-Object { -not (Test-Path "$LayoutDir/$_") }
     if ($missing) {
         throw "Layout incomplete — missing required files: $($missing -join ', ')"
     }
-    Write-Host "[Build] Layout verified — all required files present." -ForegroundColor Gray
+    $menuIcons = Get-ChildItem -Path $LayoutDir -Filter "menu-*.ico" -ErrorAction SilentlyContinue
+    if (($null -eq $menuIcons) -or ($menuIcons.Count -lt 20)) {
+        throw "Layout incomplete — expected at least 20 menu-*.ico files in '$LayoutDir', found $(if ($menuIcons) { $menuIcons.Count } else { 0 })"
+    }
+    Write-Host "[Build] Layout verified — all required files and $($menuIcons.Count) menu icons present." -ForegroundColor Gray
 }
 
 function New-AndSignMsix {

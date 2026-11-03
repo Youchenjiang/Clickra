@@ -49,9 +49,13 @@ Copy-Item "$root/$($script:ThirdPartyNoticesFile)" "$mainLayout/"
 Copy-IconAssets -PackagingDir $packagingDir -LayoutDir $mainLayout
 New-PriResources -LayoutDir $mainLayout
 
-$mainRequired = @("Clickra.exe", "ClickraLauncher.exe", "ClickraShell.dll", "AppxManifest.xml", "resources.pri", $script:ThirdPartyNoticesFile) + $script:WebpRuntimeFiles
+$mainRequired = @("Clickra.exe", "ClickraLauncher.exe", "ClickraShell.dll", "AppxManifest.xml", "resources.pri", "app.ico", "app.png", $script:ThirdPartyNoticesFile) + $script:WebpRuntimeFiles
 $mainMissing = $mainRequired | Where-Object { -not (Test-Path "$mainLayout/$_") }
 if ($mainMissing) { throw "Main layout incomplete: $($mainMissing -join ', ')" }
+$mainMenuIcons = Get-ChildItem -Path $mainLayout -Filter "menu-*.ico" -ErrorAction SilentlyContinue
+if (($null -eq $mainMenuIcons) -or ($mainMenuIcons.Count -lt 20)) {
+    throw "Main layout incomplete: Expected at least 20 menu-*.ico files, found $(if ($mainMenuIcons) { $mainMenuIcons.Count } else { 0 })"
+}
 
 # 5. Assemble Optional Layout (Fluent only)
 Write-Host "[5/6] Assembling Optional layout..." -ForegroundColor Gray
@@ -73,9 +77,15 @@ Get-ChildItem $fluentSource -File |
     } |
     ForEach-Object { Copy-Item $_.FullName "$optionalLayout/" }
 
-if (Test-Path "obj/icons/app.png") {
-    New-Item -ItemType Directory -Path "$optionalLayout/Assets" -Force | Out-Null
-    Copy-Item "obj/icons/app.png" "$optionalLayout/Assets/AppIcon.png"
+$appPngSource = "$root/obj/icons/app.png"
+if (-not (Test-Path $appPngSource)) {
+    & dotnet run --project "$PSScriptRoot/tools/IconGen/IconGen.csproj"
+    Assert-NativeSuccess
+}
+New-Item -ItemType Directory -Path "$optionalLayout/Assets" -Force | Out-Null
+Copy-Item $appPngSource "$optionalLayout/Assets/AppIcon.png"
+if (-not (Test-Path "$optionalLayout/Assets/AppIcon.png")) {
+    throw "Optional layout incomplete: Assets/AppIcon.png is missing."
 }
 Copy-Item "$root/$($script:ThirdPartyNoticesFile)" "$optionalLayout/"
 

@@ -99,5 +99,32 @@ static partial class TestSuite
                 Assert.Equal(expectedVersion, match.Groups["version"].Value.Trim());
             }
         });
+
+        runner.RunGuard("MSIX packaging layout requires app icons and shell menu icons", () =>
+        {
+            string? root = FindRepoRoot();
+            if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
+
+            string buildCommonPath = Path.Combine(root, "scripts", "build_common.ps1");
+            Assert.True(File.Exists(buildCommonPath), "scripts/build_common.ps1 must exist.");
+            string buildCommon = File.ReadAllText(buildCommonPath);
+
+            Assert.True(buildCommon.Contains("app.ico", StringComparison.Ordinal)
+                        && buildCommon.Contains("app.png", StringComparison.Ordinal)
+                        && buildCommon.Contains("menu-*.ico", StringComparison.Ordinal),
+                "build_common.ps1 must copy and verify app.ico, app.png, and menu-*.ico in packaging layout.");
+
+            Assert.True(buildCommon.Contains("Test-LayoutComplete", StringComparison.Ordinal)
+                        && buildCommon.Contains("\"app.ico\"", StringComparison.Ordinal)
+                        && buildCommon.Contains("\"app.png\"", StringComparison.Ordinal),
+                "Test-LayoutComplete in build_common.ps1 must require app.ico and app.png in the layout.");
+
+            string releaseWorkflowPath = Path.Combine(root, ".github", "workflows", "release.yml");
+            Assert.True(File.Exists(releaseWorkflowPath), ".github/workflows/release.yml must exist.");
+            string releaseWorkflow = File.ReadAllText(releaseWorkflowPath);
+
+            Assert.True(releaseWorkflow.Contains("IconGen.csproj", StringComparison.Ordinal),
+                "release.yml assemble-msix job must execute IconGen.csproj to generate icon assets before packaging.");
+        });
     }
 }
