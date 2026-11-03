@@ -279,74 +279,88 @@ def _check_changelog_and_listings(repo_root, version, tag_name):
     return errors
 
 
-def _check_version_bump(base, metadata=None, pushed_ref=None):
-    diff = git("diff", "--name-only", f"{base}...HEAD")
-    if diff.returncode != 0:
-        return ["cannot determine changed files against base for version bump check"]
-    changed_files = [line.strip().replace("\\", "/") for line in diff.stdout.splitlines() if line.strip()]
-
-    branch_name = ""
+def _resolve_branch_name(pushed_ref=None):
     if pushed_ref:
-        branch_name = pushed_ref.replace("refs/heads/", "").strip()
-    else:
-        branch_proc = git("branch", "--show-current")
-        if branch_proc.returncode == 0:
-            branch_name = branch_proc.stdout.strip()
+        return pushed_ref.replace("refs/heads/", "").strip()
+    branch_proc = git("branch", "--show-current")
+    if branch_proc.returncode == 0:
+        return branch_proc.stdout.strip()
+    return ""
 
-    prefix = branch_name.split("/")[0] if "/" in branch_name else ""
 
-    labels = set()
-    if metadata:
-        labels = {item.get("name", "").lower() for item in metadata.get("labels", [])}
-        if "no-release" in labels:
-            return []
-
-    props_changed = "src/Directory.Build.props" in changed_files
-
-    # Strict intent guard: chore, docs, test, style branches must NEVER bump version
+def _check_prefix_intent(prefix, props_changed):
     non_release_prefixes = ("chore", "docs", "test", "style")
     if prefix in non_release_prefixes and props_changed:
         return [
             f"Branch prefix '{prefix}/' is reserved for non-release maintenance. "
             f"Version bumps require an appropriate release-oriented branch: 'hotfix/', 'fix/', or 'feat/'."
         ]
+    return []
 
-    release_file_prefixes = (
-        "src/",
-        "packaging/",
-        ".github/workflows/release",
-        "scripts/build_",
-    )
-    file_affects_release = any(f.startswith(release_file_prefixes) for f in changed_files)
-    branch_affects_release = branch_name.startswith("hotfix/")
-    label_affects_release = "hotfix" in labels
 
-    affects_release = file_affects_release or branch_affects_release or label_affects_release
+RELEASE_FILE_PREFIXES = (
+    "src/",
+    "packaging/",
+    ".github/workflows/release",
+    "scripts/build_",
+)
 
+
+def _check_release_impact(changed_files, branch_name, labels):
+    file_hit = any(f.startswith(RELEASE_FILE_PREFIXES) for f in changed_files)
+    branch_hit = branch_name.startswith("hotfix/")
+    label_hit = "hotfix" in labels
+    reasons = []
+    if file_hit:
+        reasons.append("release-affecting files")
+    if branch_hit:
+        reasons.append(f"branch prefix '{branch_name.split('/')[0]}/'")
+    if label_hit:
+        reasons.append("release-related label")
+    return bool(reasons), reasons
+
+
+def _get_declared_version(repo_root):
+    props_path = repo_root / "src" / "Directory.Build.props"
+    if not props_path.is_file():
+        return None, ["src/Directory.Build.props missing for version check"]
+    content = props_path.read_text(encoding="utf-8")
+    match = re.search(r"<Version>(.*?)</Version>", content)
+    if not match:
+        return None, ["src/Directory.Build.props does not declare <Version>"]
+    return match.group(1).strip(), []
+
+
+def _check_version_bump(base, metadata=None, pushed_ref=None):
+    diff = git("diff", "--name-only", f"{base}...HEAD")
+    if diff.returncode != 0:
+        return ["cannot determine changed files against base for version bump check"]
+    changed_files = [line.strip().replace("\\", "/") for line in diff.stdout.splitlines() if line.strip()]
+
+    branch_name = _resolve_branch_name(pushed_ref)
+    prefix = branch_name.split("/")[0] if "/" in branch_name else ""
+    props_changed = "src/Directory.Build.props" in changed_files
+
+    intent_errors = _check_prefix_intent(prefix, props_changed)
+    if intent_errors:
+        return intent_errors
+
+    labels = {item.get("name", "").lower() for item in metadata.get("labels", [])} if metadata else set()
+    if "no-release" in labels:
+        return []
+
+    affects_release, reasons = _check_release_impact(changed_files, branch_name, labels)
     if not affects_release and not props_changed:
         return []
 
     repo_root = Path(__file__).resolve().parent.parent
-    props_path = repo_root / "src" / "Directory.Build.props"
-    if not props_path.is_file():
-        return ["src/Directory.Build.props missing for version check"]
+    version, version_errors = _get_declared_version(repo_root)
+    if version_errors:
+        return version_errors
 
-    content = props_path.read_text(encoding="utf-8")
-    match = re.search(r"<Version>(.*?)</Version>", content)
-    if not match:
-        return ["src/Directory.Build.props does not declare <Version>"]
-    version = match.group(1).strip()
     tag_name = f"v{version}"
-
     errors = []
     if affects_release and _tag_is_released(tag_name):
-        reasons = []
-        if file_affects_release:
-            reasons.append("release-affecting files")
-        if branch_affects_release:
-            reasons.append(f"branch prefix '{branch_name.split('/')[0]}/'")
-        if label_affects_release:
-            reasons.append("release-related label")
         reason_str = " / ".join(reasons) or "release changes"
         errors.append(
             f"PR affects release ({reason_str}) but version '{version}' is already tagged as an existing release ({tag_name}). "
