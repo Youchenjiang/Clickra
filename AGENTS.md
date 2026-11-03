@@ -50,6 +50,13 @@ to recover it before `push`, instead of invoking `gh pr view` directly.
 
 - **Single Scope Rule**: Every branch must address exactly ONE focused capability or problem. If a task requires addressing multiple topics, it MUST be split into multiple PRs.
 - **Allowed Prefixes**: The branch prefix must be one of the allowlisted types defined in `scripts/branch_policy.py`: `feat`, `feature`, `fix`, `refactor`, `hotfix`, `chore`, `docs`, `test`, `perf`, `style` (e.g., `feat/`, `fix/`, `refactor/`, `feature/`).
+- **Semantic Intent Matrix**:
+  - `hotfix/`: Production emergency fixes or packaging repairs requiring an immediate release package (requires version bump).
+  - `feat/`, `feature/`: New user-facing capabilities or tools.
+  - `fix/`: Bugfixes to existing features.
+  - `refactor/`: Structural or architectural cleanup without behavior changes.
+  - `chore/`: Developer tooling, linter, gitignore, or non-release maintenance only. **Strict Invariant**: A `chore/` branch must NEVER bump `Directory.Build.props` or trigger a release package; preflight strictly enforces this.
+  - `docs/`, `test/`, `perf/`, `style/`: Documentation, test suites, performance benchmarks, or code formatting only.
 - **No Compound Suffixes**: Never concatenate multiple unrelated topic words with hyphens (e.g. `architecture-integrity-shared-classifiers` is strictly forbidden).
 - **Strict Word & Length Limits**:
   - The branch suffix must consist of **2 to 3 words** only, separated by hyphens (e.g., `feat/modern-icons`, `refactor/usecase-options`).

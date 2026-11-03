@@ -1,5 +1,5 @@
 <div align="center">
-<img src="src/resources/app.png" alt="Clickra Logo" width="80" height="80" />
+<img src="assets/primary/clickra-icon-primary-256.png" alt="Clickra Logo" width="80" height="80" />
 <h1>Clickra</h1>
 <p>高效能的 Windows 10 / 11 右鍵選單工具套件</p>
 <p>
@@ -56,13 +56,22 @@ Clickra 秉持嚴格的 **本機優先（Local-First）** 設計準則：
 
 ## 安裝說明
 
+### 程式碼簽章政策
+
+Clickra 的正式環境直接下載簽章規範、維護者角色、隱私權規範與發行簽署防護，完整記載於 [Code signing policy](docs/development/CODE_SIGNING_POLICY.md)。
+
 ### 推薦：Microsoft Store（自動更新）
 [![Microsoft Store Badge](https://developer.microsoft.com/en-us/store/badges/images/English_get-it-from-MS.png)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 
 ### 手動安裝：GitHub Release
-1. 從 [Releases](../../releases) 下載 `Clickra.msix`。
-2. 雙擊即可安裝 — 在 Windows 10+ 上無需任何額外 runtime 相依性。
-   - Fluent 介面附加元件可從 AOT Dashboard 設定頁面安裝。
+
+在 Clickra 正式生產環境直接簽章機制完成前，GitHub 直接下載 MSIX 封裝暫不提供安裝。目前的 GitHub Releases 僅提供版本發行紀錄與日誌；一般使用者請透過上方的 Microsoft Store 管道取得具備完整數位簽章之安裝版本。
+
+當直接下載封裝正式啟用時，GitHub 封裝將僅包含 NativeAOT 核心介面，不提供 Microsoft Store 專屬的 Fluent 可選套件安裝路徑。
+
+### 解除安裝
+
+開啟 **設定 > 應用程式 > 安裝的應用程式**，找到 **Clickra** 並選擇 **解除安裝**。封裝的檔案總管右鍵選單整合將隨 Clickra 應用程式套件一併完整移除。選用的外部軟體（如 Microsoft Office 或 LibreOffice）不屬於 Clickra 套件本身，維持由系統獨立管理。
 
 ## 本機開發
 

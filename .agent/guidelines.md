@@ -45,7 +45,13 @@ Microsoft Ingestion API 操作高度非同步。不要信任暫態 HTTP 回應�
 - **原子化提交（Atomic Commits & Domain Isolation）**：一個 Commit 只做一件事。嚴禁將多個不相干的邏輯修改（如版號同步、工作流修改、規則更新、跨子系統修復）合併到同一個 Commit 中。嚴禁跨領域混雜提交（例如 `scripts/` 工具修復、`src/` 核心/相容性修改與 `tests/` 測試守衛不得打包在同一 Commit）。嚴禁無差別整批暫存（禁止 `git add -A` 或 `git add .`），必須明確指定檔案路徑（如 `git add <特定檔案>`；同一檔案內用 `git add -p` 只暫存相關 hunks）並分開提交，確保每個 Commit 異動內容最小化且語意單一。判斷標準用「revert 測試」：若兩個變更可以各自獨立 revert 而不影響對方（例如邏輯修正 vs 註解清理、工具腳本 vs 核心架構），就必須分開提交。
 - **PR review thread comment prohibition & mandatory closure protocol**: Never create, reply to, edit, repost, or delete GitHub PR review/conversation comments. Whenever `pr_tool.py verify` reports unresolved review threads (`ready: false`), the agent must NOT declare the PR as passed. Instead, the agent must immediately list each unresolved thread, verify that its finding has been resolved by an atomic commit, and proactively ask for user authorization to resolve that thread via `pr_tool.py resolve`. Only after a verified fix and explicit authorization for the exact operation may an agent call GraphQL `resolveReviewThread`. Never resolve an unfixed finding. This rule overrides conflicting historical examples in PR skills.
 - **分支命名政策 (Branch Naming Policy)**：分支名稱必須遵循 `prefix/suffix` 結構，嚴格由 `scripts/branch_policy.py` 與 CI 門禁檢核：
-  1. **允許前綴 (Allowed Prefixes)**：`feat`, `feature`, `fix`, `refactor`, `hotfix`, `chore`, `docs`, `test`, `perf`, `style`（建議依 conventional commit 慣例優先使用 `feat/`、`fix/`、`refactor/` 或 `feature/`）。
+  1. **允許前綴與語意規範 (Allowed Prefixes & Intent)**：`feat`, `feature`, `fix`, `refactor`, `hotfix`, `chore`, `docs`, `test`, `perf`, `style`。
+     - `hotfix/`：線上緊急修復或封裝缺失補編（強制要求遞增版本號）。
+     - `feat/`, `feature/`：新增功能。
+     - `fix/`：既有功能缺陷修復。
+     - `refactor/`：架構與內部重構（不改行為）。
+     - `chore/`：內部工具、linter、設定等免發布維護。**鐵律**：`chore/` 嚴禁遞增 `Directory.Build.props` 或發布版本包，違者由 preflight 直接阻擋。
+     - `docs/`, `test/`, `perf/`, `style/`：文檔、測試、效能、格式。
   2. **後綴單詞數限制**：後綴以連字號 `-` 分隔，**嚴格限制為 2 至 3 個英文單詞**（例如 `feat/batch-export`、`refactor/usecase-options`、`fix/startup-crash`）。
   3. **後綴字元長度限制**：後綴長度（不含前綴與斜線）**嚴禁超過 25 個字元**。
   4. **嚴禁內容**：嚴禁包含版本號（如 `v1.0.0`）、嚴禁包含 PR 序號或過渡標記（如 `-pr1`、`post-nine`、`phase-1`）、嚴禁使用模糊空泛詞（`cleanup`、`updates`、`misc`）、嚴禁複合多主題串接、嚴禁在後綴重複前綴。

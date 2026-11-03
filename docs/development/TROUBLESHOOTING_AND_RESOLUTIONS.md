@@ -24,7 +24,7 @@
 
 ### 3. PDF 壓縮功能失效 (No FontResolver)
 - **現象**：其他轉換功能正常，但 PDF 壓縮功能執行失敗。
-- **原因**：[`NativePdfCompressionEngine.cs`](file:///c:/Users/g1014308/Documents/GitHub/Youchen/Clickra/src/Clickra.Core/Processors/FileProcessing/PdfCompressionEngine.cs) 在調用 `PdfSharp` 進行頁面結構與字型最佳化時，未初始化全局字型解析器。
+- **原因**：`NativePdfCompressionEngine.cs` 在調用 `PdfSharp` 進行頁面結構與字型最佳化時，未初始化全局字型解析器。
 - **解決方案**：在 `NativePdfCompressionEngine.Compress` 開頭新增防禦性初始化：
   ```csharp
   try

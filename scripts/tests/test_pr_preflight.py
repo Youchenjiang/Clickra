@@ -309,6 +309,45 @@ class PrPreflightTests(unittest.TestCase):
         errors = _check_version_bump("origin/main")
         self.assertEqual([], errors)
 
+    @patch("pr_preflight.git")
+    def test_version_bump_required_on_hotfix_or_release_workflows(self, mock_git):
+        from pr_preflight import _check_version_bump
+        props = (Path(__file__).resolve().parent.parent.parent / "src" / "Directory.Build.props").read_text(encoding="utf-8")
+        m = re.search(r"<Version>(.*?)</Version>", props)
+        current_tag = f"v{m.group(1).strip()}" if m else "v3.16.4.0"
+
+        scenarios = (
+            ("hotfix branch", "scripts/helper.ps1", "hotfix/missing-icons", None),
+            ("release workflow", ".github/workflows/release.yml", "fix/release-workflow", None),
+            ("hotfix label", "scripts/helper.ps1", "chore/misc", {"labels": [{"name": "hotfix"}]}),
+        )
+        for label, diff_file, branch_name, meta in scenarios:
+            with self.subTest(scenario=label):
+                def command(*args, dfile=diff_file, bname=branch_name):
+                    if args[0] == "diff":
+                        return CompletedProcess(args, 0, f"{dfile}\n", "")
+                    if args[0] == "tag":
+                        return CompletedProcess(args, 0, f"{current_tag}\n", "")
+                    if args[0] == "branch" and "--show-current" in args:
+                        return CompletedProcess(args, 0, f"{bname}\n", "")
+                    return CompletedProcess(args, 0, "", "")
+                mock_git.side_effect = command
+                errors = _check_version_bump("origin/main", metadata=meta)
+                self.assertTrue(any("already tagged as an existing release" in e for e in errors))
+
+    @patch("pr_preflight.git")
+    def test_version_bump_rejected_on_chore_branch(self, mock_git):
+        from pr_preflight import _check_version_bump
+        def command(*args):
+            if args[0] == "diff":
+                return CompletedProcess(args, 0, "src/Directory.Build.props\n", "")
+            if args[0] == "branch" and "--show-current" in args:
+                return CompletedProcess(args, 0, "chore/bump-version\n", "")
+            return CompletedProcess(args, 0, "", "")
+        mock_git.side_effect = command
+        errors = _check_version_bump("origin/main")
+        self.assertTrue(any("reserved for non-release maintenance" in e for e in errors))
+
 
 
 class PrePushHookRefTests(unittest.TestCase):
