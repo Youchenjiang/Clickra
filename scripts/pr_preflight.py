@@ -26,9 +26,12 @@ def git(*args):
     return invoke(["git", *args], timeout=GIT_TIMEOUT)
 
 
-def _valid_commit_subject(header):
+def valid_commit_subject(header):
     return (bool(SUBJECT.fullmatch(header)) and not header.endswith(".")
             and len(header) <= 72 and header.split(": ", 1)[-1].lower() not in VAGUE)
+
+
+_valid_commit_subject = valid_commit_subject
 
 
 def _numbered_commit_body(lines):
@@ -426,39 +429,53 @@ def check(base, body_file=None, pushed_ref=None, pushed_oid=None, metadata=None)
         return [f"Git operation failed: {exc}"]
 
 
-def _check(base, body_file, pushed_ref, pushed_oid, metadata=None):
-    errors = _check_history(base, pushed_ref, pushed_oid)
+def _check_worktree():
     status = git("status", "--porcelain")
     if status.returncode:
-        errors.append("cannot read worktree status")
-    elif status.stdout.strip():
-        errors.append("worktree is dirty; test and push exactly the committed contents")
+        return ["cannot read worktree status"]
+    if status.stdout.strip():
+        return ["worktree is dirty; test and push exactly the committed contents"]
+    return []
+
+
+def _check_body_file(body_file, metadata):
     if not body_file:
-        errors.append("PR body draft required: provide --body-file")
-    else:
-        path = Path(body_file)
-        if not path.is_file():
-            errors.append("PR body file missing")
-        else:
-            errors.extend(validate_pr_body(path.read_text(encoding="utf-8"), metadata))
+        return ["PR body draft required: provide --body-file"]
+    path = Path(body_file)
+    if not path.is_file():
+        return ["PR body file missing"]
+    return validate_pr_body(path.read_text(encoding="utf-8"), metadata)
+
+
+def _check_base_parity(base):
     remote = git("ls-remote", "--heads", "origin", "main")
     local = git("rev-parse", base)
-    if remote.returncode or local.returncode or not remote.stdout.strip() or local.stdout.strip() != remote.stdout.split()[0]:
-        errors.append("origin/main changed or cannot be verified at end of preflight")
-    errors.extend(_check_version_bump(base, metadata, pushed_ref))
+    if (remote.returncode or local.returncode or
+            not remote.stdout.strip() or
+            local.stdout.strip() != remote.stdout.split()[0]):
+        return ["origin/main changed or cannot be verified at end of preflight"]
+    return []
 
-    diff = git("diff", "--name-only", f"{base}...HEAD")
-    changed_files = [line.strip().replace("\\", "/") for line in diff.stdout.splitlines() if line.strip()] if diff.returncode == 0 else []
+
+def _check_roadmap_gate(base, metadata):
     milestone = None
     if metadata:
         m = metadata.get("milestone")
-        if isinstance(m, dict):
-            milestone = m.get("title")
-        elif isinstance(m, str):
-            milestone = m
-    if milestone:
-        errors.extend(check_roadmap_alignment(REPO_ROOT, milestone, changed_files))
+        milestone = m.get("title") if isinstance(m, dict) else (m if isinstance(m, str) else None)
+    if not milestone:
+        return []
+    diff = git("diff", "--name-only", f"{base}...HEAD")
+    changed_files = [line.strip().replace("\\", "/") for line in diff.stdout.splitlines() if line.strip()] if diff.returncode == 0 else []
+    return check_roadmap_alignment(REPO_ROOT, milestone, changed_files)
 
+
+def _check(base, body_file, pushed_ref, pushed_oid, metadata=None):
+    errors = _check_history(base, pushed_ref, pushed_oid)
+    errors.extend(_check_worktree())
+    errors.extend(_check_body_file(body_file, metadata))
+    errors.extend(_check_base_parity(base))
+    errors.extend(_check_version_bump(base, metadata, pushed_ref))
+    errors.extend(_check_roadmap_gate(base, metadata))
     return errors
 
 

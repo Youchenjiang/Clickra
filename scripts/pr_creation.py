@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 
 from process_guard import executable, invoke
-from pr_preflight import _valid_commit_subject, validate_pr_body
+from pr_preflight import valid_commit_subject, validate_pr_body
 from branch_policy import validate_branch_name
 from pr_publication import BRANCH, SHA, remote_head
 
@@ -23,36 +23,55 @@ def _read(argv):
     return result.stdout.strip()
 
 
+def _fetch_github_entries(repo, kind):
+    result = subprocess.run(
+        [executable("gh"), "api", f"repos/{repo}/{kind}?per_page=100",
+         "--paginate", "--slurp"],
+        shell=False, check=False, capture_output=True, text=True, timeout=30)
+    if result.returncode:
+        raise RuntimeError(f"cannot verify repository {kind}; no PR created")
+    pages = json.loads(result.stdout)
+    if not isinstance(pages, list) or not all(isinstance(page, list) for page in pages):
+        raise RuntimeError(f"repository {kind} returned invalid data; no PR created")
+    return [record for page in pages for record in page]
+
+
+def _validate_remote_entries(repo, label, milestone):
+    labels = {item.get("name") for item in _fetch_github_entries(repo, "labels")}
+    if label not in labels:
+        raise ValueError(f"GitHub label does not exist: {label}")
+    if milestone:
+        milestones = {item.get("title") for item in _fetch_github_entries(repo, "milestones")}
+        if milestone not in milestones:
+            raise ValueError(f"GitHub milestone does not exist: {milestone}")
+
+
+def _validate_remote_assignee(repo, assignee):
+    if not assignee:
+        return
+    result = subprocess.run(
+        [executable("gh"), "api", f"repos/{repo}/assignees/{assignee}"],
+        shell=False, check=False, capture_output=True, text=True, timeout=30)
+    if result.returncode:
+        raise ValueError("GitHub assignee is not eligible")
+
+
+def _validate_roadmap_milestone(milestone):
+    if not milestone:
+        return
+    diff_output = _read(["git", "diff", "--name-only", "origin/main...HEAD"])
+    changed_files = [line.strip().replace("\\", "/") for line in diff_output.splitlines() if line.strip()]
+    from pr_preflight import check_roadmap_alignment
+    roadmap_errors = check_roadmap_alignment(REPO_ROOT, milestone, changed_files)
+    if roadmap_errors:
+        raise ValueError("; ".join(roadmap_errors))
+
+
 def _metadata(repo, label, milestone, assignee):
     """Validate selected GitHub metadata before exposing an executable preview."""
-    def entries(kind):
-        result = subprocess.run(
-            [executable("gh"), "api", f"repos/{repo}/{kind}?per_page=100",
-             "--paginate", "--slurp"],
-            shell=False, check=False, capture_output=True, text=True, timeout=30)
-        if result.returncode:
-            raise RuntimeError(f"cannot verify repository {kind}; no PR created")
-        pages = json.loads(result.stdout)
-        if not isinstance(pages, list) or not all(isinstance(page, list) for page in pages):
-            raise RuntimeError(f"repository {kind} returned invalid data; no PR created")
-        return [record for page in pages for record in page]
-
-    if label not in {item.get("name") for item in entries("labels")}:
-        raise ValueError(f"GitHub label does not exist: {label}")
-    if milestone and milestone not in {item.get("title") for item in entries("milestones")}:
-        raise ValueError(f"GitHub milestone does not exist: {milestone}")
-    if assignee:
-        result = subprocess.run([executable("gh"), "api", f"repos/{repo}/assignees/{assignee}"],
-                                shell=False, check=False, capture_output=True, text=True, timeout=30)
-        if result.returncode:
-            raise ValueError("GitHub assignee is not eligible")
-    if milestone:
-        diff_output = _read(["git", "diff", "--name-only", "origin/main...HEAD"])
-        changed_files = [line.strip().replace("\\", "/") for line in diff_output.splitlines() if line.strip()]
-        from pr_preflight import check_roadmap_alignment
-        roadmap_errors = check_roadmap_alignment(REPO_ROOT, milestone, changed_files)
-        if roadmap_errors:
-            raise ValueError("; ".join(roadmap_errors))
+    _validate_remote_entries(repo, label, milestone)
+    _validate_remote_assignee(repo, assignee)
+    _validate_roadmap_milestone(milestone)
 
 
 def current_branch(repo, branch):
@@ -81,7 +100,7 @@ def current_branch(repo, branch):
 def _validate_title(title):
     if not title or any(ord(c) < 32 for c in title):
         raise ValueError("invalid PR title")
-    if not _valid_commit_subject(title.strip()):
+    if not valid_commit_subject(title.strip()):
         raise ValueError(
             "PR title must match <type>(<scope>): <description> or <type>: <description> "
             "with an allowed type/scope and be 72 characters or less."
