@@ -12,6 +12,8 @@ from pr_publication import BRANCH, SHA, remote_head
 
 REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
 LABEL = re.compile(r"[A-Za-z0-9_.-]+\Z")
+REPO_ROOT = Path(__file__).resolve().parent.parent
+MILESTONE_EXEMPT_LABELS = {"release", "hotfix", "deps", "dependencies", "docs", "chore"}
 
 
 def _read(argv):
@@ -44,6 +46,13 @@ def _metadata(repo, label, milestone, assignee):
                                 shell=False, check=False, capture_output=True, text=True, timeout=30)
         if result.returncode:
             raise ValueError("GitHub assignee is not eligible")
+    if milestone:
+        diff_output = _read(["git", "diff", "--name-only", "origin/main...HEAD"])
+        changed_files = [line.strip().replace("\\", "/") for line in diff_output.splitlines() if line.strip()]
+        from pr_preflight import check_roadmap_alignment
+        roadmap_errors = check_roadmap_alignment(REPO_ROOT, milestone, changed_files)
+        if roadmap_errors:
+            raise ValueError("; ".join(roadmap_errors))
 
 
 def current_branch(repo, branch):
@@ -67,9 +76,6 @@ def current_branch(repo, branch):
     if not isinstance(existing, list) or existing:
         raise RuntimeError("an existing or ambiguous PR was found for this branch")
     return head
-
-
-MILESTONE_EXEMPT_LABELS = {"release", "hotfix", "deps", "dependencies", "docs"}
 
 
 def _validate_title(title):
