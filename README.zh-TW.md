@@ -60,7 +60,7 @@ Clickra 秉持嚴格的 **本機優先（Local-First）** 設計準則：
 
 ### 程式碼簽章政策
 
-Clickra 的正式環境直接下載簽章規範、維護者角色、隱私權規範與發行簽署防護，完整記載於 [Code signing policy](docs/development/code_signing_policy.md)。
+Clickra 的正式環境直接下載簽章規範、維護者角色、隱私權規範與發行簽署防護，完整記載於 [Code signing policy](docs/development/release/code_signing_policy.md)。
 
 ### 推薦：Microsoft Store（自動更新）
 [![Microsoft Store Badge](https://developer.microsoft.com/en-us/store/badges/images/English_get-it-from-MS.png)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
@@ -99,9 +99,9 @@ dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Relea
 ## 貢獻
 發起 Pull Request 前，請參閱：
 - [local_build_notes.md](docs/development/local_build_notes.md) — 建置、打包與 Git 流程
-- [docs/development/release_guideline.md](docs/development/release_guideline.md) — 版本管理與發布檢查清單
-- [docs/development/shell_extension_best_practices.md](docs/development/shell_extension_best_practices.md) — COM 與 NativeAOT 殼層不變量
-- [docs/development/shell_diagnostic_guide.md](docs/development/shell_diagnostic_guide.md) — Shell 擴充日誌與診斷
+- [docs/development/release/release_guideline.md](docs/development/release/release_guideline.md) — 版本管理與發布檢查清單
+- [docs/development/shell/shell_extension_best_practices.md](docs/development/shell/shell_extension_best_practices.md) — COM 與 NativeAOT 殼層不變量
+- [docs/development/shell/shell_diagnostic_guide.md](docs/development/shell/shell_diagnostic_guide.md) — Shell 擴充日誌與診斷
 - [docs/development/archive/dual_track_guide.md](docs/development/archive/dual_track_guide.md) — 歷史 Fluent／NativeAOT 雙軌發行設計紀錄
 - [docs/architecture/](docs/architecture/README.md) — NativeAOT／Fluent 架構與互動地圖
 - [docs/ROADMAP.md](docs/ROADMAP.md) — 產品路線圖與里程碑

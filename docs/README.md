@@ -14,18 +14,18 @@ Architecture documentation, boundary invariants, layered structure maps, and ADR
 ## 🛠️ Development & Operations (docs/development/)
 Guides for building, testing, packaging, signing, and releasing Clickra:
 - [Local Build Notes](development/local_build_notes.md): Building locally with NativeAOT and Windows SDK tools.
-- [Release Guidelines](development/release_guideline.md): Step-by-step release process and version bumping.
-- [CI/CD Release Guide](development/ci_cd_release_guide.md): Automated release workflows and pipelines.
-- [Code Signing Policy](development/code_signing_policy.md): Signing keys, maintainer roles, and release integrity.
-- [Windows Compatibility & MSIX Sandbox](development/windows_sandbox_compatibility.md): Packaged storage and shell extensions.
-- [PR Tool Documentation](development/pr_tool.md): Local gates, preflight checks, and PR acceptance assistant.
+- [Release Guidelines](development/release/release_guideline.md): Step-by-step release process and version bumping.
+- [CI/CD Release Guide](development/release/ci_cd_release_guide.md): Automated release workflows and pipelines.
+- [Code Signing Policy](development/release/code_signing_policy.md): Signing keys, maintainer roles, and release integrity.
+- [Windows Compatibility & MSIX Sandbox](development/shell/windows_sandbox_compatibility.md): Packaged storage and shell extensions.
+- [PR Tool Documentation](development/tools/pr_tool.md): Local gates, preflight checks, and PR acceptance assistant.
 - [Module Conventions](development/module_conventions.md): Capability-first module structure and layer invariants.
 - [New Command Checklist](development/new_command_checklist.md): Step-by-step checklist for introducing new CLI/UI commands.
-- [Store Submission Guide](development/store_submission_guide.md): Microsoft Store package submission and flight rules.
-- [Shell Diagnostic Guide](development/shell_diagnostic_guide.md): Windows Explorer shell extension diagnostics.
-- [Shell Extension Best Practices](development/shell_extension_best_practices.md): Shell menu registration and COM server guidance.
+- [Store Submission Guide](development/release/store_submission_guide.md): Microsoft Store package submission and flight rules.
+- [Shell Diagnostic Guide](development/shell/shell_diagnostic_guide.md): Windows Explorer shell extension diagnostics.
+- [Shell Extension Best Practices](development/shell/shell_extension_best_practices.md): Shell menu registration and COM server guidance.
 - [Troubleshooting Guide](development/troubleshooting_guide.md): Historical troubleshooting notes and diagnostic fixes.
-- [Git Tool Guide](development/git_tool.md): Branching and worktree maintenance helper.
+- [Git Tool Guide](development/tools/git_tool.md): Branching and worktree maintenance helper.
 
 ## 📐 Specifications (docs/specs/)
 Functional and technical design specifications for future or specialized capabilities:

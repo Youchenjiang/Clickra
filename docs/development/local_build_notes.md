@@ -2,9 +2,9 @@
 
 > **Agent & Developer Documentation Index**:
 > - [ARCHITECTURE](../architecture/README.md): .NET 8 baseline, roll-forward policy, and interactive maps ([overview.html](../architecture/diagrams/overview.html)).
-> - [windows_sandbox_compatibility.md](windows_sandbox_compatibility.md): Win10/Win11 context-menu and packaged storage notes.
+> - [windows_sandbox_compatibility.md](shell/windows_sandbox_compatibility.md): Win10/Win11 context-menu and packaged storage notes.
 > - [troubleshooting_guide.md](troubleshooting_guide.md): troubleshooting history and prior fixes.
-> - [ci_cd_release_guide.md](ci_cd_release_guide.md): current automated release pipeline and source-of-truth boundaries.
+> - [ci_cd_release_guide.md](release/ci_cd_release_guide.md): current automated release pipeline and source-of-truth boundaries.
 
 ## Windows SDK Tools
 This project requires `makeappx.exe` and `signtool.exe`. On this machine, the
@@ -109,7 +109,7 @@ Use `scripts/build_msix.ps1` for the actual current Main package so the CLI, Lau
 The project provides built-in PowerShell scripts for automated version bumping and MSIX packaging:
 
 > [!IMPORTANT]
-> `bump_version.ps1` is used to bump version surfaces for PRs that modify `src/` or `packaging/`. Any PR touching release code must increment the version so `pr_preflight.py` passes and CI can perform `auto-tag-release` upon merge to `main`. For version-surface rules see [`release_guideline.md`](release_guideline.md).
+> `bump_version.ps1` is used to bump version surfaces for PRs that modify `src/` or `packaging/`. Any PR touching release code must increment the version so `pr_preflight.py` passes and CI can perform `auto-tag-release` upon merge to `main`. For version-surface rules see [`release_guideline.md`](release/release_guideline.md).
 
 *   **Bump Version & Build**:
     By default, the script increments the `patch` version (3rd digit) and resets the `revision` (4th digit) to `0` for Microsoft Store compatibility.
@@ -576,7 +576,7 @@ after each reinstall so it reloads `ClickraShell.dll`.
 5. Build the shell DLL and CLI, install the package, and verify submenu
    enumeration plus one real invocation.
 6. If Explorer never calls the DLL, follow the staged checks in
-   [`shell_diagnostic_guide.md`](shell_diagnostic_guide.md)
+   [`shell_diagnostic_guide.md`](shell/shell_diagnostic_guide.md)
    before changing COM code.
 
 Do not use a legacy HKCU registry-verb installer as a substitute for the

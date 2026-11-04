@@ -60,7 +60,7 @@ Clickra operates on a strict **Local-First** philosophy:
 
 ### Code signing policy
 
-Clickra's production direct-download signing rules, maintainer roles, privacy reference, and release-signing controls are documented in the [Code signing policy](docs/development/code_signing_policy.md).
+Clickra's production direct-download signing rules, maintainer roles, privacy reference, and release-signing controls are documented in the [Code signing policy](docs/development/release/code_signing_policy.md).
 
 ### Recommended: Microsoft Store (auto-updates)
 [![Microsoft Store Badge](https://developer.microsoft.com/en-us/store/badges/images/English_get-it-from-MS.png)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
@@ -99,9 +99,9 @@ Full setup, packaging, and Git workflow details: [local_build_notes.md](docs/dev
 ## Contributing
 Before opening a pull request, please see:
 - [local_build_notes.md](docs/development/local_build_notes.md) — build, packaging, and Git workflow
-- [docs/development/release_guideline.md](docs/development/release_guideline.md) — versioning and release checklists
-- [docs/development/shell_extension_best_practices.md](docs/development/shell_extension_best_practices.md) — COM and NativeAOT shell invariants
-- [docs/development/shell_diagnostic_guide.md](docs/development/shell_diagnostic_guide.md) — shell extension logging and diagnostics
+- [docs/development/release/release_guideline.md](docs/development/release/release_guideline.md) — versioning and release checklists
+- [docs/development/shell/shell_extension_best_practices.md](docs/development/shell/shell_extension_best_practices.md) — COM and NativeAOT shell invariants
+- [docs/development/shell/shell_diagnostic_guide.md](docs/development/shell/shell_diagnostic_guide.md) — shell extension logging and diagnostics
 - [docs/development/archive/dual_track_guide.md](docs/development/archive/dual_track_guide.md) — historical Fluent/NativeAOT dual-track distribution design
 - [docs/architecture/](docs/architecture/README.md) — NativeAOT/Fluent architecture and diagrams
 - [docs/ROADMAP.md](docs/ROADMAP.md) — product roadmap and milestones
