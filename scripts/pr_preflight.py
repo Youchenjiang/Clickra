@@ -399,32 +399,33 @@ def check_roadmap_alignment(repo_root, milestone, changed_files):
     content = roadmap_path.read_text(encoding="utf-8")
     milestone_id = extract_milestone_id(milestone)
 
-    # 1. Existence check: milestone_id or full milestone must exist in docs/ROADMAP.md
-    if milestone_id not in content and milestone not in content:
+    pattern = rf"(?mi)^[ \t]*- \[([ xX])\][ \t]*\*\*{re.escape(milestone_id)}"
+    match = re.search(pattern, content)
+    if not match and milestone:
+        full_pattern = rf"(?mi)^[ \t]*- \[([ xX])\][ \t]*\*\*{re.escape(milestone)}"
+        match = re.search(full_pattern, content)
+
+    if not match:
         return [
             f"Milestone '{milestone}' (id: '{milestone_id}') is not tracked in docs/ROADMAP.md. "
             "All milestones must be registered in the project roadmap."
         ]
 
-    # 2. Check if milestone is marked completed or updated in this PR
-    pattern = rf"(?mi)^[ \t]*- \[([ xX])\][ \t]*\*\*{re.escape(milestone_id)}"
-    match = re.search(pattern, content)
-    if match:
-        is_completed = match.group(1).lower() == "x"
-        roadmap_changed = "docs/ROADMAP.md" in changed_files
-        if not is_completed and not roadmap_changed:
-            return [
-                f"Milestone '{milestone}' is marked pending (- [ ]) in docs/ROADMAP.md, "
-                "but docs/ROADMAP.md was not updated in this PR. "
-                "Update docs/ROADMAP.md to record progress or mark completion."
-            ]
+    is_completed = match.group(1).lower() == "x"
+    roadmap_changed = "docs/ROADMAP.md" in changed_files
+    if not is_completed and not roadmap_changed:
+        return [
+            f"Milestone '{milestone}' is marked pending (- [ ]) in docs/ROADMAP.md, "
+            "but docs/ROADMAP.md was not updated in this PR. "
+            "Update docs/ROADMAP.md to record progress or mark completion."
+        ]
 
     return []
 
 
-def check(base, body_file=None, pushed_ref=None, pushed_oid=None, metadata=None):
+def check(base, body_file=None, pushed_ref=None, pushed_oid=None, metadata=None, milestone=None):
     try:
-        return _check(base, body_file, pushed_ref, pushed_oid, metadata)
+        return _check(base, body_file, pushed_ref, pushed_oid, metadata, milestone)
     except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
         return [f"Git operation failed: {exc}"]
 
@@ -457,25 +458,25 @@ def _check_base_parity(base):
     return []
 
 
-def _check_roadmap_gate(base, metadata):
-    milestone = None
-    if metadata:
+def _check_roadmap_gate(base, metadata, milestone=None):
+    ms = milestone
+    if not ms and metadata:
         m = metadata.get("milestone")
-        milestone = m.get("title") if isinstance(m, dict) else (m if isinstance(m, str) else None)
-    if not milestone:
+        ms = m.get("title") if isinstance(m, dict) else (m if isinstance(m, str) else None)
+    if not ms:
         return []
     diff = git("diff", "--name-only", f"{base}...HEAD")
     changed_files = [line.strip().replace("\\", "/") for line in diff.stdout.splitlines() if line.strip()] if diff.returncode == 0 else []
-    return check_roadmap_alignment(REPO_ROOT, milestone, changed_files)
+    return check_roadmap_alignment(REPO_ROOT, ms, changed_files)
 
 
-def _check(base, body_file, pushed_ref, pushed_oid, metadata=None):
+def _check(base, body_file, pushed_ref, pushed_oid, metadata=None, milestone=None):
     errors = _check_history(base, pushed_ref, pushed_oid)
     errors.extend(_check_worktree())
     errors.extend(_check_body_file(body_file, metadata))
     errors.extend(_check_base_parity(base))
     errors.extend(_check_version_bump(base, metadata, pushed_ref))
-    errors.extend(_check_roadmap_gate(base, metadata))
+    errors.extend(_check_roadmap_gate(base, metadata, milestone))
     return errors
 
 
@@ -500,11 +501,9 @@ def main():
     except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
         print(f"PR PREFLIGHT FAIL: unable to verify GitHub PR state: {exc}", file=sys.stderr)
         return 1
-    if metadata is None and args.milestone:
-        metadata = {"labels": [], "milestone": {"title": args.milestone}}
-    elif metadata and not metadata.get("milestone") and args.milestone:
+    if metadata and not metadata.get("milestone") and args.milestone:
         metadata["milestone"] = {"title": args.milestone}
-    errors = check(args.base, args.body_file, args.push_ref, args.push_oid, metadata)
+    errors = check(args.base, args.body_file, args.push_ref, args.push_oid, metadata, milestone=args.milestone)
     for error in errors:
         print(f"PR PREFLIGHT FAIL: {error}", file=sys.stderr)
     if errors:
