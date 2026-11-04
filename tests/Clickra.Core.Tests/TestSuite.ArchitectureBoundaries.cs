@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Clickra.Core.Application;
 using Clickra.Core.Modules.PdfPrint.Application;
+using Clickra.Core.Modules.PdfToImage.Application;
 using Clickra.Shared;
 
 namespace Clickra.Core.Tests;
@@ -1665,6 +1666,7 @@ static partial class TestSuite
         IConversionUseCase excel = ConversionUseCases.GetRequired(ExcelToPdfUseCase.CommandName);
         IConversionUseCase ppt = ConversionUseCases.GetRequired(PptToPdfUseCase.CommandName);
         IConversionUseCase word = ConversionUseCases.GetRequired(WordToPdfUseCase.CommandName);
+        IConversionUseCase pdf2img = ConversionUseCases.GetRequired(PdfToImageUseCase.CommandName);
         Assert.True(compress is CompressPdfUseCase,
             "compress-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(decrypt is DecryptPdfUseCase,
@@ -1710,6 +1712,8 @@ static partial class TestSuite
             "ppt2pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(word is WordToPdfUseCase,
             "word2pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(pdf2img is PdfToImageUseCase,
+            "pdf2img must resolve through the product-wide application use-case catalog.");
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(CompressPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one compress-pdf owner.");
@@ -1752,6 +1756,9 @@ static partial class TestSuite
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(WordToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one word2pdf owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(PdfToImageUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one pdf2img owner.");
 
         Assert.True(decrypt.Capabilities.Contains(ConversionCapability.Password),
             "decrypt-pdf must declare the Password capability.");

@@ -48,3 +48,7 @@ The conventions above are guarded by automated architecture boundary tests in `T
 - Processor base inheritance and processing/execution placement test
 - Module options placement in `Application/`
 - Presentation prohibition of module `Processing/` and `Infrastructure/` references
+
+## 4. New Command Wiring Checklist
+
+For end-to-end integration across Core, CLI, Native Adapter, Shell Menu, and MSIX packaging assets, refer to [new_command_checklist.md](new_command_checklist.md).

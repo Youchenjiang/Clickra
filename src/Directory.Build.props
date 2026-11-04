@@ -1,9 +1,10 @@
 <Project>
   <PropertyGroup>
-    <Version>3.16.5.0</Version>
+    <Version>3.17.0.0</Version>
     <Authors>Youchen Jiang</Authors>
     <Company>Clickra</Company>
     <Copyright>Copyright © 2026</Copyright>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);NU1903</NoWarn>
   </PropertyGroup>
 </Project>

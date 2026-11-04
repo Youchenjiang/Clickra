@@ -13,6 +13,7 @@ using Clickra.Core.Modules.PdfDecrypt.Application;
 using Clickra.Core.Modules.PdfMerge.Application;
 using Clickra.Core.Modules.PdfPrint.Application;
 using Clickra.Core.Modules.PdfSplit.Application;
+using Clickra.Core.Modules.PdfToImage.Application;
 using Clickra.Core.Modules.PdfTranslation.Application;
 using Clickra.Core.Processors;
 
@@ -141,7 +142,9 @@ internal sealed class NativeConversionExecutionAdapter
             return true;
         }
         if (command.Equals(MarkdownToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
-            || command.Equals(MarkdownToWordUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+            || command.Equals(MarkdownToWordUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
+            || command.Equals(PdfToImageUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
+            || ConversionUseCases.TryGet(command, out _))
         {
             RunSimple(
                 command,
@@ -157,20 +160,34 @@ internal sealed class NativeConversionExecutionAdapter
         return false;
     }
 
-    private void RunDecrypt(List<string> files, Action<int, int, string> progressCallback)
+    private readonly record struct PdfCommandResourceKeys(string Stage, string Progress, string Done);
+
+    /// <summary>
+    /// Executes a standard protected PDF workflow with unified plan creation and lifecycle tracking.
+    /// </summary>
+    private void ExecuteStandardPdfCommand(
+        string commandName,
+        List<string> files,
+        Action<int, int, string> progressCallback,
+        PdfCommandResourceKeys keys,
+        IReadOnlyDictionary<string, object>? options = null,
+        Func<string, string?>? promptPages = null)
     {
-        _ = ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName);
+        _ = ConversionUseCases.GetRequired(commandName);
         ConversionPlan plan = ConversionExecutionService.Plan(
-            DecryptPdfUseCase.CommandName,
+            commandName,
             files,
+            options: options,
             outputOverride: _outputDirOverride,
             TrackTaskLifecycle: true,
             planOptions: new ExecutionPlanOptions(_existingTaskId, true, _startIndex));
         var interaction = new DelegateConversionInteraction(
             (_, inputPath, isRetry, _) => Task.FromResult<string?>(_resolveDecryptPassword(inputPath, isRetry)),
-            (_, _, _) => Task.FromResult<string?>(null),
+            promptPages != null
+                ? (_, inputPath, _) => Task.FromResult<string?>(promptPages(inputPath))
+                : (_, _, _) => Task.FromResult<string?>(null),
             (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-        var progress = CreatePdfProgress(files, progressCallback, "cli_progress_decrypting_pdf_stage");
+        var progress = CreatePdfProgress(files, progressCallback, keys.Stage);
 
         ConversionResult result = ConversionExecutionService.Execute(
             plan,
@@ -181,91 +198,58 @@ internal sealed class NativeConversionExecutionAdapter
                 files,
                 progressCallback,
                 10,
-                "cli_progress_decrypting_pdf"),
+                keys.Progress),
             _cancellationToken);
 
         _completeResult(
             result,
-            DecryptPdfUseCase.CommandName,
-            Localization.T("cli_progress_decrypting_pdf_saving"),
+            commandName,
+            Localization.T(keys.Done),
             true);
+    }
+
+    private void RunDecrypt(List<string> files, Action<int, int, string> progressCallback)
+    {
+        ExecuteStandardPdfCommand(
+            DecryptPdfUseCase.CommandName,
+            files,
+            progressCallback,
+            new PdfCommandResourceKeys(
+                "cli_progress_decrypting_pdf_stage",
+                "cli_progress_decrypting_pdf",
+                "cli_progress_decrypting_pdf_saving"));
     }
 
     private void RunSplit(List<string> files, Action<int, int, string> progressCallback)
     {
         string pagesOption = GetSplitPagesOptionFromCommandLine();
-        _ = ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName);
         var commandOptions = new Dictionary<string, object>
         {
             [SplitPdfUseCase.PagesOptionKey] = pagesOption
         };
-        ConversionPlan plan = ConversionExecutionService.Plan(
+        ExecuteStandardPdfCommand(
             SplitPdfUseCase.CommandName,
             files,
+            progressCallback,
+            new PdfCommandResourceKeys(
+                "cli_progress_splitting_pdf_stage",
+                "cli_progress_splitting_pdf",
+                "cli_progress_splitting_pdf_done"),
             options: commandOptions,
-            outputOverride: _outputDirOverride,
-            TrackTaskLifecycle: true,
-            planOptions: new ExecutionPlanOptions(_existingTaskId, true, _startIndex));
-        var interaction = new DelegateConversionInteraction(
-            (_, inputPath, isRetry, _) => Task.FromResult<string?>(_resolveDecryptPassword(inputPath, isRetry)),
-            (_, inputPath, _) => Task.FromResult<string?>(_promptSplitPages(inputPath)),
-            (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-        var progress = CreatePdfProgress(files, progressCallback, "cli_progress_splitting_pdf_stage");
-
-        ConversionResult result = ConversionExecutionService.Execute(
-            plan,
-            interaction,
-            progress,
-            new FileStageExecutionObserver(
-                _taskStarted,
-                files,
-                progressCallback,
-                10,
-                "cli_progress_splitting_pdf"),
-            _cancellationToken);
-
-        _completeResult(
-            result,
-            SplitPdfUseCase.CommandName,
-            Localization.T("cli_progress_splitting_pdf_done"),
-            true);
+            promptPages: _promptSplitPages);
     }
 
     private void RunPrint(List<string> files, Action<int, int, string> progressCallback)
     {
-        _ = ConversionUseCases.GetRequired(PrintPdfUseCase.CommandName);
-        ConversionPlan plan = ConversionExecutionService.Plan(
+        ExecuteStandardPdfCommand(
             PrintPdfUseCase.CommandName,
             files,
-            options: _commandOptions,
-            outputOverride: _outputDirOverride,
-            TrackTaskLifecycle: true,
-            planOptions: new ExecutionPlanOptions(_existingTaskId, true, _startIndex));
-
-        var interaction = new DelegateConversionInteraction(
-            (_, _, _, _) => Task.FromResult<string?>(null),
-            (_, _, _) => Task.FromResult<string?>(null),
-            (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-
-        var progress = CreatePdfProgress(files, progressCallback, "cli_progress_printing_pdf_stage");
-
-        ConversionResult result = ConversionExecutionService.Execute(
-            plan,
-            interaction,
-            progress,
-            new FileStageExecutionObserver(
-                _taskStarted,
-                files,
-                progressCallback,
-                10,
-                "cli_progress_printing_pdf"),
-            _cancellationToken);
-
-        _completeResult(
-            result,
-            PrintPdfUseCase.CommandName,
-            Localization.T("cli_progress_printing_pdf_done"),
-            true);
+            progressCallback,
+            new PdfCommandResourceKeys(
+                "cli_progress_printing_pdf_stage",
+                "cli_progress_printing_pdf",
+                "cli_progress_printing_pdf_done"),
+            options: _commandOptions);
     }
 
     private void RunCompress(List<string> files, Action<int, int, string> progressCallback)
@@ -319,7 +303,7 @@ internal sealed class NativeConversionExecutionAdapter
             planOptions: new ExecutionPlanOptions(_existingTaskId, true, options.Resume ? _startIndex : 0));
 
         var interaction = new DelegateConversionInteraction(
-            (_, _, _, _) => Task.FromResult<string?>(null),
+            (_, inputPath, isRetry, _) => Task.FromResult<string?>(_resolveDecryptPassword(inputPath, isRetry)),
             (_, _, _) => Task.FromResult<string?>(null),
             (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
         IProgress<ConversionProgress>? progress = command == Img2PdfUseCase.CommandName
@@ -383,7 +367,7 @@ internal sealed class NativeConversionExecutionAdapter
             ResumeStartIndex = _startIndex
         };
         var interaction = new DelegateConversionInteraction(
-            (_, _, _, _) => Task.FromResult<string?>(null),
+            (_, inputPath, isRetry, _) => Task.FromResult<string?>(_resolveDecryptPassword(inputPath, isRetry)),
             (_, _, _) => Task.FromResult<string?>(null),
             (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
         return (plan, interaction);

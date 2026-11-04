@@ -111,6 +111,7 @@
   "md_options_template_picker": "Import Word style template",
   "md_options_convert": "Convert",
   "cmd_merge_pdf": "Merge PDF",
+  "cmd_pdf_to_img": "PDF → Images",
   "cmd_img_to_pdf": "Image → PDF",
   "cmd_merge_img": "Merge Images",
   "cmd_stitch_img": "Stitch Images",

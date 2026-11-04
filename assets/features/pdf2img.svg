@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Base sheet: PDF Slate Blue-Grey #475569 -->
+  <rect x="24" y="24" width="144" height="152" rx="28" fill="#475569"/>
+  <!-- PDF document lines -->
+  <rect x="52" y="58" width="88" height="14" rx="7" fill="#FFFFFF"/>
+  <rect x="52" y="88" width="88" height="14" rx="7" fill="#FFFFFF"/>
+  <rect x="52" y="118" width="56" height="14" rx="7" fill="#FFFFFF"/>
+  <!-- Target badge: Image Teal #00828C with photo landscape -->
+  <rect x="104" y="104" width="128" height="128" rx="28" fill="#00828C"/>
+  <circle cx="140" cy="140" r="11" fill="#FFFFFF"/>
+  <path d="M 124,196 L 148,164 L 168,184 L 186,158 L 210,196" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

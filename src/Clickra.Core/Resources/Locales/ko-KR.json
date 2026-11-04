@@ -111,6 +111,7 @@
   "md_options_template_picker": "Word 스타일 템플릿 가져오기",
   "md_options_convert": "변환",
   "cmd_merge_pdf": "PDF 병합",
+  "cmd_pdf_to_img": "PDF → 이미지",
   "cmd_img_to_pdf": "이미지 → PDF",
   "cmd_merge_img": "이미지 병합",
   "cmd_stitch_img": "이미지 이어붙이기",

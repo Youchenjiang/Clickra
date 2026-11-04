@@ -111,6 +111,7 @@
   "md_options_template_picker": "Word スタイルテンプレートを読み込む",
   "md_options_convert": "変換",
   "cmd_merge_pdf": "PDF 結合",
+  "cmd_pdf_to_img": "PDF → 画像",
   "cmd_img_to_pdf": "画像 → PDF",
   "cmd_merge_img": "画像結合",
   "cmd_stitch_img": "画像拼接",

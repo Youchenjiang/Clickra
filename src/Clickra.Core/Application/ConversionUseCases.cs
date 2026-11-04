@@ -7,6 +7,7 @@ using Clickra.Core.Modules.PdfDecrypt.Application;
 using Clickra.Core.Modules.PdfMerge.Application;
 using Clickra.Core.Modules.PdfPrint.Application;
 using Clickra.Core.Modules.PdfSplit.Application;
+using Clickra.Core.Modules.PdfToImage.Application;
 using Clickra.Core.Modules.PdfTranslation.Application;
 
 namespace Clickra.Core.Application;
@@ -35,6 +36,7 @@ public static class ConversionUseCases
             new PptToPdfUseCase(),
             new PrintPdfUseCase(),
             new SplitPdfUseCase(),
+            new PdfToImageUseCase(),
             new TranslatePdfUseCase(),
             new WordToPdfUseCase()
         });

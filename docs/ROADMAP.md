@@ -89,7 +89,10 @@
     - **階段二：二進位物件壓縮流 (Object Streams) [PDF 1.5+]**：引入物件壓縮流 (`ObjStm`) 與交叉引用流 (Cross-Reference Streams)，將大量散落的明文 Dictionary 與 Array 物件打包進行整體 `/FlateDecode` 壓縮。
     - **階段三：影像進階編碼與 Zopfli 無損重壓縮**：針對 1-bit 黑白掃描文件引入 `/JBIG2Decode` 壓縮（可縮減至 1/10 體積且無 JPEG 雜訊）；針對無損 `/FlateDecode` 圖片使用 Zopfli 或 7-Zip Deflate 進行背景極限二次無損精簡。
     - **階段四：字型子集跨頁面合併 (Font Subset Merging)**：解析 OpenType/TrueType 子集二進位，合併同名但字元不全的字型子集，徹底解決多個 PDF 合併後字型資源重複累積、檔案體積異常膨脹的痛點。
-- [ ] **[F2-10] PDF to Image**：PDF 轉圖片。一鍵將 PDF 頁面匯出為高品質 JPG/PNG/TIFF，支援自訂 DPI 渲染率、色彩模式與透明背景處理。
+- [ ] **[F2-10] PDF to Image**：PDF 轉圖片（頁面導出與長圖拼接）。一鍵將 PDF 頁面匯出為高品質 PNG/JPG/WEBP。
+    - **階段一：多格式頁面批次匯出 (Per-page Export)**：支援將 PDF 逐頁輸出為指定格式（PNG / JPG / WEBP），可自訂 DPI 渲染率（150 / 300 / 600）、色彩空間與透明背景處理，並支援頁碼範圍語法（如 `1-5`, `8` 或 `all`）。
+    - **階段二：智慧直式長圖拼接 (Stitch Mode)**：將多頁 PDF 依序垂直拼合成單張高解析度長圖，適用於手機閱讀、長條圖文與社群分享，具備單圖最大高度限制與安全分卷切分。
+    - **架構原則**：採用 Windows 原生 DirectWrite/Direct2D 或 PDFium 輕量介面，兼顧渲染速度與 NativeAOT 無依賴原則。
 - [ ] **[F2-11] PDF to PPTX**：PDF 轉 PPTX。並存/整合三種不同定位之模式，供使用者自選或依 PDF 類型自動推薦：
     - **模式一：原樣保真 (Mode 1: Layout Preservation)**：將每頁 PDF 渲染為圖片並嵌入 PPTX。成功率高、相容性最高，且通常可避免版面跑位，但文字不可編輯；仍可能因 PDF 加密、檔案損毀、不支援字型或渲染失敗等情況而無法完成轉換（參考 `pdf2pptx`）。
     - **模式二：可編輯優先 (Mode 2: Text Reconstruction)**：解析 PDF 文字框、圖片與版面結構重建為 PPTX 各元素，支援 OCR 與字型自訂（參考 `pdf2slides`）。在此模式下，引入 `opendataloader` 的空間網格定位，精確記錄文字大小、色彩與位置以還原排版。
@@ -157,6 +160,38 @@
         - UI 層級：本地模式時灰掉翻譯相關選項，顯示離線提示訊息。
         - CLI 支援 `--offline` 旗標強制本地模式。
     - **關聯**：此功能與 F2-27（Secure Translation API Migration）互補，提供使用者更完整的網路控制權。
+- [ ] **[F2-32] Structured Data Converters (JSON / JSONL / YAML / TOML / XML / CSV)**：純 NativeAOT 結構化資料互轉引擎。
+    - **核心價值**：無需肥大第三方函式庫，純 C# 實作通用記憶體資料樹模型，達到微秒級極速互轉與零依賴 NativeAOT 發行。
+    - **互轉支援矩陣**：
+        - **設定檔互轉**：JSON ↔ YAML ↔ TOML ↔ XML 任意格式雙向轉換。
+        - **資料表格互轉**：CSV / TSV ↔ JSON / JSONL ↔ XML。
+        - **格式化與壓縮**：JSON / XML Beautify（縮排美化）與 Minify（極限壓縮），YAML 結構語法檢查。
+    - **架構降維**：於 `Clickra.Core` 抽象出中立的資料節點模型（基於 `JsonNode` 或輕量標記樹），將 $O(N^2)$ 的轉換器複雜度降為 $O(N)$（每種格式只需實作 Parse 與 Format）。
+- [ ] **[F2-33] Graph-based Conversion Pipeline & Multi-hop Route Planner**：圖搜尋多跳轉換管線（RoutePlanner）。
+    - **核心價值**：將 Clickra 現行的「單步直連命令（1:1）」進化為「轉檔能力圖（Conversion Graph）」。藉由圖拓撲與 Dijkstra 最短路徑搜尋，自動衍生跨領域的多跳合成轉檔能力（如藉由 `Word -> PDF` 與 `PDF -> PNG` 自動合成 `Word -> PNG`；藉由 `JSON -> CSV` 與 `CSV -> Excel` 自動合成 `JSON -> Excel`）。
+    - **排程與生命週期**：
+        - **最短路徑與成本導向**：優先直連轉換（Cost = 1）；無直連時搜尋最少中繼跳數（最多 2~3 跳），並防止死循環路徑（Loop Detection）。
+        - **原子化中繼生命週期**：所有轉換中繼檔（Intermediate Artifacts）在記憶體串流或專屬暫存區中流轉，任務成功或中斷時保證 100% 清理，零磁碟殘留。
+        - **架構解耦**：單步 Command 與多步 Route 採用相同 `IConvertCommand` 邊界合約，CLI 與 UI 無感無縫調度。
+- [ ] **[F2-34] Modern Image Formats & Codecs Expansion (AVIF / TIFF / BMP / ICO / SVG)**：現代與專業影像格式擴充。
+    - **向量轉點陣 (SVG Rasterization)**：支援 SVG / SVGZ 轉出為高品質點陣圖（PNG / JPG / WEBP / ICO），支援自訂縮放比率與向量平滑邊緣。
+    - **次世代與專業格式支援**：
+        - **AVIF 編解碼**：結合 Windows 系統 WIC 或輕量原生解碼器，支援超高壓縮率 AVIF 輸入與輸出。
+        - **多頁與無損 TIFF**：支援多頁 TIFF 解構為獨立圖片，或多圖合成為單一 TIFF；支援醫療與印刷級無損壓縮。
+        - **BMP & 應用程式圖標 (ICO)**：一鍵生成包含多種標準尺寸（16x16, 32x32, 48x48, 64x64, 128x128, 256x256）的 Windows `.ico` 圖標包。
+- [ ] **[F2-35] Archive Packaging & Extraction (ZIP / 7Z / TAR / GZ)**：輕量壓縮封裝與快速解壓模組。
+    - **核心價值**：在 Windows 右鍵選單與 CLI 提供最直覺的一鍵打包與解壓，無需啟動龐大的第三方壓縮軟體。
+    - **一鍵打包 (Packaging)**：右鍵選取多個檔案或資料夾，一鍵封裝為 `.zip` 或 `.7z`，支援壓縮等級配置（Store / Fast / Normal / Maximum）。
+    - **一鍵解壓 (Extraction)**：支援解壓縮主流格式（`.zip`, `.7z`, `.tar`, `.gz`, `.tgz`, `.bz2`），提供「解壓至此」與「解壓至獨立資料夾（自動以檔名命名）」，並內建路徑穿越（Path Traversal / Zip Slip）安全防護。
+    - **引擎選型**：ZIP/TAR/GZ 100% 採用 .NET 內建 `System.IO.Compression`（零外部依賴）；7Z 透過純 C# 輕量串流或本機工具調度。
+- [ ] **[F2-36] Media Audio Extraction & Animated GIF (Lightweight Media Utilities)**：輕量多媒體工具（音訊抽取與動態圖）。
+    - **核心價值**：針對非專業剪輯用戶最常遭遇的「影片抽音訊」與「影片做動態圖」場景，提供免開啟大型剪輯軟體的右鍵極速方案。
+    - **影片音訊分離 (Audio Extraction)**：右鍵一鍵自常見影片（MP4, MKV, MOV, AVI, WEBM）抽取音訊軌，輸出為 MP3, WAV, M4A 或 FLAC。
+    - **動態圖壓製 (Video to GIF/APNG)**：支援將短影片片段或連續圖檔轉換為動態 GIF 或 APNG，內建調色盤最佳化（PaletteGen）防止色階斷裂與雜點，支援幀率（FPS）與尺寸調節。
+    - **NativeAOT 合規**：優先整合 Windows Media Foundation (MF) COM 原生 API，維持二進位體積精簡；重度轉換可選取本機 FFmpeg / 備援引擎調度。
+- [ ] **[F2-37] E-book & Universal Document Formats (EPUB / TXT / DOCX / RTF)**：電子書與通用文件擴充。
+    - **EPUB 雙向互轉**：解析 EPUB 結構（ZIP + OPF + XHTML），支援將電子書轉為純文字 (TXT)、PDF 或 Word (DOCX)；支援由 Markdown / TXT 打包輸出符合標準的 EPUB 電子書。
+    - **RTF 與純文字編碼**：整合 Windows RichEdit 核心，實現 RTF ↔ TXT ↔ DOCX 高速無損互轉。
 
 ## 3. 專案架構與規範 (Refactoring)
 
@@ -231,3 +266,50 @@
     - 借鑑 `OpenDataLoader` 與 PDF Association 倡導之規範，對輸入 PDF 進行無障礙 Tag 稽核，判定是否已標記結構樹以供讀屏軟體正常閱讀。
     - 對無標籤的 PDF，實現 100% 本地或 AI 輔助的自動標籤化 (Auto-Tagging)，重建 Headings、List、Table 結構樹，並輸出符合 WTPDF 標準的無障礙 Tagged PDF，協助解決全球無障礙法規合規需求（如 EAA、ADA 508）。
     - **WTPDF 合規與驗證**：遵循 PDF Association 的 WTPDF 規範，並於核心增加結構驗證模組，提供初步結構合規性稽核報告。
+
+## 6. 功能演進期程與能力覆蓋矩陣 (Roadmap Phases & Capability Coverage)
+
+為追趕並超越同類全功能本地轉檔工具（如 Filee），Clickra 依據「**維持 NativeAOT 零依賴優勢、核心功能先行、UI 隨後承接**」的方針，分三階段系統性補齊轉檔生態：
+
+### 實施階段規劃 (Implementation Phases)
+
+```mermaid
+flowchart TD
+    subgraph Phase1["Phase 1: 高頻轉檔缺口補齊 (近期重點)"]
+        F2_10["[F2-10] PDF to Image (PNG/JPG/WEBP/長圖拼接)"]
+        F2_32["[F2-32] 結構化資料互轉 (JSON/YAML/TOML/XML/CSV)"]
+        F2_34["[F2-34] 現代影像與圖標 (SVG/AVIF/TIFF/ICO)"]
+    end
+
+    subgraph Phase2["Phase 2: 架構升級與複合管線 (中期目標)"]
+        F2_33["[F2-33] Graph-based RoutePlanner (多跳圖路由)"]
+        F2_35["[F2-35] 壓縮封裝與解壓 (ZIP/7Z/TAR/GZ)"]
+        F2_11["[F2-11] PDF to PPTX (排版保真/文字重構)"]
+    end
+
+    subgraph Phase3["Phase 3: 多媒體與通用文件擴展 (中長期拓展)"]
+        F2_36["[F2-36] 輕量影音抽取與 GIF (Media Utilities)"]
+        F2_37["[F2-37] 電子書與富文字 (EPUB/RTF/TXT)"]
+        F2_9["[F2-9] PDF 進階極限壓縮 (DFS GC/JBIG2)"]
+    end
+
+    Phase1 --> Phase2
+    Phase2 --> Phase3
+```
+
+### 領域能力對照矩陣 (Clickra vs. 全能轉檔工具)
+
+| 領域分類 | 格式與能力範圍 | Clickra 現況 (v3.16.3) | 目標里程碑 | 預期技術策略 |
+| :--- | :--- | :--- | :--- | :--- |
+| **PDF 核心操作** | 合併、分割、密碼移除、PDF 壓縮 | ✅ 完整支援 (v3.6.5) | `[F2-9]` 極限壓縮 | 內建 DFS GC、Object Streams、JBIG2 |
+| **Office 轉 PDF** | Word / Excel / PPT → PDF | ✅ COM + LibreOffice 雙引擎 | `[F3-6]` 引擎抽象化 | 保持微軟 COM + LibreOffice 雙引擎優勢 |
+| **PDF 導出轉檔** | PDF → Image (PNG/JPG/WEBP/長圖) | ❌ 待實作 | `[F2-10]` | 原生 Direct2D/PDFium 輕量介面，免重型依賴 |
+| **PDF 簡報還原** | PDF → PPTX | ❌ 待實作 | `[F2-11]` | 原樣保真圖片嵌入 + 結構重構模式 |
+| **學術論文翻譯** | PDF Math Translate (公式保護) | ✅ 獨家純 C# AOT 引擎 | `[F2-16]` 雙語對照 | Google Mobile / DeepL API 安全遷移 |
+| **影像格式互轉** | PNG, JPG, WEBP, GIF, HEIC | ✅ 支援互轉與無損壓縮 | `[F2-34]` 現代影像 | 補齊 SVG, AVIF, TIFF, BMP, ICO 圖標包 |
+| **結構化資料** | JSON, YAML, TOML, XML, CSV | ❌ 尚未具備 | `[F2-32]` | 純 C# 記憶體資料樹，零外部依賴 NativeAOT |
+| **多跳路由管線** | 自動圖路由 (例如 Word → PDF → PNG) | ❌ 僅 1:1 直連 | `[F2-33]` RoutePlanner | Dijkstra 最短路徑搜尋，原子化中繼生命週期 |
+| **壓縮檔管理** | ZIP, 7Z, TAR, GZ 打包與解壓 | ❌ 尚未具備 | `[F2-35]` | 內建 System.IO.Compression，Zip Slip 防護 |
+| **輕量多媒體** | 影片抽音訊 (MP3/WAV)、影片轉動態 GIF | ❌ 尚未具備 | `[F2-36]` | Windows Media Foundation COM 或本機調度 |
+| **電子書與排版** | Markdown 轉 PDF/Word，EPUB 互轉 | ⚠️ Markdown 已支援 | `[F2-37]` EPUB | 純 C# 解析 XHTML/CSS，產出標準 EPUB/PDF |
+

@@ -164,7 +164,7 @@ public sealed partial class MainPage : Page
             page.BtnWord2Pdf, page.BtnExcel2Pdf, page.BtnPpt2Pdf,
             page.BtnMd2Pdf, page.BtnMd2Word, page.BtnImg2Pdf,
             page.BtnImgToPng, page.BtnImgToJpg, page.BtnImgToWebp,
-            page.BtnImgToGif, page.BtnImgToHeic
+            page.BtnImgToGif, page.BtnImgToHeic, page.BtnPdf2Img
         }, convertCols);
 
         ArrangeSequentialGrid(page.OrganizeCommandGrid, new FrameworkElement[]
@@ -324,7 +324,7 @@ public sealed partial class MainPage : Page
 
     private void HookCommandButtons()
     {
-        foreach (var button in new[] { BtnWord2Pdf, BtnExcel2Pdf, BtnPpt2Pdf, BtnMd2Pdf, BtnMd2Word, BtnMergePdf, BtnCompressPdf, BtnTranslatePdf, BtnDecryptPdf, BtnSplitPdf, BtnPrintPdf, BtnImg2Pdf, BtnImgMerge, BtnImgStitch, BtnImgCompress, BtnImgToPng, BtnImgToJpg, BtnImgToWebp, BtnImgToGif, BtnImgToHeic })
+        foreach (var button in new[] { BtnWord2Pdf, BtnExcel2Pdf, BtnPpt2Pdf, BtnMd2Pdf, BtnMd2Word, BtnMergePdf, BtnCompressPdf, BtnTranslatePdf, BtnDecryptPdf, BtnSplitPdf, BtnPrintPdf, BtnImg2Pdf, BtnImgMerge, BtnImgStitch, BtnImgCompress, BtnImgToPng, BtnImgToJpg, BtnImgToWebp, BtnImgToGif, BtnImgToHeic, BtnPdf2Img })
         {
             if (button.Tag is string command)
             {
@@ -741,6 +741,7 @@ public sealed partial class MainPage : Page
         BtnImgToWebp.Content = L("cmd_img_to_webp");
         BtnImgToGif.Content = L("cmd_img_to_gif");
         BtnImgToHeic.Content = L("cmd_img_to_heic");
+        BtnPdf2Img.Content = L("cmd_pdf_to_img");
         RunTitle.Text = L("fluent_run");
         StartButton.Content = L("fluent_start");
         CancelButton.Content = L("dialog_cancel");
