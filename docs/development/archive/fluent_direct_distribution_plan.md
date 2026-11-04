@@ -336,7 +336,7 @@ Stop this fallback before production if any of the following is true:
 - `store_optional_fluent_plan.md` owns the Store Optional Package / Related Set candidate.
 - `multi_channel_signing_distribution_plan.md` owns trust, signing, and channel isolation.
 - `signpath_foundation_application_readiness.md` owns SignPath onboarding readiness.
-- `CI_CD_DUAL_RELEASE_GUIDE.md` describes the live automated release pipeline and remains the
+- `ci_cd_release_guide.md` describes the live automated release pipeline and remains the
   authority for what is actually shipped today.
 - `archive/dual_track_guide.md` is historical evidence only. Its same-identity replacement model
   must not be revived implicitly by this plan.

@@ -2,7 +2,7 @@
 
 > **文件角色：conditional runbook，非現行 Store 發布流程。**
 >
-> 本文件只有在 `store_optional_fluent_plan.md` 的權限／related-set／private-flight gates
+> 本文件只有在 `archive/store_optional_fluent_plan.md` 的權限／related-set／private-flight gates
 > 明確通過後才可執行。現行 `.github/workflows/release.yml` 只建立並提交 NativeAOT Main
 > `Clickra.msix`，不會建立或上傳 Fluent optional package；不得因本文件存在就推定
 > Partner Center 權限已核准或 optional distribution 已投入 production。SR 2608310060003141

@@ -29,7 +29,7 @@ optional package.
 `packaging/msix/AppxManifest.Fluent.xml` describes the proposed Fluent optional-package
 shape, but that package is not built or uploaded by the current `release.yml` pipeline.
 The optional-package migration remains governed by
-`docs/development/store_optional_fluent_plan.md` and must not be described as an active
+`docs/development/archive/store_optional_fluent_plan.md` and must not be described as an active
 Store release path until its gates are explicitly cleared.
 
 ## 2. Trigger behavior
@@ -100,6 +100,6 @@ enumerated, so N-1/N-2 backfill is not considered reliable.
   `.github/workflows/store-release-enrichment.yml`, `scripts/build_msix.ps1`,
   `scripts/check_store_release_published.py`, `scripts/enrich_store_release.py`.
 - **Version format and synchronized version surfaces**: `docs/development/release_guideline.md`.
-- **Optional Fluent package proposal/gates**: `docs/development/store_optional_fluent_plan.md`.
+- **Optional Fluent package proposal/gates**: `docs/development/archive/store_optional_fluent_plan.md`.
 - **Historical release observations** are evidence only; they do not replace a fresh check of
   the current GitHub workflow, remote repository, or Partner Center state.

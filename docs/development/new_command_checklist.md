@@ -1,6 +1,6 @@
 # New Convert Command End-to-End Wiring Checklist
 
-When introducing a new conversion capability or command into Clickra, follow this 6-stage lifecycle to ensure end-to-end completeness, architectural compliance, and 100% test guard coverage.
+When introducing a new conversion capability or command into Clickra, follow this 7-stage lifecycle to ensure end-to-end completeness, architectural compliance, and 100% test guard coverage.
 
 ---
 
@@ -68,3 +68,15 @@ Verify all guards pass:
 3. `Convert registry: every command label key is declared and translated in all 5 languages`
 4. `Color governance: every command tag color strictly adheres to input source file policy`
 5. `Icon verification`: `pwsh scripts/verify_icon_assets.ps1`
+
+---
+
+## 7. Documentation & Milestone Sync
+
+- [ ] **Roadmap Synchronization**:
+  - Check docs/ROADMAP.md for the corresponding milestone ID (e.g. [F2-10]).
+  - Mark the milestone as completed (- [x]) and note the release version.
+- [ ] **Product Documentation**:
+  - Update README.md and README.zh-TW.md feature lists to include the new command and supported formats.
+- [ ] **Architecture Records**:
+  - Update docs/architecture/spec/clickra_architecture.md (Mermaid diagram and module description) if a new module was introduced under src/Clickra.Core/Modules/.
