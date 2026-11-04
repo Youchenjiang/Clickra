@@ -38,19 +38,39 @@ public sealed class PdfToImageUseCase : PerFileConversionUseCaseBase
             normalized.TryGetValue(PdfToImageOptions.FormatOptionKey, out var f) ? f as string : null);
         normalized[PdfToImageOptions.FormatOptionKey] = format;
 
-        int dpi = PdfToImageOptions.NormalizeDpi(
-            normalized.TryGetValue(PdfToImageOptions.DpiOptionKey, out var d) && d is int di
-                ? di
-                : (int.TryParse(d?.ToString(), out int parsedDpi) ? parsedDpi : PdfToImageOptions.DefaultDpi));
-        normalized[PdfToImageOptions.DpiOptionKey] = dpi;
+        int rawDpi = PdfToImageOptions.DefaultDpi;
+        if (normalized.TryGetValue(PdfToImageOptions.DpiOptionKey, out var d))
+        {
+            if (d is int di)
+            {
+                rawDpi = di;
+            }
+            else if (int.TryParse(d?.ToString(), out int parsedDpi))
+            {
+                rawDpi = parsedDpi;
+            }
+        }
+        normalized[PdfToImageOptions.DpiOptionKey] = PdfToImageOptions.NormalizeDpi(rawDpi);
 
-        string pages = normalized.TryGetValue(PdfToImageOptions.PagesOptionKey, out var p) && p is string ps && !string.IsNullOrWhiteSpace(ps)
-            ? ps.Trim()
-            : PdfToImageOptions.DefaultPages;
+        string pages = PdfToImageOptions.DefaultPages;
+        if (normalized.TryGetValue(PdfToImageOptions.PagesOptionKey, out var p) && p is string ps && !string.IsNullOrWhiteSpace(ps))
+        {
+            pages = ps.Trim();
+        }
         normalized[PdfToImageOptions.PagesOptionKey] = pages;
 
-        bool stitch = normalized.TryGetValue(PdfToImageOptions.StitchOptionKey, out var s) &&
-            (s is bool sb ? sb : (bool.TryParse(s?.ToString(), out bool pb) && pb));
+        bool stitch = false;
+        if (normalized.TryGetValue(PdfToImageOptions.StitchOptionKey, out var s))
+        {
+            if (s is bool sb)
+            {
+                stitch = sb;
+            }
+            else if (bool.TryParse(s?.ToString(), out bool pb))
+            {
+                stitch = pb;
+            }
+        }
         normalized[PdfToImageOptions.StitchOptionKey] = stitch;
 
         return normalized;
