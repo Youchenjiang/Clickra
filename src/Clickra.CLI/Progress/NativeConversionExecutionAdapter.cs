@@ -160,6 +160,9 @@ internal sealed class NativeConversionExecutionAdapter
         return false;
     }
 
+    /// <summary>
+    /// Executes a standard protected PDF workflow with unified plan creation and lifecycle tracking.
+    /// </summary>
     private void ExecuteStandardPdfCommand(
         string commandName,
         List<string> files,
