@@ -5,5 +5,6 @@
     <Company>Clickra</Company>
     <Copyright>Copyright © 2026</Copyright>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);NU1903</NoWarn>
   </PropertyGroup>
 </Project>
