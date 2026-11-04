@@ -201,7 +201,7 @@ public class PdfToImageProcessor : SingleFileProcessorBase
                 {
                     b.Dispose();
                 }
-                catch (Exception)
+                catch (Exception) // skipcq: CS-R1008
                 {
                     // Best-effort bitmap disposal during cleanup
                 }
@@ -225,13 +225,20 @@ public class PdfToImageProcessor : SingleFileProcessorBase
                 ?? throw new InvalidOperationException($"無法渲染 PDF 第 {pageNum} 頁。");
 
             string outPath = singlePage
-                ? (ctx.TargetOutputPath.EndsWith(ext, StringComparison.OrdinalIgnoreCase)
-                    ? ctx.TargetOutputPath
-                    : Path.Combine(ctx.BaseDir, $"{ctx.BaseFileName}{ext}"))
+                ? ResolveSinglePageOutputPath(ctx, ext)
                 : Path.Combine(ctx.BaseDir, $"{ctx.BaseFileName}_page_{pageNum:D3}{ext}");
 
             SaveImage(bmp, outPath, ctx.Format);
         }
+    }
+
+    private static string ResolveSinglePageOutputPath(RenderContext ctx, string ext)
+    {
+        if (ctx.TargetOutputPath.EndsWith(ext, StringComparison.OrdinalIgnoreCase))
+        {
+            return ctx.TargetOutputPath;
+        }
+        return Path.Combine(ctx.BaseDir, $"{ctx.BaseFileName}{ext}");
     }
 
     private static string ResolveStitchedOutputPath(string targetOutputPath, string baseDir, string baseFileName, string format)
@@ -287,7 +294,7 @@ public class PdfToImageProcessor : SingleFileProcessorBase
             using var temp = new Bitmap(ms);
             return new Bitmap(temp);
         }
-        catch (Exception)
+        catch (Exception) // skipcq: CS-R1008
         {
             // Fall back to alternative renderer when Windows.Data.Pdf cannot process the file
             return null;
