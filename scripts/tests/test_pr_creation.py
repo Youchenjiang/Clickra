@@ -135,8 +135,18 @@ class CreateTests(unittest.TestCase):
             body = self.body_file(folder)
             with self.assertRaisesRegex(ValueError, "milestone required"):
                 pr_creation.validate_creation_inputs("feat(core): test", str(body), "agent", None, None)
-            for exempt in ("release", "hotfix", "deps", "dependencies", "docs"):
+            for exempt in ("release", "hotfix", "deps", "dependencies", "docs", "chore"):
                 pr_creation.validate_creation_inputs("docs(docs): update module guide", str(body), exempt, None, None)
+
+    def test_metadata_validates_roadmap_alignment(self):
+        with patch.object(pr_creation, "executable", return_value="/bin/gh"), \
+             patch.object(pr_creation, "_read", return_value=""), \
+             patch.object(pr_creation.subprocess, "run") as runner:
+            runner.side_effect = [
+                SimpleNamespace(returncode=0, stdout='[[{"name":"agent"}]]'),
+                SimpleNamespace(returncode=0, stdout='[[{"title":"[F9-99] Quantum Portal"}]]')]
+            with self.assertRaisesRegex(ValueError, "not tracked in docs/ROADMAP.md"):
+                pr_creation._metadata("user/repo", "agent", "[F9-99] Quantum Portal", None)
 
 
 if __name__ == "__main__":

@@ -8,7 +8,10 @@ from subprocess import CompletedProcess, TimeoutExpired
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from pr_preflight import validate_message, validate_pr_body, check, _check_history
+from pr_preflight import (
+    validate_message, validate_pr_body, check, _check_history,
+    extract_milestone_id, check_roadmap_alignment
+)
 
 
 class PrPreflightTests(unittest.TestCase):
@@ -208,6 +211,7 @@ class PrPreflightTests(unittest.TestCase):
         body = ("## Summary\nA\n## Changes\nB\n## Validation\nC\n## Review Checklist\n"
                 + self.VALID_CHECKLIST)
         self.assertEqual([], validate_pr_body(body, {"labels": [{"name": "docs"}], "milestone": None}))
+        self.assertEqual([], validate_pr_body(body, {"labels": [{"name": "chore"}], "milestone": None}))
         self.assertIn("GitHub PR requires milestone unless exempt",
                       validate_pr_body(body, {"labels": [{"name": "agent"}], "milestone": None}))
 
@@ -219,6 +223,58 @@ class PrPreflightTests(unittest.TestCase):
                       validate_pr_body(body, {"labels": [{"name": "agent"}], "milestone": None}))
         self.assertIn("GitHub PR requires at least one label",
                       validate_pr_body(body, {"labels": [], "milestone": {"title": "Plan"}}))
+
+    def test_extract_milestone_id(self):
+        self.assertEqual("[F2-10]", extract_milestone_id("[F2-10] PDF to Image"))
+        self.assertEqual("[R1-2]", extract_milestone_id("[R1-2] File Naming Cleanup"))
+        self.assertEqual("v3.17.0", extract_milestone_id("v3.17.0"))
+        self.assertIsNone(extract_milestone_id(None))
+        self.assertIsNone(extract_milestone_id(""))
+
+    def test_check_roadmap_alignment_missing_file(self):
+        fake_root = Path("non/existent/path")
+        errors = check_roadmap_alignment(fake_root, "[F2-10] PDF to Image", [])
+        self.assertIn("docs/ROADMAP.md is missing", errors[0])
+
+    def test_check_roadmap_alignment_unregistered_milestone(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            docs = root / "docs"
+            docs.mkdir(parents=True)
+            (docs / "ROADMAP.md").write_text("# Roadmap\n- [x] **[F1-1] Startup**\n", encoding="utf-8")
+            errors = check_roadmap_alignment(root, "[F9-99] Quantum Portal", [])
+            self.assertTrue(any("is not tracked in docs/ROADMAP.md" in e for e in errors))
+
+    def test_check_roadmap_alignment_pending_without_update(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            docs = root / "docs"
+            docs.mkdir(parents=True)
+            (docs / "ROADMAP.md").write_text("# Roadmap\n- [ ] **[F2-10] PDF to Image**\n", encoding="utf-8")
+            errors = check_roadmap_alignment(root, "[F2-10] PDF to Image", ["src/some_file.cs"])
+            self.assertTrue(any("is marked pending (- [ ]) in docs/ROADMAP.md" in e for e in errors))
+
+    def test_check_roadmap_alignment_pending_with_update(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            docs = root / "docs"
+            docs.mkdir(parents=True)
+            (docs / "ROADMAP.md").write_text("# Roadmap\n- [ ] **[F2-10] PDF to Image**\n", encoding="utf-8")
+            errors = check_roadmap_alignment(root, "[F2-10] PDF to Image", ["docs/ROADMAP.md", "src/some_file.cs"])
+            self.assertEqual([], errors)
+
+    def test_check_roadmap_alignment_completed_without_update(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            docs = root / "docs"
+            docs.mkdir(parents=True)
+            (docs / "ROADMAP.md").write_text("# Roadmap\n- [x] **[F2-1] Word to PDF**\n", encoding="utf-8")
+            errors = check_roadmap_alignment(root, "[F2-1] Word to PDF", ["src/some_file.cs"])
+            self.assertEqual([], errors)
 
     @patch("pr_preflight.git")
     def test_pushed_ref_and_diff_failure_fail_closed(self, mock_git):
