@@ -160,6 +160,8 @@ internal sealed class NativeConversionExecutionAdapter
         return false;
     }
 
+    private readonly record struct PdfCommandResourceKeys(string Stage, string Progress, string Done);
+
     /// <summary>
     /// Executes a standard protected PDF workflow with unified plan creation and lifecycle tracking.
     /// </summary>
@@ -167,9 +169,7 @@ internal sealed class NativeConversionExecutionAdapter
         string commandName,
         List<string> files,
         Action<int, int, string> progressCallback,
-        string stageKey,
-        string progressKey,
-        string doneKey,
+        PdfCommandResourceKeys keys,
         IReadOnlyDictionary<string, object>? options = null,
         Func<string, string?>? promptPages = null)
     {
@@ -187,7 +187,7 @@ internal sealed class NativeConversionExecutionAdapter
                 ? (_, inputPath, _) => Task.FromResult<string?>(promptPages(inputPath))
                 : (_, _, _) => Task.FromResult<string?>(null),
             (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-        var progress = CreatePdfProgress(files, progressCallback, stageKey);
+        var progress = CreatePdfProgress(files, progressCallback, keys.Stage);
 
         ConversionResult result = ConversionExecutionService.Execute(
             plan,
@@ -198,13 +198,13 @@ internal sealed class NativeConversionExecutionAdapter
                 files,
                 progressCallback,
                 10,
-                progressKey),
+                keys.Progress),
             _cancellationToken);
 
         _completeResult(
             result,
             commandName,
-            Localization.T(doneKey),
+            Localization.T(keys.Done),
             true);
     }
 
@@ -214,9 +214,10 @@ internal sealed class NativeConversionExecutionAdapter
             DecryptPdfUseCase.CommandName,
             files,
             progressCallback,
-            "cli_progress_decrypting_pdf_stage",
-            "cli_progress_decrypting_pdf",
-            "cli_progress_decrypting_pdf_saving");
+            new PdfCommandResourceKeys(
+                "cli_progress_decrypting_pdf_stage",
+                "cli_progress_decrypting_pdf",
+                "cli_progress_decrypting_pdf_saving"));
     }
 
     private void RunSplit(List<string> files, Action<int, int, string> progressCallback)
@@ -230,9 +231,10 @@ internal sealed class NativeConversionExecutionAdapter
             SplitPdfUseCase.CommandName,
             files,
             progressCallback,
-            "cli_progress_splitting_pdf_stage",
-            "cli_progress_splitting_pdf",
-            "cli_progress_splitting_pdf_done",
+            new PdfCommandResourceKeys(
+                "cli_progress_splitting_pdf_stage",
+                "cli_progress_splitting_pdf",
+                "cli_progress_splitting_pdf_done"),
             options: commandOptions,
             promptPages: _promptSplitPages);
     }
@@ -243,9 +245,10 @@ internal sealed class NativeConversionExecutionAdapter
             PrintPdfUseCase.CommandName,
             files,
             progressCallback,
-            "cli_progress_printing_pdf_stage",
-            "cli_progress_printing_pdf",
-            "cli_progress_printing_pdf_done",
+            new PdfCommandResourceKeys(
+                "cli_progress_printing_pdf_stage",
+                "cli_progress_printing_pdf",
+                "cli_progress_printing_pdf_done"),
             options: _commandOptions);
     }
 
