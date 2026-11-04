@@ -142,33 +142,9 @@ internal sealed class NativeConversionExecutionAdapter
             return true;
         }
         if (command.Equals(MarkdownToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
-            || command.Equals(MarkdownToWordUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
-        {
-            RunSimple(
-                command,
-                files,
-                progressCallback,
-                new SimpleApplicationRunOptions(
-                    _outputDirOverride,
-                    true,
-                    new TaskIdExecutionObserver(_taskStarted, _recordTaskIndex),
-                    CommandOptions: _commandOptions));
-            return true;
-        }
-        if (command.Equals(PdfToImageUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
-        {
-            RunSimple(
-                command,
-                files,
-                progressCallback,
-                new SimpleApplicationRunOptions(
-                    _outputDirOverride,
-                    true,
-                    new TaskIdExecutionObserver(_taskStarted, _recordTaskIndex),
-                    CommandOptions: _commandOptions));
-            return true;
-        }
-        if (ConversionUseCases.TryGet(command, out _))
+            || command.Equals(MarkdownToWordUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
+            || command.Equals(PdfToImageUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
+            || ConversionUseCases.TryGet(command, out _))
         {
             RunSimple(
                 command,

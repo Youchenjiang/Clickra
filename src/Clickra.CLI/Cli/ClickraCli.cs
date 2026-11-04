@@ -20,10 +20,10 @@ using Clickra.Core.Modules.PdfTranslation.Application;
 using Clickra.Core.Processors;
 using Clickra.UI;
 
-namespace Clickra
+namespace Clickra;
+
+partial class ClickraCli
 {
-    partial class ClickraCli
-    {
         private const string ErrorProcessingFailedKey = "error_processing_failed";
 
         /// <summary>Immutable options captured before CLI command dispatch begins.</summary>
@@ -521,4 +521,3 @@ namespace Clickra
             public void Report(T value) => report(value);
         }
     }
-}
