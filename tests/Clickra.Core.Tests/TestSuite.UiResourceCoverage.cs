@@ -32,6 +32,7 @@ static partial class TestSuite
     private static readonly TimeSpan UiResourceRegexTimeout = TimeSpan.FromSeconds(1);
     private const string ShellCommandMessagePrefix = "Shell command '";
     private const string ShellProjectDirectory = "ClickraShell";
+    private const string UiCoverageCliProjectDirectory = "Clickra.CLI";
     private const string TypePdf = "pdf";
     private const string TypeWord = "word";
     private const string TypeExcel = "excel";
@@ -304,9 +305,9 @@ static partial class TestSuite
         string shellProject = File.ReadAllText(Path.Combine(root, "src", ShellProjectDirectory, "ClickraShell.csproj"));
         string coreRegistrySource = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Application", "ConvertCommandRegistry.cs"));
         string presentationSource = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Presentation", "Convert", "ConvertWorkspaceController.cs"));
-        string cliSource = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
+        string cliSource = File.ReadAllText(Path.Combine(root, "src", UiCoverageCliProjectDirectory, "Cli", "ClickraCli.cs"));
         string dashboardRegistrySource = File.ReadAllText(Path.Combine(
-            root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.ConvertRegistry.cs"));
+            root, "src", UiCoverageCliProjectDirectory, "Dashboard", "DashboardWindow.ConvertRegistry.cs"));
 
         Assert.True(subArgs.Length > 0, "Shell menu must declare at least one command.");
         Assert.True(menuKeys.Length == subArgs.Length,
@@ -453,7 +454,7 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
         string dashboardRegistrySource = File.ReadAllText(Path.Combine(
-            root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.ConvertRegistry.cs"));
+            root, "src", UiCoverageCliProjectDirectory, "Dashboard", "DashboardWindow.ConvertRegistry.cs"));
 
         Assert.True(dashboardRegistrySource.Contains("ConvertCommandMetadata.GetFileTypeForCommand(command)", StringComparison.Ordinal),
             "DashboardWindow.ConvertRegistry must strictly derive command tag colors from ConvertCommandMetadata.GetFileTypeForCommand.");
@@ -511,7 +512,7 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
-        string adapterPath = Path.Combine(root, "src", "Clickra.CLI", "Progress", "NativeConversionExecutionAdapter.cs");
+        string adapterPath = Path.Combine(root, "src", UiCoverageCliProjectDirectory, "Progress", "NativeConversionExecutionAdapter.cs");
         Assert.True(File.Exists(adapterPath), "NativeConversionExecutionAdapter.cs must exist.");
         string adapterSource = File.ReadAllText(adapterPath);
 
