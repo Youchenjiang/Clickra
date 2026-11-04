@@ -72,7 +72,6 @@ static partial class TestSuite
         });
 
         runner.Run("PdfToImageProcessor converts single-page PDF to PNG", () =>
-        {
             WithTempPdfContext("test-single", 1, (inputPath, outDir, _) =>
             {
                 string outputPath = Path.Combine(outDir, "test-single.png");
@@ -85,11 +84,9 @@ static partial class TestSuite
                 Assert.True(File.Exists(outputPath), $"Expected output file {outputPath} to exist.");
                 using var bmp = new Bitmap(outputPath);
                 Assert.True(bmp.Width > 0 && bmp.Height > 0, "Bitmap must have positive dimensions.");
-            });
-        });
+            }));
 
         runner.Run("PdfToImageProcessor converts multi-page PDF to per-page PNGs", () =>
-        {
             WithTempPdfContext("test-multi", 3, (inputPath, outDir, baseName) =>
             {
                 string outputPath = Path.Combine(outDir, "test-multi.png");
@@ -106,11 +103,9 @@ static partial class TestSuite
                 Assert.True(File.Exists(p1), $"Expected page 1 file {p1} to exist.");
                 Assert.True(File.Exists(p2), $"Expected page 2 file {p2} to exist.");
                 Assert.True(File.Exists(p3), $"Expected page 3 file {p3} to exist.");
-            });
-        });
+            }));
 
         runner.Run("PdfToImageProcessor stitches multiple pages into a vertical long image", () =>
-        {
             WithTempPdfContext("test-stitch", 3, (inputPath, outDir, _) =>
             {
                 string outputPath = Path.Combine(outDir, "test-stitch_long.png");
@@ -123,11 +118,9 @@ static partial class TestSuite
                 Assert.True(File.Exists(outputPath), $"Expected stitched file {outputPath} to exist.");
                 using var bmp = new Bitmap(outputPath);
                 Assert.True(bmp.Height >= bmp.Width, "Stitched vertical image height should be greater than or equal to width.");
-            });
-        });
+            }));
 
         runner.Run("PdfToImageProcessor respects custom page range specification", () =>
-        {
             WithTempPdfContext("test-range", 5, (inputPath, outDir, baseName) =>
             {
                 string outputPath = Path.Combine(outDir, "test-range.png");
@@ -144,11 +137,9 @@ static partial class TestSuite
                 Assert.False(File.Exists(p1), "Page 1 was not selected and should not exist.");
                 Assert.True(File.Exists(p2), "Page 2 was selected and must exist.");
                 Assert.True(File.Exists(p3), "Page 3 was selected and must exist.");
-            });
-        });
+            }));
 
         runner.Run("PdfToImageProcessor fails gracefully on invalid page ranges", () =>
-        {
             WithTempPdfContext("test-invalid", 2, (inputPath, outDir, _) =>
             {
                 string outputPath = Path.Combine(outDir, "test-invalid.png");
@@ -166,8 +157,7 @@ static partial class TestSuite
                     threw = true;
                 }
                 Assert.True(threw, "Processor must throw ArgumentException when page range resolves to empty.");
-            });
-        });
+            }));
     }
 
     private static void WithTempPdfContext(string name, int pageCount, Action<string, string, string> action)
@@ -205,7 +195,7 @@ static partial class TestSuite
         {
             if (File.Exists(path)) File.Delete(path);
         }
-        catch (Exception)
+        catch (Exception) // skipcq: CS-R1008
         {
             // Best-effort cleanup of temporary test files
         }
@@ -217,7 +207,7 @@ static partial class TestSuite
         {
             if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
         }
-        catch (Exception)
+        catch (Exception) // skipcq: CS-R1008
         {
             // Best-effort cleanup of temporary test directories
         }
