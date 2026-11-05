@@ -537,5 +537,6 @@
   "batch_rename_status_cyclic": "CYCLIC SWAP",
   "batch_rename_done": "批量重命名完成。",
   "batch_rename_toast_body": "已顺利完成批量重命名作业（共 {0} 个文件）。",
-  "batch_rename_progress_stage": "[批量重命名] {0} ({1}/{2})"
-}
+  "batch_rename_progress_stage": "[批量重命名] {0} ({1}/{2})",
+  "batch_rename_rule_order": "应用顺序：替换 → 前后缀 → 流水号 → 大小写 → 扩展名"
+}

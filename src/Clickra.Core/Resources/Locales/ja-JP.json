@@ -537,5 +537,6 @@
   "batch_rename_status_cyclic": "CYCLIC SWAP",
   "batch_rename_done": "一括名前変更が完了しました。",
   "batch_rename_toast_body": "一括名前変更作業が正常に完了しました（全 {0} 件）。",
-  "batch_rename_progress_stage": "[一括名前変更] {0} ({1}/{2})"
-}
+  "batch_rename_progress_stage": "[一括名前変更] {0} ({1}/{2})",
+  "batch_rename_rule_order": "適用順序：置換 → 接頭/接尾 → 連番 → 大小文字 → 拡張子"
+}
