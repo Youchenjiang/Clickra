@@ -1,5 +1,9 @@
 # Changelog
 
+## [v3.18.0.0] - 2026-11-05
+
+- **資料夾與檔案批次命名 (Folder & File Batch Renaming)**：推出 `[F2-21]` 批次命名核心規則引擎與 CLI 工具（`Clickra batch-rename`），支援自訂流水號與補零、前後綴、正則與字串尋找取代、日期時間戳插入、大小寫轉換、副檔名修改、Windows 保留字元與裝置名稱安全過濾，以及雙階段 GUID 循環安全交換更名（`A ⇄ B`）。
+
 ## [v3.17.0.0] - 2026-11-04
 
 - **PDF 轉圖片功能 (PDF to Images)**：全新推出 PDF 逐頁轉為圖片功能 (`pdf2img`)，支援將多頁 PDF 文件批次轉換為高品質 PNG 影像序列，並無縫整合至 Windows Explorer 右鍵選單與 Fluent UI 儀表板。
