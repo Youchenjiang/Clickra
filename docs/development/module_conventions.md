@@ -4,7 +4,7 @@ This document specifies the architectural conventions for capability modules in 
 
 ## 1. Capability-First Organization
 
-In accordance with [module_first_architecture_decision.md](module_first_architecture_decision.md), product capability is the primary directory and ownership axis. Technical roles are secondary and placed within each module.
+In accordance with [module_first_architecture_decision.md](archive/module_first_architecture_decision.md), product capability is the primary directory and ownership axis. Technical roles are secondary and placed within each module.
 
 ```text
 src/Clickra.Core/Modules/<Capability>/

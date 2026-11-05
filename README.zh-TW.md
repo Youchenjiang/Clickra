@@ -36,11 +36,13 @@
 - **分割** — 視覺化 PDF 分割器，具頁面預覽（自訂分段、全拆單頁、固定頁數模式）。
 - **壓縮** — 高效能原生壓縮，搭配 4 段式品質滑桿。
 - **去除密碼** — 直接從右鍵選單解密受保護的 PDF。
+- **PDF 轉圖片** — 將頁面匯出為高解析度 PNG、JPG 或 WebP 影像，支援自訂 DPI (72–300) 與頁碼篩選。
 
 ### 圖片
 - **圖片轉 PDF** — 將 JPG、PNG、WebP 檔案封裝為多頁 PDF，畫質零損失。
+- **壓縮** — 最佳化並縮小圖片檔案容量，維持畫面清晰度。
 - **垂直拼接** — 將多張圖片垂直「黏合」為單一長圖。
-- **格式互轉** — 直接從右鍵選單在 PNG、JPG、BMP、GIF、TIFF 之間互換格式。
+- **格式互轉** — 直接從右鍵選單在 PNG、JPG、WebP、GIF、HEIC 之間快速互換格式。
 
 ### PDF 翻譯
 翻譯 PDF 內容並保留版面 — 標題階層、字型樣式、合併表格、固定圖形、圖說與連結 — 同時調整 CJK 字型縮放並重組跨行技術術語。
@@ -58,7 +60,7 @@ Clickra 秉持嚴格的 **本機優先（Local-First）** 設計準則：
 
 ### 程式碼簽章政策
 
-Clickra 的正式環境直接下載簽章規範、維護者角色、隱私權規範與發行簽署防護，完整記載於 [Code signing policy](docs/development/CODE_SIGNING_POLICY.md)。
+Clickra 的正式環境直接下載簽章規範、維護者角色、隱私權規範與發行簽署防護，完整記載於 [Code signing policy](docs/development/release/code_signing_policy.md)。
 
 ### 推薦：Microsoft Store（自動更新）
 [![Microsoft Store Badge](https://developer.microsoft.com/en-us/store/badges/images/English_get-it-from-MS.png)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
@@ -97,9 +99,9 @@ dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Relea
 ## 貢獻
 發起 Pull Request 前，請參閱：
 - [local_build_notes.md](docs/development/local_build_notes.md) — 建置、打包與 Git 流程
-- [docs/development/release_guideline.md](docs/development/release_guideline.md) — 版本管理與發布檢查清單
-- [docs/development/shell_extension_best_practices.md](docs/development/shell_extension_best_practices.md) — COM 與 NativeAOT 殼層不變量
-- [docs/development/shell_diagnostic_guide.md](docs/development/shell_diagnostic_guide.md) — Shell 擴充日誌與診斷
+- [docs/development/release/release_guideline.md](docs/development/release/release_guideline.md) — 版本管理與發布檢查清單
+- [docs/development/shell/shell_extension_best_practices.md](docs/development/shell/shell_extension_best_practices.md) — COM 與 NativeAOT 殼層不變量
+- [docs/development/shell/shell_diagnostic_guide.md](docs/development/shell/shell_diagnostic_guide.md) — Shell 擴充日誌與診斷
 - [docs/development/archive/dual_track_guide.md](docs/development/archive/dual_track_guide.md) — 歷史 Fluent／NativeAOT 雙軌發行設計紀錄
 - [docs/architecture/](docs/architecture/README.md) — NativeAOT／Fluent 架構與互動地圖
 - [docs/ROADMAP.md](docs/ROADMAP.md) — 產品路線圖與里程碑

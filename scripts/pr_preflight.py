@@ -18,15 +18,20 @@ REQUIRED_SECTIONS = ("## Summary", "## Changes", "## Validation", CHECKLIST_SECT
 PLACEHOLDER = re.compile(r"(?i)\b(?:todo|tbd|placeholder|describe the|assign the|add an appropriate|choose the|not run: full pre-push)\b")
 VAGUE = {"update", "misc", "stuff", "changes", "fix bug", "bug fix"}
 GIT_TIMEOUT = 30
+REPO_ROOT = Path(__file__).resolve().parent.parent
+MILESTONE_EXEMPT_LABELS = {"release", "hotfix", "deps", "dependencies", "docs", "chore"}
 
 
 def git(*args):
     return invoke(["git", *args], timeout=GIT_TIMEOUT)
 
 
-def _valid_commit_subject(header):
+def valid_commit_subject(header):
     return (bool(SUBJECT.fullmatch(header)) and not header.endswith(".")
             and len(header) <= 72 and header.split(": ", 1)[-1].lower() not in VAGUE)
+
+
+_valid_commit_subject = valid_commit_subject
 
 
 def _numbered_commit_body(lines):
@@ -108,7 +113,7 @@ def _live_metadata_errors(metadata):
     errors = []
     if not labels:
         errors.append("GitHub PR requires at least one label")
-    if not metadata.get("milestone") and not labels.intersection({"release", "hotfix", "deps", "dependencies", "docs"}):
+    if not metadata.get("milestone") and not labels.intersection(MILESTONE_EXEMPT_LABELS):
         errors.append("GitHub PR requires milestone unless exempt")
     return errors
 
@@ -372,33 +377,109 @@ def _check_version_bump(base, metadata=None, pushed_ref=None):
     return errors
 
 
-def check(base, body_file=None, pushed_ref=None, pushed_oid=None, metadata=None):
+def extract_milestone_id(milestone):
+    """Extract milestone identifier, e.g. '[F2-10]' from '[F2-10] PDF to Image'."""
+    if not milestone:
+        return None
+    match = re.search(r"\[([A-Za-z0-9_.-]+)\]", milestone)
+    if match:
+        return f"[{match.group(1)}]"
+    return milestone.strip()
+
+
+def check_roadmap_alignment(repo_root, milestone, changed_files):
+    """Verify that milestone exists in docs/ROADMAP.md and roadmap status is maintained."""
+    if not milestone:
+        return []
+
+    roadmap_path = repo_root / "docs" / "ROADMAP.md"
+    if not roadmap_path.is_file():
+        return ["docs/ROADMAP.md is missing; cannot verify milestone"]
+
+    content = roadmap_path.read_text(encoding="utf-8")
+    milestone_id = extract_milestone_id(milestone)
+
+    pattern = rf"(?mi)^[ \t]*- \[([ xX])\][ \t]*\*\*{re.escape(milestone_id)}"
+    match = re.search(pattern, content)
+    if not match and milestone:
+        full_pattern = rf"(?mi)^[ \t]*- \[([ xX])\][ \t]*\*\*{re.escape(milestone)}"
+        match = re.search(full_pattern, content)
+
+    if not match:
+        return [
+            f"Milestone '{milestone}' (id: '{milestone_id}') is not tracked in docs/ROADMAP.md. "
+            "All milestones must be registered in the project roadmap."
+        ]
+
+    is_completed = match.group(1).lower() == "x"
+    roadmap_changed = "docs/ROADMAP.md" in changed_files
+    if not is_completed and not roadmap_changed:
+        return [
+            f"Milestone '{milestone}' is marked pending (- [ ]) in docs/ROADMAP.md, "
+            "but docs/ROADMAP.md was not updated in this PR. "
+            "Update docs/ROADMAP.md to record progress or mark completion."
+        ]
+
+    return []
+
+
+def check(base, body_file=None, pushed_ref=None, pushed_oid=None, metadata=None, milestone=None):
     try:
-        return _check(base, body_file, pushed_ref, pushed_oid, metadata)
+        return _check(base, body_file, pushed_ref, pushed_oid, metadata, milestone)
     except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
         return [f"Git operation failed: {exc}"]
 
 
-def _check(base, body_file, pushed_ref, pushed_oid, metadata=None):
-    errors = _check_history(base, pushed_ref, pushed_oid)
+def _check_worktree():
     status = git("status", "--porcelain")
     if status.returncode:
-        errors.append("cannot read worktree status")
-    elif status.stdout.strip():
-        errors.append("worktree is dirty; test and push exactly the committed contents")
+        return ["cannot read worktree status"]
+    if status.stdout.strip():
+        return ["worktree is dirty; test and push exactly the committed contents"]
+    return []
+
+
+def _check_body_file(body_file, metadata):
     if not body_file:
-        errors.append("PR body draft required: provide --body-file")
-    else:
-        path = Path(body_file)
-        if not path.is_file():
-            errors.append("PR body file missing")
-        else:
-            errors.extend(validate_pr_body(path.read_text(encoding="utf-8"), metadata))
+        return ["PR body draft required: provide --body-file"]
+    path = Path(body_file)
+    if not path.is_file():
+        return ["PR body file missing"]
+    return validate_pr_body(path.read_text(encoding="utf-8"), metadata)
+
+
+def _check_base_parity(base):
     remote = git("ls-remote", "--heads", "origin", "main")
     local = git("rev-parse", base)
-    if remote.returncode or local.returncode or not remote.stdout.strip() or local.stdout.strip() != remote.stdout.split()[0]:
-        errors.append("origin/main changed or cannot be verified at end of preflight")
+    if (remote.returncode or local.returncode or
+            not remote.stdout.strip() or
+            local.stdout.strip() != remote.stdout.split()[0]):
+        return ["origin/main changed or cannot be verified at end of preflight"]
+    return []
+
+
+def _check_roadmap_gate(base, metadata, milestone=None):
+    ms = milestone
+    if not ms and metadata:
+        m = metadata.get("milestone")
+        if isinstance(m, dict):
+            ms = m.get("title")
+        elif isinstance(m, str):
+            ms = m
+    if not ms:
+        return []
+    diff = git("diff", "--name-only", f"{base}...HEAD")
+    changed_files = [line.strip().replace("\\", "/") for line in diff.stdout.splitlines() if line.strip()] if diff.returncode == 0 else []
+    return check_roadmap_alignment(REPO_ROOT, ms, changed_files)
+
+
+def _check(base, body_file, pushed_ref, pushed_oid, metadata=None, milestone=None):
+    errors = _check_history(base, pushed_ref, pushed_oid)
+    errors.extend(_check_worktree())
+    errors.extend(_check_body_file(body_file, metadata))
+    errors.extend(_check_base_parity(base))
     errors.extend(_check_version_bump(base, metadata, pushed_ref))
+    errors.extend(_check_roadmap_gate(base, metadata, milestone))
     return errors
 
 
@@ -409,6 +490,7 @@ def main():
     parser.add_argument("--body-file")
     parser.add_argument("--push-ref")
     parser.add_argument("--push-oid")
+    parser.add_argument("--milestone", help="Milestone title for draft / push validation")
     parser.add_argument("--initial-push", action="store_true",
                         help="New remote branch without a PR: validate completed draft metadata instead")
     args = parser.parse_args()
@@ -422,7 +504,9 @@ def main():
     except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
         print(f"PR PREFLIGHT FAIL: unable to verify GitHub PR state: {exc}", file=sys.stderr)
         return 1
-    errors = check(args.base, args.body_file, args.push_ref, args.push_oid, metadata)
+    if metadata and not metadata.get("milestone") and args.milestone:
+        metadata["milestone"] = {"title": args.milestone}
+    errors = check(args.base, args.body_file, args.push_ref, args.push_oid, metadata, milestone=args.milestone)
     for error in errors:
         print(f"PR PREFLIGHT FAIL: {error}", file=sys.stderr)
     if errors:

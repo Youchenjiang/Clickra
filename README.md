@@ -36,11 +36,13 @@ Silently exports Word, Excel, and PowerPoint documents to high-quality PDFs in t
 - **Split** — visual PDF splitter with page previews (custom segments, split-each-page, fixed-page modes).
 - **Compress** — high-fidelity native compression with a 4-stop quality slider.
 - **Remove Password** — decrypt protected PDFs directly from the right-click menu.
+- **PDF to Images** — export pages to high-resolution PNG, JPG, or WebP with configurable DPI (72–300) and page ranges.
 
 ### Images
 - **Images to PDF** — package JPG, PNG, and WebP files into a multi-page PDF, pixel-perfect.
+- **Compress** — optimize and shrink image file sizes while preserving visual clarity.
 - **Stitch** — join multiple images vertically into a single long-form image.
-- **Format Conversion** — convert images between PNG, JPG, BMP, GIF, and TIFF right from the context menu.
+- **Format Conversion** — convert images between PNG, JPG, WebP, GIF, and HEIC right from the context menu.
 
 ### PDF Translation
 Translates PDF content while preserving layout — heading hierarchy, typography, merged tables, fixed artwork, captions, and links — with CJK font scaling and re-joined technical identifiers.
@@ -58,7 +60,7 @@ Clickra operates on a strict **Local-First** philosophy:
 
 ### Code signing policy
 
-Clickra's production direct-download signing rules, maintainer roles, privacy reference, and release-signing controls are documented in the [Code signing policy](docs/development/CODE_SIGNING_POLICY.md).
+Clickra's production direct-download signing rules, maintainer roles, privacy reference, and release-signing controls are documented in the [Code signing policy](docs/development/release/code_signing_policy.md).
 
 ### Recommended: Microsoft Store (auto-updates)
 [![Microsoft Store Badge](https://developer.microsoft.com/en-us/store/badges/images/English_get-it-from-MS.png)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
@@ -97,9 +99,9 @@ Full setup, packaging, and Git workflow details: [local_build_notes.md](docs/dev
 ## Contributing
 Before opening a pull request, please see:
 - [local_build_notes.md](docs/development/local_build_notes.md) — build, packaging, and Git workflow
-- [docs/development/release_guideline.md](docs/development/release_guideline.md) — versioning and release checklists
-- [docs/development/shell_extension_best_practices.md](docs/development/shell_extension_best_practices.md) — COM and NativeAOT shell invariants
-- [docs/development/shell_diagnostic_guide.md](docs/development/shell_diagnostic_guide.md) — shell extension logging and diagnostics
+- [docs/development/release/release_guideline.md](docs/development/release/release_guideline.md) — versioning and release checklists
+- [docs/development/shell/shell_extension_best_practices.md](docs/development/shell/shell_extension_best_practices.md) — COM and NativeAOT shell invariants
+- [docs/development/shell/shell_diagnostic_guide.md](docs/development/shell/shell_diagnostic_guide.md) — shell extension logging and diagnostics
 - [docs/development/archive/dual_track_guide.md](docs/development/archive/dual_track_guide.md) — historical Fluent/NativeAOT dual-track distribution design
 - [docs/architecture/](docs/architecture/README.md) — NativeAOT/Fluent architecture and diagrams
 - [docs/ROADMAP.md](docs/ROADMAP.md) — product roadmap and milestones

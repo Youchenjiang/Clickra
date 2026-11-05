@@ -3,14 +3,14 @@
 > **文件角色**：本文件保存 2026/08 的 legacy dual-track distribution 設計與其理由，
 > 不是目前 automated release pipeline 的權威來源。現行 `release.yml` / `build_msix.ps1`
 > 只建立 NativeAOT Main `Clickra.msix`；實際 shipping state 請以
-> `docs/development/CI_CD_DUAL_RELEASE_GUIDE.md` 與 workflow/scripts 為準。
+> `docs/development/release/ci_cd_release_guide.md` 與 workflow/scripts 為準。
 
 > [!IMPORTANT]
 > **後續候選架構**：專案另有「Store AOT 主套件 +
 > Fluent executable optional package / related set」，讓 AOT 先可靠安裝、Fluent 再按需取得。
 > 這個候選方案必須先取得 Microsoft Store 權限，並通過 WinUI 3 full-trust optional EXE、
 > package graph、更新與 private flight 實測；未通過前不得把 optional package 描述成
-> 已投入 production Store distribution。詳見 `../store_optional_fluent_plan.md`。
+> 已投入 production Store distribution。詳見 `store_optional_fluent_plan.md`。
 
 ---
 
@@ -115,7 +115,7 @@ ClickraLauncher.exe --quiet           精簡輸出
 
 ## 4. Historical packaging / CI snapshot（2026/08；non-normative）
 
-> 本節只保存 dual-track implementation 當時的 build/CI 形狀。下列 artifact/腳本描述不得拿來推定目前 `release.yml` 行為；current pipeline 只看 `docs/development/CI_CD_DUAL_RELEASE_GUIDE.md` 與實際 workflow/scripts。
+> 本節只保存 dual-track implementation 當時的 build/CI 形狀。下列 artifact/腳本描述不得拿來推定目前 `release.yml` 行為；current pipeline 只看 `docs/development/release/ci_cd_release_guide.md` 與實際 workflow/scripts。
 
 ### 4.1 本機打包
 
@@ -177,4 +177,4 @@ Application entry 指向 `Clickra.exe`（無參數啟動舊 Win32 Dashboard）�
 Clickra 的 full-trust WinUI 3 組合仍需 PoC，此處只記錄演進方向。**目前是否已進入 production、目前發布哪些 artifact，一律不得從本歷史文件判定。**
 
 權限、套件拓撲、launcher 路由、資料共用、版本同步、失敗回退與完整測試矩陣統一由
-`docs/development/store_optional_fluent_plan.md` 管理，避免在多份文件分散出互相矛盾的規則。
+`docs/development/archive/store_optional_fluent_plan.md` 管理，避免在多份文件分散出互相矛盾的規則。

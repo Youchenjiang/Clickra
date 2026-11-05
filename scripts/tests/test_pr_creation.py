@@ -37,7 +37,7 @@ class CreateTests(unittest.TestCase):
             kwargs = dict(title="feat(agent): integrate PR governance", body_file=str(body),
                           label="agent", milestone="Plan")
             with patch.object(pr_creation, "current_branch", return_value="a" * 40), \
-                 patch.object(pr_creation, "_metadata"), \
+                 patch.object(pr_creation, "validate_metadata"), \
                  patch.object(pr_creation.subprocess, "run") as runner:
                 preview = pr_creation.create("user/repo", "feature/workflow", **kwargs)
                 self.assertIn("user/repo:feature/workflow:", preview["preview"])
@@ -53,7 +53,7 @@ class CreateTests(unittest.TestCase):
                           label="agent", milestone="Plan")
             sha = "a" * 40
             with patch.object(pr_creation, "current_branch", return_value=sha), \
-                 patch.object(pr_creation, "_metadata"), \
+                 patch.object(pr_creation, "validate_metadata"), \
                  patch.object(pr_creation, "_read", return_value=(
                      '{"number":123,"headRefOid":"' + sha + '","baseRefName":"main",'
                      '"url":"https://github.com/user/repo/pull/123"}')), \
@@ -121,7 +121,7 @@ class CreateTests(unittest.TestCase):
             body = self.body_file(folder)
             options = dict(title="feat(agent): test", body_file=str(body), label="agent", milestone="Plan")
             with patch.object(pr_creation, "current_branch", return_value="a" * 40), \
-                 patch.object(pr_creation, "_metadata"), \
+                 patch.object(pr_creation, "validate_metadata"), \
                  patch.object(pr_creation, "executable", return_value="/bin/gh"):
                 approval = pr_creation.create("user/repo", "feature/workflow", **options)["preview"]
                 runner = unittest.mock.Mock(side_effect=TimeoutError("response lost"))
@@ -135,8 +135,18 @@ class CreateTests(unittest.TestCase):
             body = self.body_file(folder)
             with self.assertRaisesRegex(ValueError, "milestone required"):
                 pr_creation.validate_creation_inputs("feat(core): test", str(body), "agent", None, None)
-            for exempt in ("release", "hotfix", "deps", "dependencies", "docs"):
+            for exempt in ("release", "hotfix", "deps", "dependencies", "docs", "chore"):
                 pr_creation.validate_creation_inputs("docs(docs): update module guide", str(body), exempt, None, None)
+
+    def test_metadata_validates_roadmap_alignment(self):
+        with patch.object(pr_creation, "executable", return_value="/bin/gh"), \
+             patch.object(pr_creation, "_read", return_value=""), \
+             patch.object(pr_creation.subprocess, "run") as runner:
+            runner.side_effect = [
+                SimpleNamespace(returncode=0, stdout='[[{"name":"agent"}]]'),
+                SimpleNamespace(returncode=0, stdout='[[{"title":"[F9-99] Quantum Portal"}]]')]
+            with self.assertRaisesRegex(ValueError, "not tracked in docs/ROADMAP.md"):
+                pr_creation.validate_metadata("user/repo", "agent", "[F9-99] Quantum Portal", None)
 
 
 if __name__ == "__main__":

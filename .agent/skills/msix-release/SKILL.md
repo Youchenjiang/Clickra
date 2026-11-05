@@ -20,7 +20,7 @@ Before changing any version surface:
 4. Determine the intended `major` / `minor` / `patch` bump from the authorized release target.
 
 Version format and synchronized surfaces are defined by
-`docs/development/release_guideline.md`.
+`docs/development/release/release_guideline.md`.
 
 ## Procedure
 
@@ -99,8 +99,8 @@ Manual `workflow_dispatch` is package validation only and must not be treated as
 
 ## Reference
 
-- Version format/surfaces: `docs/development/release_guideline.md`
-- Current automated release pipeline: `docs/development/CI_CD_DUAL_RELEASE_GUIDE.md`
+- Version format/surfaces: `docs/development/release/release_guideline.md`
+- Current automated release pipeline: `docs/development/release/ci_cd_release_guide.md`
 - General agent/PR/tag rules: `.agent/guidelines.md`
 - Actual implementation: `.github/workflows/release.yml`, `scripts/bump_version.ps1`,
   `scripts/build_msix.ps1`

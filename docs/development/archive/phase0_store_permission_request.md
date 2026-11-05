@@ -39,15 +39,15 @@ Phase 0 is the hard gate for F1-13. We needed to verify the Store account suppor
 - Windows App Runtime 2.x dependency: Only in optional package
 
 ### Documentation
-- [x] `docs/development/store_optional_fluent_plan.md` — Full technical plan
-- [x] `docs/development/store_submission_guide.md` — Post-approval submission guide
+- [x] `docs/development/archive/store_optional_fluent_plan.md` — Full technical plan
+- [x] `docs/development/release/store_submission_guide.md` — Post-approval submission guide
 - [x] This document — Phase 0 verification record
 
 ---
 
 ## 3. Permission Request — REQUIRED
 
-Submit the prepared request in `docs/development/phase0_support_ticket.md` through Windows Developer Support or the Windows apps support entry in Partner Center.
+Submit the prepared request in `docs/development/archive/phase0_support_ticket.md` through Windows Developer Support or the Windows apps support entry in Partner Center.
 
 The following was verified on 2026-08-31 by navigating to:
 `Partner Center > 應用程式與遊戲 > Clickra > 附加元件`
