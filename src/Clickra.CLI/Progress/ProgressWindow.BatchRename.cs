@@ -71,15 +71,33 @@ public partial class ProgressWindow
         IntPtr font = _hFont;
 
         _hwndBrPrefix = CreateSingleEdit(hwnd, BatchRenameLayout.PrefixRect, "", font, s);
+        SetEditCueBanner(_hwndBrPrefix, Loc("batch_rename_cue_prefix"));
         _hwndBrSuffix = CreateSingleEdit(hwnd, BatchRenameLayout.SuffixRect, "", font, s);
+        SetEditCueBanner(_hwndBrSuffix, Loc("batch_rename_cue_suffix"));
         _hwndBrSeqStart = CreateSingleEdit(hwnd, BatchRenameLayout.SeqStartRect, "1", font, s);
         int suggestedPad = Math.Max(2, (int)Math.Ceiling(Math.Log10(Math.Max(1, _brFiles.Count + 1))));
         _hwndBrSeqPad = CreateSingleEdit(hwnd, BatchRenameLayout.SeqPadRect, suggestedPad.ToString(), font, s);
         UpdateSequenceControlsEnabled();
         _hwndBrFind = CreateSingleEdit(hwnd, BatchRenameLayout.FindRect, "", font, s);
+        SetEditCueBanner(_hwndBrFind, Loc("batch_rename_cue_find"));
         _hwndBrReplace = CreateSingleEdit(hwnd, BatchRenameLayout.ReplaceRect, "", font, s);
+        SetEditCueBanner(_hwndBrReplace, Loc("batch_rename_cue_replace"));
 
         UpdateBatchRenamePlan();
+    }
+
+    private static void SetEditCueBanner(IntPtr editHwnd, string cueText)
+    {
+        if (editHwnd == IntPtr.Zero || string.IsNullOrEmpty(cueText)) return;
+        IntPtr pStr = Marshal.StringToHGlobalUni(cueText);
+        try
+        {
+            SendMessageW(editHwnd, 0x1501, IntPtr.Zero, pStr); // EM_SETCUEBANNER (0 = hide on focus)
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(pStr);
+        }
     }
 
     private IntPtr CreateSingleEdit(IntPtr parent, LayoutRect rect, string defaultText, IntPtr font, float s)
@@ -314,6 +332,9 @@ public partial class ProgressWindow
 
         // --- Left Column: Rules ---
         g.DrawString(Loc("batch_rename_rules"), sectionFont, Brushes.White, 32 * s, BatchRenameLayout.RulesTitleY * s);
+        using var hintBrush = new SolidBrush(Color.FromArgb(140, 140, 150));
+        using var hintFont = new Font(_msgFont.FontFamily, 11f * s, FontStyle.Regular, GraphicsUnit.Pixel);
+        g.DrawString(Loc("batch_rename_rule_order"), hintFont, hintBrush, 32 * s, BatchRenameLayout.RuleOrderY * s);
 
         // 1. Prefix & Suffix (Paired side-by-side)
         g.DrawString(Loc("batch_rename_prefix"), smallFont, mutedBrush, 32 * s, BatchRenameLayout.PrefixLabelY * s);
@@ -352,10 +373,7 @@ public partial class ProgressWindow
         string[] extLabels = { Loc("batch_rename_ext_keep"), Loc("batch_rename_ext_lower"), Loc("batch_rename_ext_upper") };
         DrawMultiSegmentedToggle(g, s, BatchRenameLayout.ExtSegmentRect, extLabels, (int)_brExtMode, smallFont, accentColor);
 
-        // Evaluation order hint
-        using var hintBrush = new SolidBrush(Color.FromArgb(120, 120, 128));
-        using var hintFont = new Font(_msgFont.FontFamily, 11f * s, FontStyle.Regular, GraphicsUnit.Pixel);
-        g.DrawString(Loc("batch_rename_rule_order"), hintFont, hintBrush, 32 * s, BatchRenameLayout.RuleOrderY * s);
+
 
         // --- Divider between columns ---
         using var divPen = new Pen(Color.FromArgb(48, 48, 48), 1f * s);
@@ -368,7 +386,25 @@ public partial class ProgressWindow
         int renameCount = _brCurrentPlan?.Items.Count(i => i.OriginalName != i.NewName) ?? 0;
         int conflictCount = _brCurrentPlan?.ConflictCount ?? 0;
         string summaryText = string.Format(Loc("batch_rename_summary"), totalCount, renameCount, conflictCount);
-        g.DrawString(summaryText, smallFont, mutedBrush, BatchRenameLayout.RightColX * s, BatchRenameLayout.PreviewSummaryY * s);
+
+        string[] summaryParts = summaryText.Split('|');
+        if (summaryParts.Length == 3)
+        {
+            string basePart = summaryParts[0].Trim() + " | " + summaryParts[1].Trim() + " | ";
+            string conflictPart = summaryParts[2].Trim();
+            float curX = BatchRenameLayout.RightColX * s;
+            float curY = BatchRenameLayout.PreviewSummaryY * s;
+            g.DrawString(basePart, smallFont, mutedBrush, curX, curY);
+
+            var baseSize = g.MeasureString(basePart, smallFont);
+            using var conflictBrush = new SolidBrush(conflictCount > 0 ? Color.FromArgb(255, 95, 95) : Color.FromArgb(160, 160, 160));
+            using var conflictFont = new Font(smallFont.FontFamily, smallFont.Size, conflictCount > 0 ? FontStyle.Bold : FontStyle.Regular, GraphicsUnit.Pixel);
+            g.DrawString(conflictPart, conflictFont, conflictBrush, curX + baseSize.Width - (4 * s), curY);
+        }
+        else
+        {
+            g.DrawString(summaryText, smallFont, mutedBrush, BatchRenameLayout.RightColX * s, BatchRenameLayout.PreviewSummaryY * s);
+        }
 
         // Preview list cards
         var previewLayoutRect = BatchRenameLayout.PreviewListRect(clientW, clientH);
@@ -478,7 +514,24 @@ public partial class ProgressWindow
         else
         {
             using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            g.DrawString(Loc("cli_progress_no_files"), _msgFont, mutedBrush, listRect, sf);
+            g.DrawString(Loc("batch_rename_drag_hint"), _msgFont, mutedBrush, listRect, sf);
+        }
+
+        if (_brCurrentPlan != null && _brCurrentPlan.Items.Count > 0 && _brCurrentPlan.Items.Count <= 2)
+        {
+            int itemH = 38;
+            float hintY = listRect.Y + (_brCurrentPlan.Items.Count * itemH * s) + (16 * s);
+            float hintH = Math.Min(56 * s, listRect.Bottom - hintY - (8 * s));
+            if (hintH > 24 * s)
+            {
+                var hintRect = new RectangleF(listRect.X + (8 * s), hintY, listRect.Width - (16 * s), hintH);
+                using var hintDottedPen = new Pen(Color.FromArgb(60, 60, 70), 1f * s) { DashStyle = DashStyle.Dash };
+                using var hintPath = UIHelper.GetRoundedRectPath(hintRect, 6 * s);
+                g.DrawPath(hintDottedPen, hintPath);
+                using var sfHint = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                using var hintTxtBrush = new SolidBrush(Color.FromArgb(135, 135, 145));
+                g.DrawString(Loc("batch_rename_drag_hint"), smallFont, hintTxtBrush, hintRect, sfHint);
+            }
         }
 
         g.Clip = oldClip;
@@ -489,7 +542,7 @@ public partial class ProgressWindow
 
         // Bottom Action buttons (Dismissive/utility grouped on left, primary execution uniquely anchored on right)
         DrawBatchRenameButton(g, s, BatchRenameLayout.AddFilesRect(clientH), Loc("batch_rename_add_files"), false, _msgFont);
-        DrawBatchRenameButton(g, s, BatchRenameLayout.ClearRect(clientH), Loc("batch_rename_clear"), false, _msgFont);
+        DrawBatchRenameButton(g, s, BatchRenameLayout.ClearRect(clientH), Loc("batch_rename_clear"), false, _msgFont, enabled: _brFiles.Count > 0, isDestructive: true);
         DrawBatchRenameButton(g, s, BatchRenameLayout.CancelRect(clientH), Loc("batch_rename_cancel"), false, _msgFont);
 
         bool canExecute = _brFiles.Count > 0 && (_brCurrentPlan?.Items.Count(i => i.OriginalName != i.NewName) ?? 0) > 0;
@@ -759,7 +812,7 @@ public partial class ProgressWindow
         }
     }
 
-    private void DrawBatchRenameButton(Graphics g, float s, LayoutRect logicalRect, string text, bool isSelectedOrAccent, Font font, bool enabled = true)
+    private void DrawBatchRenameButton(Graphics g, float s, LayoutRect logicalRect, string text, bool isSelectedOrAccent, Font font, bool enabled = true, bool isDestructive = false)
     {
         var rect = ScaleBatchRenameRect(logicalRect, s);
         using var path = UIHelper.GetRoundedRectPath(rect, 4 * s);
@@ -767,17 +820,17 @@ public partial class ProgressWindow
         Color accent = UIHelper.GetSystemColorizationColor();
         Color bg = !enabled
             ? Color.FromArgb(34, 34, 38)
-            : (isSelectedOrAccent ? accent : Color.FromArgb(46, 46, 52));
+            : (isDestructive ? Color.FromArgb(42, 28, 30) : (isSelectedOrAccent ? accent : Color.FromArgb(46, 46, 52)));
         Color border = !enabled
             ? Color.FromArgb(46, 46, 50)
-            : (isSelectedOrAccent ? UIHelper.Lighten(accent, 0.2f) : Color.FromArgb(70, 70, 78));
+            : (isDestructive ? Color.FromArgb(135, 50, 55) : (isSelectedOrAccent ? UIHelper.Lighten(accent, 0.2f) : Color.FromArgb(70, 70, 78)));
 
         using var fill = new SolidBrush(bg);
         using var pen = new Pen(border, 1f * s);
         g.FillPath(fill, path);
         g.DrawPath(pen, path);
 
-        Color textCol = !enabled ? Color.FromArgb(100, 100, 100) : Color.White;
+        Color textCol = !enabled ? Color.FromArgb(100, 100, 100) : (isDestructive ? Color.FromArgb(245, 175, 175) : Color.White);
         using var textBrush = new SolidBrush(textCol);
         using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
         g.DrawString(text, font, textBrush, rect, sf);
