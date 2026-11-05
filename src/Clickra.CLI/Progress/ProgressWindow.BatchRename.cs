@@ -181,8 +181,9 @@ public partial class ProgressWindow
         if (!_isPromptingBatchRename) return;
 
         float s = _dpiScale;
-        _brClientWidth = Math.Max(BatchRenameLayout.MinClientWidth, (int)(pxW / s));
-        _brClientHeight = Math.Max(BatchRenameLayout.MinClientHeight, (int)(pxH / s));
+        // Keep exact logical client dimension so footer bar aligns strictly with actual visible bottom
+        _brClientWidth = (int)(pxW / s);
+        _brClientHeight = (int)(pxH / s);
 
         _bufferGraphics?.Dispose();
         _bufferBmp?.Dispose();
@@ -217,8 +218,21 @@ public partial class ProgressWindow
         try
         {
             var mmi = Marshal.PtrToStructure<MINMAXINFO>(lParam);
-            mmi.ptMinTrackSize.x = (int)(BatchRenameLayout.MinClientWidth * _dpiScale);
-            mmi.ptMinTrackSize.y = (int)(BatchRenameLayout.MinClientHeight * _dpiScale);
+            float s = _dpiScale;
+
+            // Note: ptMinTrackSize is WINDOW size (including caption, menu and borders), not client size!
+            // Calculate minimum window rectangle that guarantees sufficient client height
+            var rect = new RECT
+            {
+                left = 0,
+                top = 0,
+                right = (int)(BatchRenameLayout.MinClientWidth * s),
+                bottom = (int)(BatchRenameLayout.MinClientHeight * s)
+            };
+            AdjustWindowRectEx(ref rect, WS_OVERLAPPEDWINDOW, false, 0);
+
+            mmi.ptMinTrackSize.x = rect.right - rect.left;
+            mmi.ptMinTrackSize.y = rect.bottom - rect.top;
             Marshal.StructureToPtr(mmi, lParam, false);
         }
         catch
