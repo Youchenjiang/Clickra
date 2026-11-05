@@ -293,7 +293,7 @@ public partial class ProgressWindow
         int clientH = _brClientHeight;
 
         using var bodyBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
-        using var mutedBrush = new SolidBrush(Color.FromArgb(145, 145, 145));
+        using var mutedBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
         using var sectionFont = new Font(_msgFont.FontFamily, 16f * s, FontStyle.Bold, GraphicsUnit.Pixel);
         using var smallFont = new Font(_msgFont.FontFamily, 12f * s, FontStyle.Regular, GraphicsUnit.Pixel);
         using var badgeFont = new Font("Segoe UI", 11f * s, FontStyle.Bold, GraphicsUnit.Pixel);
@@ -331,21 +331,19 @@ public partial class ProgressWindow
         g.DrawString(Loc("batch_rename_padding"), smallFont, seqLabelBrush, BatchRenameLayout.RightInputX * s, BatchRenameLayout.SeqParamLabelY * s);
         DrawModernTextBoxContainer(g, s, BatchRenameLayout.SeqPadRect, _hwndBrSeqPad, accentColor, _brEnableSeq);
 
-        // 4. Case & Ext transforms
+        // 4. Case & Ext transforms (Unified Segmented Controls)
         g.DrawString(Loc("batch_rename_case_mode"), smallFont, mutedBrush, 32 * s, BatchRenameLayout.CaseLabelY * s);
         string[] caseLabels = { Loc("batch_rename_case_none"), Loc("batch_rename_case_lower"), Loc("batch_rename_case_upper"), Loc("batch_rename_case_title") };
-        for (int i = 0; i < 4; i++)
-        {
-            DrawBatchRenameButton(g, s, BatchRenameLayout.CaseBtnRect(i), caseLabels[i], (int)_brCaseMode == i, smallFont);
-        }
+        DrawMultiSegmentedToggle(g, s, BatchRenameLayout.CaseSegmentRect, caseLabels, (int)_brCaseMode, smallFont, accentColor);
 
         g.DrawString(Loc("batch_rename_ext_mode"), smallFont, mutedBrush, 32 * s, BatchRenameLayout.ExtLabelY * s);
         string[] extLabels = { Loc("batch_rename_ext_keep"), Loc("batch_rename_ext_lower"), Loc("batch_rename_ext_upper") };
-        for (int i = 0; i < 3; i++)
-        {
-            int modeVal = i == 0 ? 0 : (i == 1 ? 1 : 2);
-            DrawBatchRenameButton(g, s, BatchRenameLayout.ExtBtnRect(i), extLabels[i], (int)_brExtMode == modeVal, smallFont);
-        }
+        DrawMultiSegmentedToggle(g, s, BatchRenameLayout.ExtSegmentRect, extLabels, (int)_brExtMode, smallFont, accentColor);
+
+        // Evaluation order hint
+        using var hintBrush = new SolidBrush(Color.FromArgb(120, 120, 128));
+        using var hintFont = new Font(_msgFont.FontFamily, 11f * s, FontStyle.Regular, GraphicsUnit.Pixel);
+        g.DrawString(Loc("batch_rename_rule_order"), hintFont, hintBrush, 32 * s, BatchRenameLayout.RuleOrderY * s);
 
         // --- Divider between columns ---
         using var divPen = new Pen(Color.FromArgb(48, 48, 48), 1f * s);
@@ -472,13 +470,13 @@ public partial class ProgressWindow
         int sepY = BatchRenameLayout.GetSeparatorY(clientH);
         g.DrawLine(divPen, 32 * s, sepY * s, (clientW - 32) * s, sepY * s);
 
-        // Bottom Action buttons (Responsive positions)
+        // Bottom Action buttons (Dismissive/utility grouped on left, primary execution uniquely anchored on right)
         DrawBatchRenameButton(g, s, BatchRenameLayout.AddFilesRect(clientH), Loc("batch_rename_add_files"), false, _msgFont);
         DrawBatchRenameButton(g, s, BatchRenameLayout.ClearRect(clientH), Loc("batch_rename_clear"), false, _msgFont);
+        DrawBatchRenameButton(g, s, BatchRenameLayout.CancelRect(clientH), Loc("batch_rename_cancel"), false, _msgFont);
 
         bool canExecute = _brFiles.Count > 0 && (_brCurrentPlan?.Items.Count(i => i.OriginalName != i.NewName) ?? 0) > 0;
         DrawBatchRenameButton(g, s, BatchRenameLayout.ExecuteRect(clientW, clientH), Loc("batch_rename_execute"), true, _msgFont, canExecute);
-        DrawBatchRenameButton(g, s, BatchRenameLayout.CancelRect(clientW, clientH), Loc("batch_rename_cancel"), false, _msgFont);
     }
 
     private void DrawModernTextBoxContainer(Graphics g, float s, LayoutRect logicalRect, IntPtr editHwnd, Color accent, bool enabled = true)
@@ -552,6 +550,11 @@ public partial class ProgressWindow
 
     private void DrawSegmentedToggle(Graphics g, float s, LayoutRect logicalRect, string leftText, string rightText, bool isLeftSelected, Font font, Color accent, bool enabled = true)
     {
+        DrawMultiSegmentedToggle(g, s, logicalRect, new[] { leftText, rightText }, isLeftSelected ? 0 : 1, font, accent, enabled);
+    }
+
+    private void DrawMultiSegmentedToggle(Graphics g, float s, LayoutRect logicalRect, string[] labels, int selectedIndex, Font font, Color accent, bool enabled = true)
+    {
         var r = ScaleBatchRenameRect(logicalRect, s);
         using var containerPath = UIHelper.GetRoundedRectPath(r, 4 * s);
         using var containerFill = new SolidBrush(enabled ? Color.FromArgb(32, 32, 36) : Color.FromArgb(24, 24, 28));
@@ -559,31 +562,40 @@ public partial class ProgressWindow
         g.FillPath(containerFill, containerPath);
         g.DrawPath(containerPen, containerPath);
 
-        float halfW = r.Width / 2f;
-        var selectedRect = isLeftSelected
-            ? new RectangleF(r.X + (1 * s), r.Y + (1 * s), halfW - (1 * s), r.Height - (2 * s))
-            : new RectangleF(r.X + halfW, r.Y + (1 * s), halfW - (1 * s), r.Height - (2 * s));
+        if (labels.Length == 0) return;
 
-        using var selPath = UIHelper.GetRoundedRectPath(selectedRect, 3 * s);
-        Color selColor = enabled ? accent : Color.FromArgb(48, 48, 54);
-        using var selFill = new SolidBrush(selColor);
-        g.FillPath(selFill, selPath);
+        float segW = r.Width / labels.Length;
+        if (selectedIndex >= 0 && selectedIndex < labels.Length)
+        {
+            var selectedRect = new RectangleF(r.X + (selectedIndex * segW) + (1 * s), r.Y + (1 * s), segW - (2 * s), r.Height - (2 * s));
+            using var selPath = UIHelper.GetRoundedRectPath(selectedRect, 3 * s);
+            Color selColor = enabled ? accent : Color.FromArgb(48, 48, 54);
+            using var selFill = new SolidBrush(selColor);
+            g.FillPath(selFill, selPath);
+        }
+
+        // Dividers between non-selected segments
+        using var divPen = new Pen(Color.FromArgb(50, 50, 56), 1f * s);
+        for (int i = 1; i < labels.Length; i++)
+        {
+            if (i != selectedIndex && i != (selectedIndex + 1))
+            {
+                float divX = r.X + (i * segW);
+                g.DrawLine(divPen, divX, r.Y + (4 * s), divX, r.Bottom - (4 * s));
+            }
+        }
 
         using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-        Color leftCol = !enabled
-            ? Color.FromArgb(95, 95, 95)
-            : (isLeftSelected ? Color.White : Color.FromArgb(170, 170, 170));
-        Color rightCol = !enabled
-            ? Color.FromArgb(95, 95, 95)
-            : (!isLeftSelected ? Color.White : Color.FromArgb(170, 170, 170));
-
-        using var leftBrush = new SolidBrush(leftCol);
-        using var rightBrush = new SolidBrush(rightCol);
-
-        var leftR = new RectangleF(r.X, r.Y, halfW, r.Height);
-        var rightR = new RectangleF(r.X + halfW, r.Y, halfW, r.Height);
-        g.DrawString(leftText, font, leftBrush, leftR, sf);
-        g.DrawString(rightText, font, rightBrush, rightR, sf);
+        for (int i = 0; i < labels.Length; i++)
+        {
+            bool isSel = i == selectedIndex;
+            Color textCol = !enabled
+                ? Color.FromArgb(95, 95, 95)
+                : (isSel ? Color.White : Color.FromArgb(170, 170, 170));
+            using var brush = new SolidBrush(textCol);
+            var segRect = new RectangleF(r.X + (i * segW), r.Y, segW, r.Height);
+            g.DrawString(labels[i], font, brush, segRect, sf);
+        }
     }
 
     /// <summary>
@@ -800,24 +812,28 @@ public partial class ProgressWindow
             return true;
         }
 
-        // Case mode buttons
-        for (int i = 0; i < 4; i++)
+        // Case mode segmented toggle
+        if (BatchRenameLayout.CaseSegmentRect.ContainsInclusive(mouseX, mouseY))
         {
-            if (BatchRenameLayout.CaseBtnRect(i).ContainsInclusive(mouseX, mouseY))
+            float segW = BatchRenameLayout.LeftColW / 4f;
+            int idx = (int)((mouseX - BatchRenameLayout.LeftColX) / segW);
+            if (idx >= 0 && idx < 4)
             {
-                _brCaseMode = (CaseTransformMode)i;
+                _brCaseMode = (CaseTransformMode)idx;
                 UpdateBatchRenamePlan();
                 InvalidateRect(hwnd, IntPtr.Zero, false);
                 return true;
             }
         }
 
-        // Extension mode buttons
-        for (int i = 0; i < 3; i++)
+        // Extension mode segmented toggle
+        if (BatchRenameLayout.ExtSegmentRect.ContainsInclusive(mouseX, mouseY))
         {
-            if (BatchRenameLayout.ExtBtnRect(i).ContainsInclusive(mouseX, mouseY))
+            float segW = BatchRenameLayout.LeftColW / 3f;
+            int idx = (int)((mouseX - BatchRenameLayout.LeftColX) / segW);
+            if (idx >= 0 && idx < 3)
             {
-                _brExtMode = (ExtensionTransformMode)i;
+                _brExtMode = (ExtensionTransformMode)idx;
                 UpdateBatchRenamePlan();
                 InvalidateRect(hwnd, IntPtr.Zero, false);
                 return true;
@@ -849,7 +865,7 @@ public partial class ProgressWindow
         }
 
         // Cancel
-        if (BatchRenameLayout.CancelRect(clientW, clientH).ContainsInclusive(mouseX, mouseY))
+        if (BatchRenameLayout.CancelRect(clientH).ContainsInclusive(mouseX, mouseY))
         {
             DestroyOrHideBatchRenameControls();
             _isPromptingBatchRename = false;

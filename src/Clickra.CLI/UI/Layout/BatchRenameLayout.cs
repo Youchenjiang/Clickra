@@ -55,20 +55,16 @@ public static class BatchRenameLayout
     public static LayoutRect SeqStartRect => new(LeftColX, SeqParamInputY, InputColW, InputH);
     public static LayoutRect SeqPadRect => new(RightInputX, SeqParamInputY, InputColW, InputH);
 
-    // 4. Case & Ext transforms
+    // 4. Case & Ext transforms (Unified segmented controls)
     public const int CaseLabelY = 302;
     public const int CaseBtnY = 322;
-    public const int CaseBtnW = 85;
-    public const int CaseBtnGap = 6;
-    public static LayoutRect CaseBtnRect(int index) =>
-        new(LeftColX + (index * (CaseBtnW + CaseBtnGap)), CaseBtnY, CaseBtnW, 26);
+    public static LayoutRect CaseSegmentRect => new(LeftColX, CaseBtnY, LeftColW, 28);
 
     public const int ExtLabelY = 360;
     public const int ExtBtnY = 380;
-    public const int ExtBtnW = 114;
-    public const int ExtBtnGap = 9;
-    public static LayoutRect ExtBtnRect(int index) =>
-        new(LeftColX + (index * (ExtBtnW + ExtBtnGap)), ExtBtnY, ExtBtnW, 26);
+    public static LayoutRect ExtSegmentRect => new(LeftColX, ExtBtnY, LeftColW, 28);
+
+    public const int RuleOrderY = 416;
 
     // Divider
     public const int DividerX = 416;
@@ -91,12 +87,10 @@ public static class BatchRenameLayout
     public static int GetBottomBarY(int clientH) => clientH - 56;
     public static int GetSeparatorY(int clientH) => clientH - 70;
 
-    public static LayoutRect AddFilesRect(int clientH) => new(LeftColX, GetBottomBarY(clientH), 120, BottomBtnH);
-    public static LayoutRect ClearRect(int clientH) => new(LeftColX + 130, GetBottomBarY(clientH), 90, BottomBtnH);
+    public static LayoutRect AddFilesRect(int clientH) => new(LeftColX, GetBottomBarY(clientH), 110, BottomBtnH);
+    public static LayoutRect ClearRect(int clientH) => new(LeftColX + 120, GetBottomBarY(clientH), 80, BottomBtnH);
+    public static LayoutRect CancelRect(int clientH) => new(LeftColX + 210, GetBottomBarY(clientH), 80, BottomBtnH);
 
     public static LayoutRect ExecuteRect(int clientW, int clientH) =>
-        new(clientW - 32 - 130 - 100, GetBottomBarY(clientH), 130, BottomBtnH);
-
-    public static LayoutRect CancelRect(int clientW, int clientH) =>
-        new(clientW - 32 - 90, GetBottomBarY(clientH), 90, BottomBtnH);
+        new(clientW - 32 - 140, GetBottomBarY(clientH), 140, BottomBtnH);
 }
