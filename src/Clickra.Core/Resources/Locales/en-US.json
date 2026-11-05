@@ -509,8 +509,8 @@
   "batch_rename_prefix": "Prefix",
   "batch_rename_suffix": "Suffix",
   "batch_rename_numbering": "Auto Sequence",
-  "batch_rename_pos_suffix": "Suffix",
-  "batch_rename_pos_prefix": "Prefix",
+  "batch_rename_pos_suffix": "At End",
+  "batch_rename_pos_prefix": "At Start",
   "batch_rename_start_index": "Start Index",
   "batch_rename_padding": "Padding Digits",
   "batch_rename_find": "Find Text",
@@ -542,4 +542,4 @@
   "batch_rename_tip_original": "Original: ",
   "batch_rename_tip_new": "New: ",
   "batch_rename_tip_dir": "Folder: "
-}
+}

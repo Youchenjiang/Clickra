@@ -509,8 +509,8 @@
   "batch_rename_prefix": "접두사 (Prefix)",
   "batch_rename_suffix": "접미사 (Suffix)",
   "batch_rename_numbering": "일련번호 자동 부여",
-  "batch_rename_pos_suffix": "접미사",
-  "batch_rename_pos_prefix": "접두사",
+  "batch_rename_pos_suffix": "뒤에 추가",
+  "batch_rename_pos_prefix": "앞에 추가",
   "batch_rename_start_index": "시작 번호",
   "batch_rename_padding": "자릿수 0 채우기",
   "batch_rename_find": "찾을 텍스트 (Find)",
@@ -542,4 +542,4 @@
   "batch_rename_tip_original": "원본：",
   "batch_rename_tip_new": "변경：",
   "batch_rename_tip_dir": "경로："
-}
+}

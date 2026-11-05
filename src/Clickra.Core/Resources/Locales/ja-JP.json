@@ -509,8 +509,8 @@
   "batch_rename_prefix": "接頭辞 (Prefix)",
   "batch_rename_suffix": "接尾辞 (Suffix)",
   "batch_rename_numbering": "連番の自動付与",
-  "batch_rename_pos_suffix": "接尾辞",
-  "batch_rename_pos_prefix": "接頭辞",
+  "batch_rename_pos_suffix": "末尾に挿入",
+  "batch_rename_pos_prefix": "先頭に挿入",
   "batch_rename_start_index": "開始番号",
   "batch_rename_padding": "ゼロ埋め桁数",
   "batch_rename_find": "検索文字列 (Find)",
@@ -542,4 +542,4 @@
   "batch_rename_tip_original": "元ファイル：",
   "batch_rename_tip_new": "変更後：",
   "batch_rename_tip_dir": "フォルダー："
-}
+}
