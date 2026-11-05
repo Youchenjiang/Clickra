@@ -98,6 +98,7 @@ namespace Clickra.UI.Native
         [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", CharSet = CharSet.Unicode)] public static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
         [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", CharSet = CharSet.Unicode)] public static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);
         [DllImport("user32.dll")] public static extern uint GetDpiForSystem();
+        [DllImport("user32.dll")] public static extern int GetSystemMetrics(int nIndex);
         [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
         [DllImport("user32.dll")] public static extern IntPtr GetParent(IntPtr hWnd);
         [DllImport("user32.dll", EntryPoint = "CallWindowProcW", CharSet = CharSet.Unicode)] public static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);

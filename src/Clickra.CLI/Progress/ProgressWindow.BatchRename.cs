@@ -281,6 +281,17 @@ public partial class ProgressWindow
         }
 
         ResizeClientSurface(hwnd, clientW, clientH);
+
+        if (expand && GetWindowRect(hwnd, out RECT curRect))
+        {
+            int winW = curRect.right - curRect.left;
+            int winH = curRect.bottom - curRect.top;
+            int screenW = GetSystemMetrics(0);
+            int screenH = GetSystemMetrics(1);
+            int x = Math.Max(0, (screenW - winW) / 2);
+            int y = Math.Max(0, (screenH - winH) / 2);
+            SetWindowPos(hwnd, IntPtr.Zero, x, y, 0, 0, 0x0001 | 0x0004); // SWP_NOSIZE | SWP_NOZORDER
+        }
     }
 
     private static RectangleF ScaleBatchRenameRect(LayoutRect rect, float scale) =>
