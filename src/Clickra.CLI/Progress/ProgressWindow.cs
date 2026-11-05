@@ -180,15 +180,20 @@ namespace Clickra.UI
                 _isPromptingPrintOptions = existingTaskId is null
                     && _commandOptions is null
                     && IsPrintCommand(command);
+                _isPromptingBatchRename = existingTaskId is null
+                    && _commandOptions is null
+                    && IsBatchRenameCommand(command);
                 _markdownTemplateStatus = Loc("md_options_template_none");
             }
-            if (_isPromptingMarkdownOptions || _isPromptingPrintOptions)
+            if (_isPromptingMarkdownOptions || _isPromptingPrintOptions || _isPromptingBatchRename)
                 _progressPresentation.WaitForInput();
             if (_isPromptingPrintOptions)
                 InitializePrintOptions();
+            if (_isPromptingBatchRename)
+                InitializeBatchRename();
 
 
-            int clientW = (int)(520 * _dpiScale);
+            int clientW = (int)((_isPromptingBatchRename ? Clickra.UI.Layout.BatchRenameLayout.ClientWidth : 520) * _dpiScale);
             int logicalClientHeight = GetInitialClientHeight();
             int clientH = (int)(logicalClientHeight * _dpiScale);
 
@@ -199,6 +204,9 @@ namespace Clickra.UI
 
             CreateProgressWindow(className, hClass, clientW, clientH);
 
+            if (_isPromptingBatchRename)
+                CreateBatchRenameEditControls(_hwnd);
+
             ShowWindow(_hwnd, 5);
             SetTimer(_hwnd, (IntPtr)1, 16, IntPtr.Zero); // 16ms 約 60fps
 
@@ -206,7 +214,14 @@ namespace Clickra.UI
             {
                 if (!_isPromptingPrintOptions)
                 {
-                    StartProcessingThread(_hwnd);
+                    if (!_isPromptingBatchRename)
+                    {
+                        StartProcessingThread(_hwnd);
+                    }
+                    else
+                    {
+                        // Batch rename dialog is active; background processing waits for user confirmation
+                    }
                 }
                 else
                 {
@@ -257,8 +272,9 @@ namespace Clickra.UI
 
             RegisterClassEx(ref wc);
 
+            uint winStyle = _isPromptingBatchRename ? (WS_OVERLAPPEDWINDOW | 0x02000000) : WS_OVERLAPPED_FIXED;
             var rect = new RECT { left = 0, top = 0, right = clientW, bottom = clientH };
-            AdjustWindowRectEx(ref rect, WS_OVERLAPPED_FIXED, false, 0);
+            AdjustWindowRectEx(ref rect, winStyle, false, 0);
             int winW = rect.right - rect.left;
             int winH = rect.bottom - rect.top;
 
@@ -266,7 +282,7 @@ namespace Clickra.UI
             IntPtr lpParam = GCHandle.ToIntPtr(handle);
 
             _hwnd = CreateWindowEx(0, className, "Clickra",
-                WS_OVERLAPPED_FIXED, CW_USEDEFAULT, CW_USEDEFAULT, winW, winH,
+                winStyle, CW_USEDEFAULT, CW_USEDEFAULT, winW, winH,
                 IntPtr.Zero, IntPtr.Zero, wc.hInstance, lpParam);
 
             int dark = 1;
@@ -349,8 +365,12 @@ namespace Clickra.UI
         {
             if (_isPromptingMarkdownOptions) return MarkdownOptionsClientHeight;
             if (_isPromptingPrintOptions) return PrintOptionsClientHeight;
+            if (_isPromptingBatchRename) return Clickra.UI.Layout.BatchRenameLayout.ClientHeight;
             return GetStandardClientHeight();
         }
+
+        private static bool IsBatchRenameCommand(string command) =>
+            command.Equals(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName, StringComparison.OrdinalIgnoreCase);
 
         internal void ResizeClientSurface(IntPtr hwnd, int clientW, int clientH)
         {

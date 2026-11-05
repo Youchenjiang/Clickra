@@ -73,7 +73,7 @@ internal static partial class ClickraStartup
 
         if (forceGui || (!quiet && !hasRuleFlags))
         {
-            Clickra.UI.BatchRenameWindow.Show(files);
+            Clickra.UI.ProgressWindow.Show(BatchRenameUseCase.CommandName, files);
             return true;
         }
 

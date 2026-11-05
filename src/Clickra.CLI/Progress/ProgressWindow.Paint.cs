@@ -44,13 +44,16 @@ namespace Clickra.UI
                     : presentation.Error;
                 dispW = _currentDispWidth; shimOff = _shimmerOffset;
                 tot = presentation.Total; cur = presentation.Current;
-                isPrompting = _isPromptingPassword || _isPromptingVisualSplitter || _isPromptingMarkdownOptions || _isPromptingPrintOptions;
+                isPrompting = _isPromptingPassword || _isPromptingVisualSplitter || _isPromptingMarkdownOptions || _isPromptingPrintOptions || _isPromptingBatchRename;
                 promptFile = _passwordPromptFilename;
                 isRetry = _passwordPromptIsRetry;
             }
 
             float s = _dpiScale;
-            PaintTitleAndSubtitle(g, s, hasErr, comp, isPrompting);
+            if (!_isPromptingBatchRename)
+            {
+                PaintTitleAndSubtitle(g, s, hasErr, comp, isPrompting);
+            }
 
             if (hasErr)
             {
@@ -89,6 +92,7 @@ namespace Clickra.UI
                     : Loc("cmd_md_to_pdf");
                 else if (_isPromptingVisualSplitter) subText = Loc("progress_sub_visual_splitter");
                 else if (_isPromptingPrintOptions) subText = Loc("progress_sub_print_options");
+                else if (_isPromptingBatchRename) subText = Loc("cmd_batch_rename");
                 else subText = isPrompting ? Loc("pdf_password_title") : Loc("progress_sub_running");
 
                 Color subColor;
@@ -162,6 +166,10 @@ namespace Clickra.UI
             else if (_isPromptingPrintOptions)
             {
                 PaintPrintOptions(g, s);
+            }
+            else if (_isPromptingBatchRename)
+            {
+                PaintBatchRenamePrompt(g, s);
             }
             else if (_msgFont != null)
             {
