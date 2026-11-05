@@ -538,5 +538,8 @@
   "batch_rename_done": "批次更名完成。",
   "batch_rename_toast_body": "已順利完成批次命名作業（共 {0} 個檔案）。",
   "batch_rename_progress_stage": "[批次命名] {0} ({1}/{2})",
-  "batch_rename_rule_order": "套用順序：取代 → 前後綴 → 流水號 → 大小寫 → 副檔名"
+  "batch_rename_rule_order": "套用順序：取代 → 前後綴 → 流水號 → 大小寫 → 副檔名",
+  "batch_rename_tip_original": "原始：",
+  "batch_rename_tip_new": "更名：",
+  "batch_rename_tip_dir": "路徑："
 }

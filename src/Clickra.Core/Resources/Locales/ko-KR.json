@@ -538,5 +538,8 @@
   "batch_rename_done": "일괄 이름 바꾸기 완료.",
   "batch_rename_toast_body": "일괄 이름 바꾸기 작업을 성공적으로 완료했습니다 ({0}개 파일).",
   "batch_rename_progress_stage": "[일괄 이름 바꾸기] {0} ({1}/{2})",
-  "batch_rename_rule_order": "적용 순서: 바꾸기 → 접두/접미사 → 일련번호 → 대소문자 → 확장자"
+  "batch_rename_rule_order": "적용 순서: 바꾸기 → 접두/접미사 → 일련번호 → 대소문자 → 확장자",
+  "batch_rename_tip_original": "원본：",
+  "batch_rename_tip_new": "변경：",
+  "batch_rename_tip_dir": "경로："
 }

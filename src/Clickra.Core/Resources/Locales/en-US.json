@@ -538,5 +538,8 @@
   "batch_rename_done": "Batch rename complete.",
   "batch_rename_toast_body": "Batch rename completed successfully ({0} file(s)).",
   "batch_rename_progress_stage": "[Batch Rename] {0} ({1}/{2})",
-  "batch_rename_rule_order": "Order: Replace → Affixes → Numbering → Case → Extension"
+  "batch_rename_rule_order": "Order: Replace → Affixes → Numbering → Case → Extension",
+  "batch_rename_tip_original": "Original: ",
+  "batch_rename_tip_new": "New: ",
+  "batch_rename_tip_dir": "Folder: "
 }
