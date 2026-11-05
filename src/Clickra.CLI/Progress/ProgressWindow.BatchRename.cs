@@ -367,34 +367,66 @@ public partial class ProgressWindow
                 if (y + rowH < listRect.Y || y > listRect.Bottom) continue;
 
                 var cardRect = new RectangleF(listRect.X, y, listRect.Width, rowH - (4 * s));
-                using var cardBg = new SolidBrush(Color.FromArgb(38, 38, 38));
-                using var cardPath = UIHelper.GetRoundedRectPath(cardRect, 4 * s);
-                g.FillPath(cardBg, cardPath);
 
-                // Original -> New
-                float textY = y + (6 * s);
-                using var origBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
                 bool willChange = item.OriginalName != item.NewName;
-                using var newBrush = new SolidBrush(willChange ? Color.FromArgb(255, 230, 140) : Color.FromArgb(150, 150, 150));
-                using var arrowBrush = new SolidBrush(willChange ? Color.FromArgb(0, 160, 240) : Color.FromArgb(100, 100, 100));
-
                 bool hasConflict = item.Status is RenameItemStatus.ConflictExistingFile or RenameItemStatus.ConflictDuplicateTarget;
                 bool isCyclic = !hasConflict && _brCurrentPlan.RequiresTwoPhaseSwap;
                 bool hasBadge = hasConflict || isCyclic;
 
+                // Card styling based on change status:
+                // Conflict: dark reddish tint with red border
+                // Changed: distinct modern card with subtle border
+                // Unchanged: dimmed card with minimal contrast
+                Color cardBgColor = hasConflict
+                    ? Color.FromArgb(46, 22, 22)
+                    : (willChange ? Color.FromArgb(36, 36, 40) : Color.FromArgb(24, 24, 26));
+
+                using var cardBg = new SolidBrush(cardBgColor);
+                using var cardPath = UIHelper.GetRoundedRectPath(cardRect, 4 * s);
+                g.FillPath(cardBg, cardPath);
+
+                if (hasConflict)
+                {
+                    using var conflictBorder = new Pen(Color.FromArgb(160, 42, 42), 1f * s);
+                    g.DrawPath(conflictBorder, cardPath);
+                }
+                else if (willChange)
+                {
+                    using var cardBorder = new Pen(Color.FromArgb(56, 56, 62), 1f * s);
+                    g.DrawPath(cardBorder, cardPath);
+                }
+
+                // Text positions
+                float textY = y + (8 * s);
                 float leftX = cardRect.X + (12 * s);
                 float rightReserved = hasBadge ? (88 * s) : (16 * s);
                 float availableW = cardRect.Width - (44 * s) - rightReserved;
                 float maxNameW = Math.Max(120 * s, availableW / 2f);
 
-                using var sf = new StringFormat { Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
-                g.DrawString(item.OriginalName, smallFont, origBrush, new RectangleF(leftX, textY, maxNameW, 20 * s), sf);
+                using var sfTypo = new StringFormat(StringFormat.GenericTypographic)
+                {
+                    FormatFlags = StringFormatFlags.NoWrap | StringFormatFlags.MeasureTrailingSpaces
+                };
 
+                // Original Name (middle truncated if long, dimmed if unchanged, red if conflict)
+                Color origColor = hasConflict
+                    ? Color.FromArgb(240, 130, 130)
+                    : (willChange ? Color.FromArgb(180, 180, 180) : Color.FromArgb(115, 115, 115));
+                using var origBrush = new SolidBrush(origColor);
+                string origComp = CompactMiddle(item.OriginalName, smallFont, maxNameW, g, sfTypo);
+                g.DrawString(origComp, smallFont, origBrush, leftX, textY, sfTypo);
+
+                // Direction Arrow (accent blue if changed, muted gray if unchanged, red if conflict)
                 float arrowX = leftX + maxNameW + (8 * s);
-                g.DrawString("→", smallFont, arrowBrush, arrowX, textY);
+                Color arrowColor = hasConflict
+                    ? Color.FromArgb(240, 80, 80)
+                    : (willChange ? Color.FromArgb(0, 160, 240) : Color.FromArgb(75, 75, 75));
+                using var arrowBrush = new SolidBrush(arrowColor);
+                g.DrawString("→", smallFont, arrowBrush, arrowX, textY, sfTypo);
 
+                // New Name with Diff Highlight
                 float newX = arrowX + (22 * s);
-                g.DrawString(item.NewName, smallFont, newBrush, new RectangleF(newX, textY, maxNameW, 20 * s), sf);
+                DrawPreviewItemNewName(g, s, item.OriginalName, item.NewName, smallFont, newX, textY, maxNameW, hasConflict, sfTypo);
 
                 // Badge: Only displayed on Conflict or Cyclic Swap (clean view for normal items)
                 if (hasBadge)
@@ -531,6 +563,147 @@ public partial class ProgressWindow
         var rightR = new RectangleF(r.X + halfW, r.Y, halfW, r.Height);
         g.DrawString(leftText, font, leftBrush, leftR, sf);
         g.DrawString(rightText, font, rightBrush, rightR, sf);
+    }
+
+    /// <summary>
+    /// Compacts a filename or path by truncating in the middle, keeping prefix and suffix/extension visible.
+    /// E.g. "bacagent-ccs26_translated_page_01.png" -> "bacagent-ccs…page_01.png"
+    /// </summary>
+    private static string CompactMiddle(string text, Font font, float maxW, Graphics g, StringFormat sf)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+        if (g.MeasureString(text, font, 10000, sf).Width <= maxW) return text;
+
+        string ext = Path.GetExtension(text) ?? "";
+        string stem = Path.GetFileNameWithoutExtension(text) ?? text;
+        if (stem.Length <= 4) return text;
+
+        int low = 2;
+        int high = stem.Length - 1;
+        string best = text;
+
+        while (low <= high)
+        {
+            int midLen = (low + high) / 2;
+            int leftChars = Math.Max(1, (midLen * 5) / 8);
+            int rightChars = Math.Max(1, midLen - leftChars);
+
+            if (leftChars + rightChars >= stem.Length)
+            {
+                rightChars = Math.Max(1, stem.Length - leftChars - 1);
+            }
+
+            if (leftChars > 0 && rightChars > 0 && (leftChars + rightChars) < stem.Length)
+            {
+                string candidate = stem.Substring(0, leftChars) + "…" + stem.Substring(stem.Length - rightChars) + ext;
+                if (g.MeasureString(candidate, font, 10000, sf).Width <= maxW)
+                {
+                    best = candidate;
+                    low = midLen + 1; // Try keeping more characters
+                    continue;
+                }
+            }
+            high = midLen - 1; // Need fewer characters
+        }
+
+        return best;
+    }
+
+    /// <summary>
+    /// Draws the preview target name with intelligent diff highlighting:
+    /// - Unchanged parts are rendered in subtle gray.
+    /// - Changed / added / sequence fragments are highlighted in vivid gold with an amber glow pill.
+    /// - Long names have their unchanged prefix middle-compacted so the diff and extension remain 100% visible.
+    /// </summary>
+    private void DrawPreviewItemNewName(Graphics g, float s, string orig, string newN, Font font, float x, float y, float maxW, bool hasConflict, StringFormat sf)
+    {
+        if (orig == newN)
+        {
+            using var dimBrush = new SolidBrush(Color.FromArgb(115, 115, 115));
+            string compact = CompactMiddle(newN, font, maxW, g, sf);
+            g.DrawString(compact, font, dimBrush, x, y, sf);
+            return;
+        }
+
+        if (hasConflict)
+        {
+            using var errBrush = new SolidBrush(Color.FromArgb(255, 110, 110));
+            string compact = CompactMiddle(newN, font, maxW, g, sf);
+            g.DrawString(compact, font, errBrush, x, y, sf);
+            return;
+        }
+
+        // Compute longest common prefix and suffix to isolate the modified diff fragment
+        int p = 0;
+        while (p < orig.Length && p < newN.Length && orig[p] == newN[p]) p++;
+
+        int sLen = 0;
+        while (sLen < (orig.Length - p) && sLen < (newN.Length - p) && orig[orig.Length - 1 - sLen] == newN[newN.Length - 1 - sLen]) sLen++;
+
+        string pre = newN.Substring(0, p);
+        string diff = newN.Substring(p, newN.Length - p - sLen);
+        string post = newN.Substring(newN.Length - sLen);
+
+        using var normalBrush = new SolidBrush(Color.FromArgb(175, 175, 175));
+        using var diffBrush = new SolidBrush(Color.FromArgb(255, 215, 64)); // Vivid Gold
+
+        if (string.IsNullOrEmpty(diff))
+        {
+            // Deletion: draw new name in accent gold so the change is evident
+            string compact = CompactMiddle(newN, font, maxW, g, sf);
+            g.DrawString(compact, font, diffBrush, x, y, sf);
+            return;
+        }
+
+        float wDiff = g.MeasureString(diff, font, 10000, sf).Width;
+        float wPost = g.MeasureString(post, font, 10000, sf).Width;
+        float wPre = g.MeasureString(pre, font, 10000, sf).Width;
+
+        if (wPre + wDiff + wPost > maxW)
+        {
+            // Truncate unchanged portions while preserving diff and extension
+            if (wPre > wPost && (maxW - wDiff - wPost) > (24 * s))
+            {
+                float availForPre = maxW - wDiff - wPost;
+                pre = CompactMiddle(pre, font, availForPre, g, sf);
+                wPre = g.MeasureString(pre, font, 10000, sf).Width;
+            }
+            else if ((maxW - wPre - wDiff) > (24 * s))
+            {
+                float availForPost = maxW - wPre - wDiff;
+                post = CompactMiddle(post, font, availForPost, g, sf);
+                wPost = g.MeasureString(post, font, 10000, sf).Width;
+            }
+            else
+            {
+                string compact = CompactMiddle(newN, font, maxW, g, sf);
+                g.DrawString(compact, font, diffBrush, x, y, sf);
+                return;
+            }
+        }
+
+        float curX = x;
+        if (!string.IsNullOrEmpty(pre))
+        {
+            g.DrawString(pre, font, normalBrush, curX, y, sf);
+            curX += wPre;
+        }
+
+        if (!string.IsNullOrEmpty(diff))
+        {
+            var diffBgRect = new RectangleF(curX - (1 * s), y, wDiff + (2 * s), font.GetHeight(g));
+            using var diffBg = new SolidBrush(Color.FromArgb(50, 255, 215, 64));
+            using var diffPath = UIHelper.GetRoundedRectPath(diffBgRect, 2 * s);
+            g.FillPath(diffBg, diffPath);
+
+            g.DrawString(diff, font, diffBrush, curX, y, sf);
+            curX += wDiff;
+        }
+
+        if (!string.IsNullOrEmpty(post))
+        {
+            g.DrawString(post, font, normalBrush, curX, y, sf);
+        }
     }
 
     private void DrawBatchRenameButton(Graphics g, float s, LayoutRect logicalRect, string text, bool isSelectedOrAccent, Font font, bool enabled = true)
