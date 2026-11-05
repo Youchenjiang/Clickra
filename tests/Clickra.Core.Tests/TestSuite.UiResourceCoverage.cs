@@ -330,10 +330,14 @@ static partial class TestSuite
             .Distinct(StringComparer.Ordinal)
             .OrderBy(command => command, StringComparer.Ordinal)
             .ToArray();
-        string[] shellCommands = subArgs.OrderBy(command => command, StringComparer.Ordinal).ToArray();
+        string[] shellCommands = subArgs
+            .Where(command => !command.Equals("batch-rename", StringComparison.Ordinal))
+            .OrderBy(command => command, StringComparer.Ordinal)
+            .ToArray();
         Assert.True(shellCommands.SequenceEqual(registryCommands, StringComparer.Ordinal),
             "Shell menu must expose every production ConvertCommandRegistry command exactly once. " +
             "Shell: [" + string.Join(", ", shellCommands) + "] Registry: [" + string.Join(", ", registryCommands) + "]");
+        Assert.True(subArgs.Contains("batch-rename"), "Shell menu must expose the batch-rename utility command.");
         Assert.True(shellSource.Contains("files.All(f => IsSupported(f, idx))", StringComparison.Ordinal),
             "Explorer commands must stay hidden unless every selected file is valid for that command.");
         Assert.True(shellSource.Contains("ConvertCommandMetadata.GetAllowedExtensions(SubArgs[idx])", StringComparison.Ordinal)
@@ -360,6 +364,8 @@ static partial class TestSuite
         for (int i = 0; i < subArgs.Length; i++)
         {
             string command = subArgs[i];
+            if (command.Equals("batch-rename", StringComparison.Ordinal)) continue;
+
             Assert.True(ConvertCommandRegistry.IsKnownCommand(command),
                 ShellCommandMessagePrefix + command + "' is not registered in ConvertCommandRegistry.");
 
