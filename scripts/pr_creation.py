@@ -67,11 +67,14 @@ def _validate_roadmap_milestone(milestone):
         raise ValueError("; ".join(roadmap_errors))
 
 
-def _metadata(repo, label, milestone, assignee):
+def validate_metadata(repo, label, milestone, assignee):
     """Validate selected GitHub metadata before exposing an executable preview."""
     _validate_remote_entries(repo, label, milestone)
     _validate_remote_assignee(repo, assignee)
     _validate_roadmap_milestone(milestone)
+
+
+_metadata = validate_metadata
 
 
 def current_branch(repo, branch):
@@ -146,7 +149,7 @@ def create(repo, branch, *, title, body_file, label, milestone=None, assignee=No
     """Preview first; one authorized create attempt, then independently re-read."""
     body, data = validate_creation_inputs(title, body_file, label, milestone, assignee)
     head = current_branch(repo, branch)
-    _metadata(repo, label, milestone, assignee)
+    validate_metadata(repo, label, milestone, assignee)
     fingerprint = hashlib.sha256(
         json.dumps([title, data, label, milestone, assignee], ensure_ascii=False).encode("utf-8")
     ).hexdigest()[:16]
