@@ -72,7 +72,9 @@ public partial class ProgressWindow
         _hwndBrPrefix = CreateSingleEdit(hwnd, BatchRenameLayout.PrefixRect, "", font, s);
         _hwndBrSuffix = CreateSingleEdit(hwnd, BatchRenameLayout.SuffixRect, "", font, s);
         _hwndBrSeqStart = CreateSingleEdit(hwnd, BatchRenameLayout.SeqStartRect, "1", font, s);
-        _hwndBrSeqPad = CreateSingleEdit(hwnd, BatchRenameLayout.SeqPadRect, "2", font, s);
+        int suggestedPad = Math.Max(2, (int)Math.Ceiling(Math.Log10(Math.Max(1, _brFiles.Count + 1))));
+        _hwndBrSeqPad = CreateSingleEdit(hwnd, BatchRenameLayout.SeqPadRect, suggestedPad.ToString(), font, s);
+        UpdateSequenceControlsEnabled();
         _hwndBrFind = CreateSingleEdit(hwnd, BatchRenameLayout.FindRect, "", font, s);
         _hwndBrReplace = CreateSingleEdit(hwnd, BatchRenameLayout.ReplaceRect, "", font, s);
 
@@ -105,6 +107,14 @@ public partial class ProgressWindow
         SendMessageW(edit, 0x00D3, (IntPtr)(0x0001 | 0x0002), (IntPtr)((margin << 16) | margin));
 
         return edit;
+    }
+
+    private void UpdateSequenceControlsEnabled()
+    {
+        if (_hwndBrSeqStart != IntPtr.Zero)
+            EnableWindow(_hwndBrSeqStart, _brEnableSeq);
+        if (_hwndBrSeqPad != IntPtr.Zero)
+            EnableWindow(_hwndBrSeqPad, _brEnableSeq);
     }
 
     private void DestroyOrHideBatchRenameControls()
@@ -310,15 +320,16 @@ public partial class ProgressWindow
         DrawModernCheckBox(g, s, BatchRenameLayout.MatchCaseRect, _brMatchCase, Loc("batch_rename_match_case"), smallFont, bodyBrush, accentColor);
         DrawModernCheckBox(g, s, BatchRenameLayout.RegexRect, _brUseRegex, Loc("batch_rename_regex"), smallFont, bodyBrush, accentColor);
 
-        // 3. Sequence Numbering (Paired & Compact)
+        // 3. Sequence Numbering (Paired & Compact with disabled state)
         DrawModernCheckBox(g, s, BatchRenameLayout.SeqCheckRect, _brEnableSeq, Loc("batch_rename_numbering"), smallFont, bodyBrush, accentColor);
-        DrawSegmentedToggle(g, s, BatchRenameLayout.SeqPosToggleRect, Loc("batch_rename_pos_prefix"), Loc("batch_rename_pos_suffix"), _brSeqPos == InsertPosition.Prefix, smallFont, accentColor);
+        DrawSegmentedToggle(g, s, BatchRenameLayout.SeqPosToggleRect, Loc("batch_rename_pos_prefix"), Loc("batch_rename_pos_suffix"), _brSeqPos == InsertPosition.Prefix, smallFont, accentColor, _brEnableSeq);
 
-        g.DrawString(Loc("batch_rename_start_index"), smallFont, mutedBrush, 32 * s, BatchRenameLayout.SeqParamLabelY * s);
-        DrawModernTextBoxContainer(g, s, BatchRenameLayout.SeqStartRect, _hwndBrSeqStart, accentColor);
+        using var seqLabelBrush = new SolidBrush(_brEnableSeq ? Color.FromArgb(145, 145, 145) : Color.FromArgb(85, 85, 85));
+        g.DrawString(Loc("batch_rename_start_index"), smallFont, seqLabelBrush, 32 * s, BatchRenameLayout.SeqParamLabelY * s);
+        DrawModernTextBoxContainer(g, s, BatchRenameLayout.SeqStartRect, _hwndBrSeqStart, accentColor, _brEnableSeq);
 
-        g.DrawString(Loc("batch_rename_padding"), smallFont, mutedBrush, BatchRenameLayout.RightInputX * s, BatchRenameLayout.SeqParamLabelY * s);
-        DrawModernTextBoxContainer(g, s, BatchRenameLayout.SeqPadRect, _hwndBrSeqPad, accentColor);
+        g.DrawString(Loc("batch_rename_padding"), smallFont, seqLabelBrush, BatchRenameLayout.RightInputX * s, BatchRenameLayout.SeqParamLabelY * s);
+        DrawModernTextBoxContainer(g, s, BatchRenameLayout.SeqPadRect, _hwndBrSeqPad, accentColor, _brEnableSeq);
 
         // 4. Case & Ext transforms
         g.DrawString(Loc("batch_rename_case_mode"), smallFont, mutedBrush, 32 * s, BatchRenameLayout.CaseLabelY * s);
@@ -470,19 +481,21 @@ public partial class ProgressWindow
         DrawBatchRenameButton(g, s, BatchRenameLayout.CancelRect(clientW, clientH), Loc("batch_rename_cancel"), false, _msgFont);
     }
 
-    private void DrawModernTextBoxContainer(Graphics g, float s, LayoutRect logicalRect, IntPtr editHwnd, Color accent)
+    private void DrawModernTextBoxContainer(Graphics g, float s, LayoutRect logicalRect, IntPtr editHwnd, Color accent, bool enabled = true)
     {
         var r = ScaleBatchRenameRect(logicalRect, s);
         using var path = UIHelper.GetRoundedRectPath(r, 4 * s);
 
-        bool isFocused = editHwnd != IntPtr.Zero && _hwndBrFocused == editHwnd;
+        bool isFocused = enabled && editHwnd != IntPtr.Zero && _hwndBrFocused == editHwnd;
 
-        // Container background matching EDIT background
-        using var bgBrush = new SolidBrush(Color.FromArgb(45, 45, 45));
+        // Container background matching EDIT background (darker when disabled)
+        using var bgBrush = new SolidBrush(enabled ? Color.FromArgb(45, 45, 45) : Color.FromArgb(30, 30, 30));
         g.FillPath(bgBrush, path);
 
-        // Border: accent when focused, neutral dark grey when unfocused
-        Color borderCol = isFocused ? accent : Color.FromArgb(68, 68, 76);
+        // Border: accent when focused, neutral dark grey when unfocused, subtle border when disabled
+        Color borderCol = !enabled
+            ? Color.FromArgb(48, 48, 52)
+            : (isFocused ? accent : Color.FromArgb(68, 68, 76));
         float penW = isFocused ? 1.5f * s : 1.0f * s;
         using var pen = new Pen(borderCol, penW);
         g.DrawPath(pen, path);
@@ -537,12 +550,12 @@ public partial class ProgressWindow
         g.DrawString(text, font, textBrush, textX, textY);
     }
 
-    private void DrawSegmentedToggle(Graphics g, float s, LayoutRect logicalRect, string leftText, string rightText, bool isLeftSelected, Font font, Color accent)
+    private void DrawSegmentedToggle(Graphics g, float s, LayoutRect logicalRect, string leftText, string rightText, bool isLeftSelected, Font font, Color accent, bool enabled = true)
     {
         var r = ScaleBatchRenameRect(logicalRect, s);
         using var containerPath = UIHelper.GetRoundedRectPath(r, 4 * s);
-        using var containerFill = new SolidBrush(Color.FromArgb(32, 32, 36));
-        using var containerPen = new Pen(Color.FromArgb(65, 65, 72), 1f * s);
+        using var containerFill = new SolidBrush(enabled ? Color.FromArgb(32, 32, 36) : Color.FromArgb(24, 24, 28));
+        using var containerPen = new Pen(enabled ? Color.FromArgb(65, 65, 72) : Color.FromArgb(44, 44, 48), 1f * s);
         g.FillPath(containerFill, containerPath);
         g.DrawPath(containerPen, containerPath);
 
@@ -552,12 +565,20 @@ public partial class ProgressWindow
             : new RectangleF(r.X + halfW, r.Y + (1 * s), halfW - (1 * s), r.Height - (2 * s));
 
         using var selPath = UIHelper.GetRoundedRectPath(selectedRect, 3 * s);
-        using var selFill = new SolidBrush(accent);
+        Color selColor = enabled ? accent : Color.FromArgb(48, 48, 54);
+        using var selFill = new SolidBrush(selColor);
         g.FillPath(selFill, selPath);
 
         using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-        using var leftBrush = new SolidBrush(isLeftSelected ? Color.White : Color.FromArgb(170, 170, 170));
-        using var rightBrush = new SolidBrush(!isLeftSelected ? Color.White : Color.FromArgb(170, 170, 170));
+        Color leftCol = !enabled
+            ? Color.FromArgb(95, 95, 95)
+            : (isLeftSelected ? Color.White : Color.FromArgb(170, 170, 170));
+        Color rightCol = !enabled
+            ? Color.FromArgb(95, 95, 95)
+            : (!isLeftSelected ? Color.White : Color.FromArgb(170, 170, 170));
+
+        using var leftBrush = new SolidBrush(leftCol);
+        using var rightBrush = new SolidBrush(rightCol);
 
         var leftR = new RectangleF(r.X, r.Y, halfW, r.Height);
         var rightR = new RectangleF(r.X + halfW, r.Y, halfW, r.Height);
@@ -745,13 +766,14 @@ public partial class ProgressWindow
         if (BatchRenameLayout.SeqCheckRect.ContainsInclusive(mouseX, mouseY))
         {
             _brEnableSeq = !_brEnableSeq;
+            UpdateSequenceControlsEnabled();
             UpdateBatchRenamePlan();
             InvalidateRect(hwnd, IntPtr.Zero, false);
             return true;
         }
 
-        // Sequence position segmented toggle (Left: Prefix, Right: Suffix)
-        if (BatchRenameLayout.SeqPosToggleRect.ContainsInclusive(mouseX, mouseY))
+        // Sequence position segmented toggle (Left: Prefix, Right: Suffix) - only active when enabled
+        if (_brEnableSeq && BatchRenameLayout.SeqPosToggleRect.ContainsInclusive(mouseX, mouseY))
         {
             int midX = BatchRenameLayout.SeqPosToggleRect.X + (BatchRenameLayout.SeqPosToggleRect.Width / 2);
             _brSeqPos = mouseX < midX ? InsertPosition.Prefix : InsertPosition.Suffix;

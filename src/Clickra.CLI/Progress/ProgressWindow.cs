@@ -38,6 +38,7 @@ namespace Clickra.UI
         private Action<bool>? _markdownDecision;
         private bool _markdownDecisionResolved = false;
         private IntPtr _editBgBrush = IntPtr.Zero;
+        private IntPtr _editDisabledBrush = IntPtr.Zero;
         private IntPtr _darkBrush = IntPtr.Zero;
         private IntPtr _hFont = IntPtr.Zero;
 
@@ -449,6 +450,7 @@ namespace Clickra.UI
 
             if (_darkBrush != IntPtr.Zero) { DeleteObject(_darkBrush); _darkBrush = IntPtr.Zero; }
             if (_editBgBrush != IntPtr.Zero) { DeleteObject(_editBgBrush); _editBgBrush = IntPtr.Zero; }
+            if (_editDisabledBrush != IntPtr.Zero) { DeleteObject(_editDisabledBrush); _editDisabledBrush = IntPtr.Zero; }
             if (_hFont != IntPtr.Zero) { DeleteObject(_hFont); _hFont = IntPtr.Zero; }
 
             RemoveTrayIcon();

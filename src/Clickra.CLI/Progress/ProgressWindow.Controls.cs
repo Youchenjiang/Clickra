@@ -121,6 +121,7 @@ namespace Clickra.UI
                     }
                     break;
                 case 0x0133: return HandleCtlColorEdit(w); // WM_CTLCOLOREDIT
+                case 0x0138: return HandleCtlColorStatic(w, l); // WM_CTLCOLORSTATIC
                 case 0x0111: return HandleCommand(hwnd, w, l); // WM_COMMAND
                 case 0x020A: return HandleMouseWheel(hwnd, w, l); // WM_MOUSEWHEEL
                 case WM_USER_INVALIDATE: return HandleInvalidate(hwnd, w);
@@ -292,6 +293,19 @@ namespace Clickra.UI
             SetTextColor(editHdc, 0x00FFFFFF); // White
             SetBkColor(editHdc, 0x002D2D2D); // Edit bg (45, 45, 45)
             return _editBgBrush;
+        }
+
+        /// <summary>Colors disabled edit controls during batch rename.</summary>
+        private IntPtr HandleCtlColorStatic(IntPtr w, IntPtr l)
+        {
+            if (_isPromptingBatchRename && (l == _hwndBrSeqStart || l == _hwndBrSeqPad))
+            {
+                SetTextColor(w, 0x00707070);
+                SetBkColor(w, 0x001E1E1E);
+                if (_editDisabledBrush == IntPtr.Zero) _editDisabledBrush = CreateSolidBrush(0x001E1E1E);
+                return _editDisabledBrush;
+            }
+            return IntPtr.Zero;
         }
 
         /// <summary>Dispatches button commands (no-op since dialogs handle their own commands).</summary>
