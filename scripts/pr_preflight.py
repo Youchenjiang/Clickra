@@ -462,7 +462,10 @@ def _check_roadmap_gate(base, metadata, milestone=None):
     ms = milestone
     if not ms and metadata:
         m = metadata.get("milestone")
-        ms = m.get("title") if isinstance(m, dict) else (m if isinstance(m, str) else None)
+        if isinstance(m, dict):
+            ms = m.get("title")
+        elif isinstance(m, str):
+            ms = m
     if not ms:
         return []
     diff = git("diff", "--name-only", f"{base}...HEAD")
