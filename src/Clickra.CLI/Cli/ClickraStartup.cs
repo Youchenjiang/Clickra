@@ -15,9 +15,9 @@ namespace Clickra;
 
 /// <summary>Owns the process startup pipeline: console attachment, font and DPI
 /// initialization, dashboard launch, CLI argument parsing and dispatch.</summary>
-internal static class ClickraStartup
+internal static partial class ClickraStartup
 {
-    private const string CommandSummary = "Commands: ppt2pdf, word2pdf, excel2pdf, md2pdf, md2word, merge-pdf, compress-pdf, translate-pdf, decrypt-pdf, split-pdf, print-pdf, pdf2img, img2pdf, img-merge, img-stitch, img-to-png, img-to-jpg, img-to-webp, img-to-gif, img-to-heic, --deploy";
+    private const string CommandSummary = "Commands: ppt2pdf, word2pdf, excel2pdf, md2pdf, md2word, merge-pdf, compress-pdf, translate-pdf, decrypt-pdf, split-pdf, print-pdf, pdf2img, img2pdf, img-merge, img-stitch, img-to-png, img-to-jpg, img-to-webp, img-to-gif, img-to-heic, batch-rename, --deploy";
     [DllImport("user32.dll")]
     static extern bool SetProcessDpiAwarenessContext(IntPtr value);
 
@@ -199,6 +199,7 @@ internal static class ClickraStartup
         Console.WriteLine("         --paper <name>     (Paper size name for print, e.g. A4, Letter)");
         Console.WriteLine("         --orientation <auto|portrait|landscape> (Print orientation)");
         Console.WriteLine("         --darken           (Darken text and enhance contrast for print)");
+        Console.WriteLine("         batch-rename       (Batch rename files with numbering, regex, case conversion)");
         Console.WriteLine(CommandSummary);
         Console.WriteLine("Deployment: Clickra --deploy <target_dir>");
     }
@@ -207,6 +208,8 @@ internal static class ClickraStartup
     /// returns true when one of them consumed the invocation.</summary>
     private static bool HandleVersionOrDeploy(string[] args)
     {
+        if (TryHandleBatchRenameArgs(args)) return true;
+
         if (args.Any(arg =>
                 arg.Equals("--help", StringComparison.OrdinalIgnoreCase) ||
                 arg.Equals("-h", StringComparison.OrdinalIgnoreCase) ||
