@@ -33,6 +33,8 @@ internal static partial class ClickraStartup
             return true;
         }
 
+        bool forceGui = ExtractFlag(argList, "--gui");
+        bool quiet = ExtractFlag(argList, "--quiet", "--no-ui");
         bool recursive = ExtractFlag(argList, "--recursive", "-r");
         bool dryRun = ExtractFlag(argList, "--dry-run", "-n");
         bool regex = ExtractFlag(argList, "--regex");
@@ -59,18 +61,26 @@ internal static partial class ClickraStartup
 
         // Remaining arguments are input paths
         var inputPaths = argList.Where(a => !a.StartsWith("-")).ToList();
-        if (inputPaths.Count == 0)
+        var files = inputPaths.Count > 0
+            ? BatchRenameUseCase.ResolveTargetFiles(inputPaths, recursive)
+            : new List<string>();
+
+        bool hasRuleFlags = prefix != null || suffix != null || startStr != null ||
+                            stepStr != null || padStr != null || numPosStr != null ||
+                            find != null || !string.IsNullOrEmpty(replace) || dateSourceStr != null ||
+                            dateFormat != null || datePosStr != null || caseStr != null ||
+                            extStr != null || customExt != null || dryRun;
+
+        if (forceGui || (!quiet && !hasRuleFlags))
         {
-            Console.WriteLine("[Error] No files or directories specified for batch rename.");
-            Console.WriteLine("Run 'Clickra batch-rename --help' for usage instructions.");
-            Environment.ExitCode = 1;
+            Clickra.UI.BatchRenameWindow.Show(files);
             return true;
         }
 
-        var files = BatchRenameUseCase.ResolveTargetFiles(inputPaths, recursive);
         if (files.Count == 0)
         {
-            Console.WriteLine("[Error] No matching files found to rename.");
+            Console.WriteLine("[Error] No files or directories specified for batch rename.");
+            Console.WriteLine("Run 'Clickra batch-rename --help' for usage instructions.");
             Environment.ExitCode = 1;
             return true;
         }
@@ -272,6 +282,8 @@ internal static partial class ClickraStartup
     {
         Console.WriteLine("Usage: Clickra batch-rename [options] <files or directories...>");
         Console.WriteLine("Options:");
+        Console.WriteLine("  --gui                    Launch interactive visual window with live preview");
+        Console.WriteLine("  --quiet, --no-ui         Run headlessly without interactive GUI window");
         Console.WriteLine("  --prefix <text>          Add text prefix to filenames");
         Console.WriteLine("  --suffix <text>          Add text suffix to filenames");
         Console.WriteLine("  --start <number>         Starting sequence number (default: 1)");
