@@ -541,5 +541,10 @@
   "batch_rename_rule_order": "套用順序：取代 → 前後綴 → 流水號 → 大小寫 → 副檔名",
   "batch_rename_tip_original": "原始：",
   "batch_rename_tip_new": "更名：",
-  "batch_rename_tip_dir": "路徑："
-}
+  "batch_rename_tip_dir": "路徑：",
+  "batch_rename_cue_prefix": "例如：2026_",
+  "batch_rename_cue_suffix": "例如：_草稿",
+  "batch_rename_cue_find": "欲搜尋文字",
+  "batch_rename_cue_replace": "取代為文字",
+  "batch_rename_drag_hint": "可拖曳檔案或資料夾至此處加入"
+}

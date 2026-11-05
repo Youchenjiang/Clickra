@@ -541,5 +541,10 @@
   "batch_rename_rule_order": "Order: Replace → Affixes → Numbering → Case → Extension",
   "batch_rename_tip_original": "Original: ",
   "batch_rename_tip_new": "New: ",
-  "batch_rename_tip_dir": "Folder: "
-}
+  "batch_rename_tip_dir": "Folder: ",
+  "batch_rename_cue_prefix": "e.g. 2026_",
+  "batch_rename_cue_suffix": "e.g. _draft",
+  "batch_rename_cue_find": "Text to find",
+  "batch_rename_cue_replace": "Replace with",
+  "batch_rename_drag_hint": "Drag & drop files or folders here"
+}

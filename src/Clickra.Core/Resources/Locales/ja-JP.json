@@ -541,5 +541,10 @@
   "batch_rename_rule_order": "適用順序：置換 → 接頭/接尾 → 連番 → 大小文字 → 拡張子",
   "batch_rename_tip_original": "元ファイル：",
   "batch_rename_tip_new": "変更後：",
-  "batch_rename_tip_dir": "フォルダー："
-}
+  "batch_rename_tip_dir": "フォルダー：",
+  "batch_rename_cue_prefix": "例：2026_",
+  "batch_rename_cue_suffix": "例：_草案",
+  "batch_rename_cue_find": "検索文字列",
+  "batch_rename_cue_replace": "置換文字列",
+  "batch_rename_drag_hint": "ここにファイルやフォルダーをドラッグ＆ドロップ"
+}

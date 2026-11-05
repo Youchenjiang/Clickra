@@ -541,5 +541,10 @@
   "batch_rename_rule_order": "적용 순서: 바꾸기 → 접두/접미사 → 일련번호 → 대소문자 → 확장자",
   "batch_rename_tip_original": "원본：",
   "batch_rename_tip_new": "변경：",
-  "batch_rename_tip_dir": "경로："
-}
+  "batch_rename_tip_dir": "경로：",
+  "batch_rename_cue_prefix": "예: 2026_",
+  "batch_rename_cue_suffix": "예: _초안",
+  "batch_rename_cue_find": "찾을 텍스트",
+  "batch_rename_cue_replace": "바꿀 텍스트",
+  "batch_rename_drag_hint": "여기에 파일이나 폴더를 끌어다 놓으세요"
+}
