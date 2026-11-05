@@ -26,6 +26,7 @@ public partial class ProgressWindow
     private readonly List<string> _brFiles = new();
     private BatchRenamePlan? _brCurrentPlan;
     private int _brScrollOffset = 0;
+    private int _brHoveredIndex = -1;
 
     // Responsive dimensions
     private int _brClientWidth = BatchRenameLayout.DefaultClientWidth;
@@ -399,6 +400,11 @@ public partial class ProgressWindow
                     using var conflictBorder = new Pen(Color.FromArgb(160, 42, 42), 1f * s);
                     g.DrawPath(conflictBorder, cardPath);
                 }
+                else if (i == _brHoveredIndex)
+                {
+                    using var hoverBorder = new Pen(UIHelper.Lighten(accentColor, 0.25f), 1.2f * s);
+                    g.DrawPath(hoverBorder, cardPath);
+                }
                 else if (willChange)
                 {
                     using var cardBorder = new Pen(Color.FromArgb(56, 56, 62), 1f * s);
@@ -477,6 +483,9 @@ public partial class ProgressWindow
 
         bool canExecute = _brFiles.Count > 0 && (_brCurrentPlan?.Items.Count(i => i.OriginalName != i.NewName) ?? 0) > 0;
         DrawBatchRenameButton(g, s, BatchRenameLayout.ExecuteRect(clientW, clientH), Loc("batch_rename_execute"), true, _msgFont, canExecute);
+
+        // Draw floating hover popover on top of all elements
+        DrawBatchRenameHoverTooltip(g, s, clientW, clientH);
     }
 
     private void DrawModernTextBoxContainer(Graphics g, float s, LayoutRect logicalRect, IntPtr editHwnd, Color accent, bool enabled = true)
@@ -951,6 +960,130 @@ public partial class ProgressWindow
 
         InvalidateRect(hwnd, IntPtr.Zero, false);
         return true;
+    }
+
+    internal IntPtr HandleBatchRenameMouseMove(IntPtr hwnd, int mouseX, int mouseY)
+    {
+        if (!_isPromptingBatchRename) return IntPtr.Zero;
+
+        int clientW = _brClientWidth;
+        int clientH = _brClientHeight;
+
+        var listLayout = BatchRenameLayout.PreviewListRect(clientW, clientH);
+        int newHoverIndex = -1;
+
+        if (listLayout.ContainsInclusive(mouseX, mouseY) && _brCurrentPlan != null && _brCurrentPlan.Items.Count > 0)
+        {
+            int relativeY = mouseY - BatchRenameLayout.PreviewListY + _brScrollOffset;
+            int idx = relativeY / 38;
+            if (idx >= 0 && idx < _brCurrentPlan.Items.Count)
+            {
+                int cardOffsetInRow = relativeY % 38;
+                if (cardOffsetInRow <= 34)
+                {
+                    newHoverIndex = idx;
+                }
+            }
+        }
+
+        if (newHoverIndex != _brHoveredIndex)
+        {
+            _brHoveredIndex = newHoverIndex;
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+        }
+
+        return IntPtr.Zero;
+    }
+
+    private void DrawBatchRenameHoverTooltip(Graphics g, float s, int clientW, int clientH)
+    {
+        if (_msgFont == null || _brHoveredIndex < 0 || _brCurrentPlan == null || _brHoveredIndex >= _brCurrentPlan.Items.Count)
+            return;
+
+        var item = _brCurrentPlan.Items[_brHoveredIndex];
+        float rowH = 38 * s;
+        var listLayout = BatchRenameLayout.PreviewListRect(clientW, clientH);
+        var listRect = ScaleBatchRenameRect(listLayout, s);
+
+        float rowY = listRect.Y - (_brScrollOffset * s) + (_brHoveredIndex * rowH);
+        if (rowY + rowH < listRect.Y || rowY > listRect.Bottom)
+            return;
+
+        using var tipLabelFont = new Font(_msgFont.FontFamily, 11f * s, FontStyle.Bold, GraphicsUnit.Pixel);
+        using var tipValFont = new Font(_msgFont.FontFamily, 11.5f * s, FontStyle.Regular, GraphicsUnit.Pixel);
+
+        string origLabel = Loc("batch_rename_tip_original");
+        string newLabel = Loc("batch_rename_tip_new");
+        string dirLabel = Loc("batch_rename_tip_dir");
+
+        string origVal = item.OriginalName;
+        string newVal = item.NewName;
+        string dirVal = Path.GetDirectoryName(item.OriginalPath) ?? "";
+
+        float lblW = Math.Max(g.MeasureString(origLabel, tipLabelFont).Width,
+                     Math.Max(g.MeasureString(newLabel, tipLabelFont).Width,
+                              g.MeasureString(dirLabel, tipLabelFont).Width));
+
+        float valW = Math.Max(g.MeasureString(origVal, tipValFont).Width,
+                     Math.Max(g.MeasureString(newVal, tipValFont).Width,
+                              g.MeasureString(dirVal, tipValFont).Width));
+
+        float padding = 12 * s;
+        float tipW = Math.Min((clientW - 64) * s, Math.Max(320 * s, lblW + valW + (padding * 2) + (8 * s)));
+        float lineHeight = 19 * s;
+        float tipH = (lineHeight * 3) + (padding * 1.5f);
+
+        float tipX = Math.Max(listRect.X, Math.Min(listRect.Right - tipW, listRect.X + (20 * s)));
+        float tipY = rowY + (38 * s) + (4 * s);
+        if (tipY + tipH > listRect.Bottom + (40 * s))
+        {
+            tipY = rowY - tipH - (4 * s);
+        }
+
+        var tipRect = new RectangleF(tipX, tipY, tipW, tipH);
+
+        // Shadow
+        var shadowRect = new RectangleF(tipX + (2 * s), tipY + (3 * s), tipW, tipH);
+        using var shadowBrush = new SolidBrush(Color.FromArgb(90, 0, 0, 0));
+        using var shadowPath = UIHelper.GetRoundedRectPath(shadowRect, 6 * s);
+        g.FillPath(shadowBrush, shadowPath);
+
+        // Background
+        using var tipBg = new SolidBrush(Color.FromArgb(28, 28, 34));
+        using var tipPath = UIHelper.GetRoundedRectPath(tipRect, 6 * s);
+        g.FillPath(tipBg, tipPath);
+
+        // Border & Accent top strip
+        using var borderPen = new Pen(Color.FromArgb(75, 75, 88), 1.2f * s);
+        g.DrawPath(borderPen, tipPath);
+
+        Color accent = UIHelper.GetSystemColorizationColor();
+        using var accentPen = new Pen(accent, 2f * s);
+        g.DrawLine(accentPen, tipRect.X + (8 * s), tipRect.Y + (1f * s), tipRect.Right - (8 * s), tipRect.Y + (1f * s));
+
+        // Draw content
+        using var lblBrush = new SolidBrush(Color.FromArgb(160, 160, 160));
+        using var whiteBrush = new SolidBrush(Color.White);
+        bool willChange = item.OriginalName != item.NewName;
+        using var newBrush = new SolidBrush(willChange ? Color.FromArgb(255, 215, 64) : Color.White);
+        using var dirBrush = new SolidBrush(Color.FromArgb(170, 170, 170));
+
+        float textX = tipRect.X + padding;
+        float valueX = textX + lblW + (6 * s);
+        float valueMaxW = tipRect.Right - valueX - padding;
+        using var sfVal = new StringFormat { FormatFlags = StringFormatFlags.NoWrap, Trimming = StringTrimming.EllipsisPath };
+
+        float curY = tipRect.Y + (padding * 0.8f);
+        g.DrawString(origLabel, tipLabelFont, lblBrush, textX, curY);
+        g.DrawString(origVal, tipValFont, whiteBrush, new RectangleF(valueX, curY, valueMaxW, lineHeight), sfVal);
+
+        curY += lineHeight;
+        g.DrawString(newLabel, tipLabelFont, lblBrush, textX, curY);
+        g.DrawString(newVal, tipValFont, newBrush, new RectangleF(valueX, curY, valueMaxW, lineHeight), sfVal);
+
+        curY += lineHeight;
+        g.DrawString(dirLabel, tipLabelFont, lblBrush, textX, curY);
+        g.DrawString(dirVal, tipValFont, dirBrush, new RectangleF(valueX, curY, valueMaxW, lineHeight), sfVal);
     }
 
     private void ExecuteBatchRenameFromPrompt(IntPtr hwnd)

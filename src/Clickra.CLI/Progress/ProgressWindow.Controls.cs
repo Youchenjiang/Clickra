@@ -426,6 +426,11 @@ namespace Clickra.UI
             int mouseX = (int)(rawX / _dpiScale);
             int mouseY = (int)(rawY / _dpiScale);
 
+            if (_isPromptingBatchRename)
+            {
+                return HandleBatchRenameMouseMove(hwnd, mouseX, mouseY);
+            }
+
             if (_isPromptingPrintOptions)
             {
                 return HandlePrintMouseMove(hwnd, mouseX, mouseY);
