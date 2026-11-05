@@ -31,19 +31,19 @@ namespace ClickraShell
         private const int E_FAIL = -2_147_467_259;
         private const uint SIGDN_FILESYSPATH = 0x8005_8000;
 
-        private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_Word2Pdf", "Menu_Excel2Pdf", "Menu_MergePdf", "Menu_CompressPdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch", "Menu_ImgCompress", "Menu_TranslatePdf", "Menu_DecryptPdf", "Menu_SplitPdf", "Menu_PrintPdf", "Menu_ImgToPng", "Menu_ImgToJpg", "Menu_ImgToWebp", "Menu_ImgToGif", "Menu_ImgToHeic", "Menu_Md2Pdf", "Menu_Md2Word", "Menu_Pdf2Img" };
+        private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_Word2Pdf", "Menu_Excel2Pdf", "Menu_MergePdf", "Menu_CompressPdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch", "Menu_ImgCompress", "Menu_TranslatePdf", "Menu_DecryptPdf", "Menu_SplitPdf", "Menu_PrintPdf", "Menu_ImgToPng", "Menu_ImgToJpg", "Menu_ImgToWebp", "Menu_ImgToGif", "Menu_ImgToHeic", "Menu_Md2Pdf", "Menu_Md2Word", "Menu_Pdf2Img", "Menu_BatchRename" };
 
         /// <summary>Resource key of the root (parent) submenu label, so the app's own name comes from
         /// the same resw as every entry under it instead of a hardcoded literal.</summary>
         private const string RootTitleKey = "AppName";
-        private static readonly string[] SubArgs = { "ppt2pdf", "word2pdf", "excel2pdf", "merge-pdf", "compress-pdf", "img2pdf", "img-merge", "img-stitch", "img-compress", "translate-pdf", "decrypt-pdf", "split-pdf", "print-pdf", "img-to-png", "img-to-jpg", "img-to-webp", "img-to-gif", "img-to-heic", "md2pdf", "md2word", "pdf2img" };
+        private static readonly string[] SubArgs = { "ppt2pdf", "word2pdf", "excel2pdf", "merge-pdf", "compress-pdf", "img2pdf", "img-merge", "img-stitch", "img-compress", "translate-pdf", "decrypt-pdf", "split-pdf", "print-pdf", "img-to-png", "img-to-jpg", "img-to-webp", "img-to-gif", "img-to-heic", "md2pdf", "md2word", "pdf2img", "batch-rename" };
         /// <summary>Per-command icon files, positionally aligned with SubArgs. The root command (-1) uses app.ico.</summary>
         private static readonly string[] IconFiles = {
             "menu-ppt2pdf.ico", "menu-word2pdf.ico", "menu-excel2pdf.ico", "menu-merge-pdf.ico",
             "menu-compress-pdf.ico", "menu-img2pdf.ico", "menu-img-merge.ico", "menu-img-stitch.ico",
             "menu-img-compress.ico", "menu-translate-pdf.ico", "menu-decrypt-pdf.ico", "menu-split-pdf.ico", "menu-print-pdf.ico",
             "menu-img-to-png.ico", "menu-img-to-jpg.ico", "menu-img-to-webp.ico", "menu-img-to-gif.ico", "menu-img-to-heic.ico",
-            "menu-md2pdf.ico", "menu-md2word.ico", "menu-pdf2img.ico"
+            "menu-md2pdf.ico", "menu-md2word.ico", "menu-pdf2img.ico", "menu-batch-rename.ico"
         };
 
         /// <summary>Allocates a COM object with the given vtable and type, then performs a
@@ -182,6 +182,11 @@ namespace ClickraShell
         /// <summary>Returns whether the file extension is supported by the command index.</summary>
         private static bool IsSupported(string path, int idx)
         {
+            if (idx >= 0 && idx < SubArgs.Length && SubArgs[idx] == "batch-rename")
+            {
+                return true;
+            }
+
             string ext = Path.GetExtension(path).ToLowerInvariant();
             if (string.IsNullOrEmpty(ext)) return false;
 
@@ -206,8 +211,16 @@ namespace ClickraShell
             var files = GetFiles(psi);
             if (files.Count == 0) return 0;
 
+            if (idx == -1)
+            {
+                // Root menu is enabled whenever any file is selected (batch rename is always available)
+                // or when supported conversion extensions are present
+                *p = 0;
+                return 0;
+            }
+
             int minFiles = idx >= 0 && idx < SubArgs.Length
-                ? ConvertCommandMetadata.GetMinFiles(SubArgs[idx])
+                ? (SubArgs[idx] == "batch-rename" ? 1 : ConvertCommandMetadata.GetMinFiles(SubArgs[idx]))
                 : 1;
             bool countOk = files.Count >= minFiles;
 

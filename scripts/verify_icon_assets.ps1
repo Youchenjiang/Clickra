@@ -301,7 +301,8 @@ $featureCommands = @(
     'word2pdf', 'excel2pdf', 'ppt2pdf', 'md2pdf', 'md2word',
     'merge-pdf', 'compress-pdf', 'split-pdf', 'translate-pdf', 'decrypt-pdf', 'print-pdf',
     'img2pdf', 'img-merge', 'img-stitch', 'img-compress',
-    'img-to-png', 'img-to-jpg', 'img-to-webp', 'img-to-gif', 'img-to-heic'
+    'img-to-png', 'img-to-jpg', 'img-to-webp', 'img-to-gif', 'img-to-heic',
+    'batch-rename'
 )
 $featureIcoSizes = @(16, 20, 24, 32, 48, 64)
 

@@ -81,4 +81,7 @@
   <data name="Menu_Pdf2Img" xml:space="preserve">
     <value>画像に変換</value>
   </data>
+  <data name="Menu_BatchRename" xml:space="preserve">
+    <value>一括名前変更</value>
+  </data>
 </root>

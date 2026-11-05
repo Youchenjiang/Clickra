@@ -81,4 +81,7 @@
   <data name="Menu_Pdf2Img" xml:space="preserve">
     <value>이미지로 변환</value>
   </data>
+  <data name="Menu_BatchRename" xml:space="preserve">
+    <value>일괄 이름 바꾸기</value>
+  </data>
 </root>
