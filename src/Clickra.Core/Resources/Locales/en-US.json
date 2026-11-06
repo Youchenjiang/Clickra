@@ -122,7 +122,7 @@
   "convert_clear": "Clear",
   "convert_start": "Start Conversion",
   "convert_group_convert": "File Conversion",
-  "convert_group_organize": "Merge & Split",
+  "convert_group_organize": "File Organization",
   "convert_group_optimize": "Compression",
   "convert_group_process": "Utilities",
   "convert_err_min_files": "This action requires at least {0} files!",

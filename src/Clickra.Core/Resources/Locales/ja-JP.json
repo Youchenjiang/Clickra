@@ -122,7 +122,7 @@
   "convert_clear": "クリア",
   "convert_start": "変換開始",
   "convert_group_convert": "形式変換",
-  "convert_group_organize": "結合・分割",
+  "convert_group_organize": "ファイル整理",
   "convert_group_optimize": "ファイル圧縮",
   "convert_group_process": "便利ツール",
   "convert_err_min_files": "この機能には少なくとも {0} 個のファイルが必要です！",

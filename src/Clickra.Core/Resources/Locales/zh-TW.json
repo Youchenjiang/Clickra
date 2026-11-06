@@ -122,7 +122,7 @@
   "convert_clear": "清除",
   "convert_start": "開始轉檔",
   "convert_group_convert": "格式轉換",
-  "convert_group_organize": "合併分割",
+  "convert_group_organize": "檔案整理",
   "convert_group_optimize": "檔案壓縮",
   "convert_group_process": "實用工具",
   "convert_err_min_files": "此功能至少需要 {0} 個檔案！",
