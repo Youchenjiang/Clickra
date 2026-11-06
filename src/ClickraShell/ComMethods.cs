@@ -213,14 +213,18 @@ namespace ClickraShell
 
             if (idx == -1)
             {
-                // Root menu is enabled whenever any file is selected (batch rename is always available)
-                // or when supported conversion extensions are present
-                *p = 0;
+                // Root menu is enabled for multi-file selections (batch rename requires at least 2 files)
+                // or for single files with supported conversion extensions.
+                bool anySupported = files.Count >= 2 || files.Any(f => IsSupported(f, -1));
+                if (anySupported)
+                {
+                    *p = 0; // ECS_ENABLED
+                }
                 return 0;
             }
 
             int minFiles = idx >= 0 && idx < SubArgs.Length
-                ? (SubArgs[idx] == "batch-rename" ? 1 : ConvertCommandMetadata.GetMinFiles(SubArgs[idx]))
+                ? (SubArgs[idx] == "batch-rename" ? 2 : ConvertCommandMetadata.GetMinFiles(SubArgs[idx]))
                 : 1;
             bool countOk = files.Count >= minFiles;
 
