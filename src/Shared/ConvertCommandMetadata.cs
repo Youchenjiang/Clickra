@@ -102,7 +102,7 @@ public static class ConvertCommandMetadata
         FileTypeExtensions.TryGetValue(type, out string[]? extensions) ? extensions : [];
 
     public static string GetFileTypeForCommand(string command) =>
-        Commands.TryGetValue(command, out CommandDef? definition) ? definition.FileType : "pdf";
+        Commands.TryGetValue(command, out CommandDef? definition) ? definition.FileType : "";
 
     public static string? GetDefaultCommandForFiles(IReadOnlyCollection<string> files)
     {
