@@ -39,6 +39,7 @@ public partial class ProgressWindow
     private ExtensionTransformMode _brExtMode = ExtensionTransformMode.KeepOriginal;
     private bool _brMatchCase = false;
     private bool _brUseRegex = false;
+    private bool _brAdvancedExpanded = false;
 
     // Edit controls HWND
     private IntPtr _hwndBrPrefix = IntPtr.Zero;
@@ -364,14 +365,20 @@ public partial class ProgressWindow
         g.DrawString(Loc("batch_rename_padding"), smallFont, seqLabelBrush, BatchRenameLayout.RightInputX * s, BatchRenameLayout.SeqParamLabelY * s);
         DrawModernTextBoxContainer(g, s, BatchRenameLayout.SeqPadRect, _hwndBrSeqPad, accentColor, _brEnableSeq);
 
-        // 4. Case & Ext transforms (Unified Segmented Controls)
-        g.DrawString(Loc("batch_rename_case_mode"), smallFont, mutedBrush, 32 * s, BatchRenameLayout.CaseLabelY * s);
-        string[] caseLabels = { Loc("batch_rename_case_none"), Loc("batch_rename_case_lower"), Loc("batch_rename_case_upper"), Loc("batch_rename_case_title") };
-        DrawMultiSegmentedToggle(g, s, BatchRenameLayout.CaseSegmentRect, caseLabels, (int)_brCaseMode, smallFont, accentColor);
+        // 4. Collapsible Advanced Options
+        bool hasActiveAdvanced = _brCaseMode != CaseTransformMode.None || _brExtMode != ExtensionTransformMode.KeepOriginal;
+        DrawCollapsibleHeader(g, s, BatchRenameLayout.AdvancedToggleRect, Loc("batch_rename_advanced"), _brAdvancedExpanded, hasActiveAdvanced, smallFont, accentColor);
 
-        g.DrawString(Loc("batch_rename_ext_mode"), smallFont, mutedBrush, 32 * s, BatchRenameLayout.ExtLabelY * s);
-        string[] extLabels = { Loc("batch_rename_ext_keep"), Loc("batch_rename_ext_lower"), Loc("batch_rename_ext_upper") };
-        DrawMultiSegmentedToggle(g, s, BatchRenameLayout.ExtSegmentRect, extLabels, (int)_brExtMode, smallFont, accentColor);
+        if (_brAdvancedExpanded)
+        {
+            g.DrawString(Loc("batch_rename_case_mode"), smallFont, mutedBrush, 32 * s, BatchRenameLayout.CaseLabelY * s);
+            string[] caseLabels = { Loc("batch_rename_case_none"), Loc("batch_rename_case_lower"), Loc("batch_rename_case_upper"), Loc("batch_rename_case_title") };
+            DrawMultiSegmentedToggle(g, s, BatchRenameLayout.CaseSegmentRect, caseLabels, (int)_brCaseMode, smallFont, accentColor);
+
+            g.DrawString(Loc("batch_rename_ext_mode"), smallFont, mutedBrush, 32 * s, BatchRenameLayout.ExtLabelY * s);
+            string[] extLabels = { Loc("batch_rename_ext_keep"), Loc("batch_rename_ext_lower"), Loc("batch_rename_ext_upper") };
+            DrawMultiSegmentedToggle(g, s, BatchRenameLayout.ExtSegmentRect, extLabels, (int)_brExtMode, smallFont, accentColor);
+        }
 
 
 
@@ -576,6 +583,44 @@ public partial class ProgressWindow
         {
             using var linePen = new Pen(accent, 2.0f * s);
             g.DrawLine(linePen, r.X + (3 * s), r.Bottom - (1f * s), r.Right - (3 * s), r.Bottom - (1f * s));
+        }
+    }
+
+    private void DrawCollapsibleHeader(Graphics g, float s, LayoutRect logicalRect, string title, bool isExpanded, bool hasActiveBadge, Font font, Color accent)
+    {
+        var rect = ScaleBatchRenameRect(logicalRect, s);
+        using var path = UIHelper.GetRoundedRectPath(rect, 4 * s);
+
+        using var bgBrush = new SolidBrush(Color.FromArgb(36, 36, 42));
+        using var borderPen = new Pen(Color.FromArgb(58, 58, 66), 1f * s);
+        g.FillPath(bgBrush, path);
+        g.DrawPath(borderPen, path);
+
+        string chevron = isExpanded ? "▾  " : "▸  ";
+        string fullText = chevron + title;
+
+        using var textBrush = new SolidBrush(Color.FromArgb(215, 215, 225));
+        using var sf = new StringFormat { LineAlignment = StringAlignment.Center };
+        var textRect = new RectangleF(rect.X + (10 * s), rect.Y, rect.Width - (20 * s), rect.Height);
+        g.DrawString(fullText, font, textBrush, textRect, sf);
+
+        if (hasActiveBadge && !isExpanded)
+        {
+            string badgeText = Loc("batch_rename_advanced_active");
+            var badgeSize = g.MeasureString(badgeText, font);
+            float badgeW = badgeSize.Width + (12 * s);
+            float badgeH = 18 * s;
+            float badgeX = rect.Right - badgeW - (8 * s);
+            float badgeY = rect.Y + (rect.Height - badgeH) / 2f;
+            var badgeRect = new RectangleF(badgeX, badgeY, badgeW, badgeH);
+
+            using var badgePath = UIHelper.GetRoundedRectPath(badgeRect, 3 * s);
+            using var badgeBrush = new SolidBrush(accent);
+            g.FillPath(badgeBrush, badgePath);
+
+            using var badgeSf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+            using var badgeFont = new Font(font.FontFamily, 10f * s, FontStyle.Bold, GraphicsUnit.Pixel);
+            g.DrawString(badgeText, badgeFont, Brushes.White, badgeRect, badgeSf);
         }
     }
 
@@ -885,31 +930,42 @@ public partial class ProgressWindow
             return true;
         }
 
-        // Case mode segmented toggle
-        if (BatchRenameLayout.CaseSegmentRect.ContainsInclusive(mouseX, mouseY))
+        // Collapsible Advanced toggle
+        if (BatchRenameLayout.AdvancedToggleRect.ContainsInclusive(mouseX, mouseY))
         {
-            float segW = BatchRenameLayout.LeftColW / 4f;
-            int idx = (int)((mouseX - BatchRenameLayout.LeftColX) / segW);
-            if (idx >= 0 && idx < 4)
-            {
-                _brCaseMode = (CaseTransformMode)idx;
-                UpdateBatchRenamePlan();
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-                return true;
-            }
+            _brAdvancedExpanded = !_brAdvancedExpanded;
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+            return true;
         }
 
-        // Extension mode segmented toggle
-        if (BatchRenameLayout.ExtSegmentRect.ContainsInclusive(mouseX, mouseY))
+        if (_brAdvancedExpanded)
         {
-            float segW = BatchRenameLayout.LeftColW / 3f;
-            int idx = (int)((mouseX - BatchRenameLayout.LeftColX) / segW);
-            if (idx >= 0 && idx < 3)
+            // Case mode segmented toggle
+            if (BatchRenameLayout.CaseSegmentRect.ContainsInclusive(mouseX, mouseY))
             {
-                _brExtMode = (ExtensionTransformMode)idx;
-                UpdateBatchRenamePlan();
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-                return true;
+                float segW = BatchRenameLayout.LeftColW / 4f;
+                int idx = (int)((mouseX - BatchRenameLayout.LeftColX) / segW);
+                if (idx >= 0 && idx < 4)
+                {
+                    _brCaseMode = (CaseTransformMode)idx;
+                    UpdateBatchRenamePlan();
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                    return true;
+                }
+            }
+
+            // Extension mode segmented toggle
+            if (BatchRenameLayout.ExtSegmentRect.ContainsInclusive(mouseX, mouseY))
+            {
+                float segW = BatchRenameLayout.LeftColW / 3f;
+                int idx = (int)((mouseX - BatchRenameLayout.LeftColX) / segW);
+                if (idx >= 0 && idx < 3)
+                {
+                    _brExtMode = (ExtensionTransformMode)idx;
+                    UpdateBatchRenamePlan();
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                    return true;
+                }
             }
         }
 

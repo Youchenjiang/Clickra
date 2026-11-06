@@ -26,44 +26,48 @@ public static class BatchRenameLayout
     public const int ColGap = 16;
     public const int RightInputX = LeftColX + InputColW + ColGap; // 216
 
-    public const int RulesTitleY = 20;
-    public const int RuleOrderY = 44;
+    public const int RulesTitleY = 18;
+    public const int RuleOrderY = 40;
 
     // 1. Prefix & Suffix (Paired side-by-side)
-    public const int PrefixLabelY = 68;
-    public const int PrefixInputY = 88;
+    public const int PrefixLabelY = 62;
+    public const int PrefixInputY = 80;
     public const int InputH = 26;
     public static LayoutRect PrefixRect => new(LeftColX, PrefixInputY, InputColW, InputH);
     public static LayoutRect SuffixRect => new(RightInputX, PrefixInputY, InputColW, InputH);
 
     // 2. Find and Replace (Paired side-by-side)
-    public const int FindLabelY = 122;
-    public const int FindInputY = 142;
+    public const int FindLabelY = 112;
+    public const int FindInputY = 130;
     public static LayoutRect FindRect => new(LeftColX, FindInputY, InputColW, InputH);
     public static LayoutRect ReplaceRect => new(RightInputX, FindInputY, InputColW, InputH);
 
     // Checkboxes tightly nested under Find & Replace
-    public const int MatchCaseY = 172;
+    public const int MatchCaseY = 160;
     public static LayoutRect MatchCaseRect => new(LeftColX, MatchCaseY, InputColW, 20);
     public static LayoutRect RegexRect => new(RightInputX, MatchCaseY, InputColW, 20);
 
     // 3. Numbering section (Paired & Compact)
-    public const int SeqCheckY = 206;
+    public const int SeqCheckY = 188;
     public static LayoutRect SeqCheckRect => new(LeftColX, SeqCheckY, InputColW, 24);
     public static LayoutRect SeqPosToggleRect => new(RightInputX, SeqCheckY, InputColW, 24);
 
-    public const int SeqParamLabelY = 236;
-    public const int SeqParamInputY = 254;
+    public const int SeqParamLabelY = 216;
+    public const int SeqParamInputY = 234;
     public static LayoutRect SeqStartRect => new(LeftColX, SeqParamInputY, InputColW, InputH);
     public static LayoutRect SeqPadRect => new(RightInputX, SeqParamInputY, InputColW, InputH);
 
-    // 4. Case & Ext transforms (Unified segmented controls)
-    public const int CaseLabelY = 292;
-    public const int CaseBtnY = 312;
+    // 4. Collapsible Advanced Options
+    public const int AdvancedToggleY = 272;
+    public const int AdvancedToggleH = 26;
+    public static LayoutRect AdvancedToggleRect => new(LeftColX, AdvancedToggleY, LeftColW, AdvancedToggleH);
+
+    public const int CaseLabelY = 304;
+    public const int CaseBtnY = 322;
     public static LayoutRect CaseSegmentRect => new(LeftColX, CaseBtnY, LeftColW, 28);
 
-    public const int ExtLabelY = 350;
-    public const int ExtBtnY = 370;
+    public const int ExtLabelY = 356;
+    public const int ExtBtnY = 374;
     public static LayoutRect ExtSegmentRect => new(LeftColX, ExtBtnY, LeftColW, 28);
 
     // Divider
@@ -71,9 +75,9 @@ public static class BatchRenameLayout
 
     // Right Column: Live Preview (Responsive)
     public const int RightColX = 420;
-    public const int PreviewTitleY = 20;
-    public const int PreviewSummaryY = 46;
-    public const int PreviewListY = 74;
+    public const int PreviewTitleY = 18;
+    public const int PreviewSummaryY = 42;
+    public const int PreviewListY = 70;
 
     public static int GetRightColW(int clientW) => Math.Max(320, clientW - RightColX - 32);
     public static int GetPreviewListH(int clientH) => Math.Max(240, clientH - PreviewListY - 74);
