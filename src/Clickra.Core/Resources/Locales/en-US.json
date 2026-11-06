@@ -526,7 +526,7 @@
   "batch_rename_ext_keep": "Keep Extension",
   "batch_rename_ext_lower": "Lowercase Ext",
   "batch_rename_ext_upper": "Uppercase Ext",
-  "batch_rename_preview": "Live Preview",
+  "batch_rename_preview": "File Preview",
   "batch_rename_summary": "Total: {0} files | Renaming: {1} | Conflicts: {2}",
   "batch_rename_add_files": "+ Add Files",
   "batch_rename_clear": "Clear",
