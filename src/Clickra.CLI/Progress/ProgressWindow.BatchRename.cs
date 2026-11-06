@@ -71,63 +71,22 @@ public partial class ProgressWindow
         float s = _dpiScale;
         IntPtr font = _hFont;
 
-        _hwndBrPrefix = CreateSingleEdit(hwnd, BatchRenameLayout.PrefixRect, "", font, s);
-        SetEditCueBanner(_hwndBrPrefix, Loc("batch_rename_cue_prefix"));
-        _hwndBrSuffix = CreateSingleEdit(hwnd, BatchRenameLayout.SuffixRect, "", font, s);
-        SetEditCueBanner(_hwndBrSuffix, Loc("batch_rename_cue_suffix"));
-        _hwndBrSeqStart = CreateSingleEdit(hwnd, BatchRenameLayout.SeqStartRect, "1", font, s);
+        _hwndBrPrefix = ModernControls.CreateSingleEdit(hwnd, BatchRenameLayout.PrefixRect, "", font, s);
+        ModernControls.SetCueBanner(_hwndBrPrefix, Loc("batch_rename_cue_prefix"));
+        _hwndBrSuffix = ModernControls.CreateSingleEdit(hwnd, BatchRenameLayout.SuffixRect, "", font, s);
+        ModernControls.SetCueBanner(_hwndBrSuffix, Loc("batch_rename_cue_suffix"));
+        _hwndBrSeqStart = ModernControls.CreateSingleEdit(hwnd, BatchRenameLayout.SeqStartRect, "1", font, s);
         int suggestedPad = Math.Max(2, (int)Math.Ceiling(Math.Log10(Math.Max(1, _brFiles.Count + 1))));
-        _hwndBrSeqPad = CreateSingleEdit(hwnd, BatchRenameLayout.SeqPadRect, suggestedPad.ToString(), font, s);
+        _hwndBrSeqPad = ModernControls.CreateSingleEdit(hwnd, BatchRenameLayout.SeqPadRect, suggestedPad.ToString(), font, s);
         UpdateSequenceControlsEnabled();
-        _hwndBrFind = CreateSingleEdit(hwnd, BatchRenameLayout.FindRect, "", font, s);
-        SetEditCueBanner(_hwndBrFind, Loc("batch_rename_cue_find"));
-        _hwndBrReplace = CreateSingleEdit(hwnd, BatchRenameLayout.ReplaceRect, "", font, s);
-        SetEditCueBanner(_hwndBrReplace, Loc("batch_rename_cue_replace"));
+        _hwndBrFind = ModernControls.CreateSingleEdit(hwnd, BatchRenameLayout.FindRect, "", font, s);
+        ModernControls.SetCueBanner(_hwndBrFind, Loc("batch_rename_cue_find"));
+        _hwndBrReplace = ModernControls.CreateSingleEdit(hwnd, BatchRenameLayout.ReplaceRect, "", font, s);
+        ModernControls.SetCueBanner(_hwndBrReplace, Loc("batch_rename_cue_replace"));
 
         UpdateBatchRenamePlan();
     }
 
-    private static void SetEditCueBanner(IntPtr editHwnd, string cueText)
-    {
-        if (editHwnd == IntPtr.Zero || string.IsNullOrEmpty(cueText)) return;
-        IntPtr pStr = Marshal.StringToHGlobalUni(cueText);
-        try
-        {
-            SendMessageW(editHwnd, 0x1501, IntPtr.Zero, pStr); // EM_SETCUEBANNER (0 = hide on focus)
-        }
-        finally
-        {
-            Marshal.FreeHGlobal(pStr);
-        }
-    }
-
-    private IntPtr CreateSingleEdit(IntPtr parent, LayoutRect rect, string defaultText, IntPtr font, float s)
-    {
-        var r = ScaleBatchRenameRect(rect, s);
-        int editX = (int)(r.X + (3 * s));
-        int editY = (int)(r.Y + (3 * s));
-        int editW = (int)(r.Width - (6 * s));
-        int editH = (int)(r.Height - (6 * s));
-
-        IntPtr edit = CreateWindowEx(
-            0, // No WS_EX_CLIENTEDGE (flat modern container)
-            "EDIT",
-            defaultText,
-            0x50000080 | 0x0080, // WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL
-            editX, editY, editW, editH,
-            parent, IntPtr.Zero, GetModuleHandle(null), IntPtr.Zero);
-
-        if (font != IntPtr.Zero)
-        {
-            SendMessageW(edit, 0x0030, font, (IntPtr)1); // WM_SETFONT
-        }
-
-        // EM_SETMARGINS (0x00D3): set left/right padding so text is not pressed against edge
-        int margin = (int)(4 * s);
-        SendMessageW(edit, 0x00D3, (IntPtr)(0x0001 | 0x0002), (IntPtr)((margin << 16) | margin));
-
-        return edit;
-    }
 
     private void UpdateSequenceControlsEnabled()
     {
@@ -339,45 +298,45 @@ public partial class ProgressWindow
 
         // 1. Prefix & Suffix (Paired side-by-side)
         g.DrawString(Loc("batch_rename_prefix"), smallFont, mutedBrush, 32 * s, BatchRenameLayout.PrefixLabelY * s);
-        DrawModernTextBoxContainer(g, s, BatchRenameLayout.PrefixRect, _hwndBrPrefix, accentColor);
+        ModernControls.DrawTextBoxContainer(g, s, BatchRenameLayout.PrefixRect, _hwndBrPrefix, _hwndBrFocused, accentColor);
 
         g.DrawString(Loc("batch_rename_suffix"), smallFont, mutedBrush, BatchRenameLayout.RightInputX * s, BatchRenameLayout.PrefixLabelY * s);
-        DrawModernTextBoxContainer(g, s, BatchRenameLayout.SuffixRect, _hwndBrSuffix, accentColor);
+        ModernControls.DrawTextBoxContainer(g, s, BatchRenameLayout.SuffixRect, _hwndBrSuffix, _hwndBrFocused, accentColor);
 
         // 2. Find & Replace (Paired side-by-side)
         g.DrawString(Loc("batch_rename_find"), smallFont, mutedBrush, 32 * s, BatchRenameLayout.FindLabelY * s);
-        DrawModernTextBoxContainer(g, s, BatchRenameLayout.FindRect, _hwndBrFind, accentColor);
+        ModernControls.DrawTextBoxContainer(g, s, BatchRenameLayout.FindRect, _hwndBrFind, _hwndBrFocused, accentColor);
 
         g.DrawString(Loc("batch_rename_replace"), smallFont, mutedBrush, BatchRenameLayout.RightInputX * s, BatchRenameLayout.FindLabelY * s);
-        DrawModernTextBoxContainer(g, s, BatchRenameLayout.ReplaceRect, _hwndBrReplace, accentColor);
+        ModernControls.DrawTextBoxContainer(g, s, BatchRenameLayout.ReplaceRect, _hwndBrReplace, _hwndBrFocused, accentColor);
 
-        DrawModernCheckBox(g, s, BatchRenameLayout.MatchCaseRect, _brMatchCase, Loc("batch_rename_match_case"), smallFont, bodyBrush, accentColor);
-        DrawModernCheckBox(g, s, BatchRenameLayout.RegexRect, _brUseRegex, Loc("batch_rename_regex"), smallFont, bodyBrush, accentColor);
+        ModernControls.DrawCheckBox(g, s, BatchRenameLayout.MatchCaseRect, _brMatchCase, Loc("batch_rename_match_case"), smallFont, bodyBrush, accentColor);
+        ModernControls.DrawCheckBox(g, s, BatchRenameLayout.RegexRect, _brUseRegex, Loc("batch_rename_regex"), smallFont, bodyBrush, accentColor);
 
         // 3. Sequence Numbering (Paired & Compact with disabled state)
-        DrawModernCheckBox(g, s, BatchRenameLayout.SeqCheckRect, _brEnableSeq, Loc("batch_rename_numbering"), smallFont, bodyBrush, accentColor);
-        DrawSegmentedToggle(g, s, BatchRenameLayout.SeqPosToggleRect, Loc("batch_rename_pos_prefix"), Loc("batch_rename_pos_suffix"), _brSeqPos == InsertPosition.Prefix, smallFont, accentColor, _brEnableSeq);
+        ModernControls.DrawCheckBox(g, s, BatchRenameLayout.SeqCheckRect, _brEnableSeq, Loc("batch_rename_numbering"), smallFont, bodyBrush, accentColor);
+        ModernControls.DrawSegmentedToggle(g, s, BatchRenameLayout.SeqPosToggleRect, Loc("batch_rename_pos_prefix"), Loc("batch_rename_pos_suffix"), _brSeqPos == InsertPosition.Prefix, smallFont, accentColor, _brEnableSeq);
 
         using var seqLabelBrush = new SolidBrush(_brEnableSeq ? Color.FromArgb(145, 145, 145) : Color.FromArgb(85, 85, 85));
         g.DrawString(Loc("batch_rename_start_index"), smallFont, seqLabelBrush, 32 * s, BatchRenameLayout.SeqParamLabelY * s);
-        DrawModernTextBoxContainer(g, s, BatchRenameLayout.SeqStartRect, _hwndBrSeqStart, accentColor, _brEnableSeq);
+        ModernControls.DrawTextBoxContainer(g, s, BatchRenameLayout.SeqStartRect, _hwndBrSeqStart, _hwndBrFocused, accentColor, _brEnableSeq);
 
         g.DrawString(Loc("batch_rename_padding"), smallFont, seqLabelBrush, BatchRenameLayout.RightInputX * s, BatchRenameLayout.SeqParamLabelY * s);
-        DrawModernTextBoxContainer(g, s, BatchRenameLayout.SeqPadRect, _hwndBrSeqPad, accentColor, _brEnableSeq);
+        ModernControls.DrawTextBoxContainer(g, s, BatchRenameLayout.SeqPadRect, _hwndBrSeqPad, _hwndBrFocused, accentColor, _brEnableSeq);
 
         // 4. Collapsible Advanced Options
         bool hasActiveAdvanced = _brCaseMode != CaseTransformMode.None || _brExtMode != ExtensionTransformMode.KeepOriginal;
-        DrawCollapsibleHeader(g, s, BatchRenameLayout.AdvancedToggleRect, Loc("batch_rename_advanced"), _brAdvancedExpanded, hasActiveAdvanced, smallFont, accentColor);
+        ModernControls.DrawCollapsibleHeader(g, s, BatchRenameLayout.AdvancedToggleRect, Loc("batch_rename_advanced"), _brAdvancedExpanded, hasActiveAdvanced, Loc("batch_rename_advanced_active"), smallFont, accentColor);
 
         if (_brAdvancedExpanded)
         {
             g.DrawString(Loc("batch_rename_case_mode"), smallFont, mutedBrush, 32 * s, BatchRenameLayout.CaseLabelY * s);
             string[] caseLabels = { Loc("batch_rename_case_none"), Loc("batch_rename_case_lower"), Loc("batch_rename_case_upper"), Loc("batch_rename_case_title") };
-            DrawMultiSegmentedToggle(g, s, BatchRenameLayout.CaseSegmentRect, caseLabels, (int)_brCaseMode, smallFont, accentColor);
+            ModernControls.DrawMultiSegmentedToggle(g, s, BatchRenameLayout.CaseSegmentRect, caseLabels, (int)_brCaseMode, smallFont, accentColor);
 
             g.DrawString(Loc("batch_rename_ext_mode"), smallFont, mutedBrush, 32 * s, BatchRenameLayout.ExtLabelY * s);
             string[] extLabels = { Loc("batch_rename_ext_keep"), Loc("batch_rename_ext_lower"), Loc("batch_rename_ext_upper") };
-            DrawMultiSegmentedToggle(g, s, BatchRenameLayout.ExtSegmentRect, extLabels, (int)_brExtMode, smallFont, accentColor);
+            ModernControls.DrawMultiSegmentedToggle(g, s, BatchRenameLayout.ExtSegmentRect, extLabels, (int)_brExtMode, smallFont, accentColor);
         }
 
 
@@ -482,7 +441,7 @@ public partial class ProgressWindow
                     ? Color.FromArgb(240, 130, 130)
                     : (willChange ? Color.FromArgb(180, 180, 180) : Color.FromArgb(115, 115, 115));
                 using var origBrush = new SolidBrush(origColor);
-                string origComp = CompactMiddle(item.OriginalName, smallFont, maxNameW, g, sfTypo);
+                string origComp = ModernControls.CompactMiddle(item.OriginalName, smallFont, maxNameW, g, sfTypo);
                 g.DrawString(origComp, smallFont, origBrush, leftX, textY, sfTypo);
 
                 // Direction Arrow (accent blue if changed, muted gray if unchanged, red if conflict)
@@ -548,216 +507,15 @@ public partial class ProgressWindow
         g.DrawLine(divPen, 32 * s, sepY * s, (clientW - 32) * s, sepY * s);
 
         // Bottom Action buttons (Dismissive/utility grouped on left, primary execution uniquely anchored on right)
-        DrawBatchRenameButton(g, s, BatchRenameLayout.AddFilesRect(clientH), Loc("batch_rename_add_files"), false, _msgFont);
-        DrawBatchRenameButton(g, s, BatchRenameLayout.ClearRect(clientH), Loc("batch_rename_clear"), false, _msgFont, enabled: _brFiles.Count > 0, isDestructive: true);
-        DrawBatchRenameButton(g, s, BatchRenameLayout.CancelRect(clientH), Loc("batch_rename_cancel"), false, _msgFont);
+        ModernControls.DrawButton(g, s, BatchRenameLayout.AddFilesRect(clientH), Loc("batch_rename_add_files"), _msgFont, false);
+        ModernControls.DrawButton(g, s, BatchRenameLayout.ClearRect(clientH), Loc("batch_rename_clear"), _msgFont, false, enabled: _brFiles.Count > 0, isDestructive: true);
+        ModernControls.DrawButton(g, s, BatchRenameLayout.CancelRect(clientH), Loc("batch_rename_cancel"), _msgFont, false);
 
         bool canExecute = _brFiles.Count > 0 && (_brCurrentPlan?.Items.Count(i => i.OriginalName != i.NewName) ?? 0) > 0;
-        DrawBatchRenameButton(g, s, BatchRenameLayout.ExecuteRect(clientW, clientH), Loc("batch_rename_execute"), true, _msgFont, canExecute);
+        ModernControls.DrawButton(g, s, BatchRenameLayout.ExecuteRect(clientW, clientH), Loc("batch_rename_execute"), _msgFont, true, canExecute);
 
         // Draw floating hover popover on top of all elements
         DrawBatchRenameHoverTooltip(g, s, clientW, clientH);
-    }
-
-    private void DrawModernTextBoxContainer(Graphics g, float s, LayoutRect logicalRect, IntPtr editHwnd, Color accent, bool enabled = true)
-    {
-        var r = ScaleBatchRenameRect(logicalRect, s);
-        using var path = UIHelper.GetRoundedRectPath(r, 4 * s);
-
-        bool isFocused = enabled && editHwnd != IntPtr.Zero && _hwndBrFocused == editHwnd;
-
-        // Container background matching EDIT background (darker when disabled)
-        using var bgBrush = new SolidBrush(enabled ? Color.FromArgb(45, 45, 45) : Color.FromArgb(30, 30, 30));
-        g.FillPath(bgBrush, path);
-
-        // Border: accent when focused, neutral dark grey when unfocused, subtle border when disabled
-        Color borderCol = !enabled
-            ? Color.FromArgb(48, 48, 52)
-            : (isFocused ? accent : Color.FromArgb(68, 68, 76));
-        float penW = isFocused ? 1.5f * s : 1.0f * s;
-        using var pen = new Pen(borderCol, penW);
-        g.DrawPath(pen, path);
-
-        // Fluent accent underline on focus
-        if (isFocused)
-        {
-            using var linePen = new Pen(accent, 2.0f * s);
-            g.DrawLine(linePen, r.X + (3 * s), r.Bottom - (1f * s), r.Right - (3 * s), r.Bottom - (1f * s));
-        }
-    }
-
-    private void DrawCollapsibleHeader(Graphics g, float s, LayoutRect logicalRect, string title, bool isExpanded, bool hasActiveBadge, Font font, Color accent)
-    {
-        var rect = ScaleBatchRenameRect(logicalRect, s);
-        using var path = UIHelper.GetRoundedRectPath(rect, 4 * s);
-
-        using var bgBrush = new SolidBrush(Color.FromArgb(36, 36, 42));
-        using var borderPen = new Pen(Color.FromArgb(58, 58, 66), 1f * s);
-        g.FillPath(bgBrush, path);
-        g.DrawPath(borderPen, path);
-
-        string chevron = isExpanded ? "▾  " : "▸  ";
-        string fullText = chevron + title;
-
-        using var textBrush = new SolidBrush(Color.FromArgb(215, 215, 225));
-        using var sf = new StringFormat { LineAlignment = StringAlignment.Center };
-        var textRect = new RectangleF(rect.X + (10 * s), rect.Y, rect.Width - (20 * s), rect.Height);
-        g.DrawString(fullText, font, textBrush, textRect, sf);
-
-        if (hasActiveBadge && !isExpanded)
-        {
-            string badgeText = Loc("batch_rename_advanced_active");
-            var badgeSize = g.MeasureString(badgeText, font);
-            float badgeW = badgeSize.Width + (12 * s);
-            float badgeH = 18 * s;
-            float badgeX = rect.Right - badgeW - (8 * s);
-            float badgeY = rect.Y + (rect.Height - badgeH) / 2f;
-            var badgeRect = new RectangleF(badgeX, badgeY, badgeW, badgeH);
-
-            using var badgePath = UIHelper.GetRoundedRectPath(badgeRect, 3 * s);
-            using var badgeBrush = new SolidBrush(accent);
-            g.FillPath(badgeBrush, badgePath);
-
-            using var badgeSf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            using var badgeFont = new Font(font.FontFamily, 10f * s, FontStyle.Bold, GraphicsUnit.Pixel);
-            g.DrawString(badgeText, badgeFont, Brushes.White, badgeRect, badgeSf);
-        }
-    }
-
-    private void DrawModernCheckBox(Graphics g, float s, LayoutRect logicalRect, bool isChecked, string text, Font font, Brush textBrush, Color accent)
-    {
-        var r = ScaleBatchRenameRect(logicalRect, s);
-        float boxSize = 16f * s;
-        var boxRect = new RectangleF(r.X, r.Y + ((r.Height - boxSize) / 2f), boxSize, boxSize);
-
-        using var path = UIHelper.GetRoundedRectPath(boxRect, 3.5f * s);
-
-        if (isChecked)
-        {
-            using var fill = new SolidBrush(accent);
-            using var borderPen = new Pen(UIHelper.Lighten(accent, 0.2f), 1f * s);
-            g.FillPath(fill, path);
-            g.DrawPath(borderPen, path);
-
-            var prevSmoothing = g.SmoothingMode;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            using var checkPen = new Pen(Color.White, 2f * s)
-            {
-                StartCap = LineCap.Round,
-                EndCap = LineCap.Round,
-                LineJoin = LineJoin.Round
-            };
-            PointF p1 = new(boxRect.X + (3.5f * s), boxRect.Y + (8f * s));
-            PointF p2 = new(boxRect.X + (6.5f * s), boxRect.Y + (11.5f * s));
-            PointF p3 = new(boxRect.X + (12.5f * s), boxRect.Y + (4.5f * s));
-            g.DrawLines(checkPen, new[] { p1, p2, p3 });
-            g.SmoothingMode = prevSmoothing;
-        }
-        else
-        {
-            using var fill = new SolidBrush(Color.FromArgb(36, 36, 40));
-            using var borderPen = new Pen(Color.FromArgb(88, 88, 96), 1.2f * s);
-            g.FillPath(fill, path);
-            g.DrawPath(borderPen, path);
-        }
-
-        float textX = boxRect.Right + (8f * s);
-        float textY = r.Y + ((r.Height - font.GetHeight(g)) / 2f);
-        g.DrawString(text, font, textBrush, textX, textY);
-    }
-
-    private void DrawSegmentedToggle(Graphics g, float s, LayoutRect logicalRect, string leftText, string rightText, bool isLeftSelected, Font font, Color accent, bool enabled = true)
-    {
-        DrawMultiSegmentedToggle(g, s, logicalRect, new[] { leftText, rightText }, isLeftSelected ? 0 : 1, font, accent, enabled);
-    }
-
-    private void DrawMultiSegmentedToggle(Graphics g, float s, LayoutRect logicalRect, string[] labels, int selectedIndex, Font font, Color accent, bool enabled = true)
-    {
-        var r = ScaleBatchRenameRect(logicalRect, s);
-        using var containerPath = UIHelper.GetRoundedRectPath(r, 4 * s);
-        using var containerFill = new SolidBrush(enabled ? Color.FromArgb(32, 32, 36) : Color.FromArgb(24, 24, 28));
-        using var containerPen = new Pen(enabled ? Color.FromArgb(65, 65, 72) : Color.FromArgb(44, 44, 48), 1f * s);
-        g.FillPath(containerFill, containerPath);
-        g.DrawPath(containerPen, containerPath);
-
-        if (labels.Length == 0) return;
-
-        float segW = r.Width / labels.Length;
-        if (selectedIndex >= 0 && selectedIndex < labels.Length)
-        {
-            var selectedRect = new RectangleF(r.X + (selectedIndex * segW) + (1 * s), r.Y + (1 * s), segW - (2 * s), r.Height - (2 * s));
-            using var selPath = UIHelper.GetRoundedRectPath(selectedRect, 3 * s);
-            Color selColor = enabled ? accent : Color.FromArgb(48, 48, 54);
-            using var selFill = new SolidBrush(selColor);
-            g.FillPath(selFill, selPath);
-        }
-
-        // Dividers between non-selected segments
-        using var divPen = new Pen(Color.FromArgb(50, 50, 56), 1f * s);
-        for (int i = 1; i < labels.Length; i++)
-        {
-            if (i != selectedIndex && i != (selectedIndex + 1))
-            {
-                float divX = r.X + (i * segW);
-                g.DrawLine(divPen, divX, r.Y + (4 * s), divX, r.Bottom - (4 * s));
-            }
-        }
-
-        using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-        for (int i = 0; i < labels.Length; i++)
-        {
-            bool isSel = i == selectedIndex;
-            Color textCol = !enabled
-                ? Color.FromArgb(95, 95, 95)
-                : (isSel ? Color.White : Color.FromArgb(170, 170, 170));
-            using var brush = new SolidBrush(textCol);
-            var segRect = new RectangleF(r.X + (i * segW), r.Y, segW, r.Height);
-            g.DrawString(labels[i], font, brush, segRect, sf);
-        }
-    }
-
-    /// <summary>
-    /// Compacts a filename or path by truncating in the middle, keeping prefix and suffix/extension visible.
-    /// E.g. "bacagent-ccs26_translated_page_01.png" -> "bacagent-ccs…page_01.png"
-    /// </summary>
-    private static string CompactMiddle(string text, Font font, float maxW, Graphics g, StringFormat sf)
-    {
-        if (string.IsNullOrEmpty(text)) return text;
-        if (g.MeasureString(text, font, 10000, sf).Width <= maxW) return text;
-
-        string ext = Path.GetExtension(text) ?? "";
-        string stem = Path.GetFileNameWithoutExtension(text) ?? text;
-        if (stem.Length <= 4) return text;
-
-        int low = 2;
-        int high = stem.Length - 1;
-        string best = text;
-
-        while (low <= high)
-        {
-            int midLen = (low + high) / 2;
-            int leftChars = Math.Max(1, (midLen * 5) / 8);
-            int rightChars = Math.Max(1, midLen - leftChars);
-
-            if (leftChars + rightChars >= stem.Length)
-            {
-                rightChars = Math.Max(1, stem.Length - leftChars - 1);
-            }
-
-            if (leftChars > 0 && rightChars > 0 && (leftChars + rightChars) < stem.Length)
-            {
-                string candidate = stem.Substring(0, leftChars) + "…" + stem.Substring(stem.Length - rightChars) + ext;
-                if (g.MeasureString(candidate, font, 10000, sf).Width <= maxW)
-                {
-                    best = candidate;
-                    low = midLen + 1; // Try keeping more characters
-                    continue;
-                }
-            }
-            high = midLen - 1; // Need fewer characters
-        }
-
-        return best;
     }
 
     /// <summary>
@@ -771,7 +529,7 @@ public partial class ProgressWindow
         if (orig == newN)
         {
             using var dimBrush = new SolidBrush(Color.FromArgb(115, 115, 115));
-            string compact = CompactMiddle(newN, font, maxW, g, sf);
+            string compact = ModernControls.CompactMiddle(newN, font, maxW, g, sf);
             g.DrawString(compact, font, dimBrush, x, y, sf);
             return;
         }
@@ -779,7 +537,7 @@ public partial class ProgressWindow
         if (hasConflict)
         {
             using var errBrush = new SolidBrush(Color.FromArgb(255, 110, 110));
-            string compact = CompactMiddle(newN, font, maxW, g, sf);
+            string compact = ModernControls.CompactMiddle(newN, font, maxW, g, sf);
             g.DrawString(compact, font, errBrush, x, y, sf);
             return;
         }
@@ -801,7 +559,7 @@ public partial class ProgressWindow
         if (string.IsNullOrEmpty(diff))
         {
             // Deletion: draw new name in accent gold so the change is evident
-            string compact = CompactMiddle(newN, font, maxW, g, sf);
+            string compact = ModernControls.CompactMiddle(newN, font, maxW, g, sf);
             g.DrawString(compact, font, diffBrush, x, y, sf);
             return;
         }
@@ -816,18 +574,18 @@ public partial class ProgressWindow
             if (wPre > wPost && (maxW - wDiff - wPost) > (24 * s))
             {
                 float availForPre = maxW - wDiff - wPost;
-                pre = CompactMiddle(pre, font, availForPre, g, sf);
+                pre = ModernControls.CompactMiddle(pre, font, availForPre, g, sf);
                 wPre = g.MeasureString(pre, font, 10000, sf).Width;
             }
             else if ((maxW - wPre - wDiff) > (24 * s))
             {
                 float availForPost = maxW - wPre - wDiff;
-                post = CompactMiddle(post, font, availForPost, g, sf);
+                post = ModernControls.CompactMiddle(post, font, availForPost, g, sf);
                 wPost = g.MeasureString(post, font, 10000, sf).Width;
             }
             else
             {
-                string compact = CompactMiddle(newN, font, maxW, g, sf);
+                string compact = ModernControls.CompactMiddle(newN, font, maxW, g, sf);
                 g.DrawString(compact, font, diffBrush, x, y, sf);
                 return;
             }
@@ -855,30 +613,6 @@ public partial class ProgressWindow
         {
             g.DrawString(post, font, normalBrush, curX, y, sf);
         }
-    }
-
-    private void DrawBatchRenameButton(Graphics g, float s, LayoutRect logicalRect, string text, bool isSelectedOrAccent, Font font, bool enabled = true, bool isDestructive = false)
-    {
-        var rect = ScaleBatchRenameRect(logicalRect, s);
-        using var path = UIHelper.GetRoundedRectPath(rect, 4 * s);
-
-        Color accent = UIHelper.GetSystemColorizationColor();
-        Color bg = !enabled
-            ? Color.FromArgb(34, 34, 38)
-            : (isDestructive ? Color.FromArgb(42, 28, 30) : (isSelectedOrAccent ? accent : Color.FromArgb(46, 46, 52)));
-        Color border = !enabled
-            ? Color.FromArgb(46, 46, 50)
-            : (isDestructive ? Color.FromArgb(135, 50, 55) : (isSelectedOrAccent ? UIHelper.Lighten(accent, 0.2f) : Color.FromArgb(70, 70, 78)));
-
-        using var fill = new SolidBrush(bg);
-        using var pen = new Pen(border, 1f * s);
-        g.FillPath(fill, path);
-        g.DrawPath(pen, path);
-
-        Color textCol = !enabled ? Color.FromArgb(100, 100, 100) : (isDestructive ? Color.FromArgb(245, 175, 175) : Color.White);
-        using var textBrush = new SolidBrush(textCol);
-        using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-        g.DrawString(text, font, textBrush, rect, sf);
     }
 
     private bool HandleBatchRenameLButtonDown(IntPtr hwnd, int x, int y)
