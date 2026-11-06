@@ -3,6 +3,9 @@
 ## [v3.18.0.0] - 2026-11-05
 
 - **資料夾與檔案批次命名 (Folder & File Batch Renaming)**：推出 `[F2-21]` 批次命名核心規則引擎與 CLI 工具（`Clickra batch-rename`），支援自訂流水號與補零、前後綴、正則與字串尋找取代、日期時間戳插入、大小寫轉換、副檔名修改、Windows 保留字元與裝置名稱安全過濾，以及雙階段 GUID 循環安全交換更名（`A ⇄ B`）。
+- **Windows 檔案總管智慧選單整合 (Smart Context Menu Integration)**：檔案總管右鍵選單新增「批次命名」操作，採用智慧選取閾值策略 — 選取單一不支援檔案時完全隱藏 Clickra 選單，選取 2 個以上檔案時即時提供批次命名入口。
+- **儀表板「檔案整理」分組整合 (Dashboard Convert Workspace Integration)**：於 Dashboard 轉檔區全新劃分「檔案整理 (File Organization)」分組，提供無縫的拖曳選取、卡片選取與批次命名發起介面。
+- **原生進度視窗自適應雙欄介面 (Responsive Modern Controls & Live Preview)**：在原生 `ProgressWindow` 中無縫整合可自適應縮放的雙欄幾何排版，提供現代化深色 UI 控制項與即時雙欄檔名預覽，支援 Enter 立即執行更名。
 
 ## [v3.17.0.0] - 2026-11-04
 

@@ -44,6 +44,10 @@ Silently exports Word, Excel, and PowerPoint documents to high-quality PDFs in t
 - **Stitch** — join multiple images vertically into a single long-form image.
 - **Format Conversion** — convert images between PNG, JPG, WebP, GIF, and HEIC right from the context menu.
 
+### Batch Renaming
+- **Files & Folders** — powerful batch renaming for files and folders with sequential numbering, prefix/suffix, search & replace (string/regex), timestamps, case transforms, and two-phase cyclic swap safety (`A ⇄ B`).
+- **Seamless Integration** — launch directly from File Explorer's right-click menu, the Fluent dashboard's File Organization section, or the CLI (`Clickra batch-rename`).
+
 ### PDF Translation
 Translates PDF content while preserving layout — heading hierarchy, typography, merged tables, fixed artwork, captions, and links — with CJK font scaling and re-joined technical identifiers.
 
