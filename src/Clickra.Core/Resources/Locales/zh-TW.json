@@ -546,5 +546,7 @@
   "batch_rename_cue_suffix": "例如：_草稿",
   "batch_rename_cue_find": "欲搜尋文字",
   "batch_rename_cue_replace": "取代為文字",
-  "batch_rename_drag_hint": "可拖曳檔案或資料夾至此處加入"
+  "batch_rename_drag_hint": "可拖曳檔案或資料夾至此處加入",
+  "batch_rename_advanced": "進階設定 (大小寫、副檔名)",
+  "batch_rename_advanced_active": "已啟用"
 }

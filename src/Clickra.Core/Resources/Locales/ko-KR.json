@@ -546,5 +546,7 @@
   "batch_rename_cue_suffix": "예: _초안",
   "batch_rename_cue_find": "찾을 텍스트",
   "batch_rename_cue_replace": "바꿀 텍스트",
-  "batch_rename_drag_hint": "여기에 파일이나 폴더를 끌어다 놓으세요"
+  "batch_rename_drag_hint": "여기에 파일이나 폴더를 끌어다 놓으세요",
+  "batch_rename_advanced": "고급 설정 (대소문자, 확장자)",
+  "batch_rename_advanced_active": "활성"
 }

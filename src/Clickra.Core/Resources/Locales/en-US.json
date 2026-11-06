@@ -546,5 +546,7 @@
   "batch_rename_cue_suffix": "e.g. _draft",
   "batch_rename_cue_find": "Text to find",
   "batch_rename_cue_replace": "Replace with",
-  "batch_rename_drag_hint": "Drag & drop files or folders here"
+  "batch_rename_drag_hint": "Drag & drop files or folders here",
+  "batch_rename_advanced": "Advanced (Case & Extension)",
+  "batch_rename_advanced_active": "Active"
 }

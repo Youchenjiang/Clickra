@@ -546,5 +546,7 @@
   "batch_rename_cue_suffix": "例：_草案",
   "batch_rename_cue_find": "検索文字列",
   "batch_rename_cue_replace": "置換文字列",
-  "batch_rename_drag_hint": "ここにファイルやフォルダーをドラッグ＆ドロップ"
+  "batch_rename_drag_hint": "ここにファイルやフォルダーをドラッグ＆ドロップ",
+  "batch_rename_advanced": "詳細設定 (大文字・小文字、拡張子)",
+  "batch_rename_advanced_active": "有効"
 }
