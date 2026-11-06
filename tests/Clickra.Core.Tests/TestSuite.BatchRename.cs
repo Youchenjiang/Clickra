@@ -1,3 +1,4 @@
+using Clickra.UI.Layout;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -204,6 +205,106 @@ static partial class TestSuite
             {
                 try { Directory.Delete(tempDir, true); } catch { }
             }
+        });
+
+        runner.Run("BatchRename: Regex and case-sensitive replacement", () =>
+        {
+            string fakePath = @"C:\Fake\report_2026_FINAL.txt";
+
+            // 1. Case-sensitive replace (misses if case does not match)
+            var optsCaseMatch = new BatchRenameOptions(
+                Replace: new ReplaceOptions(FindText: "final", ReplaceWith: "draft", IgnoreCase: false));
+            Assert.Equal("report_2026_FINAL.txt", BatchRenameEngine.TransformName(fakePath, optsCaseMatch, 1));
+
+            // 2. Case-insensitive replace (matches regardless of case)
+            var optsCaseIgnore = new BatchRenameOptions(
+                Replace: new ReplaceOptions(FindText: "final", ReplaceWith: "draft", IgnoreCase: true));
+            Assert.Equal("report_2026_draft.txt", BatchRenameEngine.TransformName(fakePath, optsCaseIgnore, 1));
+
+            // 3. Regex digits pattern
+            var optsRegex = new BatchRenameOptions(
+                Replace: new ReplaceOptions(FindText: @"\d+", ReplaceWith: "YEAR", UseRegex: true));
+            Assert.Equal("report_YEAR_FINAL.txt", BatchRenameEngine.TransformName(fakePath, optsRegex, 1));
+
+            // 4. Regex capture groups reordering
+            var optsCapture = new BatchRenameOptions(
+                Replace: new ReplaceOptions(FindText: @"(\w+)_\d+_(\w+)", ReplaceWith: "$2_$1", UseRegex: true));
+            Assert.Equal("FINAL_report.txt", BatchRenameEngine.TransformName(fakePath, optsCapture, 1));
+        });
+
+        runner.Run("BatchRename: Timestamp and numbering position options", () =>
+        {
+            string fakePath = @"C:\Fake\invoice.pdf";
+
+            // 1. Sequential numbering At Start / Prefix
+            var optsNumPrefix = new BatchRenameOptions(
+                Numbering: new NumberingOptions(StartIndex: 1, Step: 1, PaddingDigits: 3, Position: InsertPosition.Prefix, Separator: "_"));
+            Assert.Equal("001_invoice.pdf", BatchRenameEngine.TransformName(fakePath, optsNumPrefix, 1));
+
+            // 2. Sequential numbering At End / Suffix
+            var optsNumSuffix = new BatchRenameOptions(
+                Numbering: new NumberingOptions(StartIndex: 5, Step: 2, PaddingDigits: 2, Position: InsertPosition.Suffix, Separator: "-"));
+            Assert.Equal("invoice-05.pdf", BatchRenameEngine.TransformName(fakePath, optsNumSuffix, 5));
+
+            // 3. Timestamp options with Prefix
+            var optsTimestamp = new BatchRenameOptions(
+                Timestamp: new TimestampOptions(Format: "yyyyMMdd", Position: InsertPosition.Prefix, Separator: "_"));
+            string transformed = BatchRenameEngine.TransformName(fakePath, optsTimestamp, 1);
+            Assert.True(transformed.EndsWith("_invoice.pdf"), "Transformed name should end with '_invoice.pdf'.");
+            Assert.Equal(8 + 1 + "invoice.pdf".Length, transformed.Length);
+        });
+
+        runner.Run("BatchRename: Layout geometry maintains non-overlapping columns and responsive dimensions", () =>
+        {
+            // 1. Standard window dimensions & minimum size
+            Assert.Equal(820, BatchRenameLayout.DefaultClientWidth);
+            Assert.Equal(500, BatchRenameLayout.DefaultClientHeight);
+            Assert.Equal(800, BatchRenameLayout.MinClientWidth);
+            Assert.Equal(490, BatchRenameLayout.MinClientHeight);
+
+            // 2. Left column rules layout boundaries
+            Assert.Equal(32, BatchRenameLayout.LeftColX);
+            Assert.Equal(352, BatchRenameLayout.LeftColW);
+            Assert.True(BatchRenameLayout.LeftColX + BatchRenameLayout.LeftColW < BatchRenameLayout.DividerX,
+                "Left column must end before divider.");
+            Assert.True(BatchRenameLayout.DividerX < BatchRenameLayout.RightColX,
+                "Divider must sit between left and right columns.");
+
+            // 3. Side-by-side inputs must be horizontally disjoint
+            Assert.Equal(BatchRenameLayout.PrefixRect.Right + BatchRenameLayout.ColGap, BatchRenameLayout.SuffixRect.X);
+            Assert.Equal(BatchRenameLayout.FindRect.Right + BatchRenameLayout.ColGap, BatchRenameLayout.ReplaceRect.X);
+            Assert.Equal(BatchRenameLayout.MatchCaseRect.Right + BatchRenameLayout.ColGap, BatchRenameLayout.RegexRect.X);
+            Assert.Equal(BatchRenameLayout.SeqCheckRect.Right + BatchRenameLayout.ColGap, BatchRenameLayout.SeqPosToggleRect.X);
+            Assert.Equal(BatchRenameLayout.SeqStartRect.Right + BatchRenameLayout.ColGap, BatchRenameLayout.SeqPadRect.X);
+
+            // 4. Vertical flow of rules without overlapping
+            Assert.True(BatchRenameLayout.PrefixRect.Bottom < BatchRenameLayout.FindRect.Y, "Prefix must sit above Find.");
+            Assert.True(BatchRenameLayout.FindRect.Bottom < BatchRenameLayout.MatchCaseRect.Y, "Find must sit above MatchCase.");
+            Assert.True(BatchRenameLayout.MatchCaseRect.Bottom < BatchRenameLayout.SeqCheckRect.Y, "MatchCase must sit above Sequence Check.");
+            Assert.True(BatchRenameLayout.SeqCheckRect.Bottom < BatchRenameLayout.SeqStartRect.Y, "Sequence Check must sit above Sequence Start.");
+            Assert.True(BatchRenameLayout.SeqStartRect.Bottom < BatchRenameLayout.AdvancedToggleRect.Y, "Sequence Start must sit above Advanced Toggle.");
+            Assert.True(BatchRenameLayout.AdvancedToggleRect.Bottom < BatchRenameLayout.CaseSegmentRect.Y, "Advanced Toggle must sit above Case Segment.");
+            Assert.True(BatchRenameLayout.CaseSegmentRect.Bottom < BatchRenameLayout.ExtSegmentRect.Y, "Case Segment must sit above Ext Segment.");
+
+            // 5. Responsive right preview pane
+            var previewRect = BatchRenameLayout.PreviewListRect(820, 500);
+            Assert.True(previewRect.Width >= 320, "Preview width should be at least 320.");
+            Assert.True(previewRect.Height >= 240, "Preview height should be at least 240.");
+
+            // 6. Action buttons alignment and non-overlap
+            int clientH = 500;
+            int clientW = 820;
+            var addBtn = BatchRenameLayout.AddFilesRect(clientH);
+            var clearBtn = BatchRenameLayout.ClearRect(clientH);
+            var cancelBtn = BatchRenameLayout.CancelRect(clientH);
+            var execBtn = BatchRenameLayout.ExecuteRect(clientW, clientH);
+
+            Assert.True(addBtn.Right < clearBtn.X, "Add Files button must not overlap Clear.");
+            Assert.True(clearBtn.Right < cancelBtn.X, "Clear button must not overlap Cancel.");
+            Assert.True(cancelBtn.Right < execBtn.X, "Cancel button must not overlap Execute.");
+            Assert.Equal(clientW - 32, execBtn.Right);
+            Assert.True(BatchRenameLayout.GetSeparatorY(clientH) < BatchRenameLayout.GetBottomBarY(clientH),
+                "Separator must be positioned above action buttons.");
         });
     }
 }
