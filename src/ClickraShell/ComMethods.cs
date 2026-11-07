@@ -223,9 +223,11 @@ namespace ClickraShell
                 return 0;
             }
 
-            int minFiles = idx >= 0 && idx < SubArgs.Length
-                ? (SubArgs[idx] == "batch-rename" ? 2 : ConvertCommandMetadata.GetMinFiles(SubArgs[idx]))
-                : 1;
+            int minFiles = 1;
+            if (idx >= 0 && idx < SubArgs.Length)
+            {
+                minFiles = SubArgs[idx] == "batch-rename" ? 2 : ConvertCommandMetadata.GetMinFiles(SubArgs[idx]);
+            }
             bool countOk = files.Count >= minFiles;
 
             if (countOk && files.All(f => IsSupported(f, idx)))
