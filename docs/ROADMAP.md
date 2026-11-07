@@ -145,7 +145,7 @@
 - [x] **[F2-31] Markdown to PDF (2026/10/08 完成)**：將 `.md` / `.markdown` 文件轉為 PDF，保留標題、段落、清單、引用、程式碼區塊、表格、連結與圖片等常用 Markdown 結構，並整合 CLI、Dashboard／Fluent 與 Explorer 右鍵選單。
     - 同步提供 Markdown → Word（DOCX），PDF / DOCX 共用文件樣式模型與 DOCX 範本匯入，避免兩種輸出各自維護排版規格。
     - 紙張、文字縮放、程式碼主題與範本採單次轉換 preflight；NativeAOT Dashboard 的主要轉換動作固定於 viewport 底部，新增功能只擴充可捲動卡片區，不增加視窗高度或要求使用者捲到底才能執行。
-- [ ] **[F2-21] Folder & File Batch Renaming**：資料夾與檔案批次命名。支援自訂數字規則、提取建立日期、固定字串與自動編號。可以直接在資料夾右鍵選單對「整個資料夾及其內含檔案」進行操作。
+- [x] **[F2-21] Folder & File Batch Renaming**：資料夾與檔案批次命名（v3.18.0）。支援自訂流水號與位數補零、前後綴、字串與正則表達式尋找替換、大小寫轉換、副檔名修改、建立/修改時間戳插入、衝突檢測與兩階段循環安全交換更名（`A ⇄ B`）。支援 CLI 命令 `Clickra batch-rename`。
 - [ ] **[F2-22] Batch File Categorization**：批次檔案分類。支援依副檔名、日期區間或檔名關鍵字，將檔案自動分類並移入對應的資料夾。
 - [ ] **[F2-23] Batch Create Empty Folders**：批量建立空資料夾。支援依指定命名規則與結構要求，一次建立多個指定結構的空資料夾。
 - [ ] **[F2-24] Text Encoding & Traditional/Simplified Conversion**：文字編碼與簡繁轉換。支援 Big5/GBK/UTF-8 互轉與原生 `LCMapStringEx` 簡繁字元互轉。

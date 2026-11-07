@@ -81,4 +81,7 @@
   <data name="Menu_Pdf2Img" xml:space="preserve">
     <value>Convert to Images</value>
   </data>
+  <data name="Menu_BatchRename" xml:space="preserve">
+    <value>Batch Rename</value>
+  </data>
 </root>

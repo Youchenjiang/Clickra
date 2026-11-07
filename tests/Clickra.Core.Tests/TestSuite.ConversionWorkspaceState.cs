@@ -13,6 +13,7 @@ static partial class TestSuite
         runner.Run("Conversion workspace enforces minimum files and run state", TestConversionWorkspaceStartEligibility);
         runner.Run("Conversion workspace preserves command choice when files are cleared", TestConversionWorkspaceClearPreservesCommand);
         runner.Run("Conversion workspace exposes a live read-only file view", TestConversionWorkspaceSelectedFilesView);
+        runner.Run("Conversion workspace supports batch rename across heterogeneous file types", TestConversionWorkspaceBatchRenameCompatibility);
     }
 
     private static void TestConversionWorkspaceKeepsCompatibleSelection()
@@ -87,5 +88,31 @@ static partial class TestSuite
 
         Assert.Equal(1, selectedFiles.Count);
         Assert.Equal(WorkspacePdfFile, selectedFiles[0]);
+    }
+
+    private const string BatchRenameCommand = ConvertWorkspaceController.BatchRenameCommand;
+
+    private static void TestConversionWorkspaceBatchRenameCompatibility()
+    {
+        var state = new ConvertWorkspaceController();
+        Assert.True(ConvertWorkspaceController.IsKnownCommand(BatchRenameCommand),
+            "batch-rename must be recognized as a known presentation command.");
+        Assert.Equal("cmd_batch_rename", ConvertWorkspaceController.GetCommandLabelKey(BatchRenameCommand));
+        Assert.True(state.TrySelectCommand(BatchRenameCommand),
+            "batch-rename must be selectable with an empty initial selection.");
+
+        state.AddFiles(new[] { "notes.txt", "photo.png", "document.pdf", "presentation.pptx" });
+        Assert.Equal(BatchRenameCommand, state.SelectedCommand ?? "");
+        Assert.True(state.CanStart, "batch-rename must accept mixed heterogeneous file types.");
+
+        var validation = state.ValidateSelection();
+        Assert.True(validation.IsValid, "batch-rename validation must be valid with 4 mixed files.");
+
+        string[] extensions = ConvertWorkspaceController.GetAllowedExtensions(BatchRenameCommand);
+        Assert.True(extensions.Length == 1 && extensions[0] == "*.*",
+            "batch-rename allowed extensions must represent all files (*.*).");
+
+        IReadOnlyList<string> pickerExtensions = state.GetPickerExtensions();
+        Assert.True(pickerExtensions.Count > 0, "batch-rename picker extensions must provide supported extensions.");
     }
 }

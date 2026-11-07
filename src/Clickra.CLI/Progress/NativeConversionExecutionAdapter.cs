@@ -48,11 +48,16 @@ internal sealed class NativeConversionExecutionAdapter
         _completeResult = callbacks.CompleteResult;
     }
 
-    public bool TryRun(
+    private bool TryRunSpecializedCommand(
         string command,
         List<string> files,
         Action<int, int, string> progressCallback)
     {
+        if (command.Equals(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+        {
+            RunBatchRename(files, progressCallback);
+            return true;
+        }
         if (command.Equals(DecryptPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
         {
             RunDecrypt(files, progressCallback);
@@ -71,6 +76,18 @@ internal sealed class NativeConversionExecutionAdapter
         if (command.Equals(PrintPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
         {
             RunPrint(files, progressCallback);
+            return true;
+        }
+        return false;
+    }
+
+    public bool TryRun(
+        string command,
+        List<string> files,
+        Action<int, int, string> progressCallback)
+    {
+        if (TryRunSpecializedCommand(command, files, progressCallback))
+        {
             return true;
         }
         if (command.Equals(Img2PdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
@@ -206,6 +223,50 @@ internal sealed class NativeConversionExecutionAdapter
             commandName,
             Localization.T(keys.Done),
             true);
+    }
+
+    private void RunBatchRename(List<string> files, Action<int, int, string> progressCallback)
+    {
+        var useCase = new Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase();
+        Clickra.Core.Modules.BatchRename.Domain.BatchRenamePlan plan;
+
+        if (_commandOptions?.TryGetValue("plan", out object? planObj) == true && planObj is Clickra.Core.Modules.BatchRename.Domain.BatchRenamePlan existingPlan)
+        {
+            plan = existingPlan;
+        }
+        else
+        {
+            var options = _commandOptions?.TryGetValue("options", out object? optObj) == true && optObj is Clickra.Core.Modules.BatchRename.Application.BatchRenameOptions opt
+                ? opt
+                : new Clickra.Core.Modules.BatchRename.Application.BatchRenameOptions();
+            var targetFiles = Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.ResolveTargetFiles(files);
+            plan = Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.Plan(targetFiles, options);
+        }
+
+        string taskId = Guid.NewGuid().ToString("N");
+        _taskStarted(taskId);
+
+        int total = plan.Items.Count;
+        if (total == 0)
+        {
+            _completeResult(new ConversionResult(ConversionResultStatus.Succeeded, new List<string>(), null, TimeSpan.Zero, 0, taskId), Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName, Localization.T("cli_progress_no_files"), true);
+            return;
+        }
+
+        var progress = new CallbackProgress<Clickra.Core.Modules.BatchRename.Processing.BatchRenameProgress>(p =>
+        {
+            string name = Path.GetFileName(p.CurrentFile);
+            string stageMsg = Localization.T("batch_rename_progress_stage", name, p.CompletedCount, p.TotalCount);
+            progressCallback(p.CompletedCount * 100, total * 100, stageMsg);
+        });
+
+        var resultTask = Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.ExecuteAsync(plan, progress, _cancellationToken);
+        resultTask.Wait(_cancellationToken);
+        var renameResult = resultTask.Result;
+
+        var outputFiles = renameResult.RenamedFiles.Select(r => r.NewPath).ToList();
+        string summaryMsg = string.Format(Localization.T("batch_rename_toast_body"), renameResult.RenamedFiles.Count);
+        _completeResult(new ConversionResult(ConversionResultStatus.Succeeded, outputFiles, summaryMsg, TimeSpan.Zero, outputFiles.Count, taskId), Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName, Localization.T("batch_rename_done"), true);
     }
 
     private void RunDecrypt(List<string> files, Action<int, int, string> progressCallback)

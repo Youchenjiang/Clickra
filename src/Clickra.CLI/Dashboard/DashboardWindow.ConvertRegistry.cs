@@ -25,6 +25,8 @@ public static partial class DashboardWindow
 
         public string GetOpenFilter()
         {
+            if (Command.Equals("batch-rename", StringComparison.OrdinalIgnoreCase))
+                return "All Files (*.*)\0*.*\0\0";
             string patterns = string.Join(";", Extensions.Select(extension => $"*{extension}"));
             return $"Supported Files ({patterns})\0{patterns}\0All Files (*.*)\0*.*\0\0";
         }
@@ -130,6 +132,7 @@ public static partial class DashboardWindow
         var filesCopy = new List<string>(_convertWorkspace.SelectedFiles);
         bool markdownCommand = command.Command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase)
             || command.Command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
+        bool batchRenameCommand = command.Command.Equals("batch-rename", StringComparison.OrdinalIgnoreCase);
 
         _convertWorkspace.BeginRun();
         StartConvertProgress(command, hwnd, filesCopy, markdownCommand);
@@ -137,8 +140,11 @@ public static partial class DashboardWindow
         if (markdownCommand) return;
 
         _convertWorkspace.ClearFiles();
-        _activeTab = 2;
-        RefreshHistoryData();
+        if (!batchRenameCommand)
+        {
+            _activeTab = 2;
+            RefreshHistoryData();
+        }
         InvalidateRect(hwnd, IntPtr.Zero, false);
     }
 
