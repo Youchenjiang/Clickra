@@ -13,6 +13,34 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
+    private static void RunInTempDir(string prefix, Action<string> action)
+    {
+        string dir = Path.Combine(Path.GetTempPath(), prefix + "_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            action(dir);
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(dir))
+                {
+                    Directory.Delete(dir, true);
+                }
+            }
+            catch (IOException)
+            {
+                // Ignore transient cleanup failures in test temp directory
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Ignore transient permission locks during test cleanup
+            }
+        }
+    }
+
     public static void RegisterBatchRenameTests(TestRunner runner)
     {
         runner.Run("BatchRename: SafetyGuard validates filenames and flags reserved/invalid names", () =>
@@ -76,9 +104,7 @@ static partial class TestSuite
 
         runner.Run("BatchRename: Engine detects conflicts and duplicate targets", () =>
         {
-            string tempDir = Path.Combine(Path.GetTempPath(), "clickra_test_rename_" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(tempDir);
-            try
+            RunInTempDir("clickra_test_rename", tempDir =>
             {
                 string file1 = Path.Combine(tempDir, "file1.txt");
                 string file2 = Path.Combine(tempDir, "file2.txt");
@@ -104,18 +130,12 @@ static partial class TestSuite
                 Assert.True(planExisting.Items[0].Status == RenameItemStatus.ConflictExistingFile,
                     "Expected ConflictExistingFile status when target exists on disk.");
                 Assert.False(planExisting.CanExecute, "Plan with disk conflict must not be executable.");
-            }
-            finally
-            {
-                try { Directory.Delete(tempDir, true); } catch { }
-            }
+            });
         });
 
         runner.Run("BatchRename: Executor executes direct rename and reports progress", () =>
         {
-            string tempDir = Path.Combine(Path.GetTempPath(), "clickra_test_rename_exec_" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(tempDir);
-            try
+            RunInTempDir("clickra_test_rename_exec", tempDir =>
             {
                 string f1 = Path.Combine(tempDir, "doc_a.txt");
                 string f2 = Path.Combine(tempDir, "doc_b.txt");
@@ -141,18 +161,12 @@ static partial class TestSuite
                 Assert.False(File.Exists(f2), "Old file 2 should not exist.");
                 Assert.True(File.Exists(Path.Combine(tempDir, "NEW_doc_a_01.txt")), "New file 1 must exist.");
                 Assert.True(File.Exists(Path.Combine(tempDir, "NEW_doc_b_02.txt")), "New file 2 must exist.");
-            }
-            finally
-            {
-                try { Directory.Delete(tempDir, true); } catch { }
-            }
+            });
         });
 
         runner.Run("BatchRename: Executor safely resolves two-phase cyclic swaps without data loss", () =>
         {
-            string tempDir = Path.Combine(Path.GetTempPath(), "clickra_test_rename_swap_" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(tempDir);
-            try
+            RunInTempDir("clickra_test_rename_swap", tempDir =>
             {
                 // File A -> File B, File B -> File A (Swap!)
                 string fA = Path.Combine(tempDir, "alpha.txt");
@@ -178,18 +192,12 @@ static partial class TestSuite
                 // Contents should now be swapped safely
                 Assert.Equal("Alpha Content", File.ReadAllText(fB));
                 Assert.Equal("Beta Content", File.ReadAllText(fA));
-            }
-            finally
-            {
-                try { Directory.Delete(tempDir, true); } catch { }
-            }
+            });
         });
 
         runner.Run("BatchRename: BatchRenameUseCase resolves directory inputs", () =>
         {
-            string tempDir = Path.Combine(Path.GetTempPath(), "clickra_test_rename_dir_" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(tempDir);
-            try
+            RunInTempDir("clickra_test_rename_dir", tempDir =>
             {
                 string f1 = Path.Combine(tempDir, "1.txt");
                 string f2 = Path.Combine(tempDir, "2.txt");
@@ -200,11 +208,7 @@ static partial class TestSuite
                 Assert.Equal(2, files.Count);
                 Assert.Equal(Path.GetFullPath(f1), files[0]);
                 Assert.Equal(Path.GetFullPath(f2), files[1]);
-            }
-            finally
-            {
-                try { Directory.Delete(tempDir, true); } catch { }
-            }
+            });
         });
 
         runner.Run("BatchRename: Regex and case-sensitive replacement", () =>

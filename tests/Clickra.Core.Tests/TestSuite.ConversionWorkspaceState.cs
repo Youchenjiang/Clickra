@@ -90,23 +90,25 @@ static partial class TestSuite
         Assert.Equal(WorkspacePdfFile, selectedFiles[0]);
     }
 
+    private const string BatchRenameCommand = ConvertWorkspaceController.BatchRenameCommand;
+
     private static void TestConversionWorkspaceBatchRenameCompatibility()
     {
         var state = new ConvertWorkspaceController();
-        Assert.True(ConvertWorkspaceController.IsKnownCommand("batch-rename"),
+        Assert.True(ConvertWorkspaceController.IsKnownCommand(BatchRenameCommand),
             "batch-rename must be recognized as a known presentation command.");
-        Assert.Equal("cmd_batch_rename", ConvertWorkspaceController.GetCommandLabelKey("batch-rename"));
-        Assert.True(state.TrySelectCommand("batch-rename"),
+        Assert.Equal("cmd_batch_rename", ConvertWorkspaceController.GetCommandLabelKey(BatchRenameCommand));
+        Assert.True(state.TrySelectCommand(BatchRenameCommand),
             "batch-rename must be selectable with an empty initial selection.");
 
         state.AddFiles(new[] { "notes.txt", "photo.png", "document.pdf", "presentation.pptx" });
-        Assert.Equal("batch-rename", state.SelectedCommand ?? "");
+        Assert.Equal(BatchRenameCommand, state.SelectedCommand ?? "");
         Assert.True(state.CanStart, "batch-rename must accept mixed heterogeneous file types.");
 
         var validation = state.ValidateSelection();
         Assert.True(validation.IsValid, "batch-rename validation must be valid with 4 mixed files.");
 
-        string[] extensions = ConvertWorkspaceController.GetAllowedExtensions("batch-rename");
+        string[] extensions = ConvertWorkspaceController.GetAllowedExtensions(BatchRenameCommand);
         Assert.True(extensions.Length == 1 && extensions[0] == "*.*",
             "batch-rename allowed extensions must represent all files (*.*).");
 
