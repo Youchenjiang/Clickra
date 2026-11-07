@@ -32,6 +32,7 @@ public sealed record ConvertCommandPresentation(
 /// </summary>
 public sealed class ConvertWorkspaceController
 {
+    public const string BatchRenameCommand = "batch-rename";
     private const string ConvertGroup = "convert_group_convert";
     private const string OrganizeGroup = "convert_group_organize";
     private const string OptimizeGroup = "convert_group_optimize";
@@ -54,7 +55,7 @@ public sealed class ConvertWorkspaceController
         new("split-pdf", "cmd_split_pdf", OrganizeGroup, 1, false),
         new("img-merge", "cmd_merge_img", OrganizeGroup, 1, false),
         new("img-stitch", "cmd_stitch_img", OrganizeGroup, 1, false),
-        new("batch-rename", "cmd_batch_rename", OrganizeGroup, 1, false),
+        new(BatchRenameCommand, "cmd_batch_rename", OrganizeGroup, 1, false),
         new("compress-pdf", "cmd_compress_pdf", OptimizeGroup, 2, false),
         new("img-compress", "cmd_img_compress", OptimizeGroup, 2, false),
         new("translate-pdf", "cmd_translate_pdf", ProcessGroup, 3, false),
@@ -78,7 +79,7 @@ public sealed class ConvertWorkspaceController
     public static IReadOnlyList<string> AllSupportedExtensions => ConvertCommandRegistry.AllSupportedExtensions;
 
     public static string[] GetAllowedExtensions(string command) =>
-        command.Equals("batch-rename", StringComparison.OrdinalIgnoreCase)
+        command.Equals(BatchRenameCommand, StringComparison.OrdinalIgnoreCase)
             ? ["*.*"]
             : ConvertCommandRegistry.GetAllowedExtensions(command);
 
@@ -86,10 +87,10 @@ public sealed class ConvertWorkspaceController
 
     public static bool IsKnownCommand(string command) =>
         CommandByKey.ContainsKey(command) &&
-        (command.Equals("batch-rename", StringComparison.OrdinalIgnoreCase) || ConvertCommandRegistry.IsKnownCommand(command));
+        (command.Equals(BatchRenameCommand, StringComparison.OrdinalIgnoreCase) || ConvertCommandRegistry.IsKnownCommand(command));
 
     public static IEnumerable<string> ExpandLaunchArguments(string command, IEnumerable<string> inputs) =>
-        command.Equals("batch-rename", StringComparison.OrdinalIgnoreCase)
+        command.Equals(BatchRenameCommand, StringComparison.OrdinalIgnoreCase)
             ? inputs
             : ConvertCommandRegistry.ExpandDirectoryArguments(command, inputs);
 
@@ -145,7 +146,7 @@ public sealed class ConvertWorkspaceController
     public bool IsCommandCompatible(string command)
     {
         if (!CommandByKey.ContainsKey(command)) return false;
-        if (!command.Equals("batch-rename", StringComparison.OrdinalIgnoreCase) && !ConvertCommandRegistry.IsKnownCommand(command)) return false;
+        if (!command.Equals(BatchRenameCommand, StringComparison.OrdinalIgnoreCase) && !ConvertCommandRegistry.IsKnownCommand(command)) return false;
         if (_selectedFiles.Count == 0) return true;
         return ValidateCommand(command).IsValid;
     }
@@ -160,7 +161,7 @@ public sealed class ConvertWorkspaceController
         if (!CommandByKey.ContainsKey(command))
             return new(ConvertWorkspaceValidationKind.NoCommand);
 
-        if (command.Equals("batch-rename", StringComparison.OrdinalIgnoreCase))
+        if (command.Equals(BatchRenameCommand, StringComparison.OrdinalIgnoreCase))
         {
             const int minFiles = 1;
             if (_selectedFiles.Count < minFiles)
@@ -184,7 +185,7 @@ public sealed class ConvertWorkspaceController
     }
 
     public IReadOnlyList<string> GetPickerExtensions() =>
-        SelectedCommand is null || SelectedCommand.Equals("batch-rename", StringComparison.OrdinalIgnoreCase)
+        SelectedCommand is null || SelectedCommand.Equals(BatchRenameCommand, StringComparison.OrdinalIgnoreCase)
             ? ConvertCommandRegistry.AllSupportedExtensions
             : ConvertCommandRegistry.GetAllowedExtensions(SelectedCommand);
 

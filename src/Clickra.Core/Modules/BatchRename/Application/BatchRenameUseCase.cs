@@ -15,13 +15,13 @@ public sealed class BatchRenameUseCase
     public const string CommandName = "batch-rename";
 
     /// <summary>Evaluates and produces a validated rename plan without modifying files.</summary>
-    public BatchRenamePlan Plan(IReadOnlyList<string> filePaths, BatchRenameOptions options)
+    public static BatchRenamePlan Plan(IReadOnlyList<string> filePaths, BatchRenameOptions options)
     {
         return BatchRenameEngine.GeneratePlan(filePaths, options);
     }
 
     /// <summary>Executes the rename plan with cancellation and progress reporting.</summary>
-    public Task<BatchRenameResult> ExecuteAsync(
+    public static Task<BatchRenameResult> ExecuteAsync(
         BatchRenamePlan plan,
         IProgress<BatchRenameProgress>? progress = null,
         CancellationToken cancellationToken = default)
