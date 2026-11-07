@@ -48,7 +48,7 @@ internal sealed class NativeConversionExecutionAdapter
         _completeResult = callbacks.CompleteResult;
     }
 
-    public bool TryRun(
+    private bool TryRunSpecializedCommand(
         string command,
         List<string> files,
         Action<int, int, string> progressCallback)
@@ -76,6 +76,18 @@ internal sealed class NativeConversionExecutionAdapter
         if (command.Equals(PrintPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
         {
             RunPrint(files, progressCallback);
+            return true;
+        }
+        return false;
+    }
+
+    public bool TryRun(
+        string command,
+        List<string> files,
+        Action<int, int, string> progressCallback)
+    {
+        if (TryRunSpecializedCommand(command, files, progressCallback))
+        {
             return true;
         }
         if (command.Equals(Img2PdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
@@ -218,17 +230,17 @@ internal sealed class NativeConversionExecutionAdapter
         var useCase = new Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase();
         Clickra.Core.Modules.BatchRename.Domain.BatchRenamePlan plan;
 
-        if (_commandOptions != null && _commandOptions.TryGetValue("plan", out object? planObj) && planObj is Clickra.Core.Modules.BatchRename.Domain.BatchRenamePlan existingPlan)
+        if (_commandOptions?.TryGetValue("plan", out object? planObj) == true && planObj is Clickra.Core.Modules.BatchRename.Domain.BatchRenamePlan existingPlan)
         {
             plan = existingPlan;
         }
         else
         {
-            var options = _commandOptions != null && _commandOptions.TryGetValue("options", out object? optObj) && optObj is Clickra.Core.Modules.BatchRename.Application.BatchRenameOptions opt
+            var options = _commandOptions?.TryGetValue("options", out object? optObj) == true && optObj is Clickra.Core.Modules.BatchRename.Application.BatchRenameOptions opt
                 ? opt
                 : new Clickra.Core.Modules.BatchRename.Application.BatchRenameOptions();
             var targetFiles = Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.ResolveTargetFiles(files);
-            plan = useCase.Plan(targetFiles, options);
+            plan = Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.Plan(targetFiles, options);
         }
 
         string taskId = Guid.NewGuid().ToString("N");
@@ -248,13 +260,13 @@ internal sealed class NativeConversionExecutionAdapter
             progressCallback(p.CompletedCount * 100, total * 100, stageMsg);
         });
 
-        var resultTask = useCase.ExecuteAsync(plan, progress, _cancellationToken);
+        var resultTask = Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.ExecuteAsync(plan, progress, _cancellationToken);
         resultTask.Wait(_cancellationToken);
         var renameResult = resultTask.Result;
 
         var outputFiles = renameResult.RenamedFiles.Select(r => r.NewPath).ToList();
         string summaryMsg = string.Format(Localization.T("batch_rename_toast_body"), renameResult.RenamedFiles.Count);
-        _completeResult(new ConversionResult(ConversionResultStatus.Succeeded, outputFiles, null, TimeSpan.Zero, outputFiles.Count, taskId), Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName, Localization.T("batch_rename_done"), true);
+        _completeResult(new ConversionResult(ConversionResultStatus.Succeeded, outputFiles, summaryMsg, TimeSpan.Zero, outputFiles.Count, taskId), Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName, Localization.T("batch_rename_done"), true);
     }
 
     private void RunDecrypt(List<string> files, Action<int, int, string> progressCallback)

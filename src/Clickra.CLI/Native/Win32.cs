@@ -98,7 +98,10 @@ namespace Clickra.UI.Native
         [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", CharSet = CharSet.Unicode)] public static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
         [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", CharSet = CharSet.Unicode)] public static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);
         [DllImport("user32.dll")] public static extern uint GetDpiForSystem();
-        [DllImport("user32.dll")] public static extern int GetSystemMetrics(int nIndex);
+        [DllImport("user32.dll", EntryPoint = "GetSystemMetrics")] private static extern int GetSystemMetricsNative(int nIndex);
+        /// <summary>Retrieves the specified system metric or system configuration setting.</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static int GetSystemMetrics(int nIndex) => GetSystemMetricsNative(nIndex);
         [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
         [DllImport("user32.dll")] public static extern IntPtr GetParent(IntPtr hWnd);
         [DllImport("user32.dll", EntryPoint = "CallWindowProcW", CharSet = CharSet.Unicode)] public static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
@@ -108,7 +111,10 @@ namespace Clickra.UI.Native
         [DllImport("user32.dll")] public static extern IntPtr GetDlgItem(IntPtr hDlg, int nIDDlgItem);
         [DllImport("user32.dll")] public static extern IntPtr SetFocus(IntPtr hWnd);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowTextW(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowTextLengthW(IntPtr hWnd);
+        [DllImport("user32.dll", EntryPoint = "GetWindowTextLengthW", CharSet = CharSet.Unicode)] private static extern int GetWindowTextLengthWNative(IntPtr hWnd);
+        /// <summary>Retrieves the length, in characters, of the specified window's title bar text.</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static int GetWindowTextLengthW(IntPtr hWnd) => GetWindowTextLengthWNative(hWnd);
         [DllImport("user32.dll")] public static extern bool SetProcessDpiAwarenessContext(IntPtr value);
         [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr hwnd);
         [DllImport("user32.dll")] public static extern bool GetCursorPos(out Point lpPoint);

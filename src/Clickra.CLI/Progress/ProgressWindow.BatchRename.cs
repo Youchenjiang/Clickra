@@ -116,7 +116,7 @@ public partial class ProgressWindow
         _hwndBrFocused = IntPtr.Zero;
     }
 
-    private string GetEditText(IntPtr edit)
+    private static string GetEditText(IntPtr edit)
     {
         if (edit == IntPtr.Zero) return "";
         int len = GetWindowTextLengthW(edit);
@@ -185,6 +185,7 @@ public partial class ProgressWindow
     }
 
     [StructLayout(LayoutKind.Sequential)]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S101", Justification = "Win32 interop structure names match native Win32 ABI names.")]
     private struct MINMAXINFO
     {
         public POINT ptReserved;
@@ -195,6 +196,7 @@ public partial class ProgressWindow
     }
 
     [StructLayout(LayoutKind.Sequential)]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S101", Justification = "Win32 interop structure names match native Win32 ABI names.")]
     private struct POINT
     {
         public int x;
@@ -275,12 +277,35 @@ public partial class ProgressWindow
     private static RectangleF ScaleBatchRenameRect(LayoutRect rect, float scale) =>
         new(rect.X * scale, rect.Y * scale, rect.Width * scale, rect.Height * scale);
 
+    private static Color GetPreviewCardBgColor(bool hasConflict, bool willChange)
+    {
+        if (hasConflict) return Color.FromArgb(46, 22, 22);
+        if (willChange) return Color.FromArgb(36, 36, 40);
+        return Color.FromArgb(24, 24, 26);
+    }
+
+    private static Color GetPreviewOrigColor(bool hasConflict, bool willChange)
+    {
+        if (hasConflict) return Color.FromArgb(240, 130, 130);
+        if (willChange) return Color.FromArgb(180, 180, 180);
+        return Color.FromArgb(115, 115, 115);
+    }
+
+    private static Color GetPreviewArrowColor(bool hasConflict, bool willChange)
+    {
+        if (hasConflict) return Color.FromArgb(240, 80, 80);
+        if (willChange) return Color.FromArgb(0, 160, 240);
+        return Color.FromArgb(75, 75, 75);
+    }
+
     private void PaintBatchRenamePrompt(Graphics g, float s)
     {
         if (_titleFont is null || _msgFont is null || _tipFont is null) return;
 
         int clientW = _brClientWidth;
         int clientH = _brClientHeight;
+        Color accentColor = UIHelper.GetSystemColorizationColor();
+        var ctx = new ModernPaintContext(g, s, accentColor);
 
         using var bodyBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
         using var mutedBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
@@ -288,64 +313,80 @@ public partial class ProgressWindow
         using var smallFont = new Font(_msgFont.FontFamily, 12f * s, FontStyle.Regular, GraphicsUnit.Pixel);
         using var badgeFont = new Font("Segoe UI", 11f * s, FontStyle.Bold, GraphicsUnit.Pixel);
 
-        Color accentColor = UIHelper.GetSystemColorizationColor();
+        PaintBatchRenameRules(ctx, sectionFont, smallFont, bodyBrush, mutedBrush);
 
-        // --- Left Column: Rules ---
+        using var divPen = new Pen(Color.FromArgb(48, 48, 48), 1f * s);
+        g.DrawLine(divPen, BatchRenameLayout.DividerX * s, 20 * s, BatchRenameLayout.DividerX * s, (clientH - 80) * s);
+
+        PaintBatchRenamePreview(ctx, clientW, clientH, sectionFont, smallFont, badgeFont, mutedBrush);
+
+        int sepY = BatchRenameLayout.GetSeparatorY(clientH);
+        g.DrawLine(divPen, 32 * s, sepY * s, (clientW - 32) * s, sepY * s);
+
+        PaintBatchRenameBottomBar(ctx, clientW, clientH);
+        DrawBatchRenameHoverTooltip(g, s, clientW, clientH);
+    }
+
+    private void PaintBatchRenameRules(ModernPaintContext ctx, Font sectionFont, Font smallFont, Brush bodyBrush, Brush mutedBrush)
+    {
+        Graphics g = ctx.Graphics;
+        float s = ctx.Scale;
+
+        // Rules Header
         g.DrawString(Loc("batch_rename_rules"), sectionFont, Brushes.White, 32 * s, BatchRenameLayout.RulesTitleY * s);
         using var hintBrush = new SolidBrush(Color.FromArgb(140, 140, 150));
-        using var hintFont = new Font(_msgFont.FontFamily, 11f * s, FontStyle.Regular, GraphicsUnit.Pixel);
+        using var hintFont = new Font(_msgFont!.FontFamily, 11f * s, FontStyle.Regular, GraphicsUnit.Pixel);
         g.DrawString(Loc("batch_rename_rule_order"), hintFont, hintBrush, 32 * s, BatchRenameLayout.RuleOrderY * s);
 
-        // 1. Prefix & Suffix (Paired side-by-side)
+        // 1. Prefix & Suffix
         g.DrawString(Loc("batch_rename_prefix"), smallFont, mutedBrush, 32 * s, BatchRenameLayout.PrefixLabelY * s);
-        ModernControls.DrawTextBoxContainer(g, s, BatchRenameLayout.PrefixRect, _hwndBrPrefix, _hwndBrFocused, accentColor);
+        ModernControls.DrawTextBoxContainer(ctx, BatchRenameLayout.PrefixRect, _hwndBrPrefix, _hwndBrFocused);
 
         g.DrawString(Loc("batch_rename_suffix"), smallFont, mutedBrush, BatchRenameLayout.RightInputX * s, BatchRenameLayout.PrefixLabelY * s);
-        ModernControls.DrawTextBoxContainer(g, s, BatchRenameLayout.SuffixRect, _hwndBrSuffix, _hwndBrFocused, accentColor);
+        ModernControls.DrawTextBoxContainer(ctx, BatchRenameLayout.SuffixRect, _hwndBrSuffix, _hwndBrFocused);
 
-        // 2. Find & Replace (Paired side-by-side)
+        // 2. Find & Replace
         g.DrawString(Loc("batch_rename_find"), smallFont, mutedBrush, 32 * s, BatchRenameLayout.FindLabelY * s);
-        ModernControls.DrawTextBoxContainer(g, s, BatchRenameLayout.FindRect, _hwndBrFind, _hwndBrFocused, accentColor);
+        ModernControls.DrawTextBoxContainer(ctx, BatchRenameLayout.FindRect, _hwndBrFind, _hwndBrFocused);
 
         g.DrawString(Loc("batch_rename_replace"), smallFont, mutedBrush, BatchRenameLayout.RightInputX * s, BatchRenameLayout.FindLabelY * s);
-        ModernControls.DrawTextBoxContainer(g, s, BatchRenameLayout.ReplaceRect, _hwndBrReplace, _hwndBrFocused, accentColor);
+        ModernControls.DrawTextBoxContainer(ctx, BatchRenameLayout.ReplaceRect, _hwndBrReplace, _hwndBrFocused);
 
-        ModernControls.DrawCheckBox(g, s, BatchRenameLayout.MatchCaseRect, _brMatchCase, Loc("batch_rename_match_case"), smallFont, bodyBrush, accentColor);
-        ModernControls.DrawCheckBox(g, s, BatchRenameLayout.RegexRect, _brUseRegex, Loc("batch_rename_regex"), smallFont, bodyBrush, accentColor);
+        ModernControls.DrawCheckBox(ctx, BatchRenameLayout.MatchCaseRect, _brMatchCase, Loc("batch_rename_match_case"), smallFont, bodyBrush);
+        ModernControls.DrawCheckBox(ctx, BatchRenameLayout.RegexRect, _brUseRegex, Loc("batch_rename_regex"), smallFont, bodyBrush);
 
-        // 3. Sequence Numbering (Paired & Compact with disabled state)
-        ModernControls.DrawCheckBox(g, s, BatchRenameLayout.SeqCheckRect, _brEnableSeq, Loc("batch_rename_numbering"), smallFont, bodyBrush, accentColor);
-        ModernControls.DrawSegmentedToggle(g, s, BatchRenameLayout.SeqPosToggleRect, Loc("batch_rename_pos_prefix"), Loc("batch_rename_pos_suffix"), _brSeqPos == InsertPosition.Prefix, smallFont, accentColor, _brEnableSeq);
+        // 3. Sequence Numbering
+        ModernControls.DrawCheckBox(ctx, BatchRenameLayout.SeqCheckRect, _brEnableSeq, Loc("batch_rename_numbering"), smallFont, bodyBrush);
+        ModernControls.DrawSegmentedToggle(ctx, BatchRenameLayout.SeqPosToggleRect, Loc("batch_rename_pos_prefix"), Loc("batch_rename_pos_suffix"), _brSeqPos == InsertPosition.Prefix, smallFont, _brEnableSeq);
 
         using var seqLabelBrush = new SolidBrush(_brEnableSeq ? Color.FromArgb(145, 145, 145) : Color.FromArgb(85, 85, 85));
         g.DrawString(Loc("batch_rename_start_index"), smallFont, seqLabelBrush, 32 * s, BatchRenameLayout.SeqParamLabelY * s);
-        ModernControls.DrawTextBoxContainer(g, s, BatchRenameLayout.SeqStartRect, _hwndBrSeqStart, _hwndBrFocused, accentColor, _brEnableSeq);
+        ModernControls.DrawTextBoxContainer(ctx, BatchRenameLayout.SeqStartRect, _hwndBrSeqStart, _hwndBrFocused, _brEnableSeq);
 
         g.DrawString(Loc("batch_rename_padding"), smallFont, seqLabelBrush, BatchRenameLayout.RightInputX * s, BatchRenameLayout.SeqParamLabelY * s);
-        ModernControls.DrawTextBoxContainer(g, s, BatchRenameLayout.SeqPadRect, _hwndBrSeqPad, _hwndBrFocused, accentColor, _brEnableSeq);
+        ModernControls.DrawTextBoxContainer(ctx, BatchRenameLayout.SeqPadRect, _hwndBrSeqPad, _hwndBrFocused, _brEnableSeq);
 
-        // 4. Collapsible Advanced Options
+        // 4. Advanced Drawer
         bool hasActiveAdvanced = _brCaseMode != CaseTransformMode.None || _brExtMode != ExtensionTransformMode.KeepOriginal;
-        ModernControls.DrawCollapsibleHeader(g, s, BatchRenameLayout.AdvancedToggleRect, Loc("batch_rename_advanced"), _brAdvancedExpanded, hasActiveAdvanced, Loc("batch_rename_advanced_active"), smallFont, accentColor);
+        ModernControls.DrawCollapsibleHeader(ctx, BatchRenameLayout.AdvancedToggleRect, Loc("batch_rename_advanced"), _brAdvancedExpanded, hasActiveAdvanced ? Loc("batch_rename_advanced_active") : null, smallFont);
 
         if (_brAdvancedExpanded)
         {
             g.DrawString(Loc("batch_rename_case_mode"), smallFont, mutedBrush, 32 * s, BatchRenameLayout.CaseLabelY * s);
             string[] caseLabels = { Loc("batch_rename_case_none"), Loc("batch_rename_case_lower"), Loc("batch_rename_case_upper"), Loc("batch_rename_case_title") };
-            ModernControls.DrawMultiSegmentedToggle(g, s, BatchRenameLayout.CaseSegmentRect, caseLabels, (int)_brCaseMode, smallFont, accentColor);
+            ModernControls.DrawMultiSegmentedToggle(ctx, BatchRenameLayout.CaseSegmentRect, caseLabels, (int)_brCaseMode, smallFont);
 
             g.DrawString(Loc("batch_rename_ext_mode"), smallFont, mutedBrush, 32 * s, BatchRenameLayout.ExtLabelY * s);
             string[] extLabels = { Loc("batch_rename_ext_keep"), Loc("batch_rename_ext_lower"), Loc("batch_rename_ext_upper") };
-            ModernControls.DrawMultiSegmentedToggle(g, s, BatchRenameLayout.ExtSegmentRect, extLabels, (int)_brExtMode, smallFont, accentColor);
+            ModernControls.DrawMultiSegmentedToggle(ctx, BatchRenameLayout.ExtSegmentRect, extLabels, (int)_brExtMode, smallFont);
         }
+    }
 
+    private void PaintBatchRenamePreview(ModernPaintContext ctx, int clientW, int clientH, Font sectionFont, Font smallFont, Font badgeFont, Brush mutedBrush)
+    {
+        Graphics g = ctx.Graphics;
+        float s = ctx.Scale;
 
-
-        // --- Divider between columns ---
-        using var divPen = new Pen(Color.FromArgb(48, 48, 48), 1f * s);
-        g.DrawLine(divPen, BatchRenameLayout.DividerX * s, 20 * s, BatchRenameLayout.DividerX * s, (clientH - 80) * s);
-
-        // --- Right Column: Live Preview (Responsive) ---
         g.DrawString(Loc("batch_rename_preview"), sectionFont, Brushes.White, BatchRenameLayout.RightColX * s, BatchRenameLayout.PreviewTitleY * s);
 
         int totalCount = _brFiles.Count;
@@ -372,7 +413,6 @@ public partial class ProgressWindow
             g.DrawString(summaryText, smallFont, mutedBrush, BatchRenameLayout.RightColX * s, BatchRenameLayout.PreviewSummaryY * s);
         }
 
-        // Preview list cards
         var previewLayoutRect = BatchRenameLayout.PreviewListRect(clientW, clientH);
         var listRect = ScaleBatchRenameRect(previewLayoutRect, s);
         var oldClip = g.Clip;
@@ -390,134 +430,102 @@ public partial class ProgressWindow
                 if (y + rowH < listRect.Y || y > listRect.Bottom) continue;
 
                 var cardRect = new RectangleF(listRect.X, y, listRect.Width, rowH - (4 * s));
-
-                bool willChange = item.OriginalName != item.NewName;
-                bool hasConflict = item.Status is RenameItemStatus.ConflictExistingFile or RenameItemStatus.ConflictDuplicateTarget;
-                bool isCyclic = !hasConflict && _brCurrentPlan.RequiresTwoPhaseSwap;
-                bool hasBadge = hasConflict || isCyclic;
-
-                // Card styling based on change status:
-                // Conflict: dark reddish tint with red border
-                // Changed: distinct modern card with subtle border
-                // Unchanged: dimmed card with minimal contrast
-                Color cardBgColor = hasConflict
-                    ? Color.FromArgb(46, 22, 22)
-                    : (willChange ? Color.FromArgb(36, 36, 40) : Color.FromArgb(24, 24, 26));
-
-                using var cardBg = new SolidBrush(cardBgColor);
-                using var cardPath = UIHelper.GetRoundedRectPath(cardRect, 4 * s);
-                g.FillPath(cardBg, cardPath);
-
-                if (hasConflict)
-                {
-                    using var conflictBorder = new Pen(Color.FromArgb(160, 42, 42), 1f * s);
-                    g.DrawPath(conflictBorder, cardPath);
-                }
-                else if (i == _brHoveredIndex)
-                {
-                    using var hoverBorder = new Pen(UIHelper.Lighten(accentColor, 0.25f), 1.2f * s);
-                    g.DrawPath(hoverBorder, cardPath);
-                }
-                else if (willChange)
-                {
-                    using var cardBorder = new Pen(Color.FromArgb(56, 56, 62), 1f * s);
-                    g.DrawPath(cardBorder, cardPath);
-                }
-
-                // Text positions
-                float textY = y + (8 * s);
-                float leftX = cardRect.X + (12 * s);
-                float rightReserved = hasBadge ? (88 * s) : (16 * s);
-                float availableW = cardRect.Width - (44 * s) - rightReserved;
-                float maxNameW = Math.Max(120 * s, availableW / 2f);
-
-                using var sfTypo = new StringFormat(StringFormat.GenericTypographic)
-                {
-                    FormatFlags = StringFormatFlags.NoWrap | StringFormatFlags.MeasureTrailingSpaces
-                };
-
-                // Original Name (middle truncated if long, dimmed if unchanged, red if conflict)
-                Color origColor = hasConflict
-                    ? Color.FromArgb(240, 130, 130)
-                    : (willChange ? Color.FromArgb(180, 180, 180) : Color.FromArgb(115, 115, 115));
-                using var origBrush = new SolidBrush(origColor);
-                string origComp = ModernControls.CompactMiddle(item.OriginalName, smallFont, maxNameW, g, sfTypo);
-                g.DrawString(origComp, smallFont, origBrush, leftX, textY, sfTypo);
-
-                // Direction Arrow (accent blue if changed, muted gray if unchanged, red if conflict)
-                float arrowX = leftX + maxNameW + (8 * s);
-                Color arrowColor = hasConflict
-                    ? Color.FromArgb(240, 80, 80)
-                    : (willChange ? Color.FromArgb(0, 160, 240) : Color.FromArgb(75, 75, 75));
-                using var arrowBrush = new SolidBrush(arrowColor);
-                g.DrawString("→", smallFont, arrowBrush, arrowX, textY, sfTypo);
-
-                // New Name with Diff Highlight
-                float newX = arrowX + (22 * s);
-                DrawPreviewItemNewName(g, s, item.OriginalName, item.NewName, smallFont, newX, textY, maxNameW, hasConflict, sfTypo);
-
-                // Badge: Only displayed on Conflict or Cyclic Swap (clean view for normal items)
-                if (hasBadge)
-                {
-                    string badgeText = hasConflict ? Loc("batch_rename_status_conflict") : Loc("batch_rename_status_cyclic");
-                    Color badgeBgColor = hasConflict ? Color.FromArgb(196, 43, 28) : Color.FromArgb(216, 110, 0);
-
-                    float badgeW = 68 * s;
-                    float badgeH = 22 * s;
-                    float badgeX = cardRect.Right - badgeW - (8 * s);
-                    float badgeY = y + (5 * s);
-                    var badgeRect = new RectangleF(badgeX, badgeY, badgeW, badgeH);
-
-                    using var badgeBg = new SolidBrush(badgeBgColor);
-                    using var badgePath = UIHelper.GetRoundedRectPath(badgeRect, 3 * s);
-                    g.FillPath(badgeBg, badgePath);
-
-                    using var badgeSf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                    g.DrawString(badgeText, badgeFont, Brushes.White, badgeRect, badgeSf);
-                }
+                PaintPreviewCard(ctx, cardRect, item, i, y, smallFont, badgeFont);
             }
         }
         else
         {
             using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            g.DrawString(Loc("batch_rename_drag_hint"), _msgFont, mutedBrush, listRect, sf);
-        }
-
-        if (_brCurrentPlan != null && _brCurrentPlan.Items.Count > 0 && _brCurrentPlan.Items.Count <= 2)
-        {
-            int itemH = 38;
-            float hintY = listRect.Y + (_brCurrentPlan.Items.Count * itemH * s) + (16 * s);
-            float hintH = Math.Min(56 * s, listRect.Bottom - hintY - (8 * s));
-            if (hintH > 24 * s)
-            {
-                var hintRect = new RectangleF(listRect.X + (8 * s), hintY, listRect.Width - (16 * s), hintH);
-                using var hintDottedPen = new Pen(Color.FromArgb(60, 60, 70), 1f * s) { DashStyle = DashStyle.Dash };
-                using var hintPath = UIHelper.GetRoundedRectPath(hintRect, 6 * s);
-                g.DrawPath(hintDottedPen, hintPath);
-                using var sfHint = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                using var hintTxtBrush = new SolidBrush(Color.FromArgb(135, 135, 145));
-                g.DrawString(Loc("batch_rename_drag_hint"), smallFont, hintTxtBrush, hintRect, sfHint);
-            }
+            g.DrawString(Loc("batch_rename_drag_hint"), _msgFont!, mutedBrush, listRect, sf);
         }
 
         g.Clip = oldClip;
-
-        // Bottom separator
-        int sepY = BatchRenameLayout.GetSeparatorY(clientH);
-        g.DrawLine(divPen, 32 * s, sepY * s, (clientW - 32) * s, sepY * s);
-
-        // Bottom Action buttons (Dismissive/utility grouped on left, primary execution uniquely anchored on right)
-        ModernControls.DrawButton(g, s, BatchRenameLayout.AddFilesRect(clientH), Loc("batch_rename_add_files"), _msgFont, false);
-        ModernControls.DrawButton(g, s, BatchRenameLayout.ClearRect(clientH), Loc("batch_rename_clear"), _msgFont, false, enabled: _brFiles.Count > 0, isDestructive: true);
-        ModernControls.DrawButton(g, s, BatchRenameLayout.CancelRect(clientH), Loc("batch_rename_cancel"), _msgFont, false);
-
-        bool canExecute = _brFiles.Count > 0 && (_brCurrentPlan?.Items.Count(i => i.OriginalName != i.NewName) ?? 0) > 0;
-        ModernControls.DrawButton(g, s, BatchRenameLayout.ExecuteRect(clientW, clientH), Loc("batch_rename_execute"), _msgFont, true, canExecute);
-
-        // Draw floating hover popover on top of all elements
-        DrawBatchRenameHoverTooltip(g, s, clientW, clientH);
     }
 
+    private void PaintPreviewCard(ModernPaintContext ctx, RectangleF cardRect, RenameItem item, int index, float y, Font smallFont, Font badgeFont)
+    {
+        Graphics g = ctx.Graphics;
+        float s = ctx.Scale;
+
+        bool willChange = item.OriginalName != item.NewName;
+        bool hasConflict = item.Status is RenameItemStatus.ConflictExistingFile or RenameItemStatus.ConflictDuplicateTarget;
+        bool isCyclic = !hasConflict && (_brCurrentPlan?.RequiresTwoPhaseSwap ?? false);
+        bool hasBadge = hasConflict || isCyclic;
+
+        Color cardBgColor = GetPreviewCardBgColor(hasConflict, willChange);
+        using var cardBg = new SolidBrush(cardBgColor);
+        using var cardPath = UIHelper.GetRoundedRectPath(cardRect, 4 * s);
+        g.FillPath(cardBg, cardPath);
+
+        if (hasConflict)
+        {
+            using var conflictBorder = new Pen(Color.FromArgb(160, 42, 42), 1f * s);
+            g.DrawPath(conflictBorder, cardPath);
+        }
+        else if (index == _brHoveredIndex)
+        {
+            using var hoverBorder = new Pen(UIHelper.Lighten(ctx.Accent, 0.25f), 1.2f * s);
+            g.DrawPath(hoverBorder, cardPath);
+        }
+        else if (willChange)
+        {
+            using var cardBorder = new Pen(Color.FromArgb(56, 56, 62), 1f * s);
+            g.DrawPath(cardBorder, cardPath);
+        }
+
+        float textY = y + (8 * s);
+        float leftX = cardRect.X + (12 * s);
+        float rightReserved = hasBadge ? (88 * s) : (16 * s);
+        float availableW = cardRect.Width - (44 * s) - rightReserved;
+        float maxNameW = Math.Max(120 * s, availableW / 2f);
+
+        using var sfTypo = new StringFormat(StringFormat.GenericTypographic)
+        {
+            FormatFlags = StringFormatFlags.NoWrap | StringFormatFlags.MeasureTrailingSpaces
+        };
+
+        Color origColor = GetPreviewOrigColor(hasConflict, willChange);
+        using var origBrush = new SolidBrush(origColor);
+        string origComp = ModernControls.CompactMiddle(item.OriginalName, smallFont, maxNameW, g, sfTypo);
+        g.DrawString(origComp, smallFont, origBrush, leftX, textY, sfTypo);
+
+        float arrowX = leftX + maxNameW + (8 * s);
+        Color arrowColor = GetPreviewArrowColor(hasConflict, willChange);
+        using var arrowBrush = new SolidBrush(arrowColor);
+        g.DrawString("→", smallFont, arrowBrush, arrowX, textY, sfTypo);
+
+        float newX = arrowX + (22 * s);
+        DrawPreviewItemNewName(g, s, item.OriginalName, item.NewName, smallFont, newX, textY, maxNameW, hasConflict, sfTypo);
+
+        if (hasBadge)
+        {
+            string badgeText = hasConflict ? Loc("batch_rename_status_conflict") : Loc("batch_rename_status_cyclic");
+            Color badgeBgColor = hasConflict ? Color.FromArgb(196, 43, 28) : Color.FromArgb(216, 110, 0);
+
+            float badgeW = 68 * s;
+            float badgeH = 22 * s;
+            float badgeX = cardRect.Right - badgeW - (8 * s);
+            float badgeY = y + (5 * s);
+            var badgeRect = new RectangleF(badgeX, badgeY, badgeW, badgeH);
+
+            using var badgeBg = new SolidBrush(badgeBgColor);
+            using var badgePath = UIHelper.GetRoundedRectPath(badgeRect, 3 * s);
+            g.FillPath(badgeBg, badgePath);
+
+            using var badgeSf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+            g.DrawString(badgeText, badgeFont, Brushes.White, badgeRect, badgeSf);
+        }
+    }
+
+    private void PaintBatchRenameBottomBar(ModernPaintContext ctx, int clientW, int clientH)
+    {
+        ModernControls.DrawButton(ctx, BatchRenameLayout.AddFilesRect(clientH), Loc("batch_rename_add_files"), _msgFont!, false);
+        ModernControls.DrawButton(ctx, BatchRenameLayout.ClearRect(clientH), Loc("batch_rename_clear"), _msgFont!, false, enabled: _brFiles.Count > 0, isDestructive: true);
+        ModernControls.DrawButton(ctx, BatchRenameLayout.CancelRect(clientH), Loc("batch_rename_cancel"), _msgFont!, false);
+
+        bool canExecute = _brFiles.Count > 0 && (_brCurrentPlan?.Items.Count(i => i.OriginalName != i.NewName) ?? 0) > 0;
+        ModernControls.DrawButton(ctx, BatchRenameLayout.ExecuteRect(clientW, clientH), Loc("batch_rename_execute"), _msgFont!, true, canExecute);
+    }
     /// <summary>
     /// Draws the preview target name with intelligent diff highlighting:
     /// - Unchanged parts are rendered in subtle gray.
@@ -549,9 +557,9 @@ public partial class ProgressWindow
         int sLen = 0;
         while (sLen < (orig.Length - p) && sLen < (newN.Length - p) && orig[orig.Length - 1 - sLen] == newN[newN.Length - 1 - sLen]) sLen++;
 
-        string pre = newN.Substring(0, p);
-        string diff = newN.Substring(p, newN.Length - p - sLen);
-        string post = newN.Substring(newN.Length - sLen);
+        string pre = newN[..p];
+        string diff = newN[p..^sLen];
+        string post = newN[^sLen..];
 
         using var normalBrush = new SolidBrush(Color.FromArgb(175, 175, 175));
         using var diffBrush = new SolidBrush(Color.FromArgb(255, 215, 64)); // Vivid Gold
@@ -581,7 +589,6 @@ public partial class ProgressWindow
             {
                 float availForPost = maxW - wPre - wDiff;
                 post = ModernControls.CompactMiddle(post, font, availForPost, g, sf);
-                wPost = g.MeasureString(post, font, 10000, sf).Width;
             }
             else
             {
@@ -623,10 +630,15 @@ public partial class ProgressWindow
         int mouseX = (int)(x / s);
         int mouseY = (int)(y / s);
 
-        int clientW = _brClientWidth;
-        int clientH = _brClientHeight;
+        if (HandleBatchRenameRuleClicks(hwnd, mouseX, mouseY)) return true;
+        if (HandleBatchRenameAdvancedClicks(hwnd, mouseX, mouseY)) return true;
+        if (HandleBatchRenameBottomActionClicks(hwnd, mouseX, mouseY)) return true;
 
-        // Check Sequence toggle (box or label)
+        return false;
+    }
+
+    private bool HandleBatchRenameRuleClicks(IntPtr hwnd, int mouseX, int mouseY)
+    {
         if (BatchRenameLayout.SeqCheckRect.ContainsInclusive(mouseX, mouseY))
         {
             _brEnableSeq = !_brEnableSeq;
@@ -636,7 +648,6 @@ public partial class ProgressWindow
             return true;
         }
 
-        // Sequence position segmented toggle (Left: Prefix, Right: Suffix) - only active when enabled
         if (_brEnableSeq && BatchRenameLayout.SeqPosToggleRect.ContainsInclusive(mouseX, mouseY))
         {
             int midX = BatchRenameLayout.SeqPosToggleRect.X + (BatchRenameLayout.SeqPosToggleRect.Width / 2);
@@ -646,7 +657,6 @@ public partial class ProgressWindow
             return true;
         }
 
-        // Match case toggle
         if (BatchRenameLayout.MatchCaseRect.ContainsInclusive(mouseX, mouseY))
         {
             _brMatchCase = !_brMatchCase;
@@ -655,7 +665,6 @@ public partial class ProgressWindow
             return true;
         }
 
-        // Regex toggle
         if (BatchRenameLayout.RegexRect.ContainsInclusive(mouseX, mouseY))
         {
             _brUseRegex = !_brUseRegex;
@@ -664,7 +673,6 @@ public partial class ProgressWindow
             return true;
         }
 
-        // Collapsible Advanced toggle
         if (BatchRenameLayout.AdvancedToggleRect.ContainsInclusive(mouseX, mouseY))
         {
             _brAdvancedExpanded = !_brAdvancedExpanded;
@@ -672,62 +680,57 @@ public partial class ProgressWindow
             return true;
         }
 
-        if (_brAdvancedExpanded)
-        {
-            // Case mode segmented toggle
-            if (BatchRenameLayout.CaseSegmentRect.ContainsInclusive(mouseX, mouseY))
-            {
-                float segW = BatchRenameLayout.LeftColW / 4f;
-                int idx = (int)((mouseX - BatchRenameLayout.LeftColX) / segW);
-                if (idx >= 0 && idx < 4)
-                {
-                    _brCaseMode = (CaseTransformMode)idx;
-                    UpdateBatchRenamePlan();
-                    InvalidateRect(hwnd, IntPtr.Zero, false);
-                    return true;
-                }
-            }
+        return false;
+    }
 
-            // Extension mode segmented toggle
-            if (BatchRenameLayout.ExtSegmentRect.ContainsInclusive(mouseX, mouseY))
-            {
-                float segW = BatchRenameLayout.LeftColW / 3f;
-                int idx = (int)((mouseX - BatchRenameLayout.LeftColX) / segW);
-                if (idx >= 0 && idx < 3)
-                {
-                    _brExtMode = (ExtensionTransformMode)idx;
-                    UpdateBatchRenamePlan();
-                    InvalidateRect(hwnd, IntPtr.Zero, false);
-                    return true;
-                }
-            }
+    private bool HandleBatchRenameAdvancedClicks(IntPtr hwnd, int mouseX, int mouseY)
+    {
+        if (!_brAdvancedExpanded) return false;
+
+        if (BatchRenameLayout.CaseSegmentRect.ContainsInclusive(mouseX, mouseY))
+        {
+            float segW = BatchRenameLayout.LeftColW / 4f;
+            int sel = (int)((mouseX - BatchRenameLayout.CaseSegmentRect.X) / segW);
+            _brCaseMode = (CaseTransformMode)Math.Clamp(sel, 0, 3);
+            UpdateBatchRenamePlan();
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+            return true;
         }
 
-        // Add files
+        if (BatchRenameLayout.ExtSegmentRect.ContainsInclusive(mouseX, mouseY))
+        {
+            float segW = BatchRenameLayout.LeftColW / 3f;
+            int sel = (int)((mouseX - BatchRenameLayout.ExtSegmentRect.X) / segW);
+            _brExtMode = (ExtensionTransformMode)Math.Clamp(sel, 0, 2);
+            UpdateBatchRenamePlan();
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool HandleBatchRenameBottomActionClicks(IntPtr hwnd, int mouseX, int mouseY)
+    {
+        int clientW = _brClientWidth;
+        int clientH = _brClientHeight;
+
         if (BatchRenameLayout.AddFilesRect(clientH).ContainsInclusive(mouseX, mouseY))
         {
             PromptAddBatchRenameFiles(hwnd);
             return true;
         }
 
-        // Clear files
-        if (BatchRenameLayout.ClearRect(clientH).ContainsInclusive(mouseX, mouseY))
+        if (_brFiles.Count > 0 && BatchRenameLayout.ClearRect(clientH).ContainsInclusive(mouseX, mouseY))
         {
             _brFiles.Clear();
             _brScrollOffset = 0;
+            _brHoveredIndex = -1;
             UpdateBatchRenamePlan();
             InvalidateRect(hwnd, IntPtr.Zero, false);
             return true;
         }
 
-        // Execute
-        if (BatchRenameLayout.ExecuteRect(clientW, clientH).ContainsInclusive(mouseX, mouseY))
-        {
-            ExecuteBatchRenameFromPrompt(hwnd);
-            return true;
-        }
-
-        // Cancel
         if (BatchRenameLayout.CancelRect(clientH).ContainsInclusive(mouseX, mouseY))
         {
             DestroyOrHideBatchRenameControls();
@@ -736,65 +739,34 @@ public partial class ProgressWindow
             return true;
         }
 
+        bool canExecute = _brFiles.Count > 0 && (_brCurrentPlan?.Items.Count(i => i.OriginalName != i.NewName) ?? 0) > 0;
+        if (canExecute && BatchRenameLayout.ExecuteRect(clientW, clientH).ContainsInclusive(mouseX, mouseY))
+        {
+            ExecuteBatchRenameFromPrompt(hwnd);
+            return true;
+        }
+
         return false;
     }
-
     private void PromptAddBatchRenameFiles(IntPtr hwnd)
     {
         try
         {
-            var ofn = new OPENFILENAME();
-            ofn.lStructSize = Marshal.SizeOf(ofn);
-            ofn.hwndOwner = hwnd;
-            ofn.lpstrFilter = "All Files (*.*)\0*.*\0\0";
-
-            int maxFile = 65536;
-            IntPtr fileBuffer = Marshal.AllocHGlobal(maxFile * 2);
-            byte[] zeros = new byte[maxFile * 2];
-            Marshal.Copy(zeros, 0, fileBuffer, zeros.Length);
-
-            ofn.lpstrFile = fileBuffer;
-            ofn.nMaxFile = maxFile;
-            ofn.lpstrTitle = Loc("batch_rename_add_files");
-            ofn.Flags = 0x00080000 | 0x00000200 | 0x00001000 | 0x00000004;
-
-            if (GetOpenFileName(ref ofn))
+            var selected = ModernControls.SelectOpenFiles(hwnd, Loc("batch_rename_add_files"), "All Files (*.*)\0*.*\0\0");
+            if (selected.Count > 0)
             {
-                var paths = new List<string>();
-                IntPtr currentPtr = fileBuffer;
-                while (true)
+                foreach (string path in selected)
                 {
-                    string? s = Marshal.PtrToStringUni(currentPtr);
-                    if (string.IsNullOrEmpty(s)) break;
-                    paths.Add(s);
-                    currentPtr += (s.Length + 1) * 2;
-                }
-
-                if (paths.Count > 0)
-                {
-                    if (paths.Count == 1)
+                    if (!_brFiles.Contains(path, StringComparer.OrdinalIgnoreCase))
                     {
-                        if (!_brFiles.Contains(paths[0], StringComparer.OrdinalIgnoreCase))
-                            _brFiles.Add(paths[0]);
+                        _brFiles.Add(path);
                     }
-                    else
-                    {
-                        string dir = paths[0];
-                        for (int i = 1; i < paths.Count; i++)
-                        {
-                            string full = Path.Combine(dir, paths[i]);
-                            if (!_brFiles.Contains(full, StringComparer.OrdinalIgnoreCase))
-                                _brFiles.Add(full);
-                        }
-                    }
-                    UpdateBatchRenamePlan();
-                    InvalidateRect(hwnd, IntPtr.Zero, false);
                 }
+                UpdateBatchRenamePlan();
+                InvalidateRect(hwnd, IntPtr.Zero, false);
             }
-
-            Marshal.FreeHGlobal(fileBuffer);
         }
-        catch
+        catch (Exception)
         {
             // Ignore native dialog error
         }
@@ -872,7 +844,7 @@ public partial class ProgressWindow
 
         string origVal = item.OriginalName;
         string newVal = item.NewName;
-        string dirVal = Path.GetDirectoryName(item.OriginalPath) ?? "";
+        string dirVal = Path.GetDirectoryName(item.OriginalPath) ?? string.Empty;
 
         float lblW = Math.Max(g.MeasureString(origLabel, tipLabelFont).Width,
                      Math.Max(g.MeasureString(newLabel, tipLabelFont).Width,

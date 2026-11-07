@@ -60,7 +60,7 @@ internal static partial class ClickraStartup
         string? customExt = ExtractOption(argList, "--custom-ext");
 
         // Remaining arguments are input paths
-        var inputPaths = argList.Where(a => !a.StartsWith("-")).ToList();
+        var inputPaths = argList.Where(a => !a.StartsWith('-')).ToList();
         var files = inputPaths.Count > 0
             ? BatchRenameUseCase.ResolveTargetFiles(inputPaths, recursive)
             : new List<string>();
@@ -85,90 +85,22 @@ internal static partial class ClickraStartup
             return true;
         }
 
-        // Build options
-        NumberingOptions? numbering = null;
-        if (startStr != null || stepStr != null || padStr != null || numPosStr != null)
-        {
-            int start = int.TryParse(startStr, out int sVal) ? sVal : 1;
-            int step = int.TryParse(stepStr, out int stVal) ? stVal : 1;
-            int pad = int.TryParse(padStr, out int pVal) ? pVal : 2;
-            var pos = ParseInsertPosition(numPosStr, InsertPosition.Suffix);
-            numbering = new NumberingOptions(start, step, pad, pos);
-        }
-
-        ReplaceOptions? replaceOpts = null;
-        if (!string.IsNullOrEmpty(find))
-        {
-            replaceOpts = new ReplaceOptions(
-                FindText: find,
-                ReplaceWith: replace,
-                IgnoreCase: !matchCase,
-                UseRegex: regex);
-        }
-
-        TimestampOptions? timestampOpts = null;
-        if (dateSourceStr != null || dateFormat != null || datePosStr != null)
-        {
-            var src = (dateSourceStr?.Equals("created", StringComparison.OrdinalIgnoreCase) == true)
-                ? TimestampSource.CreatedTime
-                : TimestampSource.ModifiedTime;
-            string fmt = string.IsNullOrWhiteSpace(dateFormat) ? "yyyy-MM-dd" : dateFormat;
-            var pos = ParseInsertPosition(datePosStr, InsertPosition.Prefix);
-            timestampOpts = new TimestampOptions(src, fmt, pos);
-        }
-
-        CaseTransformMode caseMode = caseStr?.ToLowerInvariant() switch
-        {
-            "lower" or "lowercase" => CaseTransformMode.LowerCase,
-            "upper" or "uppercase" => CaseTransformMode.UpperCase,
-            "title" or "titlecase" => CaseTransformMode.TitleCase,
-            _ => CaseTransformMode.None
-        };
-
-        ExtensionTransformMode extMode = extStr?.ToLowerInvariant() switch
-        {
-            "lower" or "lowercase" => ExtensionTransformMode.LowerCase,
-            "upper" or "uppercase" => ExtensionTransformMode.UpperCase,
-            "custom" => ExtensionTransformMode.Custom,
-            _ => (!string.IsNullOrEmpty(customExt) ? ExtensionTransformMode.Custom : ExtensionTransformMode.KeepOriginal)
-        };
-
         var options = new BatchRenameOptions(
             Prefix: prefix,
             Suffix: suffix,
-            Numbering: numbering,
-            Replace: replaceOpts,
-            Timestamp: timestampOpts,
-            CaseTransform: caseMode,
-            ExtensionMode: extMode,
+            Numbering: BuildNumberingOptions(startStr, stepStr, padStr, numPosStr),
+            Replace: BuildReplaceOptions(find, replace, matchCase, regex),
+            Timestamp: BuildTimestampOptions(dateSourceStr, dateFormat, datePosStr),
+            CaseTransform: BuildCaseMode(caseStr),
+            ExtensionMode: BuildExtensionMode(extStr, customExt),
             CustomExtension: customExt);
 
-        var useCase = new BatchRenameUseCase();
-        var plan = useCase.Plan(files, options);
+        var plan = BatchRenameUseCase.Plan(files, options);
 
         Console.WriteLine($"Found {files.Count} file(s) for batch rename.");
         Console.WriteLine($"Plan summary: {plan.ValidCount} to rename, {plan.UnchangedCount} unchanged, {plan.ConflictCount + plan.InvalidCount} error(s).");
 
-        foreach (var item in plan.Items)
-        {
-            switch (item.Status)
-            {
-                case RenameItemStatus.Valid:
-                    Console.WriteLine($"  [OK]       \"{item.OriginalName}\" -> \"{item.NewName}\"");
-                    break;
-                case RenameItemStatus.ConflictExistingFile:
-                case RenameItemStatus.ConflictDuplicateTarget:
-                    Console.WriteLine($"  [CONFLICT] \"{item.OriginalName}\" -> \"{item.NewName}\" ({item.StatusMessage})");
-                    break;
-                case RenameItemStatus.InvalidFilename:
-                case RenameItemStatus.MissingSourceFile:
-                    Console.WriteLine($"  [INVALID]  \"{item.OriginalName}\" -> \"{item.NewName}\" ({item.StatusMessage})");
-                    break;
-                case RenameItemStatus.Unchanged:
-                    Console.WriteLine($"  [SKIP]     \"{item.OriginalName}\" (unchanged)");
-                    break;
-            }
-        }
+        PrintPlanItems(plan);
 
         if (plan.ConflictCount > 0 || plan.InvalidCount > 0)
         {
@@ -201,7 +133,7 @@ internal static partial class ClickraStartup
 
         try
         {
-            var result = useCase.ExecuteAsync(plan, progress, CancellationToken.None).GetAwaiter().GetResult();
+            var result = BatchRenameUseCase.ExecuteAsync(plan, progress, CancellationToken.None).GetAwaiter().GetResult();
             Console.WriteLine($"Batch rename completed: {result.RenamedFiles.Count} succeeded, {result.Errors.Count} failed.");
             if (!result.Succeeded || result.Errors.Count > 0)
             {
@@ -304,4 +236,80 @@ internal static partial class ClickraStartup
         Console.WriteLine("  --dry-run, -n            Preview renamed files without modifying disk");
         Console.WriteLine("  --help, -h               Show this help message");
     }
+
+    private static NumberingOptions? BuildNumberingOptions(string? startStr, string? stepStr, string? padStr, string? numPosStr)
+    {
+        if (startStr is null && stepStr is null && padStr is null && numPosStr is null) return null;
+        int start = int.TryParse(startStr, out int sVal) ? sVal : 1;
+        int step = int.TryParse(stepStr, out int stVal) ? stVal : 1;
+        int pad = int.TryParse(padStr, out int pVal) ? pVal : 2;
+        var pos = ParseInsertPosition(numPosStr, InsertPosition.Suffix);
+        return new NumberingOptions(start, step, pad, pos);
+    }
+
+    private static ReplaceOptions? BuildReplaceOptions(string? find, string? replace, bool matchCase, bool regex)
+    {
+        if (string.IsNullOrEmpty(find)) return null;
+        return new ReplaceOptions(
+            FindText: find,
+            ReplaceWith: replace ?? "",
+            IgnoreCase: !matchCase,
+            UseRegex: regex);
+    }
+
+    private static TimestampOptions? BuildTimestampOptions(string? dateSourceStr, string? dateFormat, string? datePosStr)
+    {
+        if (dateSourceStr is null && dateFormat is null && datePosStr is null) return null;
+        var src = (dateSourceStr?.Equals("created", StringComparison.OrdinalIgnoreCase) == true)
+            ? TimestampSource.CreatedTime
+            : TimestampSource.ModifiedTime;
+        string fmt = string.IsNullOrWhiteSpace(dateFormat) ? "yyyy-MM-dd" : dateFormat;
+        var pos = ParseInsertPosition(datePosStr, InsertPosition.Prefix);
+        return new TimestampOptions(src, fmt, pos);
+    }
+
+    private static CaseTransformMode BuildCaseMode(string? caseStr) =>
+        caseStr?.ToLowerInvariant() switch
+        {
+            "lower" or "lowercase" => CaseTransformMode.LowerCase,
+            "upper" or "uppercase" => CaseTransformMode.UpperCase,
+            "title" or "titlecase" => CaseTransformMode.TitleCase,
+            _ => CaseTransformMode.None
+        };
+
+    private static ExtensionTransformMode BuildExtensionMode(string? extStr, string? customExt) =>
+        extStr?.ToLowerInvariant() switch
+        {
+            "lower" or "lowercase" => ExtensionTransformMode.LowerCase,
+            "upper" or "uppercase" => ExtensionTransformMode.UpperCase,
+            "custom" => ExtensionTransformMode.Custom,
+            _ => (!string.IsNullOrEmpty(customExt) ? ExtensionTransformMode.Custom : ExtensionTransformMode.KeepOriginal)
+        };
+
+    private static void PrintPlanItems(BatchRenamePlan plan)
+    {
+        foreach (var item in plan.Items)
+        {
+            switch (item.Status)
+            {
+                case RenameItemStatus.Valid:
+                    Console.WriteLine($"  [OK]       \"{item.OriginalName}\" -> \"{item.NewName}\"");
+                    break;
+                case RenameItemStatus.ConflictExistingFile:
+                case RenameItemStatus.ConflictDuplicateTarget:
+                    Console.WriteLine($"  [CONFLICT] \"{item.OriginalName}\" -> \"{item.NewName}\" ({item.StatusMessage})");
+                    break;
+                case RenameItemStatus.InvalidFilename:
+                case RenameItemStatus.MissingSourceFile:
+                    Console.WriteLine($"  [INVALID]  \"{item.OriginalName}\" -> \"{item.NewName}\" ({item.StatusMessage})");
+                    break;
+                case RenameItemStatus.Unchanged:
+                    Console.WriteLine($"  [SKIP]     \"{item.OriginalName}\" (unchanged)");
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
 }

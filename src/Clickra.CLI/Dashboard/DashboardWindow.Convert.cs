@@ -20,55 +20,8 @@ namespace Clickra.UI
         // File filters and command metadata live in the ConvertCommandDefs
         // registry (see DashboardWindow.ConvertRegistry.cs).
         /// <summary>Shows the Win32 file-open dialog and returns the selected paths.</summary>
-        static List<string> OpenFiles(IntPtr hwndOwner, string filter, string title)
-        {
-            var files = new List<string>();
-            var ofn = new OPENFILENAME();
-            ofn.lStructSize = Marshal.SizeOf(ofn);
-            ofn.hwndOwner = hwndOwner;
-            ofn.lpstrFilter = filter;
-            
-            int maxFile = 65536;
-            IntPtr fileBuffer = Marshal.AllocHGlobal(maxFile * 2);
-            byte[] zeros = new byte[maxFile * 2];
-            Marshal.Copy(zeros, 0, fileBuffer, zeros.Length);
-            
-            ofn.lpstrFile = fileBuffer;
-            ofn.nMaxFile = maxFile;
-            ofn.lpstrTitle = title;
-            ofn.Flags = 0x00080000 | 0x00000200 | 0x00001000 | 0x00000004;
-
-            if (GetOpenFileName(ref ofn))
-            {
-                var paths = new List<string>();
-                IntPtr currentPtr = fileBuffer;
-                while (true)
-                {
-                    string? s = Marshal.PtrToStringUni(currentPtr);
-                    if (string.IsNullOrEmpty(s)) break;
-                    paths.Add(s);
-                    currentPtr += (s.Length + 1) * 2;
-                }
-
-                if (paths.Count > 0)
-                {
-                    if (paths.Count == 1)
-                    {
-                        files.Add(paths[0]);
-                    }
-                    else
-                    {
-                        string dir = paths[0];
-                        for (int i = 1; i < paths.Count; i++)
-                        {
-                            files.Add(Path.Combine(dir, paths[i]));
-                        }
-                    }
-                }
-            }
-            Marshal.FreeHGlobal(fileBuffer);
-            return files;
-        }
+        static List<string> OpenFiles(IntPtr hwndOwner, string filter, string title) =>
+            ModernControls.SelectOpenFiles(hwndOwner, title, filter);
 
         /// <summary>Builds the shared file-picker filter from the command registry so every
         /// supported input type remains selectable when commands are added or changed.</summary>

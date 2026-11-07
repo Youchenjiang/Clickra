@@ -13,8 +13,8 @@ using Clickra.Core.Rendering;
 
 using static Clickra.UI.Native.Win32;
 
-namespace Clickra.UI
-{
+namespace Clickra.UI;
+
     /// <summary>
     /// 提供 CLI 執行階段專專用之 Win32 進度視窗。
     /// </summary>
@@ -365,4 +365,3 @@ namespace Clickra.UI
         }
 
     }
-}

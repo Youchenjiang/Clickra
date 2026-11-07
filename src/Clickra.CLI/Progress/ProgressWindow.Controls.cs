@@ -14,8 +14,8 @@ using Clickra.Core.Processors;
 
 using static Clickra.UI.Native.Win32;
 
-namespace Clickra.UI
-{
+namespace Clickra.UI;
+
     /// <summary>
     /// 提供 CLI 執行階段專專用之 Win32 進度視窗。
     /// </summary>
@@ -51,14 +51,9 @@ namespace Clickra.UI
             }
 
             IntPtr result = IntPtr.Zero;
-            if (window != null)
-            {
-                result = window.InstanceWndProc(hwnd, msg, w, l);
-            }
-            else
-            {
-                result = DefWindowProcW(hwnd, msg, w, l);
-            }
+            result = window != null
+                ? window.InstanceWndProc(hwnd, msg, w, l)
+                : DefWindowProcW(hwnd, msg, w, l);
 
             if (msg == 0x0082) // WM_NCDESTROY
             {
@@ -108,6 +103,30 @@ namespace Clickra.UI
 
         /// <summary>Instance window procedure: routes each Win32 message to a dedicated
         /// handler, falling back to DefWindowProcW for messages no handler consumed.</summary>
+        
+        private bool TryHandleBatchRenameWindowMessage(IntPtr hwnd, uint msg, IntPtr l, out IntPtr result)
+        {
+            result = IntPtr.Zero;
+            if (!_isPromptingBatchRename) return false;
+
+            if (msg == 0x0005) // WM_SIZE
+            {
+                int newPxW = (short)(l.ToInt64() & 0xFFFF);
+                int newPxH = (short)((l.ToInt64() >> 16) & 0xFFFF);
+                if (newPxW > 0 && newPxH > 0)
+                {
+                    HandleBatchRenameSize(hwnd, newPxW, newPxH);
+                    return true;
+                }
+            }
+            else if (msg == 0x0024) // WM_GETMINMAXINFO
+            {
+                HandleBatchRenameGetMinMaxInfo(l);
+                return true;
+            }
+
+            return false;
+        }
         private unsafe IntPtr InstanceWndProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
         {
             switch (msg)
@@ -142,22 +161,10 @@ namespace Clickra.UI
                 case 0x0014: return (IntPtr)1; // WM_ERASEBKGND
                 case 0x0113: return HandleTimer(hwnd); // WM_TIMER
                 case 0x0005: // WM_SIZE
-                    if (_isPromptingBatchRename)
-                    {
-                        int newPxW = (short)(l.ToInt64() & 0xFFFF);
-                        int newPxH = (short)((l.ToInt64() >> 16) & 0xFFFF);
-                        if (newPxW > 0 && newPxH > 0)
-                        {
-                            HandleBatchRenameSize(hwnd, newPxW, newPxH);
-                            return IntPtr.Zero;
-                        }
-                    }
-                    break;
                 case 0x0024: // WM_GETMINMAXINFO
-                    if (_isPromptingBatchRename)
+                    if (TryHandleBatchRenameWindowMessage(hwnd, msg, l, out IntPtr brRes))
                     {
-                        HandleBatchRenameGetMinMaxInfo(l);
-                        return IntPtr.Zero;
+                        return brRes;
                     }
                     break;
                 case 0x0020: // WM_SETCURSOR
@@ -169,6 +176,7 @@ namespace Clickra.UI
                     break;
                 case 0x000F: return HandlePaint(hwnd); // WM_PAINT
                 case 0x0002: return HandleDestroy(hwnd); // WM_DESTROY
+                default: break;
             }
             return DefWindowProcW(hwnd, msg, w, l);
         }
@@ -342,10 +350,9 @@ namespace Clickra.UI
         {
             int delta = (short)((w.ToInt64() >> 16) & 0xFFFF);
             int scrollDir = delta > 0 ? -1 : 1;
-            if (_isPromptingBatchRename)
+            if (_isPromptingBatchRename && HandleBatchRenameMouseWheel(hwnd, delta))
             {
-                if (HandleBatchRenameMouseWheel(hwnd, delta))
-                    return IntPtr.Zero;
+                return IntPtr.Zero;
             }
             if (_isPromptingPrintOptions)
             {
@@ -481,14 +488,7 @@ namespace Clickra.UI
                 int clickedRow = (mouseY - listTop) / PrintDropdownItemHeight;
                 int itemIdx = _dropdownScrollOffset + clickedRow;
                 var items = GetOpenDropdownItems();
-                if (itemIdx >= 0 && itemIdx < items.Count && mouseY >= listTop)
-                {
-                    _hoveredDropdownIndex = itemIdx;
-                }
-                else
-                {
-                    _hoveredDropdownIndex = -1;
-                }
+                _hoveredDropdownIndex = (itemIdx >= 0 && itemIdx < items.Count && mouseY >= listTop) ? itemIdx : -1;
             }
             else
             {
@@ -1113,4 +1113,3 @@ namespace Clickra.UI
         }
 
     }
-}

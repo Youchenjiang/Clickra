@@ -213,21 +213,8 @@ namespace Clickra.UI
 
             if (!_isPromptingMarkdownOptions)
             {
-                if (!_isPromptingPrintOptions)
-                {
-                    if (!_isPromptingBatchRename)
-                    {
-                        StartProcessingThread(_hwnd);
-                    }
-                    else
-                    {
-                        // Batch rename dialog is active; background processing waits for user confirmation
-                    }
-                }
-                else
-                {
-                    // Print options dialog is active; background processing waits for user confirmation
-                }
+                if (!_isPromptingPrintOptions && !_isPromptingBatchRename)
+                    StartProcessingThread(_hwnd);
             }
 
             RECT progressRect = default;
