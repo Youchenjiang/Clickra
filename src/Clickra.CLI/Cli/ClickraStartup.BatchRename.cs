@@ -12,6 +12,14 @@ namespace Clickra;
 
 internal static partial class ClickraStartup
 {
+    private sealed record BatchRenameParsedCli(
+        List<string> Files,
+        BatchRenameOptions Options,
+        bool ForceGui,
+        bool Quiet,
+        bool DryRun,
+        bool HasRuleFlags);
+
     internal static bool TryHandleBatchRenameArgs(string[] args)
     {
         if (args.Length == 0) return false;
@@ -33,6 +41,54 @@ internal static partial class ClickraStartup
             return true;
         }
 
+        var parsed = ParseBatchRenameCli(argList);
+
+        if (parsed.ForceGui || (!parsed.Quiet && !parsed.HasRuleFlags))
+        {
+            Clickra.UI.ProgressWindow.Show(BatchRenameUseCase.CommandName, parsed.Files);
+            return true;
+        }
+
+        if (parsed.Files.Count == 0)
+        {
+            Console.WriteLine("[Error] No files or directories specified for batch rename.");
+            Console.WriteLine("Run 'Clickra batch-rename --help' for usage instructions.");
+            Environment.ExitCode = 1;
+            return true;
+        }
+
+        var plan = BatchRenameUseCase.Plan(parsed.Files, parsed.Options);
+
+        Console.WriteLine($"Found {parsed.Files.Count} file(s) for batch rename.");
+        Console.WriteLine($"Plan summary: {plan.ValidCount} to rename, {plan.UnchangedCount} unchanged, {plan.ConflictCount + plan.InvalidCount} error(s).");
+
+        PrintPlanItems(plan);
+
+        if (plan.ConflictCount > 0 || plan.InvalidCount > 0)
+        {
+            Console.WriteLine("[Error] Conflicts or invalid names detected in rename plan. Operation aborted.");
+            Environment.ExitCode = 1;
+            return true;
+        }
+
+        if (parsed.DryRun)
+        {
+            Console.WriteLine($"[Dry Run] Preview complete. {plan.ValidCount} file(s) would be renamed.");
+            return true;
+        }
+
+        if (plan.ValidCount == 0)
+        {
+            Console.WriteLine("No files require renaming.");
+            return true;
+        }
+
+        ExecuteCliPlan(plan);
+        return true;
+    }
+
+    private static BatchRenameParsedCli ParseBatchRenameCli(List<string> argList)
+    {
         bool forceGui = ExtractFlag(argList, "--gui");
         bool quiet = ExtractFlag(argList, "--quiet", "--no-ui");
         bool recursive = ExtractFlag(argList, "--recursive", "-r");
@@ -59,31 +115,15 @@ internal static partial class ClickraStartup
         string? extStr = ExtractOption(argList, "--ext");
         string? customExt = ExtractOption(argList, "--custom-ext");
 
-        // Remaining arguments are input paths
         var inputPaths = argList.Where(a => !a.StartsWith('-')).ToList();
         var files = inputPaths.Count > 0
             ? BatchRenameUseCase.ResolveTargetFiles(inputPaths, recursive)
             : new List<string>();
 
-        bool hasRuleFlags = prefix != null || suffix != null || startStr != null ||
-                            stepStr != null || padStr != null || numPosStr != null ||
-                            find != null || !string.IsNullOrEmpty(replace) || dateSourceStr != null ||
-                            dateFormat != null || datePosStr != null || caseStr != null ||
-                            extStr != null || customExt != null || dryRun;
-
-        if (forceGui || (!quiet && !hasRuleFlags))
-        {
-            Clickra.UI.ProgressWindow.Show(BatchRenameUseCase.CommandName, files);
-            return true;
-        }
-
-        if (files.Count == 0)
-        {
-            Console.WriteLine("[Error] No files or directories specified for batch rename.");
-            Console.WriteLine("Run 'Clickra batch-rename --help' for usage instructions.");
-            Environment.ExitCode = 1;
-            return true;
-        }
+        bool hasRuleFlags = HasAnyRuleFlag(
+            prefix, suffix, startStr, stepStr, padStr, numPosStr,
+            find, replace, dateSourceStr, dateFormat, datePosStr,
+            caseStr, extStr, customExt, dryRun);
 
         var options = new BatchRenameOptions(
             Prefix: prefix,
@@ -95,32 +135,24 @@ internal static partial class ClickraStartup
             ExtensionMode: BuildExtensionMode(extStr, customExt),
             CustomExtension: customExt);
 
-        var plan = BatchRenameUseCase.Plan(files, options);
+        return new BatchRenameParsedCli(files, options, forceGui, quiet, dryRun, hasRuleFlags);
+    }
 
-        Console.WriteLine($"Found {files.Count} file(s) for batch rename.");
-        Console.WriteLine($"Plan summary: {plan.ValidCount} to rename, {plan.UnchangedCount} unchanged, {plan.ConflictCount + plan.InvalidCount} error(s).");
+    private static bool HasAnyRuleFlag(
+        string? prefix, string? suffix, string? startStr, string? stepStr, string? padStr, string? numPosStr,
+        string? find, string replace, string? dateSourceStr, string? dateFormat, string? datePosStr,
+        string? caseStr, string? extStr, string? customExt, bool dryRun)
+    {
+        return dryRun ||
+               prefix != null || suffix != null || startStr != null ||
+               stepStr != null || padStr != null || numPosStr != null ||
+               find != null || !string.IsNullOrEmpty(replace) || dateSourceStr != null ||
+               dateFormat != null || datePosStr != null || caseStr != null ||
+               extStr != null || customExt != null;
+    }
 
-        PrintPlanItems(plan);
-
-        if (plan.ConflictCount > 0 || plan.InvalidCount > 0)
-        {
-            Console.WriteLine("[Error] Conflicts or invalid names detected in rename plan. Operation aborted.");
-            Environment.ExitCode = 1;
-            return true;
-        }
-
-        if (dryRun)
-        {
-            Console.WriteLine($"[Dry Run] Preview complete. {plan.ValidCount} file(s) would be renamed.");
-            return true;
-        }
-
-        if (plan.ValidCount == 0)
-        {
-            Console.WriteLine("No files require renaming.");
-            return true;
-        }
-
+    private static void ExecuteCliPlan(BatchRenamePlan plan)
+    {
         if (plan.RequiresTwoPhaseSwap)
         {
             Console.WriteLine("[Info] Cyclic rename dependency detected. Executing 2-phase atomic swap...");
@@ -149,8 +181,6 @@ internal static partial class ClickraStartup
             Console.WriteLine($"[Error] Batch rename execution failed: {ex.Message}");
             Environment.ExitCode = 1;
         }
-
-        return true;
     }
 
     private static InsertPosition ParseInsertPosition(string? str, InsertPosition fallback)
@@ -307,6 +337,7 @@ internal static partial class ClickraStartup
                     Console.WriteLine($"  [SKIP]     \"{item.OriginalName}\" (unchanged)");
                     break;
                 default:
+                    // Unrecognized or unhandled status: no console output needed.
                     break;
             }
         }

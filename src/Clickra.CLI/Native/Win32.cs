@@ -50,158 +50,158 @@ namespace Clickra.UI.Native
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         public struct BROWSEINFO { public IntPtr hwndOwner; public IntPtr pidlRoot; public IntPtr pszDisplayName; public IntPtr lpszTitle; public uint ulFlags; public IntPtr lpfn; public IntPtr lParam; public int iImage; }
 
-        [DllImport("user32.dll", EntryPoint = "AdjustWindowRectEx", CharSet = CharSet.Unicode)] public static extern bool AdjustWindowRectEx(ref RECT lpRect, uint dwStyle, bool bMenu, uint dwExStyle);
+        [DllImport("user32.dll", EntryPoint = "AdjustWindowRectEx", CharSet = CharSet.Unicode)] internal static extern bool AdjustWindowRectEx(ref RECT lpRect, uint dwStyle, bool bMenu, uint dwExStyle);
         [DllImport("user32.dll", EntryPoint = "AdjustWindowRectExForDpi", CharSet = CharSet.Unicode)]
         private static extern bool AdjustWindowRectExForDpiNative(ref RECT lpRect, uint dwStyle, bool bMenu, uint dwExStyle, uint dpi); // skipcq: CS-R1138 — Win32 ABI requires RECT first.
         /// <summary>Adjusts a client rectangle for the specified window styles at an explicit DPI.</summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The managed wrapper keeps the public parameter order stable while the private P/Invoke matches the Win32 ABI.")]
-        public static bool AdjustWindowRectExForDpi(uint dwStyle, bool bMenu, uint dwExStyle, uint dpi, ref RECT lpRect) =>
+        internal static bool AdjustWindowRectExForDpi(uint dwStyle, bool bMenu, uint dwExStyle, uint dpi, ref RECT lpRect) =>
             AdjustWindowRectExForDpiNative(ref lpRect, dwStyle, bMenu, dwExStyle, dpi);
-        [DllImport("user32.dll", EntryPoint = "RegisterClassExW", CharSet = CharSet.Unicode)] public static extern ushort RegisterClassEx(ref WNDCLASSEX c);
-        [DllImport("user32.dll", EntryPoint = "CreateWindowExW", CharSet = CharSet.Unicode)] public static extern IntPtr CreateWindowEx(uint ex, string cls, string name, uint style, int x, int y, int w, int h, IntPtr p, IntPtr m, IntPtr inst, IntPtr par);
-        [DllImport("user32.dll", EntryPoint = "FindWindowW", CharSet = CharSet.Unicode)] public static extern IntPtr FindWindow(string lpClassName, string? lpWindowName);
-        [DllImport("user32.dll", EntryPoint = "SetWindowTextW", CharSet = CharSet.Unicode)] public static extern bool SetWindowText(IntPtr h, string text);
-        [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int n);
-        [DllImport("user32.dll")] public static extern int GetMessage(out MSG m, IntPtr h, uint f, uint l);
-        [DllImport("user32.dll")] public static extern bool TranslateMessage(ref MSG m);
-        [DllImport("user32.dll")] public static extern IntPtr DispatchMessage(ref MSG m);
-        [DllImport("user32.dll")] public static extern IntPtr DefWindowProcW(IntPtr h, uint msg, IntPtr w, IntPtr l);
-        [DllImport("user32.dll")] public static extern IntPtr BeginPaint(IntPtr h, out PAINTSTRUCT p);
-        [DllImport("user32.dll")] public static extern bool EndPaint(IntPtr h, ref PAINTSTRUCT p);
-        [DllImport("user32.dll")] public static extern void PostQuitMessage(int c);
-        [DllImport("user32.dll")] public static extern IntPtr LoadCursorW(IntPtr h, int n);
-        [DllImport("user32.dll")] public static extern IntPtr SendMessageW(IntPtr h, uint msg, IntPtr w, IntPtr l);
-        [DllImport("user32.dll")] public static extern bool InvalidateRect(IntPtr hWnd, IntPtr lpRect, bool bErase);
-        [DllImport("user32.dll")] public static extern IntPtr SetCursor(IntPtr hCursor);
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
-        [DllImport("user32.dll")] public static extern bool DestroyIcon(IntPtr hIcon);
-        [DllImport("user32.dll", EntryPoint = "DestroyWindow")] public static extern bool DestroyWindow(IntPtr hWnd);
-        [DllImport("user32.dll")] public static extern IntPtr SetTimer(IntPtr hWnd, IntPtr nIDEvent, uint uElapse, IntPtr lpTimerFunc);
-        [DllImport("user32.dll")] public static extern bool KillTimer(IntPtr hWnd, IntPtr nIDEvent);
-        [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+        [DllImport("user32.dll", EntryPoint = "RegisterClassExW", CharSet = CharSet.Unicode)] internal static extern ushort RegisterClassEx(ref WNDCLASSEX c);
+        [DllImport("user32.dll", EntryPoint = "CreateWindowExW", CharSet = CharSet.Unicode)] internal static extern IntPtr CreateWindowEx(uint ex, string cls, string name, uint style, int x, int y, int w, int h, IntPtr p, IntPtr m, IntPtr inst, IntPtr par);
+        [DllImport("user32.dll", EntryPoint = "FindWindowW", CharSet = CharSet.Unicode)] internal static extern IntPtr FindWindow(string lpClassName, string? lpWindowName);
+        [DllImport("user32.dll", EntryPoint = "SetWindowTextW", CharSet = CharSet.Unicode)] internal static extern bool SetWindowText(IntPtr h, string text);
+        [DllImport("user32.dll")] internal static extern bool ShowWindow(IntPtr h, int n);
+        [DllImport("user32.dll")] internal static extern int GetMessage(out MSG m, IntPtr h, uint f, uint l);
+        [DllImport("user32.dll")] internal static extern bool TranslateMessage(ref MSG m);
+        [DllImport("user32.dll")] internal static extern IntPtr DispatchMessage(ref MSG m);
+        [DllImport("user32.dll")] internal static extern IntPtr DefWindowProcW(IntPtr h, uint msg, IntPtr w, IntPtr l);
+        [DllImport("user32.dll")] internal static extern IntPtr BeginPaint(IntPtr h, out PAINTSTRUCT p);
+        [DllImport("user32.dll")] internal static extern bool EndPaint(IntPtr h, ref PAINTSTRUCT p);
+        [DllImport("user32.dll")] internal static extern void PostQuitMessage(int c);
+        [DllImport("user32.dll")] internal static extern IntPtr LoadCursorW(IntPtr h, int n);
+        [DllImport("user32.dll")] internal static extern IntPtr SendMessageW(IntPtr h, uint msg, IntPtr w, IntPtr l);
+        [DllImport("user32.dll")] internal static extern bool InvalidateRect(IntPtr hWnd, IntPtr lpRect, bool bErase);
+        [DllImport("user32.dll")] internal static extern IntPtr SetCursor(IntPtr hCursor);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] internal static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
+        [DllImport("user32.dll")] internal static extern bool DestroyIcon(IntPtr hIcon);
+        [DllImport("user32.dll", EntryPoint = "DestroyWindow")] internal static extern bool DestroyWindow(IntPtr hWnd);
+        [DllImport("user32.dll")] internal static extern IntPtr SetTimer(IntPtr hWnd, IntPtr nIDEvent, uint uElapse, IntPtr lpTimerFunc);
+        [DllImport("user32.dll")] internal static extern bool KillTimer(IntPtr hWnd, IntPtr nIDEvent);
+        [DllImport("user32.dll")] internal static extern bool SetForegroundWindow(IntPtr hWnd);
         [DllImport("user32.dll", EntryPoint = "EnableWindow")] private static extern bool EnableWindowNative(IntPtr hWnd, bool bEnable);
         [DllImport("user32.dll", EntryPoint = "IsWindow")] private static extern bool IsWindowNative(IntPtr hWnd);
         [DllImport("user32.dll", EntryPoint = "IsWindowEnabled")] private static extern bool IsWindowEnabledNative(IntPtr hWnd);
         /// <summary>Enables or disables a native window through the managed interop boundary.</summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
-        public static bool EnableWindow(IntPtr hWnd, bool bEnable) => EnableWindowNative(hWnd, bEnable);
+        internal static bool EnableWindow(IntPtr hWnd, bool bEnable) => EnableWindowNative(hWnd, bEnable);
         /// <summary>Returns whether the supplied native window handle is valid.</summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
-        public static bool IsWindow(IntPtr hWnd) => IsWindowNative(hWnd);
+        internal static bool IsWindow(IntPtr hWnd) => IsWindowNative(hWnd);
         /// <summary>Returns whether the supplied native window is enabled for input.</summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
-        public static bool IsWindowEnabled(IntPtr hWnd) => IsWindowEnabledNative(hWnd);
-        [DllImport("user32.dll")] public static extern IntPtr SetCapture(IntPtr hWnd);
-        [DllImport("user32.dll")] public static extern bool ReleaseCapture();
-        [DllImport("user32.dll", EntryPoint = "IsDialogMessageW")] public static extern bool IsDialogMessageW(IntPtr hDlg, ref MSG lpMsg);
-        [DllImport("user32.dll")] public static extern bool PostMessageW(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", CharSet = CharSet.Unicode)] public static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
-        [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", CharSet = CharSet.Unicode)] public static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);
-        [DllImport("user32.dll")] public static extern uint GetDpiForSystem();
+        internal static bool IsWindowEnabled(IntPtr hWnd) => IsWindowEnabledNative(hWnd);
+        [DllImport("user32.dll")] internal static extern IntPtr SetCapture(IntPtr hWnd);
+        [DllImport("user32.dll")] internal static extern bool ReleaseCapture();
+        [DllImport("user32.dll", EntryPoint = "IsDialogMessageW")] internal static extern bool IsDialogMessageW(IntPtr hDlg, ref MSG lpMsg);
+        [DllImport("user32.dll")] internal static extern bool PostMessageW(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", CharSet = CharSet.Unicode)] internal static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+        [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", CharSet = CharSet.Unicode)] internal static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);
+        [DllImport("user32.dll")] internal static extern uint GetDpiForSystem();
         [DllImport("user32.dll", EntryPoint = "GetSystemMetrics")] private static extern int GetSystemMetricsNative(int nIndex);
         /// <summary>Retrieves the specified system metric or system configuration setting.</summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
-        public static int GetSystemMetrics(int nIndex) => GetSystemMetricsNative(nIndex);
-        [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
-        [DllImport("user32.dll")] public static extern IntPtr GetParent(IntPtr hWnd);
-        [DllImport("user32.dll", EntryPoint = "CallWindowProcW", CharSet = CharSet.Unicode)] public static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr GetProp(IntPtr hWnd, string lpString);
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern bool SetProp(IntPtr hWnd, string lpString, IntPtr hData);
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr RemoveProp(IntPtr hWnd, string lpString);
-        [DllImport("user32.dll")] public static extern IntPtr GetDlgItem(IntPtr hDlg, int nIDDlgItem);
-        [DllImport("user32.dll")] public static extern IntPtr SetFocus(IntPtr hWnd);
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowTextW(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+        internal static int GetSystemMetrics(int nIndex) => GetSystemMetricsNative(nIndex);
+        [DllImport("user32.dll")] internal static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+        [DllImport("user32.dll")] internal static extern IntPtr GetParent(IntPtr hWnd);
+        [DllImport("user32.dll", EntryPoint = "CallWindowProcW", CharSet = CharSet.Unicode)] internal static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] internal static extern IntPtr GetProp(IntPtr hWnd, string lpString);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] internal static extern bool SetProp(IntPtr hWnd, string lpString, IntPtr hData);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] internal static extern IntPtr RemoveProp(IntPtr hWnd, string lpString);
+        [DllImport("user32.dll")] internal static extern IntPtr GetDlgItem(IntPtr hDlg, int nIDDlgItem);
+        [DllImport("user32.dll")] internal static extern IntPtr SetFocus(IntPtr hWnd);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] internal static extern int GetWindowTextW(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
         [DllImport("user32.dll", EntryPoint = "GetWindowTextLengthW", CharSet = CharSet.Unicode)] private static extern int GetWindowTextLengthWNative(IntPtr hWnd);
         /// <summary>Retrieves the length, in characters, of the specified window's title bar text.</summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
-        public static int GetWindowTextLengthW(IntPtr hWnd) => GetWindowTextLengthWNative(hWnd);
-        [DllImport("user32.dll")] public static extern bool SetProcessDpiAwarenessContext(IntPtr value);
-        [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr hwnd);
-        [DllImport("user32.dll")] public static extern bool GetCursorPos(out Point lpPoint);
-        [DllImport("user32.dll")] public static extern bool ScreenToClient(IntPtr hWnd, ref Point lpPoint);
-        [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+        internal static int GetWindowTextLengthW(IntPtr hWnd) => GetWindowTextLengthWNative(hWnd);
+        [DllImport("user32.dll")] internal static extern bool SetProcessDpiAwarenessContext(IntPtr value);
+        [DllImport("user32.dll")] internal static extern uint GetDpiForWindow(IntPtr hwnd);
+        [DllImport("user32.dll")] internal static extern bool GetCursorPos(out Point lpPoint);
+        [DllImport("user32.dll")] internal static extern bool ScreenToClient(IntPtr hWnd, ref Point lpPoint);
+        [DllImport("user32.dll")] internal static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
         [DllImport("user32.dll", EntryPoint = "GetWindowRect")] private static extern bool GetWindowRectNative(IntPtr hWnd, out RECT lpRect);
         /// <summary>Retrieves the dimensions of the bounding rectangle of the specified window.</summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
-        public static bool GetWindowRect(IntPtr hWnd, out RECT lpRect) => GetWindowRectNative(hWnd, out lpRect);
+        internal static bool GetWindowRect(IntPtr hWnd, out RECT lpRect) => GetWindowRectNative(hWnd, out lpRect);
 
-        [DllImport("gdi32.dll")] public static extern IntPtr CreateSolidBrush(uint crColor);
-        [DllImport("gdi32.dll")] public static extern bool DeleteObject(IntPtr hObject);
-        [DllImport("gdi32.dll", EntryPoint = "SetTextColor")] public static extern uint SetTextColor(IntPtr hdc, uint crColor);
-        [DllImport("gdi32.dll", EntryPoint = "SetBkColor")] public static extern uint SetBkColor(IntPtr hdc, uint crColor);
+        [DllImport("gdi32.dll")] internal static extern IntPtr CreateSolidBrush(uint crColor);
+        [DllImport("gdi32.dll")] internal static extern bool DeleteObject(IntPtr hObject);
+        [DllImport("gdi32.dll", EntryPoint = "SetTextColor")] internal static extern uint SetTextColor(IntPtr hdc, uint crColor);
+        [DllImport("gdi32.dll", EntryPoint = "SetBkColor")] internal static extern uint SetBkColor(IntPtr hdc, uint crColor);
         [DllImport("gdi32.dll", EntryPoint = "SetBkMode")] private static extern int SetBkModeNative(IntPtr hdc, int iBkMode);
         /// <summary>Sets the background mix mode of the specified device context.</summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
-        public static int SetBkMode(IntPtr hdc, int iBkMode) => SetBkModeNative(hdc, iBkMode);
-        [DllImport("gdi32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr CreateFontW(int cHeight, int cWidth, int cEscapement, int cOrientation, int cWeight, uint bItalic, uint bUnderline, uint bStrikeOut, uint iCharSet, uint iOutPrecision, uint iClipPrecision, uint iQuality, uint iPitchAndFamily, string pszFaceName);
+        internal static int SetBkMode(IntPtr hdc, int iBkMode) => SetBkModeNative(hdc, iBkMode);
+        [DllImport("gdi32.dll", CharSet = CharSet.Unicode)] internal static extern IntPtr CreateFontW(int cHeight, int cWidth, int cEscapement, int cOrientation, int cWeight, uint bItalic, uint bUnderline, uint bStrikeOut, uint iCharSet, uint iOutPrecision, uint iClipPrecision, uint iQuality, uint iPitchAndFamily, string pszFaceName);
 
-        [DllImport("shell32.dll", EntryPoint = "Shell_NotifyIconW", CharSet = CharSet.Unicode)] public static extern bool Shell_NotifyIcon(uint dwMessage, ref NOTIFYICONDATAW lpData);
-        [DllImport("shell32.dll", EntryPoint = "ExtractIconW", CharSet = CharSet.Unicode)] public static extern IntPtr ExtractIcon(IntPtr h, string path, int idx);
-        [DllImport("shell32.dll")] public static extern void DragAcceptFiles(IntPtr hwnd, bool accept);
-        [DllImport("shell32.dll", CharSet = CharSet.Unicode)] public static extern uint DragQueryFileW(IntPtr hDrop, uint iFile, IntPtr lpszFile, uint cch);
-        [DllImport("shell32.dll")] public static extern void DragFinish(IntPtr hDrop);
-        [DllImport("shell32.dll", EntryPoint = "SHBrowseForFolderW", CharSet = CharSet.Unicode)] public static extern IntPtr SHBrowseForFolder(ref BROWSEINFO lpbi);
-        [DllImport("shell32.dll", EntryPoint = "SHGetPathFromIDListW", CharSet = CharSet.Unicode)] public static extern bool SHGetPathFromIDList(IntPtr pidl, IntPtr pszPath);
+        [DllImport("shell32.dll", EntryPoint = "Shell_NotifyIconW", CharSet = CharSet.Unicode)] internal static extern bool Shell_NotifyIcon(uint dwMessage, ref NOTIFYICONDATAW lpData);
+        [DllImport("shell32.dll", EntryPoint = "ExtractIconW", CharSet = CharSet.Unicode)] internal static extern IntPtr ExtractIcon(IntPtr h, string path, int idx);
+        [DllImport("shell32.dll")] internal static extern void DragAcceptFiles(IntPtr hwnd, bool accept);
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)] internal static extern uint DragQueryFileW(IntPtr hDrop, uint iFile, IntPtr lpszFile, uint cch);
+        [DllImport("shell32.dll")] internal static extern void DragFinish(IntPtr hDrop);
+        [DllImport("shell32.dll", EntryPoint = "SHBrowseForFolderW", CharSet = CharSet.Unicode)] internal static extern IntPtr SHBrowseForFolder(ref BROWSEINFO lpbi);
+        [DllImport("shell32.dll", EntryPoint = "SHGetPathFromIDListW", CharSet = CharSet.Unicode)] internal static extern bool SHGetPathFromIDList(IntPtr pidl, IntPtr pszPath);
 
-        [DllImport("dwmapi.dll")] public static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int val, int size);
-        [DllImport("dwmapi.dll", PreserveSig = false)] public static extern void DwmGetColorizationColor(out uint pcrColorization, out bool pfOpaqueBlend);
+        [DllImport("dwmapi.dll")] internal static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int val, int size);
+        [DllImport("dwmapi.dll", PreserveSig = false)] internal static extern void DwmGetColorizationColor(out uint pcrColorization, out bool pfOpaqueBlend);
 
-        [DllImport("kernel32.dll", EntryPoint = "GetModuleHandleW", CharSet = CharSet.Unicode)] public static extern IntPtr GetModuleHandle(string? lpModuleName);
-        [DllImport("comdlg32.dll", EntryPoint = "GetOpenFileNameW", CharSet = CharSet.Unicode)] public static extern bool GetOpenFileName(ref OPENFILENAME ofn);
-        [DllImport("ole32.dll")] public static extern void CoTaskMemFree(IntPtr pv);
+        [DllImport("kernel32.dll", EntryPoint = "GetModuleHandleW", CharSet = CharSet.Unicode)] internal static extern IntPtr GetModuleHandle(string? lpModuleName);
+        [DllImport("comdlg32.dll", EntryPoint = "GetOpenFileNameW", CharSet = CharSet.Unicode)] internal static extern bool GetOpenFileName(ref OPENFILENAME ofn);
+        [DllImport("ole32.dll")] internal static extern void CoTaskMemFree(IntPtr pv);
 
         /// <summary>Standard overlapped top-level window style.</summary>
-        public const uint WS_OVERLAPPEDWINDOW = 0x00CF0000;
+        internal const uint WS_OVERLAPPEDWINDOW = 0x00CF0000;
         /// <summary>Fixed-size overlapped style used by modal progress windows.</summary>
-        public const uint WS_OVERLAPPED_FIXED = (0x00CF0000 | 0x02000000) & ~0x00040000u & ~0x00010000u;
+        internal const uint WS_OVERLAPPED_FIXED = (0x00CF0000 | 0x02000000) & ~0x00040000u & ~0x00010000u;
         /// <summary>DWM attribute identifier for immersive dark mode.</summary>
-        public const int DWMWA_DARK_MODE = 20;
+        internal const int DWMWA_DARK_MODE = 20;
         /// <summary>Requests the system default window position or dimension.</summary>
-        public const int CW_USEDEFAULT = unchecked((int)0x80000000);
+        internal const int CW_USEDEFAULT = unchecked((int)0x80000000);
         /// <summary>Application message emitted by the notification-area icon.</summary>
-        public const uint WM_TRAYICON = 0x0400 + 1;
+        internal const uint WM_TRAYICON = 0x0400 + 1;
         /// <summary>Application message requesting a progress-window repaint.</summary>
-        public const uint WM_USER_INVALIDATE = 0x0400 + 2;
+        internal const uint WM_USER_INVALIDATE = 0x0400 + 2;
         /// <summary>Application message requesting password-input controls to be shown.</summary>
-        public const uint WM_USER_SHOW_PASSWORD_INPUT = 0x0400 + 3;
+        internal const uint WM_USER_SHOW_PASSWORD_INPUT = 0x0400 + 3;
         /// <summary>Application message requesting password-input controls to be hidden.</summary>
-        public const uint WM_USER_HIDE_PASSWORD_INPUT = 0x0400 + 4;
+        internal const uint WM_USER_HIDE_PASSWORD_INPUT = 0x0400 + 4;
         /// <summary>Application message used to marshal Dashboard actions onto its window thread.</summary>
-        public const uint WM_USER_DASHBOARD_ACTION = 0x0400 + 5;
+        internal const uint WM_USER_DASHBOARD_ACTION = 0x0400 + 5;
         /// <summary>Notification-area command that adds an icon.</summary>
-        public const uint NIM_ADD = 0;
+        internal const uint NIM_ADD = 0;
         /// <summary>Notification-area command that updates an icon.</summary>
-        public const uint NIM_MODIFY = 1;
+        internal const uint NIM_MODIFY = 1;
         /// <summary>Notification-area command that removes an icon.</summary>
-        public const uint NIM_DELETE = 2;
+        internal const uint NIM_DELETE = 2;
         /// <summary>Notification-area flag enabling callback messages.</summary>
-        public const uint NIF_MESSAGE = 1;
+        internal const uint NIF_MESSAGE = 1;
         /// <summary>Notification-area flag supplying an icon handle.</summary>
-        public const uint NIF_ICON = 2;
+        internal const uint NIF_ICON = 2;
         /// <summary>Notification-area flag supplying tooltip text.</summary>
-        public const uint NIF_TIP = 4;
+        internal const uint NIF_TIP = 4;
         /// <summary>System-command identifier for minimizing a window.</summary>
-        public const uint SC_MINIMIZE = 0xF020;
+        internal const uint SC_MINIMIZE = 0xF020;
         /// <summary>Windows message carrying system-command requests.</summary>
-        public const uint WM_SYSCOMMAND = 0x0112;
+        internal const uint WM_SYSCOMMAND = 0x0112;
         /// <summary>ShowWindow command that hides a window.</summary>
-        public const int SW_HIDE = 0;
+        internal const int SW_HIDE = 0;
         /// <summary>ShowWindow command that shows a window in its current state.</summary>
-        public const int SW_SHOW = 5;
+        internal const int SW_SHOW = 5;
         /// <summary>ShowWindow command that restores a minimized window.</summary>
-        public const int SW_RESTORE = 9;
+        internal const int SW_RESTORE = 9;
         /// <summary>Window style that excludes child windows from parent painting.</summary>
-        public const uint WS_CLIPCHILDREN = 0x02000000;
+        internal const uint WS_CLIPCHILDREN = 0x02000000;
         /// <summary>Window style that creates a child window.</summary>
-        public const uint WS_CHILD = 0x40000000;
+        internal const uint WS_CHILD = 0x40000000;
         /// <summary>Window style that makes a window initially visible.</summary>
-        public const uint WS_VISIBLE = 0x10000000;
+        internal const uint WS_VISIBLE = 0x10000000;
         /// <summary>Window style that draws a thin border.</summary>
-        public const uint WS_BORDER = 0x00800000;
+        internal const uint WS_BORDER = 0x00800000;
         /// <summary>Window style that includes a control in keyboard tab navigation.</summary>
-        public const uint WS_TABSTOP = 0x00010000;
+        internal const uint WS_TABSTOP = 0x00010000;
         /// <summary>System cursor identifier for the pointing-hand cursor.</summary>
-        public const int IDC_HAND = 32649;
+        internal const int IDC_HAND = 32649;
 
         [DllImport("user32.dll", EntryPoint = "CreatePopupMenu", SetLastError = true)]
         private static extern IntPtr CreatePopupMenuNative();

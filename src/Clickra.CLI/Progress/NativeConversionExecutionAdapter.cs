@@ -227,7 +227,6 @@ internal sealed class NativeConversionExecutionAdapter
 
     private void RunBatchRename(List<string> files, Action<int, int, string> progressCallback)
     {
-        var useCase = new Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase();
         Clickra.Core.Modules.BatchRename.Domain.BatchRenamePlan plan;
 
         if (_commandOptions?.TryGetValue("plan", out object? planObj) == true && planObj is Clickra.Core.Modules.BatchRename.Domain.BatchRenamePlan existingPlan)
