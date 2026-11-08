@@ -269,18 +269,8 @@ namespace Clickra.UI
             GCHandle handle = GCHandle.Alloc(this);
             IntPtr lpParam = GCHandle.ToIntPtr(handle);
 
-            int x = CW_USEDEFAULT;
-            int y = CW_USEDEFAULT;
-            if (_isPromptingBatchRename)
-            {
-                int screenW = GetSystemMetrics(0);
-                int screenH = GetSystemMetrics(1);
-                x = Math.Max(0, (screenW - winW) / 2);
-                y = Math.Max(0, (screenH - winH) / 2);
-            }
-
             _hwnd = CreateWindowEx(0, className, "Clickra",
-                winStyle, x, y, winW, winH,
+                winStyle, CW_USEDEFAULT, CW_USEDEFAULT, winW, winH,
                 IntPtr.Zero, IntPtr.Zero, wc.hInstance, lpParam);
 
             int dark = 1;
