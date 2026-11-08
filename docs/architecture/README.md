@@ -9,6 +9,8 @@ Welcome to the Clickra architecture repository. This directory centralizes all a
 - ⏱️ **3-Minute Quick Visual Overview**: Open [`diagrams/overview.html`](diagrams/overview.html) to explore the system's end-to-end layered structure (L0 through L4) locally, or preview the [SVG Maps](#github-preview-svg-maps) directly on GitHub.
 - 🏛️ **System Specification & Boundaries**: Read [`spec/clickra_architecture.md`](spec/clickra_architecture.md) for canonical module ownership, Mermaid runtime topologies, and dependency rules.
 - 📋 **Technical Debt & Boundary Leaks**: Check [`spec/architecture_backlog.md`](spec/architecture_backlog.md) for audited layer violations, circular dependencies, and current migration status.
+- 📜 **Module Standardization & Pipeline Manifesto**: Read [`spec/module_architecture_unification_manifesto.md`](spec/module_architecture_unification_manifesto.md) for the authoritative standard on self-declaring use case contracts, single execution pipeline, module directory conventions, and automated Roslyn architecture guards.
+- 🌐 **Cross-Platform 4.0 Vision & Roadmap**: Read [`../specs/v4_cross_platform_unification.md`](../specs/v4_cross_platform_unification.md) for the 3-phase roadmap (`v3.19.0` Core decoupling $\to$ `v3.20.0` Universal CLI $\to$ `v4.0.0` unified cross-platform desktop UI), NFR benchmarks, and legacy sunsetting criteria.
 - 🔄 **Regenerating Diagrams**: Run `powershell -ExecutionPolicy Bypass -File scripts\architecture\update_architecture_diagrams.ps1` from the repository root.
 
 ---
@@ -20,9 +22,10 @@ docs/architecture/
 ├── README.md               # This document (Single entry point & reading guide)
 │
 ├── spec/                   # 🏛️ Specifications & Reports
-│   ├── clickra_architecture.md       # Canonical system architecture & module invariants
-│   ├── architecture_backlog.md       # 10/20 Technical debt & layer violation audit
-│   └── evaluation_report_20261012.md # Initial baseline architecture evaluation
+│   ├── clickra_architecture.md                   # Canonical system architecture & module invariants
+│   ├── architecture_backlog.md                   # 10/20 Technical debt & layer violation audit
+│   ├── module_architecture_unification_manifesto.md # Authoritative module standard & pipeline manifesto
+│   └── evaluation_report_20261012.md             # Initial baseline architecture evaluation
 │
 └── diagrams/               # 🗺️ Interactive Maps & Exports
     ├── overview.html                 # All layers (L0 to L4) interactive map

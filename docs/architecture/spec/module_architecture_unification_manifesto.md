@@ -41,7 +41,7 @@
 ### 2.4 突破契機：三次法則（Rule of Three）與規模臨界點
 > *在看過三種以上的具體實體前，過早提煉的抽象往往是錯的；但當所有極端情況都出現時，就是抽象的最佳時機。*
 
-直到我們完成了全套規則引擎、即時差異高亮、兩階段原子置換的「批次命名」，Clickra 的 15 個模組已經窮盡了所有可能的輸入型態：
+直到我們完成了全套規則引擎、即時差異高亮、兩階段安全置換與衝突消除（two-phase staging with best-effort rollback，而非嚴格 ACID 資料庫事務）的「批次命名」，Clickra 的 15 個模組已經窮盡了所有可能的輸入型態：
 1. 完全無參數（Word, PPT, Excel）
 2. 單一字串輸入（PDF 解密）
 3. 數值範圍解析（PDF 分割）
@@ -54,17 +54,17 @@
 
 ## 3. 第二部：歷史架構待辦問題全盤檢視 (Debt Inventory)
 
-本節對齊 `architecture_backlog.md` 盤點之核心技術債：
+本節對齊 `architecture_backlog.md` 盤點之核心技術債，並標註自 10/20 初次稽核以來的最新收斂狀態：
 
-| 編號 | 類別 | 現象描述 | 影響範圍 |
-| :--- | :--- | :--- | :--- |
-| **B2** | L0 入口 | 「要開哪個 UI / 怎麼轉交」在 `ClickraShell`、`ClickraLauncher`、`ClickraStartup` **各自寫了一份**。 | 啟動行為難以同步，存在路徑不一致風險。 |
-| **C4** | L1 畫面 | 畫面端逐一硬編碼判斷模組：各視窗充斥著 10+ 處 `if (command == "xxx")` 來決定詢問使用者何種輸入。 | **最嚴重的各自為政**。新增或修改模組需求，必須同時修改 CLI、Win32、Fluent 三個前端。 |
-| **D1** | L2 應用 | 轉檔執行流程（Plan $\to$ ExecuteAsync）寫了三份（CLI 一套、視窗一套、翻譯一套）。 | 核心排程無法集中控管，錯誤處理與取消機制分歧。 |
-| **E4** | L3 基礎 | 選項型別（Options）錯誤放在 `Processing/`，導致 Presentation 為了讀取選項直接跨層依賴 L3 底層。 | 破壞分層單向性，甚至引發模組內部循環引用。 |
-| **E6/E8** | L3 基礎 | 翻譯模組資料夾層級循環引用，高層 Model 與底層 Pipeline 互相依賴。 | 模組內部結構凌亂，難以單獨進行單元測試。 |
-| **E7** | L3 基礎 | `ClickraStorage` 拆為 11 個 partial 檔，門面呼叫 Store，Store 又引用門面定義的紀錄型別。 | 儲存層循環依賴，牽一髮動全身。 |
-| **E9** | 治理 | 模組沒有寫下來的共同黃金標準，缺乏自動化架構測試把關。 | 新模組結構全憑作者自律，缺乏剛性約束。 |
+| 編號 | 類別 | 現象描述 | 影響範圍 | 現狀與進度 (Status) |
+| :--- | :--- | :--- | :--- | :--- |
+| **B2** | L0 入口 | 「要開哪個 UI / 怎麼轉交」在 `ClickraShell`、`ClickraLauncher`、`ClickraStartup` **各自寫了一份**。 | 啟動行為難以同步，存在路徑不一致風險。 | 待在 `v3.19.0` 統整為單一啟動路由器。 |
+| **C4** | L1 畫面 | 畫面端逐一硬編碼判斷模組：各視窗充斥著 10+ 處 `if (command == "xxx")` 來決定詢問使用者何種輸入。 | **最嚴重的各自為政**。新增或修改模組需求，必須同時修改 CLI、Win32、Fluent 三個前端。 | **核心待辦**：待在 `v3.19.0` 實作用例自宣告協議徹底根治。 |
+| **D1** | L2 應用 | 轉檔執行流程（Plan $\to$ ExecuteAsync）寫了三份（CLI 一套、視窗一套、翻譯一套）。 | 核心排程無法集中控管，錯誤處理與取消機制分歧。 | **已部分重構**：已提煉 `IConversionUseCase`，但執行迴圈在視窗與 CLI 仍有平行副本，待 `v3.19.0` 由 `ConversionExecutionService` 徹底統一。 |
+| **E4** | L3 基礎 | 選項型別（Options）錯誤放在 `Processing/`，導致 Presentation 為了讀取選項直接跨層依賴 L3 底層。 | 破壞分層單向性，甚至引發模組內部循環引用。 | **已大部分遷移**：多數 Options 已歸位至 `Application/`，待 `v3.19.0` 加入架構守衛防回歸。 |
+| **E6/E8** | L3 基礎 | 翻譯模組資料夾層級循環引用，高層 Model 與底層 Pipeline 互相依賴。 | 模組內部結構凌亂，難以單獨進行單元測試。 | **已部分解耦**：10/20 稽核中介面拆分已消除直接死鎖，待 `v3.19.0` 模組目錄標準化時全面規範。 |
+| **E7** | L3 基礎 | `ClickraStorage` 拆為 11 個 partial 檔，門面呼叫 Store，Store 又引用門面定義的紀錄型別。 | 儲存層循環依賴，牽一髮動全身。 | 待在 `v3.19.0` 整理 Partial 結構與 Store 單向依賴。 |
+| **E9** | 治理 | 模組沒有寫下來的共同黃金標準，缺乏自動化架構測試把關。 | 新模組結構全憑作者自律，缺乏剛性約束。 | 待在 `v3.19.0` 導入 Roslyn 架構測試作為 CI 硬性門禁。 |
 
 ---
 
@@ -81,13 +81,20 @@
 
 #### 機制一：用例自宣告契約（Polymorphic Self-Declaration）
 - **原則**：前端畫面必須是「100% 盲盒」，**嚴禁在畫面端寫出任何具體指令名稱**（如 `"md2pdf"`、`"batch-rename"`）。
-- **實作**：
+- **實作**：擴充既有 `IConversionUseCase` 契約（保留既有之 Command, Plan, ExecuteAsync 等成員），增補自宣告描述：
   ```csharp
   public enum RequiredInputType { None, Password, PageRange, CustomOptions }
 
   public interface IConversionUseCase
   {
-      string CommandId { get; }
+      // 既有基礎契約 (Existing core contract)
+      string Command { get; }
+      string DisplayNameKey { get; }
+      IReadOnlyList<string> SupportedExtensions { get; }
+      ConversionPlan Plan(ConversionContext context);
+      Task<ConversionResult> ExecuteAsync(ConversionPlan plan, IProgress<ConversionProgress>? progress, CancellationToken ct);
+
+      // v3.19.0 擴充自宣告能力 (Self-declaration extensions)
       RequiredInputType InputRequirement { get; }
       ICommandOptionDescriptor? OptionDescriptor { get; }
   }
@@ -103,19 +110,22 @@
   - GUI 的 Progress 綁定介面進度條。
   - **物理刪除** CLI 與視窗原本各自私下實作的幾百行非同步迴圈。
 
-#### 機制三：模組黃金標準結構 (Gold Standard Convention)
-每個 `src/Clickra.Core/Modules/{Module}/` 嚴格遵守統一的三層結構：
-1. **`Application/`**：公開接口、用例（繼承 `ConversionUseCaseBase`）、Options/Settings 型別。
-2. **`Domain/`**：純領域規則、實體、值物件（零外部相依）。
-3. **`Processing/`**：處理器（繼承 `SingleFileProcessorBase` 或 `MultiFileProcessorBase`）。
-- **禁忌**：禁止再出現 `Execution/`；Options 嚴禁出現在 `Processing/`。
+#### 機制三：模組標準結構與目錄規範 (Module Structure Convention)
+每個 `src/Clickra.Core/Modules/{Module}/` 嚴格遵守統一規範：
+1. **`Application/` (必備)**：公開接口、用例（繼承 `ConversionUseCaseBase`）、Options/Settings 型別。
+2. **`Processing/` (必備)**：核心處理器（繼承 `SingleFileProcessorBase` 或 `MultiFileProcessorBase`）。
+3. **`Domain/` (選用)**：純領域規則、實體、值物件（零外部相依，適用於批次命名等複雜領域模型）。
+4. **`Presentation/` (選用)**：模組特化之 UI 狀態控制器（例如 `BatchRename/Presentation/BatchRenamePreviewController`），僅計算預覽排版與驗證，嚴禁依賴底層處理器。
+5. **`Infrastructure/` (選用)**：模組特化之外部工具包裝或底層驅動適配。
+- **歷史特例與遷移路徑**：`PdfTranslation/Execution/` 為早期過渡目錄，將於 `v3.19.0` 執行管線統整時整併入 `Processing/`，後續新模組禁止新增 `Execution/`。
+- **禁忌**：Options 嚴禁出現在 `Processing/`。
 
 #### 機制四：架構守衛機械化防線 (Automated Architecture Guards)
 在 `tests/Clickra.Core.Tests/TestSuite.ArchitectureBoundaries.cs` 增列硬性單元測試：
-- **Guard 1 (目錄白名單)**：掃描所有模組資料夾，若出現非標準資料夾（如 `Execution/`），測試直接 Fail。
+- **Guard 1 (目錄白名單)**：掃描所有模組資料夾，若出現未核准之非標準資料夾（如未經註冊的 `Execution/`），測試直接 Fail。
 - **Guard 2 (Options 歸位)**：掃描所有 `*Options.cs`，若不在 `Application/`，測試直接 Fail。
 - **Guard 3 (分層穿透防護)**：Presentation 層若出現 `using *.Processing;`，編譯與測試直接阻斷。
-- **Guard 4 (硬編碼指令禁絕)**：掃描畫面端代碼，若再出現 `command == "..."` 的條件分支，CI 直接紅燈。
+- **Guard 4 (硬編碼指令禁絕)**：採用 Roslyn 語法樹與符號分析（AST & Semantic Analysis），全面掃描畫面端代碼。無論是 `==`、`.Equals(...)`、`switch` 語句、switch expression 或 pattern matching（`is "..."`），凡偵測到對具體指令 ID 的硬編碼分支，CI 直接紅燈。
 
 ---
 
@@ -126,8 +136,9 @@
 1. **淨代碼負增長（Net-Negative LOC）**：
    - 重構完成後，由於刪除了三處重複的排程邏輯、刪除了數十個寫死的 if-else 分支，**全專案代碼行數必須呈現淨減少**。
 2. **新模組零入侵（Zero-Touch Extension）**：
-   - 檢驗方式：以即將開發的 `[F2-22] 檔案分類` 進行驗證。
-   - 驗收標準：在建立該模組時，**完全不需要修改既有的共用視窗類別或指令路由類別**。新模組只要自己宣告完成，前端就能自動辨識並執行。若還需要去改視窗，即宣告重構失敗！
+   - **用例發現與註冊機制**：在 NativeAOT 環境下，為杜絕執行期反射開銷與型別裁切風險，Clickra 採用編譯期 Source Generator 或自宣告註冊目錄（`ConversionUseCaseCatalog` / DI 擴充點）。新模組只需在自身命名空間完成宣告與註冊，前端畫面與共用排程器即可自動辨識。
+   - **檢驗方式**：以即將開發的 `[F2-22] 檔案分類` 進行驗證。
+   - **驗收標準**：在建立該模組時，**完全不需要修改既有的共用視窗類別或指令路由類別**。新模組只要自己宣告完成，前端就能自動辨識並執行。若還需要去改視窗，即宣告重構失敗！
 
 ---
 
