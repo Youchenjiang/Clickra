@@ -2,6 +2,9 @@
 
 This document specifies the architectural conventions for capability modules in `Clickra.Core/Modules/`.
 
+> [!IMPORTANT]
+> The authoritative engineering standard for capability module standardization, polymorphic self-declaration contracts, and automated Roslyn architecture guards for `v3.19.0+` is documented in [module_architecture_unification_manifesto.md](../architecture/spec/module_architecture_unification_manifesto.md).
+
 ## 1. Capability-First Organization
 
 In accordance with [module_first_architecture_decision.md](archive/module_first_architecture_decision.md), product capability is the primary directory and ownership axis. Technical roles are secondary and placed within each module.
@@ -48,6 +51,7 @@ The conventions above are guarded by automated architecture boundary tests in `T
 - Processor base inheritance and processing/execution placement test
 - Module options placement in `Application/`
 - Presentation prohibition of module `Processing/` and `Infrastructure/` references
+- Polymorphic self-declaration contract adherence (no hardcoded command branching in Presentation)
 
 ## 4. New Command Wiring Checklist
 
