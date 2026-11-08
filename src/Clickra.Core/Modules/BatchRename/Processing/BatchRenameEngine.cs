@@ -152,7 +152,7 @@ public static class BatchRenameEngine
 
     private static string ApplyTimestamp(string filePath, string baseName, TimestampOptions options)
     {
-        DateTime dt = DateTime.Now;
+        DateTime dt = DateTime.UtcNow.ToLocalTime(); // skipcq: CS-W1091 — File rename timestamp formats in local wall-clock time.
         try
         {
             if (File.Exists(filePath))
