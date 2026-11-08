@@ -156,6 +156,25 @@ def validate_creation_inputs(title, body_file, label, milestone, assignee):
 _requested_details = validate_creation_inputs
 
 
+def _handle_create_result(result, repo, head):
+    if result.returncode:
+        message = (result.stderr or "").lower()
+        if "milestone" in message:
+            raise RuntimeError("GitHub rejected PR milestone; inspect PR list before retry")
+        if "label" in message:
+            raise RuntimeError("GitHub rejected PR label; inspect PR list before retry")
+        raise RuntimeError("PR create failed or outcome unknown; inspect PR list before retry")
+    created_url = (result.stdout or "").strip()
+    match = re.fullmatch(rf"https://github\.com/{re.escape(repo)}/pull/([1-9][0-9]*)", created_url)
+    if not match:
+        raise RuntimeError("PR create returned no trusted PR number; inspect remote list before retry")
+    details = json.loads(_read(["gh", "pr", "view", match.group(1), "--repo", repo,
+                                "--json", "number,headRefOid,baseRefName,url"]))
+    if details.get("headRefOid") != head or details.get("baseRefName") != "main":
+        raise RuntimeError("created PR state differs from authorized commit; stop for review")
+    return {"created": details.get("url"), "head": head, "number": details.get("number")}
+
+
 def create(repo, branch, *, title, body_file, label, milestone=None, assignee=None,
            execute=False, authorization=None, runner=subprocess.run):
     """Preview first; one authorized create attempt, then independently re-read."""
@@ -183,19 +202,4 @@ def create(repo, branch, *, title, body_file, label, milestone=None, assignee=No
         result = runner(args, shell=False, check=False, capture_output=True, text=True, timeout=60)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise RuntimeError("PR create outcome unknown; inspect PR list before any retry") from exc
-    if result.returncode:
-        message = (result.stderr or "").lower()
-        if "milestone" in message:
-            raise RuntimeError("GitHub rejected PR milestone; inspect PR list before retry")
-        if "label" in message:
-            raise RuntimeError("GitHub rejected PR label; inspect PR list before retry")
-        raise RuntimeError("PR create failed or outcome unknown; inspect PR list before retry")
-    created_url = (result.stdout or "").strip()
-    match = re.fullmatch(rf"https://github\.com/{re.escape(repo)}/pull/([1-9][0-9]*)", created_url)
-    if not match:
-        raise RuntimeError("PR create returned no trusted PR number; inspect remote list before retry")
-    details = json.loads(_read(["gh", "pr", "view", match.group(1), "--repo", repo,
-                                "--json", "number,headRefOid,baseRefName,url"]))
-    if details.get("headRefOid") != head or details.get("baseRefName") != "main":
-        raise RuntimeError("created PR state differs from authorized commit; stop for review")
-    return {"created": details.get("url"), "head": head, "number": details.get("number")}
+    return _handle_create_result(result, repo, head)
