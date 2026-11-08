@@ -423,6 +423,50 @@ def check_roadmap_alignment(repo_root, milestone, changed_files):
     return []
 
 
+SPEC_DIRECTORIES = (
+    "docs/specs/",
+    "docs/architecture/spec/",
+)
+
+
+def check_spec_roadmap_alignment(repo_root, changed_files):
+    """Verify that docs/ROADMAP.md is updated and tracks specifications when modifying them."""
+    spec_changed_files = [
+        f for f in changed_files
+        if any(f.startswith(prefix) for prefix in SPEC_DIRECTORIES)
+        and f.endswith(".md")
+        and Path(f).name != "README.md"
+    ]
+    if not spec_changed_files:
+        return []
+
+    if "docs/ROADMAP.md" not in changed_files:
+        return [
+            "docs/ROADMAP.md must be updated when modifying specifications "
+            "under docs/specs/ or docs/architecture/spec/ to maintain strategic roadmap alignment."
+        ]
+
+    roadmap_path = repo_root / "docs" / "ROADMAP.md"
+    if not roadmap_path.is_file():
+        return ["docs/ROADMAP.md is missing; cannot verify specification roadmap alignment"]
+
+    roadmap_content = roadmap_path.read_text(encoding="utf-8")
+    missing_in_roadmap = []
+    for spec in spec_changed_files:
+        filename = Path(spec).name
+        stem = Path(spec).stem
+        if filename not in roadmap_content and spec not in roadmap_content and stem not in roadmap_content:
+            missing_in_roadmap.append(spec)
+
+    if missing_in_roadmap:
+        return [
+            f"Specification '{s}' is modified but not tracked in docs/ROADMAP.md content. "
+            "Update docs/ROADMAP.md to track or reference the specification."
+            for s in missing_in_roadmap
+        ]
+    return []
+
+
 def check(base, body_file=None, pushed_ref=None, pushed_oid=None, metadata=None, milestone=None):
     try:
         return _check(base, body_file, pushed_ref, pushed_oid, metadata, milestone)
@@ -458,7 +502,13 @@ def _check_base_parity(base):
     return []
 
 
-def _check_roadmap_gate(base, metadata, milestone=None):
+def _check_roadmap_gate(base, metadata, milestone=None, target="HEAD"):
+    diff = git("diff", "-z", "--name-only", "--no-renames", f"{base}...{target}")
+    if diff.returncode != 0:
+        return ["cannot read git diff against base for roadmap gate"]
+    changed_files = [p.strip().replace("\\", "/") for p in diff.stdout.split("\0") if p.strip()]
+    errors = list(check_spec_roadmap_alignment(REPO_ROOT, changed_files))
+
     ms = milestone
     if not ms and metadata:
         m = metadata.get("milestone")
@@ -466,20 +516,19 @@ def _check_roadmap_gate(base, metadata, milestone=None):
             ms = m.get("title")
         elif isinstance(m, str):
             ms = m
-    if not ms:
-        return []
-    diff = git("diff", "--name-only", f"{base}...HEAD")
-    changed_files = [line.strip().replace("\\", "/") for line in diff.stdout.splitlines() if line.strip()] if diff.returncode == 0 else []
-    return check_roadmap_alignment(REPO_ROOT, ms, changed_files)
+    if ms:
+        errors.extend(check_roadmap_alignment(REPO_ROOT, ms, changed_files))
+    return errors
 
 
 def _check(base, body_file, pushed_ref, pushed_oid, metadata=None, milestone=None):
+    target = pushed_oid or "HEAD"
     errors = _check_history(base, pushed_ref, pushed_oid)
     errors.extend(_check_worktree())
     errors.extend(_check_body_file(body_file, metadata))
     errors.extend(_check_base_parity(base))
     errors.extend(_check_version_bump(base, metadata, pushed_ref))
-    errors.extend(_check_roadmap_gate(base, metadata, milestone))
+    errors.extend(_check_roadmap_gate(base, metadata, milestone, target=target))
     return errors
 
 

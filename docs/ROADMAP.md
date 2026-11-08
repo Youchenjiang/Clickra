@@ -48,10 +48,28 @@
 - [x] **[F1-11] Dual-Track Distribution (Fluent / NativeAOT)**：雙軌發行。
     - 2026/08 決定維持兩條軌道：本機有 .NET 8+ 與 Windows App Runtime → 安裝 Fluent；任一缺失 → 安裝 NativeAOT（零依賴）。
     - 新增 `ClickraLauncher.exe`（NativeAOT bootstrapper）自動偵測 runtime 並安裝對應軌道；新增 `Clickra.msix (Main)` 零依賴套件與 `scripts/build_msix.ps1`。
-    - 舊 Win32 Dashboard/Progress 由「過渡 fallback」改為**永久 NativeAOT 軌道**，不再排定移除。
+    - 舊 Win32 Dashboard/Progress 於 3.x 週期內作為 NativeAOT 零依賴軌道維持運作；在 4.0 跨平台 GUI 統一前持續維護。
     - 當時的詳細雙軌設計紀錄見 `docs/development/archive/dual_track_guide.md`；目前 release pipeline 另以實際 workflow/scripts 為準。
+    - **4.0 架構收斂演進**：2026/11 核准之 [4.0 跨平台統一規格 (v4_cross_platform_unification.md)](specs/v4_cross_platform_unification.md) 將雙軌制定調為 3.x 歷史過渡期方案。在 4.0 階段三統一跨平台 GUI 通過 NativeAOT 零依賴驗收後，將正式除役 Win32 與 WinUI 3 雙軌介面。
 - [x] **[F1-14] Shell Context Menu Icons**：右鍵選單圖示（v3.7.0）。
     - 為所有右鍵轉檔命令新增專屬圖示（PDF、Word、Excel、PPT、圖片操作），並提供 PowerShell 產生腳本。
+- [ ] **[F1-15] v3.19.0 Core Decoupling & Module Standardization**：核心跨平台解耦與模組標準化。
+    - 實作用例自宣告協議（消除畫面端 10+ 處寫死的指令 ID 分支，根治 C4 債務）。
+    - 統一單一執行管線 ConversionExecutionService（消除 CLI 與視窗平行排程，根治 D1 債務）。
+    - 建立模組黃金標準目錄（Application/、Processing/、Domain/、Presentation/、Infrastructure/）。
+    - 導入 Roslyn AST 自動化架構守衛單元測試（Guard 1~4）。
+    - 解耦 Windows 專屬依賴（GDI+、Imazen.WebP、Windows.Data.Pdf 轉跨平台 SkiaSharp / PDFium 方案）。
+    - 規範詳見：[module_architecture_unification_manifesto.md](architecture/spec/module_architecture_unification_manifesto.md) 與 [v4_cross_platform_unification.md](specs/v4_cross_platform_unification.md)。
+- [ ] **[F1-16] v3.20.0 Universal Headless CLI (NativeAOT Cross-Platform)**：跨平台無頭終端工具。
+    - CLI 終端 ANSI 進度引擎與無頭調度支援。
+    - GitHub Actions 建立 Linux (x64/arm64) 與 macOS (Apple Silicon/Intel) 原生 NativeAOT CI。
+    - 發布 Homebrew、WinGet、Scoop 多套件管理器。
+    - Windows 保留 Win32 GDI+ 輕量視窗作為免安裝零依賴回退介面。
+- [ ] **[F1-17] v4.0.0 Unified Cross-Platform Modern GUI**：統一跨平台現代 XAML 介面。
+    - 建置 Clickra.App 統一桌面端（以 Avalonia 11+ 為評估首選候選框架）。
+    - 實踐自適應平台融合：Windows Fluent (Mica/Acrylic)、macOS HIG Vibrancy、Linux 桌面主題（Adwaita/Breeze），並遵循 100% 來源檔案驅動調色盤。
+    - 支援 Windows COM 右鍵、macOS Finder Quick Actions、Linux 桌面 Actions。
+    - 達成跨平台功能性、原生打包與零依賴單檔驗收後，物理刪除舊 Win32 GDI+ 與 WinUI 3 代碼，終結雙軌維護。
 - [ ] **[F1-13] Store-Resilient Optional Fluent Delivery**：AOT 主套件＋Fluent Optional Package（**政策凍結**；等待 Microsoft 權威政策／escalation 結論）。
     - **v3.7.0 進度**：Clickra 與 Clickra.Fluent 兩份 AppxManifest.xml 版本已同步至 3.7.0.0；Fluent conversion window v2 已合併（PR #54）；Store submission build script 就緒（PR #55）。
     - **2026/08/29 決策狀態**：MSIX 平台已確認支援 executable optional package、related set、activatable optional app 與 Store 按需安裝 API；但公開範例未直接涵蓋 Clickra 的 NativeAOT main + .NET 8 WinUI 3 full-trust optional EXE 組合，且 Store 帳號必須先取得 Microsoft 的 optional package / related set 權限。因此本項目前是有硬性退出條件的 feasibility gate，不是已採用的正式發行架構。
@@ -300,7 +318,7 @@ flowchart TD
 
 ### 領域能力對照矩陣 (Clickra vs. 全能轉檔工具)
 
-| 領域分類 | 格式與能力範圍 | Clickra 現況 (v3.16.3) | 目標里程碑 | 預期技術策略 |
+| 領域分類 | 格式與能力範圍 | Clickra 現況 (v3.18.0) | 目標里程碑 | 預期技術策略 |
 | :--- | :--- | :--- | :--- | :--- |
 | **PDF 核心操作** | 合併、分割、密碼移除、PDF 壓縮 | ✅ 完整支援 (v3.6.5) | `[F2-9]` 極限壓縮 | 內建 DFS GC、Object Streams、JBIG2 |
 | **Office 轉 PDF** | Word / Excel / PPT → PDF | ✅ COM + LibreOffice 雙引擎 | `[F3-6]` 引擎抽象化 | 保持微軟 COM + LibreOffice 雙引擎優勢 |
@@ -308,6 +326,7 @@ flowchart TD
 | **PDF 簡報還原** | PDF → PPTX | ❌ 待實作 | `[F2-11]` | 原樣保真圖片嵌入 + 結構重構模式 |
 | **學術論文翻譯** | PDF Math Translate (公式保護) | ✅ 獨家純 C# AOT 引擎 | `[F2-16]` 雙語對照 | Google Mobile / DeepL API 安全遷移 |
 | **影像格式互轉** | PNG, JPG, WEBP, GIF, HEIC | ✅ 支援互轉與無損壓縮 | `[F2-34]` 現代影像 | 補齊 SVG, AVIF, TIFF, BMP, ICO 圖標包 |
+| **資料夾與檔案批次命名** | 規則引擎、流水號、正則替換、安全交換更名 | ✅ 完整支援 (v3.18.0) | [F2-21] 批次命名 | 兩階段交換暫存目錄、即時差異高亮 |
 | **結構化資料** | JSON, YAML, TOML, XML, CSV | ❌ 尚未具備 | `[F2-32]` | 純 C# 記憶體資料樹，零外部依賴 NativeAOT |
 | **多跳路由管線** | 自動圖路由 (例如 Word → PDF → PNG) | ❌ 僅 1:1 直連 | `[F2-33]` RoutePlanner | Dijkstra 最短路徑搜尋，原子化中繼生命週期 |
 | **壓縮檔管理** | ZIP, 7Z, TAR, GZ 打包與解壓 | ❌ 尚未具備 | `[F2-35]` | 內建 System.IO.Compression，Zip Slip 防護 |

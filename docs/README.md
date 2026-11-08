@@ -10,6 +10,7 @@ Architecture documentation, boundary invariants, layered structure maps, and ADR
 - [Architecture Overview](architecture/README.md): .NET 8 baseline, NativeAOT compilation, and subsystem boundaries.
 - [Layered Architecture Maps](architecture/diagrams/overview.html): Interactive L0–L4 layered diagrams.
 - [Architecture Specifications](architecture/spec/): System architecture specifications and architectural audit reports.
+- [Module Standardization Manifesto](architecture/spec/module_architecture_unification_manifesto.md): Authoritative engineering standard on self-declaration contracts and single pipeline engine.
 
 ## 🛠️ Development & Operations (docs/development/)
 Guides for building, testing, packaging, signing, and releasing Clickra:
@@ -29,6 +30,8 @@ Guides for building, testing, packaging, signing, and releasing Clickra:
 
 ## 📐 Specifications (docs/specs/)
 Functional and technical design specifications for future or specialized capabilities:
+- [Specifications Guide](specs/README.md): Index, status tracking, and roadmap mapping for all specifications.
+- [Cross-Platform 4.0 Specification](specs/v4_cross_platform_unification.md): Three-phase migration toward net8.0, universal CLI, and unified modern GUI.
 - [Translation Rules Specification](specs/translation_rules.md): Layout analysis, bypass rules (§2), and translation repair.
 - [LibreOffice Engine Plan](specs/libreoffice_engine_plan.md): Local document conversion engine specifications.
 - [Markdown Document Templates](specs/markdown_document_templates.md): Template architecture and schema design.

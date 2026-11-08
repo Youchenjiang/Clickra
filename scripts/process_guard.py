@@ -9,6 +9,7 @@ import subprocess
 import re
 
 MAIN_REF = "origin/main"
+DIFF_TARGET_PATTERN = re.compile(rf"^{re.escape(MAIN_REF)}\.\.\.(?:HEAD|[0-9a-fA-F]{{40}})\Z")
 GIT_READ_OPERATIONS = {
     ("branch", "--show-current"),
     ("remote", "get-url", "origin"),
@@ -20,6 +21,7 @@ GIT_READ_OPERATIONS = {
     ("log", "--format=%B%x00", f"{MAIN_REF}..HEAD"),
     ("diff", "--quiet", MAIN_REF, "HEAD"),
     ("diff", "--name-only", f"{MAIN_REF}...HEAD"),
+    ("diff", "-z", "--name-only", "--no-renames", f"{MAIN_REF}...HEAD"),
     ("status", "--porcelain"),
     ("tag", "-l"),
 }
@@ -59,7 +61,13 @@ def _validate_argv(argv):
         raise ValueError("only git and gh are allowed")
     if any(not isinstance(a, str) or "\x00" in a or "\n" in a or "\r" in a for a in argv):
         raise ValueError("invalid subprocess argument")
-    if argv[0] == "git" and tuple(argv[1:]) not in GIT_READ_OPERATIONS:
+    if argv[0] == "git":
+        args = tuple(argv[1:])
+        if args in GIT_READ_OPERATIONS:
+            return
+        if (len(argv) == 6 and argv[1:5] == ["diff", "-z", "--name-only", "--no-renames"]
+                and DIFF_TARGET_PATTERN.fullmatch(argv[5])):
+            return
         raise ValueError("unauthorized git operation")
     if argv[0] == "gh":
         _validate_github_args(argv)

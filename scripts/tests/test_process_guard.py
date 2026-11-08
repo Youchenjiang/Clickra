@@ -31,6 +31,20 @@ class ProcessGuardTests(unittest.TestCase):
                     process_guard.invoke(["git", *args])
             self.assertEqual(len(process_guard.GIT_READ_OPERATIONS), run.call_count)
 
+    def test_diff_target_pattern_accepts_sha_and_rejects_arbitrary_ref(self):
+        fake = Path(__file__).resolve()
+        sha = "a" * 40
+        with patch.object(process_guard.shutil, "which", return_value=str(fake)), \
+             patch.object(process_guard.subprocess, "run") as run:
+            process_guard.invoke(["git", "diff", "-z", "--name-only", "--no-renames", f"origin/main...{sha}"])
+            self.assertEqual(1, run.call_count)
+
+        for bad in ("main", "HEAD~1", "origin/main...main;rm", f"origin/main...{sha};evil"):
+            with self.subTest(bad=bad), patch.object(process_guard.subprocess, "run") as call:
+                with self.assertRaises(ValueError):
+                    process_guard.invoke(["git", "diff", "-z", "--name-only", "--no-renames", bad])
+                call.assert_not_called()
+
     def test_allowed_gh_uses_absolute_binary_and_no_shell(self):
         fake = Path(__file__).resolve()
         with patch.object(process_guard.shutil, "which", return_value=str(fake)), \
