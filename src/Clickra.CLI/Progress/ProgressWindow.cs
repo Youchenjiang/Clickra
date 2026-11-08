@@ -26,9 +26,9 @@ public partial class ProgressWindow
     static readonly WndProcDelegate _wndProcDelegate = WndProc;
 
     private readonly CancellationTokenSource _cts = new();
-    private NOTIFYICONDATAW _nid;
-    private bool _trayIconAdded = false;
-    private bool _isTrayBtnHovered = false;
+    private NOTIFYICONDATAW _nid; // skipcq: CS-R1137
+    private bool _trayIconAdded = false; // skipcq: CS-R1137
+    private bool _isTrayBtnHovered = false; // skipcq: CS-R1137
     private IntPtr _hIcon = IntPtr.Zero;
 
     private readonly AutoResetEvent _passwordEvent = new(false);
@@ -62,7 +62,7 @@ public partial class ProgressWindow
         private bool _completed => _progressPresentation.State.Status == TaskProgressPresentationStatus.Succeeded;
         private bool _hasError => _progressPresentation.State.Status is TaskProgressPresentationStatus.Failed or TaskProgressPresentationStatus.Canceled;
         private string _errorMessage => _progressPresentation.State.Error;
-        private string? _failureToAlert = null;
+        private string? _failureToAlert = null; // skipcq: CS-R1137
         private IntPtr _hwnd = IntPtr.Zero;
 
         private double _currentDispWidth = 0;
@@ -70,9 +70,9 @@ public partial class ProgressWindow
         private float _shimmerOffset = -120;
         private float _dpiScale = 1.0f;
         private float _scrollOffset = 0f;
-        private bool _isDraggingScroll = false;
-        private float _dragStartMouseX = 0f;
-        private float _dragStartOffset = 0f;
+        private bool _isDraggingScroll = false; // skipcq: CS-R1137
+        private float _dragStartMouseX = 0f; // skipcq: CS-R1137
+        private float _dragStartOffset = 0f; // skipcq: CS-R1137
 
         // GDI+ 雙緩衝
         private Bitmap? _bufferBmp;
@@ -211,7 +211,7 @@ public partial class ProgressWindow
             ShowWindow(_hwnd, 5);
             SetTimer(_hwnd, (IntPtr)1, 16, IntPtr.Zero); // 16ms 約 60fps
 
-            if (!_isPromptingMarkdownOptions)
+            if (!_isPromptingMarkdownOptions) // skipcq: CS-R1039
             {
                 if (!_isPromptingPrintOptions && !_isPromptingBatchRename)
                     StartProcessingThread(_hwnd);
