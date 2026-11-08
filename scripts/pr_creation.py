@@ -60,7 +60,7 @@ def _validate_spec_roadmap_alignment():
     diff_output = _read(["git", "diff", "--name-only", "origin/main...HEAD"])
     changed_files = [line.strip().replace("\\", "/") for line in diff_output.splitlines() if line.strip()]
     from pr_preflight import check_spec_roadmap_alignment
-    spec_errors = check_spec_roadmap_alignment(REPO_ROOT, changed_files)
+    spec_errors = check_spec_roadmap_alignment(changed_files)
     if spec_errors:
         raise ValueError("; ".join(spec_errors))
 

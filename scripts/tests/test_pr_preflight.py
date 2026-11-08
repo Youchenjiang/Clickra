@@ -288,22 +288,20 @@ class PrPreflightTests(unittest.TestCase):
             self.assertTrue(any("is not tracked in docs/ROADMAP.md" in e for e in errors))
 
     def test_check_spec_roadmap_alignment_fails_when_spec_modified_without_roadmap(self):
-        errors = check_spec_roadmap_alignment(Path("."), ["docs/specs/v4_cross_platform_unification.md"])
+        errors = check_spec_roadmap_alignment(["docs/specs/v4_cross_platform_unification.md"])
         self.assertTrue(any("docs/ROADMAP.md must be updated when modifying specifications" in e for e in errors))
 
-        errors_arch = check_spec_roadmap_alignment(Path("."), ["docs/architecture/spec/manifesto.md"])
+        errors_arch = check_spec_roadmap_alignment(["docs/architecture/spec/manifesto.md"])
         self.assertTrue(any("docs/ROADMAP.md must be updated when modifying specifications" in e for e in errors_arch))
 
     def test_check_spec_roadmap_alignment_passes_when_spec_and_roadmap_modified(self):
         errors = check_spec_roadmap_alignment(
-            Path("."),
             ["docs/specs/v4_cross_platform_unification.md", "docs/ROADMAP.md"]
         )
         self.assertEqual([], errors)
 
     def test_check_spec_roadmap_alignment_passes_when_no_specs_modified(self):
         errors = check_spec_roadmap_alignment(
-            Path("."),
             ["src/Clickra.Core/SomeFile.cs", "docs/architecture/README.md"]
         )
         self.assertEqual([], errors)

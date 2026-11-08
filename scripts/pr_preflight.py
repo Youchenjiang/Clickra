@@ -429,7 +429,7 @@ SPEC_DIRECTORIES = (
 )
 
 
-def check_spec_roadmap_alignment(repo_root, changed_files):
+def check_spec_roadmap_alignment(changed_files):
     """Verify that docs/ROADMAP.md is updated when modifying architectural specifications."""
     spec_changed = any(
         any(f.startswith(prefix) for prefix in SPEC_DIRECTORIES) and f.endswith(".md")
@@ -481,7 +481,7 @@ def _check_base_parity(base):
 def _check_roadmap_gate(base, metadata, milestone=None):
     diff = git("diff", "--name-only", f"{base}...HEAD")
     changed_files = [line.strip().replace("\\", "/") for line in diff.stdout.splitlines() if line.strip()] if diff.returncode == 0 else []
-    errors = list(check_spec_roadmap_alignment(REPO_ROOT, changed_files))
+    errors = list(check_spec_roadmap_alignment(changed_files))
 
     ms = milestone
     if not ms and metadata:
