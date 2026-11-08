@@ -3,31 +3,31 @@ using System.Runtime.InteropServices;
 using System.Drawing;
 using System.Text;
 
-namespace Clickra.UI.Native
+namespace Clickra.UI.Native;
+
+internal static class Win32
 {
-    public static class Win32
-    {
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-        public struct WNDCLASSEX { public uint cbSize; public uint style; public IntPtr lpfnWndProc; public int cbClsExtra; public int cbWndExtra; public IntPtr hInstance; public IntPtr hIcon; public IntPtr hCursor; public IntPtr hbrBackground; public IntPtr lpszMenuName; public IntPtr lpszClassName; public IntPtr hIconSm; }
+        internal struct WNDCLASSEX { public uint cbSize; public uint style; public IntPtr lpfnWndProc; public int cbClsExtra; public int cbWndExtra; public IntPtr hInstance; public IntPtr hIcon; public IntPtr hCursor; public IntPtr hbrBackground; public IntPtr lpszMenuName; public IntPtr lpszClassName; public IntPtr hIconSm; }
 
         [StructLayout(LayoutKind.Sequential)]
-        public struct MSG { public IntPtr hwnd; public uint message; public IntPtr wParam; public IntPtr lParam; public uint time; public Point pt; }
+        internal struct MSG { public IntPtr hwnd; public uint message; public IntPtr wParam; public IntPtr lParam; public uint time; public Point pt; }
 
         [StructLayout(LayoutKind.Sequential)]
-        public struct PAINTSTRUCT { public IntPtr hdc; public bool fErase; public int rcLeft, rcTop, rcRight, rcBottom; public bool fRestore, fIncUpdate; [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)] public byte[] rgbReserved; }
+        internal struct PAINTSTRUCT { public IntPtr hdc; public bool fErase; public int rcLeft, rcTop, rcRight, rcBottom; public bool fRestore, fIncUpdate; [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)] public byte[] rgbReserved; }
 
         [StructLayout(LayoutKind.Sequential)]
-        public struct RECT { public int left, top, right, bottom; }
+        internal struct RECT { public int left, top, right, bottom; }
 
         [StructLayout(LayoutKind.Sequential)]
         /// <summary>Native POINT structure used by DPI-aware window size messages.</summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S101", Justification = "Win32 interop structure names intentionally match the native ABI names.")]
-        public struct NATIVEPOINT { public int x, y; }
+        internal struct NATIVEPOINT { public int x, y; }
 
         [StructLayout(LayoutKind.Sequential)]
         /// <summary>Native MINMAXINFO payload used to constrain Dashboard window sizing.</summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S101", Justification = "Win32 interop structure names intentionally match the native ABI names.")]
-        public struct MINMAXINFO
+        internal struct MINMAXINFO
         {
             /// <summary>Reserved native point supplied by Windows.</summary>
             public NATIVEPOINT ptReserved;
@@ -42,13 +42,13 @@ namespace Clickra.UI.Native
         }
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-        public struct NOTIFYICONDATAW { public uint cbSize; public IntPtr hWnd; public uint uID; public uint uFlags; public uint uCallbackMessage; public IntPtr hIcon; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string szTip; public uint dwState; public uint dwStateMask; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)] public string szInfo; public uint uTimeoutOrVersion; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)] public string szInfoTitle; public uint dwInfoFlags; public Guid guidItem; public IntPtr hBalloonIcon; }
+        internal struct NOTIFYICONDATAW { public uint cbSize; public IntPtr hWnd; public uint uID; public uint uFlags; public uint uCallbackMessage; public IntPtr hIcon; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string szTip; public uint dwState; public uint dwStateMask; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)] public string szInfo; public uint uTimeoutOrVersion; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)] public string szInfoTitle; public uint dwInfoFlags; public Guid guidItem; public IntPtr hBalloonIcon; }
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-        public struct OPENFILENAME { public int lStructSize; public IntPtr hwndOwner; public IntPtr hInstance; public string lpstrFilter; public string lpstrCustomFilter; public int nMaxCustFilter; public int nFilterIndex; public IntPtr lpstrFile; public int nMaxFile; public string lpstrFileTitle; public int nMaxFileTitle; public string lpstrInitialDir; public string lpstrTitle; public int Flags; public short nFileOffset; public short nFileExtension; public string lpstrDefExt; public IntPtr lCustData; public IntPtr lpfnHook; public string lpTemplateName; public IntPtr pvReserved; public int dwReserved; public int FlagsEx; }
+        internal struct OPENFILENAME { public int lStructSize; public IntPtr hwndOwner; public IntPtr hInstance; public string lpstrFilter; public string lpstrCustomFilter; public int nMaxCustFilter; public int nFilterIndex; public IntPtr lpstrFile; public int nMaxFile; public string lpstrFileTitle; public int nMaxFileTitle; public string lpstrInitialDir; public string lpstrTitle; public int Flags; public short nFileOffset; public short nFileExtension; public string lpstrDefExt; public IntPtr lCustData; public IntPtr lpfnHook; public string lpTemplateName; public IntPtr pvReserved; public int dwReserved; public int FlagsEx; }
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-        public struct BROWSEINFO { public IntPtr hwndOwner; public IntPtr pidlRoot; public IntPtr pszDisplayName; public IntPtr lpszTitle; public uint ulFlags; public IntPtr lpfn; public IntPtr lParam; public int iImage; }
+        internal struct BROWSEINFO { public IntPtr hwndOwner; public IntPtr pidlRoot; public IntPtr pszDisplayName; public IntPtr lpszTitle; public uint ulFlags; public IntPtr lpfn; public IntPtr lParam; public int iImage; }
 
         [DllImport("user32.dll", EntryPoint = "AdjustWindowRectEx", CharSet = CharSet.Unicode)] internal static extern bool AdjustWindowRectEx(ref RECT lpRect, uint dwStyle, bool bMenu, uint dwExStyle);
         [DllImport("user32.dll", EntryPoint = "AdjustWindowRectExForDpi", CharSet = CharSet.Unicode)]
@@ -62,7 +62,7 @@ namespace Clickra.UI.Native
         [DllImport("user32.dll", EntryPoint = "FindWindowW", CharSet = CharSet.Unicode)] internal static extern IntPtr FindWindow(string lpClassName, string? lpWindowName);
         [DllImport("user32.dll", EntryPoint = "SetWindowTextW", CharSet = CharSet.Unicode)] internal static extern bool SetWindowText(IntPtr h, string text);
         [DllImport("user32.dll")] internal static extern bool ShowWindow(IntPtr h, int n);
-        [DllImport("user32.dll")] internal static extern int GetMessage(out MSG m, IntPtr h, uint f, uint l);
+        [DllImport("user32.dll")] internal static extern int GetMessage(out MSG m, IntPtr h, uint f, uint l); // skipcq: CS-R1138 — Win32 ABI requires MSG first.
         [DllImport("user32.dll")] internal static extern bool TranslateMessage(ref MSG m);
         [DllImport("user32.dll")] internal static extern IntPtr DispatchMessage(ref MSG m);
         [DllImport("user32.dll")] internal static extern IntPtr DefWindowProcW(IntPtr h, uint msg, IntPtr w, IntPtr l);
@@ -143,7 +143,7 @@ namespace Clickra.UI.Native
         [DllImport("shell32.dll", EntryPoint = "SHBrowseForFolderW", CharSet = CharSet.Unicode)] internal static extern IntPtr SHBrowseForFolder(ref BROWSEINFO lpbi);
         [DllImport("shell32.dll", EntryPoint = "SHGetPathFromIDListW", CharSet = CharSet.Unicode)] internal static extern bool SHGetPathFromIDList(IntPtr pidl, IntPtr pszPath);
 
-        [DllImport("dwmapi.dll")] internal static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int val, int size);
+        [DllImport("dwmapi.dll")] internal static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int val, int size); // skipcq: CS-R1138 — Win32 ABI requires val before size.
         [DllImport("dwmapi.dll", PreserveSig = false)] internal static extern void DwmGetColorizationColor(out uint pcrColorization, out bool pfOpaqueBlend);
 
         [DllImport("kernel32.dll", EntryPoint = "GetModuleHandleW", CharSet = CharSet.Unicode)] internal static extern IntPtr GetModuleHandle(string? lpModuleName);
@@ -259,7 +259,7 @@ namespace Clickra.UI.Native
         }
 
         /// <summary>Managed signature for the native window procedure callback.</summary>
-        public delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
+        internal delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
         /// <summary>Timer identifier reserved for periodic progress-window refreshes.</summary>
         public static readonly IntPtr TIMER_ID_REFRESH = (IntPtr)1001;
         private const uint MF_STRING = 0x00000000;
@@ -268,4 +268,3 @@ namespace Clickra.UI.Native
         private const uint TPM_NONOTIFY = 0x00000080;
         private const uint TPM_BOTTOMALIGN = 0x00000020;
     }
-}

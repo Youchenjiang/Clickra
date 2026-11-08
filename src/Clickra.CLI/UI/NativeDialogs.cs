@@ -15,7 +15,7 @@ namespace Clickra.UI;
 /// <summary>
 /// Specifies the display style and interactive controls for a native modal dialog.
 /// </summary>
-public enum NativeDialogKind
+internal enum NativeDialogKind
 {
     Text,
     Confirm,
@@ -28,7 +28,7 @@ public enum NativeDialogKind
 /// Provides unified, modal prompt dialog services for Clickra with identical visual layout,
 /// typography, and branding to Clickra's standard prompt window design.
 /// </summary>
-public static class NativeDialogs
+internal static class NativeDialogs
 {
     private const string PropOldWndProc = "ClickraOldWndProc";
     private const string PropOldBtnProc = "ClickraOldBtnProc";
