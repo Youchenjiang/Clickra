@@ -13,6 +13,11 @@ The complete, authoritative rules are in [.agent/guidelines.md](.agent/guideline
 - Before each external write, state the exact authorized operation and the single operation to execute.
 - If the user objects or withdraws authorization, stop immediately; do not perform cleanup.
 
+## Mandatory Local Verification Prior to Push (Non-negotiable)
+
+- **Local Verification Prior to Push**: Before asking for authorization to push any branch (pr_tool.py push) or create a PR, the agent MUST ALWAYS offer to build and reinstall the package locally (powershell -ExecutionPolicy Bypass -File scripts/build_msix.ps1 -> powershell -ExecutionPolicy Bypass -File scripts/reinstall_msix.ps1 -Launch) so that the user can manually test the changes on their local machine first.
+- Never rush directly into pushing the branch or creating a PR without explicitly asking the user to verify and test locally.
+
 The complete, authoritative rules are in [.agent/guidelines.md](.agent/guidelines.md).
 
 - Use `python scripts/pr_tool.py` as the default PR operations entry point: `prepare` for fast preflight, `push` for separately authorized branch publication, `create` for separately authorized PR creation, `verify` for combined CI/reviews/SonarQube acceptance, and `diagnose` for failure details. `ready` remains an optional **full** local gate when no push follows; do not run it immediately before an approved push because `push` always executes the full versioned hook. Direct `gh`/GraphQL or manual push is an exceptional diagnostic/fallback only when the wrapper cannot perform the operation; explain and record that exception. See `docs/development/tools/pr_tool.md`. These are cooperative rules, not credential isolation or OS-enforced command interception.

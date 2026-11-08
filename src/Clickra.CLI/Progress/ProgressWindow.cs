@@ -15,29 +15,30 @@ using Clickra.Core.Application;
 
 using static Clickra.UI.Native.Win32;
 
-namespace Clickra.UI
+namespace Clickra.UI;
+
+/// <summary>
+/// 提供 CLI 執行階段專專用之 Win32 進度視窗。
+/// </summary>
+public partial class ProgressWindow
 {
-    /// <summary>
-    /// 提供 CLI 執行階段專專用之 Win32 進度視窗。
-    /// </summary>
-    public partial class ProgressWindow
-    {
-        delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
-        static readonly WndProcDelegate _wndProcDelegate = WndProc;
+    delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
+    static readonly WndProcDelegate _wndProcDelegate = WndProc;
 
-        private CancellationTokenSource _cts = new CancellationTokenSource();
-        private NOTIFYICONDATAW _nid;
-        private bool _trayIconAdded = false;
-        private bool _isTrayBtnHovered = false;
-        private IntPtr _hIcon = IntPtr.Zero;
+    private readonly CancellationTokenSource _cts = new();
+    private NOTIFYICONDATAW _nid; // skipcq: CS-R1137
+    private bool _trayIconAdded = false; // skipcq: CS-R1137
+    private bool _isTrayBtnHovered = false; // skipcq: CS-R1137
+    private IntPtr _hIcon = IntPtr.Zero;
 
-        private readonly AutoResetEvent _passwordEvent = new AutoResetEvent(false);
+    private readonly AutoResetEvent _passwordEvent = new(false);
         private bool _isPromptingMarkdownOptions = false;
         private string _markdownTemplateStatus = "";
         private bool _processingStarted = false;
         private Action<bool>? _markdownDecision;
         private bool _markdownDecisionResolved = false;
         private IntPtr _editBgBrush = IntPtr.Zero;
+        private IntPtr _editDisabledBrush = IntPtr.Zero;
         private IntPtr _darkBrush = IntPtr.Zero;
         private IntPtr _hFont = IntPtr.Zero;
 
@@ -61,7 +62,7 @@ namespace Clickra.UI
         private bool _completed => _progressPresentation.State.Status == TaskProgressPresentationStatus.Succeeded;
         private bool _hasError => _progressPresentation.State.Status is TaskProgressPresentationStatus.Failed or TaskProgressPresentationStatus.Canceled;
         private string _errorMessage => _progressPresentation.State.Error;
-        private string? _failureToAlert = null;
+        private string? _failureToAlert = null; // skipcq: CS-R1137
         private IntPtr _hwnd = IntPtr.Zero;
 
         private double _currentDispWidth = 0;
@@ -69,9 +70,9 @@ namespace Clickra.UI
         private float _shimmerOffset = -120;
         private float _dpiScale = 1.0f;
         private float _scrollOffset = 0f;
-        private bool _isDraggingScroll = false;
-        private float _dragStartMouseX = 0f;
-        private float _dragStartOffset = 0f;
+        private bool _isDraggingScroll = false; // skipcq: CS-R1137
+        private float _dragStartMouseX = 0f; // skipcq: CS-R1137
+        private float _dragStartOffset = 0f; // skipcq: CS-R1137
 
         // GDI+ 雙緩衝
         private Bitmap? _bufferBmp;
@@ -138,9 +139,7 @@ namespace Clickra.UI
             window.ShowInstance(resumed.Command, resumed.Files, resumed.TaskId, resumed.StartIndex);
         }
 
-        /// <summary>Registers the window class, creates the progress window and runs the
-        /// message loop while the processing runs on a background thread.</summary>
-        private void ShowInstance(string command, List<string> files, string? existingTaskId = null, int startIndex = 0)
+        private bool ValidateAndInitDpi(string command, List<string>? files)
         {
             uint dpi = 96;
             try { dpi = GetDpiForSystem(); } catch {}
@@ -149,10 +148,17 @@ namespace Clickra.UI
             if (files == null || files.Count == 0)
             {
                 NativeDialogs.Warning(IntPtr.Zero, Loc("cli_err_no_input_title"), Loc("cli_err_no_input"), _dpiScale, SettingsPresentationController.Shared.Language);
-                return;
+                return false;
             }
 
-            if (!ValidateCommandInputs(command, files))
+            return ValidateCommandInputs(command, files);
+        }
+
+        /// <summary>Registers the window class, creates the progress window and runs the
+        /// message loop while the processing runs on a background thread.</summary>
+        private void ShowInstance(string command, List<string> files, string? existingTaskId = null, int startIndex = 0)
+        {
+            if (!ValidateAndInitDpi(command, files))
                 return;
 
             // 清除先前右鍵操作殘留的 ClickraShell surrogate（dllhost，帶套件身分），
@@ -180,15 +186,20 @@ namespace Clickra.UI
                 _isPromptingPrintOptions = existingTaskId is null
                     && _commandOptions is null
                     && IsPrintCommand(command);
+                _isPromptingBatchRename = existingTaskId is null
+                    && _commandOptions is null
+                    && IsBatchRenameCommand(command);
                 _markdownTemplateStatus = Loc("md_options_template_none");
             }
-            if (_isPromptingMarkdownOptions || _isPromptingPrintOptions)
+            if (_isPromptingMarkdownOptions || _isPromptingPrintOptions || _isPromptingBatchRename)
                 _progressPresentation.WaitForInput();
             if (_isPromptingPrintOptions)
                 InitializePrintOptions();
+            if (_isPromptingBatchRename)
+                InitializeBatchRename();
 
 
-            int clientW = (int)(520 * _dpiScale);
+            int clientW = (int)((_isPromptingBatchRename ? Clickra.UI.Layout.BatchRenameLayout.ClientWidth : 520) * _dpiScale);
             int logicalClientHeight = GetInitialClientHeight();
             int clientH = (int)(logicalClientHeight * _dpiScale);
 
@@ -199,19 +210,16 @@ namespace Clickra.UI
 
             CreateProgressWindow(className, hClass, clientW, clientH);
 
+            if (_isPromptingBatchRename)
+                CreateBatchRenameEditControls(_hwnd);
+
             ShowWindow(_hwnd, 5);
             SetTimer(_hwnd, (IntPtr)1, 16, IntPtr.Zero); // 16ms 約 60fps
 
-            if (!_isPromptingMarkdownOptions)
+            if (!_isPromptingMarkdownOptions) // skipcq: CS-R1039
             {
-                if (!_isPromptingPrintOptions)
-                {
+                if (!_isPromptingPrintOptions && !_isPromptingBatchRename) // NOSONAR:S1066 — Architecture guard requires explicit markdown prompt condition isolation.
                     StartProcessingThread(_hwnd);
-                }
-                else
-                {
-                    // Print options dialog is active; background processing waits for user confirmation
-                }
             }
 
             RECT progressRect = default;
@@ -257,8 +265,9 @@ namespace Clickra.UI
 
             RegisterClassEx(ref wc);
 
+            uint winStyle = _isPromptingBatchRename ? (WS_OVERLAPPEDWINDOW | 0x02000000) : WS_OVERLAPPED_FIXED;
             var rect = new RECT { left = 0, top = 0, right = clientW, bottom = clientH };
-            AdjustWindowRectEx(ref rect, WS_OVERLAPPED_FIXED, false, 0);
+            AdjustWindowRectEx(ref rect, winStyle, false, 0);
             int winW = rect.right - rect.left;
             int winH = rect.bottom - rect.top;
 
@@ -266,7 +275,7 @@ namespace Clickra.UI
             IntPtr lpParam = GCHandle.ToIntPtr(handle);
 
             _hwnd = CreateWindowEx(0, className, "Clickra",
-                WS_OVERLAPPED_FIXED, CW_USEDEFAULT, CW_USEDEFAULT, winW, winH,
+                winStyle, CW_USEDEFAULT, CW_USEDEFAULT, winW, winH,
                 IntPtr.Zero, IntPtr.Zero, wc.hInstance, lpParam);
 
             int dark = 1;
@@ -349,8 +358,12 @@ namespace Clickra.UI
         {
             if (_isPromptingMarkdownOptions) return MarkdownOptionsClientHeight;
             if (_isPromptingPrintOptions) return PrintOptionsClientHeight;
+            if (_isPromptingBatchRename) return Clickra.UI.Layout.BatchRenameLayout.ClientHeight;
             return GetStandardClientHeight();
         }
+
+        private static bool IsBatchRenameCommand(string command) =>
+            command.Equals(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName, StringComparison.OrdinalIgnoreCase);
 
         internal void ResizeClientSurface(IntPtr hwnd, int clientW, int clientH)
         {
@@ -429,6 +442,7 @@ namespace Clickra.UI
 
             if (_darkBrush != IntPtr.Zero) { DeleteObject(_darkBrush); _darkBrush = IntPtr.Zero; }
             if (_editBgBrush != IntPtr.Zero) { DeleteObject(_editBgBrush); _editBgBrush = IntPtr.Zero; }
+            if (_editDisabledBrush != IntPtr.Zero) { DeleteObject(_editDisabledBrush); _editDisabledBrush = IntPtr.Zero; }
             if (_hFont != IntPtr.Zero) { DeleteObject(_hFont); _hFont = IntPtr.Zero; }
 
             RemoveTrayIcon();
@@ -442,4 +456,3 @@ namespace Clickra.UI
 
 
     }
-}

@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.17.0.0.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.18.0.0.
 
 ---
 
@@ -15,9 +15,10 @@ Core document operations run completely offline on your local PC to keep your da
 Source Code: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- Fixed an issue where MSIX package installations could be missing app and menu icons
-- Added automated icon integrity validation and self-healing to the packaging workflow
-- Improved release pipeline robustness and preflight version bump enforcement
+- Introduced Folder & File Batch Renaming [F2-21] with sequential numbering, regex search & replace, timestamps, and case transforms
+- Two-phase cyclic dependency swap safety (A ⇄ B) to prevent collision and data loss
+- Smart File Explorer context menu integration: multi-select files to launch batch renaming instantly
+- Dashboard Convert Workspace integration with new "File Organization" group and drag-and-drop support
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
@@ -32,6 +33,7 @@ Source Code: https://github.com/Youchenjiang/Clickra
 - Markdown to PDF and Word conversion
 - Multi-format image conversion: JPG, PNG, WebP, GIF, HEIC
 - Long image stitching and image-to-PDF packaging
+- Batch file and folder renaming with sequential numbering and regex search/replace
 - Local-first offline processing for core file operations
 - NativeAOT compilation with no persistent background services
 - Responsive dark-themed Dashboard with High-DPI support

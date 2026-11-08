@@ -14,8 +14,8 @@ using Clickra.Core.Processors;
 
 using static Clickra.UI.Native.Win32;
 
-namespace Clickra.UI
-{
+namespace Clickra.UI;
+
     /// <summary>
     /// 提供 CLI 執行階段專專用之 Win32 進度視窗。
     /// </summary>
@@ -51,14 +51,9 @@ namespace Clickra.UI
             }
 
             IntPtr result = IntPtr.Zero;
-            if (window != null)
-            {
-                result = window.InstanceWndProc(hwnd, msg, w, l);
-            }
-            else
-            {
-                result = DefWindowProcW(hwnd, msg, w, l);
-            }
+            result = window != null
+                ? window.InstanceWndProc(hwnd, msg, w, l)
+                : DefWindowProcW(hwnd, msg, w, l);
 
             if (msg == 0x0082) // WM_NCDESTROY
             {
@@ -108,8 +103,35 @@ namespace Clickra.UI
 
         /// <summary>Instance window procedure: routes each Win32 message to a dedicated
         /// handler, falling back to DefWindowProcW for messages no handler consumed.</summary>
+        
+        private bool TryHandleBatchRenameWindowMessage(IntPtr hwnd, uint msg, IntPtr l, out IntPtr result)
+        {
+            result = IntPtr.Zero;
+            if (!_isPromptingBatchRename) return false;
+
+            if (msg == 0x0005) // WM_SIZE
+            {
+                int newPxW = (short)(l.ToInt64() & 0xFFFF);
+                int newPxH = (short)((l.ToInt64() >> 16) & 0xFFFF);
+                if (newPxW > 0 && newPxH > 0)
+                {
+                    HandleBatchRenameSize(hwnd, newPxW, newPxH);
+                    return true;
+                }
+            }
+            else if (msg == 0x0024) // WM_GETMINMAXINFO
+            {
+                HandleBatchRenameGetMinMaxInfo(l);
+                return true;
+            }
+
+            return false;
+        }
         private unsafe IntPtr InstanceWndProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
         {
+            IntPtr? lifecycleResult = TryHandleLifecycleMessage(hwnd, msg, w, l);
+            if (lifecycleResult.HasValue) return lifecycleResult.Value;
+
             switch (msg)
             {
                 case WM_USER_SHOW_PASSWORD_INPUT: return HandleShowPasswordInput(hwnd);
@@ -121,7 +143,8 @@ namespace Clickra.UI
                     }
                     break;
                 case 0x0133: return HandleCtlColorEdit(w); // WM_CTLCOLOREDIT
-                case 0x0111: return HandleCommand(); // WM_COMMAND
+                case 0x0138: return HandleCtlColorStatic(w, l); // WM_CTLCOLORSTATIC
+                case 0x0111: return HandleCommand(hwnd, w, l); // WM_COMMAND
                 case 0x020A: return HandleMouseWheel(hwnd, w, l); // WM_MOUSEWHEEL
                 case WM_USER_INVALIDATE: return HandleInvalidate(hwnd, w);
                 case 0x0200: return HandleMouseMove(hwnd, l); // WM_MOUSEMOVE
@@ -136,10 +159,24 @@ namespace Clickra.UI
                         if (sysResult != null) return sysResult.Value;
                     }
                     break;
-                case 0x0010: return HandleClose(hwnd); // WM_CLOSE
-                case 0x02E0: return HandleDpiChanged(hwnd, w, l); // WM_DPICHANGED
-                case 0x0014: return (IntPtr)1; // WM_ERASEBKGND
-                case 0x0113: return HandleTimer(hwnd); // WM_TIMER
+                default:
+                    // Forward unhandled messages to default window procedure.
+                    break;
+            }
+            return DefWindowProcW(hwnd, msg, w, l);
+        }
+
+        private IntPtr? TryHandleLifecycleMessage(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
+        {
+            switch (msg)
+            {
+                case 0x0005: // WM_SIZE
+                case 0x0024: // WM_GETMINMAXINFO
+                    if (TryHandleBatchRenameWindowMessage(hwnd, msg, l, out IntPtr brRes))
+                    {
+                        return brRes;
+                    }
+                    break;
                 case 0x0020: // WM_SETCURSOR
                     if (_isPromptingPrintOptions && (_printIsZoomed || _hoveredPrintElement != PrintElement.None || _openDropdown != PrintDropdownType.None))
                     {
@@ -147,10 +184,17 @@ namespace Clickra.UI
                         return (IntPtr)1;
                     }
                     break;
+                case 0x0010: return HandleClose(hwnd); // WM_CLOSE
+                case 0x02E0: return HandleDpiChanged(hwnd, w, l); // WM_DPICHANGED
+                case 0x0014: return (IntPtr)1; // WM_ERASEBKGND
+                case 0x0113: return HandleTimer(hwnd); // WM_TIMER
                 case 0x000F: return HandlePaint(hwnd); // WM_PAINT
                 case 0x0002: return HandleDestroy(hwnd); // WM_DESTROY
+                default:
+                    // No lifecycle message to handle.
+                    break;
             }
-            return DefWindowProcW(hwnd, msg, w, l);
+            return null;
         }
 
         /// <summary>Shows the password input (or visual splitter) panel, expanding the window
@@ -275,9 +319,44 @@ namespace Clickra.UI
             return _editBgBrush;
         }
 
-        /// <summary>Dispatches button commands (no-op since dialogs handle their own commands).</summary>
-        private static IntPtr HandleCommand()
+        /// <summary>Colors disabled edit controls during batch rename.</summary>
+        private IntPtr HandleCtlColorStatic(IntPtr w, IntPtr l)
         {
+            if (_isPromptingBatchRename && (l == _hwndBrSeqStart || l == _hwndBrSeqPad))
+            {
+                SetTextColor(w, 0x00707070);
+                SetBkColor(w, 0x001E1E1E);
+                if (_editDisabledBrush == IntPtr.Zero) _editDisabledBrush = CreateSolidBrush(0x001E1E1E);
+                return _editDisabledBrush;
+            }
+            return IntPtr.Zero;
+        }
+
+        /// <summary>Dispatches button commands (no-op since dialogs handle their own commands).</summary>
+        private IntPtr HandleCommand(IntPtr hwnd, IntPtr w, IntPtr l)
+        {
+            if (_isPromptingBatchRename)
+            {
+                int notif = (short)((w.ToInt64() >> 16) & 0xFFFF);
+                if (notif == 0x0300) // EN_CHANGE
+                {
+                    UpdateBatchRenamePlan();
+                    InvalidateBatchRenamePreview(hwnd);
+                    return IntPtr.Zero;
+                }
+                if (notif == 0x0100) // EN_SETFOCUS
+                {
+                    _hwndBrFocused = l;
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                    return IntPtr.Zero;
+                }
+                if (notif == 0x0200) // EN_KILLFOCUS
+                {
+                    if (_hwndBrFocused == l) _hwndBrFocused = IntPtr.Zero;
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                    return IntPtr.Zero;
+                }
+            }
             return IntPtr.Zero;
         }
 
@@ -287,6 +366,10 @@ namespace Clickra.UI
         {
             int delta = (short)((w.ToInt64() >> 16) & 0xFFFF);
             int scrollDir = delta > 0 ? -1 : 1;
+            if (_isPromptingBatchRename && HandleBatchRenameMouseWheel(hwnd, delta))
+            {
+                return IntPtr.Zero;
+            }
             if (_isPromptingPrintOptions)
             {
                 return HandlePrintMouseWheel(hwnd, delta, scrollDir, l);
@@ -366,6 +449,11 @@ namespace Clickra.UI
             int mouseX = (int)(rawX / _dpiScale);
             int mouseY = (int)(rawY / _dpiScale);
 
+            if (_isPromptingBatchRename)
+            {
+                return HandleBatchRenameMouseMove(hwnd, mouseX, mouseY);
+            }
+
             if (_isPromptingPrintOptions)
             {
                 return HandlePrintMouseMove(hwnd, mouseX, mouseY);
@@ -416,14 +504,7 @@ namespace Clickra.UI
                 int clickedRow = (mouseY - listTop) / PrintDropdownItemHeight;
                 int itemIdx = _dropdownScrollOffset + clickedRow;
                 var items = GetOpenDropdownItems();
-                if (itemIdx >= 0 && itemIdx < items.Count && mouseY >= listTop)
-                {
-                    _hoveredDropdownIndex = itemIdx;
-                }
-                else
-                {
-                    _hoveredDropdownIndex = -1;
-                }
+                _hoveredDropdownIndex = (itemIdx >= 0 && itemIdx < items.Count && mouseY >= listTop) ? itemIdx : -1;
             }
             else
             {
@@ -535,6 +616,10 @@ namespace Clickra.UI
                 return IntPtr.Zero;
             }
             if (_isPromptingVisualSplitter && HandleVisualSplitterClick(hwnd, mouseX, mouseY))
+            {
+                return IntPtr.Zero;
+            }
+            if (_isPromptingBatchRename && HandleBatchRenameLButtonDown(hwnd, rawX, rawY))
             {
                 return IntPtr.Zero;
             }
@@ -916,6 +1001,13 @@ namespace Clickra.UI
         /// the window.</summary>
         private IntPtr HandleClose(IntPtr hwnd)
         {
+            if (_isPromptingBatchRename)
+            {
+                DestroyOrHideBatchRenameControls();
+                _isPromptingBatchRename = false;
+                DestroyWindow(hwnd);
+                return IntPtr.Zero;
+            }
             if (_isPromptingMarkdownOptions)
             {
                 ResolveMarkdownDecision(false);
@@ -993,7 +1085,7 @@ namespace Clickra.UI
         {
             lock (_stateLock)
             {
-                if (!_completed && !_hasError && !_isPromptingPassword && !_isPromptingMarkdownOptions)
+                if (!_completed && !_hasError && !_isPromptingPassword && !_isPromptingMarkdownOptions && !_isPromptingBatchRename && !_isPromptingPrintOptions)
                 {
                     if (_currentDispWidth < _targetWidth)
                     {
@@ -1037,4 +1129,3 @@ namespace Clickra.UI
         }
 
     }
-}

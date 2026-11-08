@@ -81,4 +81,7 @@
   <data name="Menu_Pdf2Img" xml:space="preserve">
     <value>轉為圖片</value>
   </data>
+  <data name="Menu_BatchRename" xml:space="preserve">
+    <value>批次命名</value>
+  </data>
 </root>

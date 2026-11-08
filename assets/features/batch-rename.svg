@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Base file sheet -->
+  <rect x="36" y="28" width="124" height="156" rx="24" fill="#0078D4"/>
+  <line x1="68" y1="72" x2="128" y2="72" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>
+  <line x1="68" y1="104" x2="116" y2="104" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>
+  <!-- Rename action badge -->
+  <rect x="104" y="104" width="124" height="124" rx="28" fill="#00828C"/>
+  <path d="M 132,166 L 166,166 M 156,154 L 168,166 L 156,178" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 184,136 L 196,148 L 164,180 L 152,180 L 152,168 Z" fill="#FFFFFF"/>
+</svg>
