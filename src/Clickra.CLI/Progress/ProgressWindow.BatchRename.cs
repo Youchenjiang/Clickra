@@ -436,7 +436,7 @@ public partial class ProgressWindow
 
         bool willChange = item.OriginalName != item.NewName;
         bool hasConflict = item.Status is RenameItemStatus.ConflictExistingFile or RenameItemStatus.ConflictDuplicateTarget;
-        bool isCyclic = !hasConflict && (_brCurrentPlan?.RequiresTwoPhaseSwap ?? false);
+        bool isCyclic = !hasConflict && (_brCurrentPlan?.RequiresTwoPhaseSwap == true);
         bool hasBadge = hasConflict || isCyclic;
 
         Color cardBgColor = GetPreviewCardBgColor(hasConflict, willChange);
@@ -753,7 +753,7 @@ public partial class ProgressWindow
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
         }
-        catch (Exception)
+        catch (Exception) // skipcq: CS-R1008 — Intentional catch-all for native dialog display failures.
         {
             // Ignore native dialog error
         }

@@ -15,23 +15,23 @@ using Clickra.Core.Application;
 
 using static Clickra.UI.Native.Win32;
 
-namespace Clickra.UI
+namespace Clickra.UI;
+
+/// <summary>
+/// 提供 CLI 執行階段專專用之 Win32 進度視窗。
+/// </summary>
+public partial class ProgressWindow
 {
-    /// <summary>
-    /// 提供 CLI 執行階段專專用之 Win32 進度視窗。
-    /// </summary>
-    public partial class ProgressWindow
-    {
-        delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
-        static readonly WndProcDelegate _wndProcDelegate = WndProc;
+    delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
+    static readonly WndProcDelegate _wndProcDelegate = WndProc;
 
-        private CancellationTokenSource _cts = new CancellationTokenSource();
-        private NOTIFYICONDATAW _nid;
-        private bool _trayIconAdded = false;
-        private bool _isTrayBtnHovered = false;
-        private IntPtr _hIcon = IntPtr.Zero;
+    private readonly CancellationTokenSource _cts = new();
+    private NOTIFYICONDATAW _nid;
+    private bool _trayIconAdded = false;
+    private bool _isTrayBtnHovered = false;
+    private IntPtr _hIcon = IntPtr.Zero;
 
-        private readonly AutoResetEvent _passwordEvent = new AutoResetEvent(false);
+    private readonly AutoResetEvent _passwordEvent = new(false);
         private bool _isPromptingMarkdownOptions = false;
         private string _markdownTemplateStatus = "";
         private bool _processingStarted = false;
@@ -451,4 +451,3 @@ namespace Clickra.UI
 
 
     }
-}

@@ -129,6 +129,9 @@ namespace Clickra.UI;
         }
         private unsafe IntPtr InstanceWndProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
         {
+            IntPtr? lifecycleResult = TryHandleLifecycleMessage(hwnd, msg, w, l);
+            if (lifecycleResult.HasValue) return lifecycleResult.Value;
+
             switch (msg)
             {
                 case WM_USER_SHOW_PASSWORD_INPUT: return HandleShowPasswordInput(hwnd);
@@ -156,10 +159,17 @@ namespace Clickra.UI;
                         if (sysResult != null) return sysResult.Value;
                     }
                     break;
-                case 0x0010: return HandleClose(hwnd); // WM_CLOSE
-                case 0x02E0: return HandleDpiChanged(hwnd, w, l); // WM_DPICHANGED
-                case 0x0014: return (IntPtr)1; // WM_ERASEBKGND
-                case 0x0113: return HandleTimer(hwnd); // WM_TIMER
+                default:
+                    // Forward unhandled messages to default window procedure.
+                    break;
+            }
+            return DefWindowProcW(hwnd, msg, w, l);
+        }
+
+        private IntPtr? TryHandleLifecycleMessage(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
+        {
+            switch (msg)
+            {
                 case 0x0005: // WM_SIZE
                 case 0x0024: // WM_GETMINMAXINFO
                     if (TryHandleBatchRenameWindowMessage(hwnd, msg, l, out IntPtr brRes))
@@ -174,11 +184,17 @@ namespace Clickra.UI;
                         return (IntPtr)1;
                     }
                     break;
+                case 0x0010: return HandleClose(hwnd); // WM_CLOSE
+                case 0x02E0: return HandleDpiChanged(hwnd, w, l); // WM_DPICHANGED
+                case 0x0014: return (IntPtr)1; // WM_ERASEBKGND
+                case 0x0113: return HandleTimer(hwnd); // WM_TIMER
                 case 0x000F: return HandlePaint(hwnd); // WM_PAINT
                 case 0x0002: return HandleDestroy(hwnd); // WM_DESTROY
-                default: break;
+                default:
+                    // No lifecycle message to handle.
+                    break;
             }
-            return DefWindowProcW(hwnd, msg, w, l);
+            return null;
         }
 
         /// <summary>Shows the password input (or visual splitter) panel, expanding the window
