@@ -288,23 +288,54 @@ class PrPreflightTests(unittest.TestCase):
             self.assertTrue(any("is not tracked in docs/ROADMAP.md" in e for e in errors))
 
     def test_check_spec_roadmap_alignment_fails_when_spec_modified_without_roadmap(self):
-        errors = check_spec_roadmap_alignment(["docs/specs/v4_cross_platform_unification.md"])
-        self.assertTrue(any("docs/ROADMAP.md must be updated when modifying specifications" in e for e in errors))
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            errors = check_spec_roadmap_alignment(root, ["docs/specs/v4_cross_platform_unification.md"])
+            self.assertTrue(any("docs/ROADMAP.md must be updated when modifying specifications" in e for e in errors))
 
-        errors_arch = check_spec_roadmap_alignment(["docs/architecture/spec/manifesto.md"])
-        self.assertTrue(any("docs/ROADMAP.md must be updated when modifying specifications" in e for e in errors_arch))
+            errors_arch = check_spec_roadmap_alignment(root, ["docs/architecture/spec/manifesto.md"])
+            self.assertTrue(any("docs/ROADMAP.md must be updated when modifying specifications" in e for e in errors_arch))
 
-    def test_check_spec_roadmap_alignment_passes_when_spec_and_roadmap_modified(self):
-        errors = check_spec_roadmap_alignment(
-            ["docs/specs/v4_cross_platform_unification.md", "docs/ROADMAP.md"]
-        )
-        self.assertEqual([], errors)
+    def test_check_spec_roadmap_alignment_fails_when_spec_untracked_in_roadmap_content(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            docs = root / "docs"
+            docs.mkdir(parents=True)
+            (docs / "ROADMAP.md").write_text("# Roadmap\nUnrelated content\n", encoding="utf-8")
+            errors = check_spec_roadmap_alignment(
+                root, ["docs/specs/v4_cross_platform_unification.md", "docs/ROADMAP.md"]
+            )
+            self.assertTrue(any("is modified but not tracked in docs/ROADMAP.md content" in e for e in errors))
+
+    def test_check_spec_roadmap_alignment_passes_when_spec_and_roadmap_content_match(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            docs = root / "docs"
+            docs.mkdir(parents=True)
+            (docs / "ROADMAP.md").write_text("# Roadmap\nTracking [v4_cross_platform_unification.md]\n", encoding="utf-8")
+            errors = check_spec_roadmap_alignment(
+                root, ["docs/specs/v4_cross_platform_unification.md", "docs/ROADMAP.md"]
+            )
+            self.assertEqual([], errors)
+
+    def test_check_spec_roadmap_alignment_ignores_specs_readme(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            errors = check_spec_roadmap_alignment(root, ["docs/specs/README.md"])
+            self.assertEqual([], errors)
 
     def test_check_spec_roadmap_alignment_passes_when_no_specs_modified(self):
-        errors = check_spec_roadmap_alignment(
-            ["src/Clickra.Core/SomeFile.cs", "docs/architecture/README.md"]
-        )
-        self.assertEqual([], errors)
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            errors = check_spec_roadmap_alignment(
+                root, ["src/Clickra.Core/SomeFile.cs", "docs/architecture/README.md"]
+            )
+            self.assertEqual([], errors)
 
     def test_preflight_cli_with_milestone_and_draft_metadata(self):
         from pr_preflight import main

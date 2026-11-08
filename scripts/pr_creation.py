@@ -56,32 +56,34 @@ def _validate_remote_assignee(repo, assignee):
         raise ValueError("GitHub assignee is not eligible")
 
 
-def _validate_spec_roadmap_alignment():
-    diff_output = _read(["git", "diff", "--name-only", "origin/main...HEAD"])
-    changed_files = [line.strip().replace("\\", "/") for line in diff_output.splitlines() if line.strip()]
+def _validate_spec_roadmap_alignment(head=None):
+    target = head or "HEAD"
+    diff_output = _read(["git", "diff", "-z", "--name-only", "--no-renames", f"origin/main...{target}"])
+    changed_files = [p.strip().replace("\\", "/") for p in diff_output.split("\0") if p.strip()]
     from pr_preflight import check_spec_roadmap_alignment
-    spec_errors = check_spec_roadmap_alignment(changed_files)
+    spec_errors = check_spec_roadmap_alignment(REPO_ROOT, changed_files)
     if spec_errors:
         raise ValueError("; ".join(spec_errors))
 
 
-def _validate_roadmap_milestone(milestone):
+def _validate_roadmap_milestone(milestone, head=None):
     if not milestone:
         return
-    diff_output = _read(["git", "diff", "--name-only", "origin/main...HEAD"])
-    changed_files = [line.strip().replace("\\", "/") for line in diff_output.splitlines() if line.strip()]
+    target = head or "HEAD"
+    diff_output = _read(["git", "diff", "-z", "--name-only", "--no-renames", f"origin/main...{target}"])
+    changed_files = [p.strip().replace("\\", "/") for p in diff_output.split("\0") if p.strip()]
     from pr_preflight import check_roadmap_alignment
     roadmap_errors = check_roadmap_alignment(REPO_ROOT, milestone, changed_files)
     if roadmap_errors:
         raise ValueError("; ".join(roadmap_errors))
 
 
-def validate_metadata(repo, label, milestone, assignee):
+def validate_metadata(repo, label, milestone, assignee, head=None):
     """Validate selected GitHub metadata before exposing an executable preview."""
     _validate_remote_entries(repo, label, milestone)
     _validate_remote_assignee(repo, assignee)
-    _validate_spec_roadmap_alignment()
-    _validate_roadmap_milestone(milestone)
+    _validate_spec_roadmap_alignment(head=head)
+    _validate_roadmap_milestone(milestone, head=head)
 
 
 _metadata = validate_metadata
@@ -159,7 +161,7 @@ def create(repo, branch, *, title, body_file, label, milestone=None, assignee=No
     """Preview first; one authorized create attempt, then independently re-read."""
     body, data = validate_creation_inputs(title, body_file, label, milestone, assignee)
     head = current_branch(repo, branch)
-    validate_metadata(repo, label, milestone, assignee)
+    validate_metadata(repo, label, milestone, assignee, head=head)
     fingerprint = hashlib.sha256(
         json.dumps([title, data, label, milestone, assignee], ensure_ascii=False).encode("utf-8")
     ).hexdigest()[:16]
@@ -168,6 +170,9 @@ def create(repo, branch, *, title, body_file, label, milestone=None, assignee=No
         return {"preview": approval}
     if authorization != approval:
         raise ValueError("exact PR creation authorization required")
+    current_head = current_branch(repo, branch)
+    if current_head != head:
+        raise RuntimeError("HEAD has changed since authorization; PR creation rejected")
     args = [executable("gh"), "pr", "create", "--repo", repo, "--base", "main",
             "--head", branch, "--title", title, "--body-file", str(body), "--label", label]
     if milestone:
