@@ -373,7 +373,8 @@ class PrPreflightTests(unittest.TestCase):
                  patch("pr_preflight._check_worktree", return_value=[]), \
                  patch("pr_preflight._check_base_parity", return_value=[]), \
                  patch("pr_preflight._check_version_bump", return_value=[]), \
-                 patch("pr_preflight.check_roadmap_alignment", return_value=[]):
+                 patch("pr_preflight.check_roadmap_alignment", return_value=[]), \
+                 patch("pr_preflight.git", return_value=CompletedProcess(["git"], 0, "", "")):
                 errors = check("origin/main", body_file=body_path, metadata=None, milestone="[F1-1] Startup")
                 self.assertEqual([], errors)
         finally:
