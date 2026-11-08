@@ -51,7 +51,7 @@ The conventions above are guarded by automated architecture boundary tests in `T
 - Processor base inheritance and processing/execution placement test
 - Module options placement in `Application/`
 - Presentation prohibition of module `Processing/` and `Infrastructure/` references
-- Polymorphic self-declaration contract adherence (no hardcoded command branching in Presentation)
+- Polymorphic self-declaration contract adherence (planned for v3.19.0; see module architecture unification manifesto)
 
 ## 4. New Command Wiring Checklist
 

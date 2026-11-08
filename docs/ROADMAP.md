@@ -48,7 +48,7 @@
 - [x] **[F1-11] Dual-Track Distribution (Fluent / NativeAOT)**：雙軌發行。
     - 2026/08 決定維持兩條軌道：本機有 .NET 8+ 與 Windows App Runtime → 安裝 Fluent；任一缺失 → 安裝 NativeAOT（零依賴）。
     - 新增 `ClickraLauncher.exe`（NativeAOT bootstrapper）自動偵測 runtime 並安裝對應軌道；新增 `Clickra.msix (Main)` 零依賴套件與 `scripts/build_msix.ps1`。
-    - 舊 Win32 Dashboard/Progress 由「過渡 fallback」改為**永久 NativeAOT 軌道**，不再排定移除。
+    - 舊 Win32 Dashboard/Progress 於 3.x 週期內作為 NativeAOT 零依賴軌道維持運作；在 4.0 跨平台 GUI 統一前持續維護。
     - 當時的詳細雙軌設計紀錄見 `docs/development/archive/dual_track_guide.md`；目前 release pipeline 另以實際 workflow/scripts 為準。
     - **4.0 架構收斂演進**：2026/11 核准之 [4.0 跨平台統一規格 (v4_cross_platform_unification.md)](specs/v4_cross_platform_unification.md) 將雙軌制定調為 3.x 歷史過渡期方案。在 4.0 階段三統一跨平台 GUI 通過 NativeAOT 零依賴驗收後，將正式除役 Win32 與 WinUI 3 雙軌介面。
 - [x] **[F1-14] Shell Context Menu Icons**：右鍵選單圖示（v3.7.0）。
