@@ -482,7 +482,8 @@ public partial class ProgressWindow
         g.DrawString("→", smallFont, arrowBrush, arrowX, textY, sfTypo);
 
         float newX = arrowX + (22 * s);
-        DrawPreviewItemNewName(g, s, item.OriginalName, item.NewName, smallFont, newX, textY, maxNameW, hasConflict, sfTypo);
+        var layoutBox = new PreviewLayoutBox(newX, textY, maxNameW, s);
+        DrawPreviewItemNewName(g, smallFont, sfTypo, layoutBox, item.OriginalName, item.NewName, hasConflict);
 
         if (hasBadge)
         {
@@ -513,40 +514,44 @@ public partial class ProgressWindow
         bool canExecute = _brFiles.Count > 0 && (_brCurrentPlan?.Items.Count(i => i.OriginalName != i.NewName) ?? 0) > 0;
         ModernControls.DrawButton(ctx, BatchRenameLayout.ExecuteRect(clientW, clientH), Loc("batch_rename_execute"), _msgFont!, true, canExecute);
     }
-    /// <summary>
-    /// Draws the preview target name with intelligent diff highlighting:
-    /// - Unchanged parts are rendered in subtle gray.
-    /// - Changed / added / sequence fragments are highlighted in vivid gold with an amber glow pill.
-    /// - Long names have their unchanged prefix middle-compacted so the diff and extension remain 100% visible.
-    /// </summary>
-    private void DrawPreviewItemNewName(Graphics g, float s, string orig, string newN, Font font, float x, float y, float maxW, bool hasConflict, StringFormat sf)
+    private readonly record struct PreviewLayoutBox(float X, float Y, float MaxWidth, float Scale);
+
+    private static (string Pre, string Diff, string Post) ComputeDiffParts(string orig, string newN)
     {
-        if (orig == newN)
-        {
-            using var dimBrush = new SolidBrush(Color.FromArgb(115, 115, 115));
-            string compact = ModernControls.CompactMiddle(newN, font, maxW, g, sf);
-            g.DrawString(compact, font, dimBrush, x, y, sf);
-            return;
-        }
-
-        if (hasConflict)
-        {
-            using var errBrush = new SolidBrush(Color.FromArgb(255, 110, 110));
-            string compact = ModernControls.CompactMiddle(newN, font, maxW, g, sf);
-            g.DrawString(compact, font, errBrush, x, y, sf);
-            return;
-        }
-
-        // Compute longest common prefix and suffix to isolate the modified diff fragment
         int p = 0;
         while (p < orig.Length && p < newN.Length && orig[p] == newN[p]) p++;
 
         int sLen = 0;
         while (sLen < (orig.Length - p) && sLen < (newN.Length - p) && orig[orig.Length - 1 - sLen] == newN[newN.Length - 1 - sLen]) sLen++;
 
-        string pre = newN[..p];
-        string diff = newN[p..^sLen];
-        string post = newN[^sLen..];
+        return (newN[..p], newN[p..^sLen], newN[^sLen..]);
+    }
+
+    /// <summary>
+    /// Draws the preview target name with intelligent diff highlighting:
+    /// - Unchanged parts are rendered in subtle gray.
+    /// - Changed / added / sequence fragments are highlighted in vivid gold with an amber glow pill.
+    /// - Long names have their unchanged prefix middle-compacted so the diff and extension remain 100% visible.
+    /// </summary>
+    private static void DrawPreviewItemNewName(Graphics g, Font font, StringFormat sf, PreviewLayoutBox box, string orig, string newN, bool hasConflict)
+    {
+        if (orig == newN)
+        {
+            using var dimBrush = new SolidBrush(Color.FromArgb(115, 115, 115));
+            string compact = ModernControls.CompactMiddle(newN, font, box.MaxWidth, g, sf);
+            g.DrawString(compact, font, dimBrush, box.X, box.Y, sf);
+            return;
+        }
+
+        if (hasConflict)
+        {
+            using var errBrush = new SolidBrush(Color.FromArgb(255, 110, 110));
+            string compact = ModernControls.CompactMiddle(newN, font, box.MaxWidth, g, sf);
+            g.DrawString(compact, font, errBrush, box.X, box.Y, sf);
+            return;
+        }
+
+        var (pre, diff, post) = ComputeDiffParts(orig, newN);
 
         using var normalBrush = new SolidBrush(Color.FromArgb(175, 175, 175));
         using var diffBrush = new SolidBrush(Color.FromArgb(255, 215, 64)); // Vivid Gold
@@ -554,8 +559,8 @@ public partial class ProgressWindow
         if (string.IsNullOrEmpty(diff))
         {
             // Deletion: draw new name in accent gold so the change is evident
-            string compact = ModernControls.CompactMiddle(newN, font, maxW, g, sf);
-            g.DrawString(compact, font, diffBrush, x, y, sf);
+            string compact = ModernControls.CompactMiddle(newN, font, box.MaxWidth, g, sf);
+            g.DrawString(compact, font, diffBrush, box.X, box.Y, sf);
             return;
         }
 
@@ -563,49 +568,49 @@ public partial class ProgressWindow
         float wPost = g.MeasureString(post, font, 10000, sf).Width;
         float wPre = g.MeasureString(pre, font, 10000, sf).Width;
 
-        if (wPre + wDiff + wPost > maxW)
+        if (wPre + wDiff + wPost > box.MaxWidth)
         {
             // Truncate unchanged portions while preserving diff and extension
-            if (wPre > wPost && (maxW - wDiff - wPost) > (24 * s))
+            if (wPre > wPost && (box.MaxWidth - wDiff - wPost) > (24 * box.Scale))
             {
-                float availForPre = maxW - wDiff - wPost;
+                float availForPre = box.MaxWidth - wDiff - wPost;
                 pre = ModernControls.CompactMiddle(pre, font, availForPre, g, sf);
                 wPre = g.MeasureString(pre, font, 10000, sf).Width;
             }
-            else if ((maxW - wPre - wDiff) > (24 * s))
+            else if ((box.MaxWidth - wPre - wDiff) > (24 * box.Scale))
             {
-                float availForPost = maxW - wPre - wDiff;
+                float availForPost = box.MaxWidth - wPre - wDiff;
                 post = ModernControls.CompactMiddle(post, font, availForPost, g, sf);
             }
             else
             {
-                string compact = ModernControls.CompactMiddle(newN, font, maxW, g, sf);
-                g.DrawString(compact, font, diffBrush, x, y, sf);
+                string compact = ModernControls.CompactMiddle(newN, font, box.MaxWidth, g, sf);
+                g.DrawString(compact, font, diffBrush, box.X, box.Y, sf);
                 return;
             }
         }
 
-        float curX = x;
+        float curX = box.X;
         if (!string.IsNullOrEmpty(pre))
         {
-            g.DrawString(pre, font, normalBrush, curX, y, sf);
+            g.DrawString(pre, font, normalBrush, curX, box.Y, sf);
             curX += wPre;
         }
 
         if (!string.IsNullOrEmpty(diff))
         {
-            var diffBgRect = new RectangleF(curX - (1 * s), y, wDiff + (2 * s), font.GetHeight(g));
+            var diffBgRect = new RectangleF(curX - (1 * box.Scale), box.Y, wDiff + (2 * box.Scale), font.GetHeight(g));
             using var diffBg = new SolidBrush(Color.FromArgb(50, 255, 215, 64));
-            using var diffPath = UIHelper.GetRoundedRectPath(diffBgRect, 2 * s);
+            using var diffPath = UIHelper.GetRoundedRectPath(diffBgRect, 2 * box.Scale);
             g.FillPath(diffBg, diffPath);
 
-            g.DrawString(diff, font, diffBrush, curX, y, sf);
+            g.DrawString(diff, font, diffBrush, curX, box.Y, sf);
             curX += wDiff;
         }
 
         if (!string.IsNullOrEmpty(post))
         {
-            g.DrawString(post, font, normalBrush, curX, y, sf);
+            g.DrawString(post, font, normalBrush, curX, box.Y, sf);
         }
     }
 
@@ -742,13 +747,7 @@ public partial class ProgressWindow
             var selected = ModernControls.SelectOpenFiles(hwnd, Loc("batch_rename_add_files"), "All Files (*.*)\0*.*\0\0");
             if (selected.Count > 0)
             {
-                foreach (string path in selected)
-                {
-                    if (!_brFiles.Contains(path, StringComparer.OrdinalIgnoreCase))
-                    {
-                        _brFiles.Add(path);
-                    }
-                }
+                _brFiles.AddRange(selected.Where(path => !_brFiles.Contains(path, StringComparer.OrdinalIgnoreCase)));
                 UpdateBatchRenamePlan();
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }

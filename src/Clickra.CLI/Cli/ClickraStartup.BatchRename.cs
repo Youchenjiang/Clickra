@@ -120,11 +120,6 @@ internal static partial class ClickraStartup
             ? BatchRenameUseCase.ResolveTargetFiles(inputPaths, recursive)
             : new List<string>();
 
-        bool hasRuleFlags = HasAnyRuleFlag(
-            prefix, suffix, startStr, stepStr, padStr, numPosStr,
-            find, replace, dateSourceStr, dateFormat, datePosStr,
-            caseStr, extStr, customExt, dryRun);
-
         var options = new BatchRenameOptions(
             Prefix: prefix,
             Suffix: suffix,
@@ -135,20 +130,21 @@ internal static partial class ClickraStartup
             ExtensionMode: BuildExtensionMode(extStr, customExt),
             CustomExtension: customExt);
 
+        bool hasRuleFlags = HasAnyRuleFlag(options, dryRun);
+
         return new BatchRenameParsedCli(files, options, forceGui, quiet, dryRun, hasRuleFlags);
     }
 
-    private static bool HasAnyRuleFlag(
-        string? prefix, string? suffix, string? startStr, string? stepStr, string? padStr, string? numPosStr,
-        string? find, string replace, string? dateSourceStr, string? dateFormat, string? datePosStr,
-        string? caseStr, string? extStr, string? customExt, bool dryRun)
+    private static bool HasAnyRuleFlag(BatchRenameOptions options, bool dryRun)
     {
         return dryRun ||
-               prefix != null || suffix != null || startStr != null ||
-               stepStr != null || padStr != null || numPosStr != null ||
-               find != null || !string.IsNullOrEmpty(replace) || dateSourceStr != null ||
-               dateFormat != null || datePosStr != null || caseStr != null ||
-               extStr != null || customExt != null;
+               options.Prefix != null ||
+               options.Suffix != null ||
+               options.Numbering != null ||
+               options.Replace != null ||
+               options.Timestamp != null ||
+               options.CaseTransform != CaseTransformMode.None ||
+               options.ExtensionMode != ExtensionTransformMode.KeepOriginal;
     }
 
     private static void ExecuteCliPlan(BatchRenamePlan plan)

@@ -139,9 +139,7 @@ public partial class ProgressWindow
             window.ShowInstance(resumed.Command, resumed.Files, resumed.TaskId, resumed.StartIndex);
         }
 
-        /// <summary>Registers the window class, creates the progress window and runs the
-        /// message loop while the processing runs on a background thread.</summary>
-        private void ShowInstance(string command, List<string> files, string? existingTaskId = null, int startIndex = 0)
+        private bool ValidateAndInitDpi(string command, List<string>? files)
         {
             uint dpi = 96;
             try { dpi = GetDpiForSystem(); } catch {}
@@ -150,10 +148,17 @@ public partial class ProgressWindow
             if (files == null || files.Count == 0)
             {
                 NativeDialogs.Warning(IntPtr.Zero, Loc("cli_err_no_input_title"), Loc("cli_err_no_input"), _dpiScale, SettingsPresentationController.Shared.Language);
-                return;
+                return false;
             }
 
-            if (!ValidateCommandInputs(command, files))
+            return ValidateCommandInputs(command, files);
+        }
+
+        /// <summary>Registers the window class, creates the progress window and runs the
+        /// message loop while the processing runs on a background thread.</summary>
+        private void ShowInstance(string command, List<string> files, string? existingTaskId = null, int startIndex = 0)
+        {
+            if (!ValidateAndInitDpi(command, files))
                 return;
 
             // 清除先前右鍵操作殘留的 ClickraShell surrogate（dllhost，帶套件身分），
@@ -213,7 +218,7 @@ public partial class ProgressWindow
 
             if (!_isPromptingMarkdownOptions) // skipcq: CS-R1039
             {
-                if (!_isPromptingPrintOptions && !_isPromptingBatchRename)
+                if (!_isPromptingPrintOptions && !_isPromptingBatchRename) // NOSONAR:S1066 — Architecture guard requires explicit markdown prompt condition isolation.
                     StartProcessingThread(_hwnd);
             }
 

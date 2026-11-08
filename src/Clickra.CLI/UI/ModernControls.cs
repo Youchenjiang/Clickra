@@ -336,36 +336,39 @@ public static class ModernControls
 
             if (GetOpenFileName(ref ofn))
             {
-                var paths = new List<string>();
-                IntPtr currentPtr = fileBuffer;
-                while (true)
-                {
-                    string? s = Marshal.PtrToStringUni(currentPtr);
-                    if (string.IsNullOrEmpty(s)) break;
-                    paths.Add(s);
-                    currentPtr += (s.Length + 1) * 2;
-                }
-
-                if (paths.Count > 0)
-                {
-                    if (paths.Count == 1)
-                    {
-                        files.Add(paths[0]);
-                    }
-                    else
-                    {
-                        string dir = paths[0];
-                        for (int i = 1; i < paths.Count; i++)
-                        {
-                            files.Add(Path.Combine(dir, paths[i]));
-                        }
-                    }
-                }
+                files.AddRange(ParseOpenFileNameBuffer(fileBuffer));
             }
         }
         finally
         {
             Marshal.FreeHGlobal(fileBuffer);
+        }
+
+        return files;
+    }
+
+    private static List<string> ParseOpenFileNameBuffer(IntPtr fileBuffer)
+    {
+        var paths = new List<string>();
+        IntPtr currentPtr = fileBuffer;
+        while (true)
+        {
+            string? s = Marshal.PtrToStringUni(currentPtr);
+            if (string.IsNullOrEmpty(s)) break;
+            paths.Add(s);
+            currentPtr += (s.Length + 1) * 2;
+        }
+
+        if (paths.Count <= 1)
+        {
+            return paths;
+        }
+
+        string dir = paths[0];
+        var files = new List<string>(paths.Count - 1);
+        for (int i = 1; i < paths.Count; i++)
+        {
+            files.Add(Path.Combine(dir, paths[i]));
         }
 
         return files;
