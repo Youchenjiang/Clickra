@@ -10,7 +10,7 @@ using Clickra.Core.Modules.BatchRename.Processing;
 namespace Clickra.Core.Modules.BatchRename.Application;
 
 /// <summary>Application service orchestrating batch file renaming.</summary>
-public sealed class BatchRenameUseCase
+public static class BatchRenameUseCase
 {
     public const string CommandName = "batch-rename";
 
