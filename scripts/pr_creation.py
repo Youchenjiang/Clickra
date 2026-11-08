@@ -56,6 +56,15 @@ def _validate_remote_assignee(repo, assignee):
         raise ValueError("GitHub assignee is not eligible")
 
 
+def _validate_spec_roadmap_alignment():
+    diff_output = _read(["git", "diff", "--name-only", "origin/main...HEAD"])
+    changed_files = [line.strip().replace("\\", "/") for line in diff_output.splitlines() if line.strip()]
+    from pr_preflight import check_spec_roadmap_alignment
+    spec_errors = check_spec_roadmap_alignment(REPO_ROOT, changed_files)
+    if spec_errors:
+        raise ValueError("; ".join(spec_errors))
+
+
 def _validate_roadmap_milestone(milestone):
     if not milestone:
         return
@@ -71,6 +80,7 @@ def validate_metadata(repo, label, milestone, assignee):
     """Validate selected GitHub metadata before exposing an executable preview."""
     _validate_remote_entries(repo, label, milestone)
     _validate_remote_assignee(repo, assignee)
+    _validate_spec_roadmap_alignment()
     _validate_roadmap_milestone(milestone)
 
 

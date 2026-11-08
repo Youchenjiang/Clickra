@@ -423,6 +423,26 @@ def check_roadmap_alignment(repo_root, milestone, changed_files):
     return []
 
 
+SPEC_DIRECTORIES = (
+    "docs/specs/",
+    "docs/architecture/spec/",
+)
+
+
+def check_spec_roadmap_alignment(repo_root, changed_files):
+    """Verify that docs/ROADMAP.md is updated when modifying architectural specifications."""
+    spec_changed = any(
+        any(f.startswith(prefix) for prefix in SPEC_DIRECTORIES) and f.endswith(".md")
+        for f in changed_files
+    )
+    if spec_changed and "docs/ROADMAP.md" not in changed_files:
+        return [
+            "docs/ROADMAP.md must be updated when modifying specifications "
+            "under docs/specs/ or docs/architecture/spec/ to maintain strategic roadmap alignment."
+        ]
+    return []
+
+
 def check(base, body_file=None, pushed_ref=None, pushed_oid=None, metadata=None, milestone=None):
     try:
         return _check(base, body_file, pushed_ref, pushed_oid, metadata, milestone)
@@ -459,6 +479,10 @@ def _check_base_parity(base):
 
 
 def _check_roadmap_gate(base, metadata, milestone=None):
+    diff = git("diff", "--name-only", f"{base}...HEAD")
+    changed_files = [line.strip().replace("\\", "/") for line in diff.stdout.splitlines() if line.strip()] if diff.returncode == 0 else []
+    errors = list(check_spec_roadmap_alignment(REPO_ROOT, changed_files))
+
     ms = milestone
     if not ms and metadata:
         m = metadata.get("milestone")
@@ -466,11 +490,9 @@ def _check_roadmap_gate(base, metadata, milestone=None):
             ms = m.get("title")
         elif isinstance(m, str):
             ms = m
-    if not ms:
-        return []
-    diff = git("diff", "--name-only", f"{base}...HEAD")
-    changed_files = [line.strip().replace("\\", "/") for line in diff.stdout.splitlines() if line.strip()] if diff.returncode == 0 else []
-    return check_roadmap_alignment(REPO_ROOT, ms, changed_files)
+    if ms:
+        errors.extend(check_roadmap_alignment(REPO_ROOT, ms, changed_files))
+    return errors
 
 
 def _check(base, body_file, pushed_ref, pushed_oid, metadata=None, milestone=None):

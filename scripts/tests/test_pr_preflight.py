@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pr_preflight import (
     validate_message, validate_pr_body, check, _check_history,
-    extract_milestone_id, check_roadmap_alignment
+    extract_milestone_id, check_roadmap_alignment, check_spec_roadmap_alignment
 )
 
 
@@ -286,6 +286,27 @@ class PrPreflightTests(unittest.TestCase):
                 "# Roadmap\nSome prose mentioning v3.17.0 without a checkbox.\n", encoding="utf-8")
             errors = check_roadmap_alignment(root, "v3.17.0", [])
             self.assertTrue(any("is not tracked in docs/ROADMAP.md" in e for e in errors))
+
+    def test_check_spec_roadmap_alignment_fails_when_spec_modified_without_roadmap(self):
+        errors = check_spec_roadmap_alignment(Path("."), ["docs/specs/v4_cross_platform_unification.md"])
+        self.assertTrue(any("docs/ROADMAP.md must be updated when modifying specifications" in e for e in errors))
+
+        errors_arch = check_spec_roadmap_alignment(Path("."), ["docs/architecture/spec/manifesto.md"])
+        self.assertTrue(any("docs/ROADMAP.md must be updated when modifying specifications" in e for e in errors_arch))
+
+    def test_check_spec_roadmap_alignment_passes_when_spec_and_roadmap_modified(self):
+        errors = check_spec_roadmap_alignment(
+            Path("."),
+            ["docs/specs/v4_cross_platform_unification.md", "docs/ROADMAP.md"]
+        )
+        self.assertEqual([], errors)
+
+    def test_check_spec_roadmap_alignment_passes_when_no_specs_modified(self):
+        errors = check_spec_roadmap_alignment(
+            Path("."),
+            ["src/Clickra.Core/SomeFile.cs", "docs/architecture/README.md"]
+        )
+        self.assertEqual([], errors)
 
     def test_preflight_cli_with_milestone_and_draft_metadata(self):
         from pr_preflight import main
