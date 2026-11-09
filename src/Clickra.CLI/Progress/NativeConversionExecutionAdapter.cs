@@ -231,13 +231,32 @@ internal sealed class NativeConversionExecutionAdapter
 
     private void RunBatchRename(List<string> files, Action<int, int, string> progressCallback)
     {
-        ConversionPlan plan = ConversionExecutionService.Plan(
-            Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName,
-            files,
-            options: _commandOptions,
-            outputOverride: _outputDirOverride,
-            TrackTaskLifecycle: true,
-            planOptions: new ExecutionPlanOptions(_existingTaskId, true, _startIndex));
+        ConversionPlan plan;
+        try
+        {
+            plan = ConversionExecutionService.Plan(
+                Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName,
+                files,
+                options: _commandOptions,
+                outputOverride: _outputDirOverride,
+                TrackTaskLifecycle: true,
+                planOptions: new ExecutionPlanOptions(_existingTaskId, true, _startIndex));
+        }
+        catch (Exception ex)
+        {
+            _completeResult(
+                new ConversionResult(
+                    ConversionResultStatus.Failed,
+                    [],
+                    ex.Message,
+                    TimeSpan.Zero,
+                    0,
+                    _existingTaskId ?? Guid.NewGuid().ToString("N")),
+                Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName,
+                Localization.T("batch_rename_done"),
+                true);
+            return;
+        }
 
         var progress = new CallbackProgress<ConversionProgress>(p =>
         {

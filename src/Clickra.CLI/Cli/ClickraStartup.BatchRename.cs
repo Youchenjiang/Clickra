@@ -155,12 +155,6 @@ internal static partial class ClickraStartup
             Console.WriteLine("[Info] Cyclic rename dependency detected. Executing 2-phase atomic swap...");
         }
 
-        var conversionPlan = ConversionExecutionService.Plan(
-            BatchRenameUseCase.CommandName,
-            plan.Items.Select(i => i.OriginalPath).ToList(),
-            options: new Dictionary<string, object> { ["plan"] = plan },
-            TrackTaskLifecycle: false);
-
         var progress = new Progress<ConversionProgress>(p =>
         {
             Console.WriteLine($"  [{p.Current / 100}/{p.Total / 100}] {p.Message}");
@@ -168,6 +162,12 @@ internal static partial class ClickraStartup
 
         try
         {
+            var conversionPlan = ConversionExecutionService.Plan(
+                BatchRenameUseCase.CommandName,
+                plan.Items.Select(i => i.OriginalPath).ToList(),
+                options: new Dictionary<string, object> { ["plan"] = plan },
+                TrackTaskLifecycle: false);
+
             var result = ConversionExecutionService.Execute(
                 conversionPlan,
                 progress: progress,
