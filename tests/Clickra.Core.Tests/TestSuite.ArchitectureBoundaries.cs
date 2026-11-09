@@ -175,6 +175,9 @@ static partial class TestSuite
             "Architecture boundaries: migrated compress workflow has one execution owner",
             TestCompressWorkflowHasSingleExecutionOwner);
         runner.RunGuard(
+            "Architecture boundaries: migrated batch rename workflow has one execution owner",
+            TestBatchRenameWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
             "Architecture boundaries: migrated img2pdf workflow has one execution owner",
             TestImg2PdfWorkflowHasSingleExecutionOwner);
         runner.RunGuard(
@@ -1843,6 +1846,24 @@ static partial class TestSuite
             "FileProcessor.CompressPdf",
             nameof(CompressPdfUseCase),
             "compression");
+
+    private static void TestBatchRenameWorkflowHasSingleExecutionOwner()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string nativeAdapter = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureNativeExecutionAdapterFile));
+        string cliBatchRename = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", "ClickraStartup.BatchRename.cs"));
+
+        Assert.False(nativeAdapter.Contains("BatchRenameUseCase.ExecuteAsync", StringComparison.Ordinal),
+            "Native presentation must not execute BatchRenameUseCase.ExecuteAsync directly; it must delegate to ConversionExecutionService.");
+        Assert.False(cliBatchRename.Contains("BatchRenameUseCase.ExecuteAsync", StringComparison.Ordinal),
+            "CLI batch-rename execution must route through ConversionExecutionService.");
+        Assert.True(nativeAdapter.Contains("ConversionExecutionService.Execute(", StringComparison.Ordinal),
+            "Native batch-rename routing must execute via ConversionExecutionService.Execute.");
+        Assert.True(cliBatchRename.Contains("ConversionExecutionService.Execute(", StringComparison.Ordinal),
+            "CLI batch-rename routing must execute via ConversionExecutionService.Execute.");
+    }
 
     private static void AssertMigratedWorkflowHasSingleExecutionOwner(
         string legacyOutputSuffix,
