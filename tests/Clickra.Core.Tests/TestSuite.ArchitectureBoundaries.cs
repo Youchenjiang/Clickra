@@ -1807,6 +1807,8 @@ static partial class TestSuite
             "ConversionExecutionController.HasCapability must recognize SplitPages on split-pdf.");
         Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.HasCapability(PrintPdfUseCase.CommandName, ConversionCapability.PrintOptions),
             "ConversionExecutionController.HasCapability must recognize PrintOptions on print-pdf.");
+        Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.HasCapability(Clickra.Core.Modules.PdfCompression.Application.CompressPdfUseCase.CommandName, ConversionCapability.Compression),
+            "ConversionExecutionController.HasCapability must recognize Compression on compress-pdf.");
         Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.HasCapability(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName, ConversionCapability.BatchRename),
             "ConversionExecutionController.HasCapability must recognize BatchRename on batch-rename.");
         Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.AcceptsAllFileExtensions(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName),
