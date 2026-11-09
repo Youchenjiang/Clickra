@@ -21,6 +21,8 @@ public sealed class PrintPdfUseCase : PerFileConversionUseCaseBase
     }
 
     public override string Command => CommandName;
+    public override IReadOnlySet<ConversionCapability> Capabilities =>
+        new HashSet<ConversionCapability> { ConversionCapability.PrintOptions };
     protected override string UseCaseName => nameof(PrintPdfUseCase);
     protected override string InputRequirementError => "At least one PDF file is required.";
     protected override string OutputCountError => "PDF print requires one job per input.";

@@ -46,5 +46,7 @@ public enum ConversionCapability
 {
     Password,
     SplitPages,
-    MarkdownOptions
+    MarkdownOptions,
+    BatchRename,
+    PrintOptions
 }

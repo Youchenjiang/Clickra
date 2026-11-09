@@ -79,7 +79,7 @@ public sealed class ConvertWorkspaceController
     public static IReadOnlyList<string> AllSupportedExtensions => ConvertCommandRegistry.AllSupportedExtensions;
 
     public static string[] GetAllowedExtensions(string command) =>
-        command.Equals(BatchRenameCommand, StringComparison.OrdinalIgnoreCase)
+        ConversionExecutionController.AcceptsAllFileExtensions(command)
             ? ["*.*"]
             : ConvertCommandRegistry.GetAllowedExtensions(command);
 
@@ -87,10 +87,10 @@ public sealed class ConvertWorkspaceController
 
     public static bool IsKnownCommand(string command) =>
         CommandByKey.ContainsKey(command) &&
-        (command.Equals(BatchRenameCommand, StringComparison.OrdinalIgnoreCase) || ConvertCommandRegistry.IsKnownCommand(command));
+        (ConversionExecutionController.AcceptsAllFileExtensions(command) || ConvertCommandRegistry.IsKnownCommand(command));
 
     public static IEnumerable<string> ExpandLaunchArguments(string command, IEnumerable<string> inputs) =>
-        command.Equals(BatchRenameCommand, StringComparison.OrdinalIgnoreCase)
+        ConversionExecutionController.AcceptsAllFileExtensions(command)
             ? inputs
             : ConvertCommandRegistry.ExpandDirectoryArguments(command, inputs);
 
@@ -161,7 +161,7 @@ public sealed class ConvertWorkspaceController
         if (!CommandByKey.ContainsKey(command))
             return new(ConvertWorkspaceValidationKind.NoCommand);
 
-        if (command.Equals(BatchRenameCommand, StringComparison.OrdinalIgnoreCase))
+        if (ConversionExecutionController.AcceptsAllFileExtensions(command))
         {
             const int minFiles = 1;
             if (_selectedFiles.Count < minFiles)
@@ -185,7 +185,7 @@ public sealed class ConvertWorkspaceController
     }
 
     public IReadOnlyList<string> GetPickerExtensions() =>
-        SelectedCommand is null || SelectedCommand.Equals(BatchRenameCommand, StringComparison.OrdinalIgnoreCase)
+        SelectedCommand is null || ConversionExecutionController.AcceptsAllFileExtensions(SelectedCommand)
             ? ConvertCommandRegistry.AllSupportedExtensions
             : ConvertCommandRegistry.GetAllowedExtensions(SelectedCommand);
 

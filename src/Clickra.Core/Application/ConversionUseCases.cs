@@ -1,3 +1,4 @@
+using Clickra.Core.Modules.BatchRename.Application;
 using Clickra.Core.Modules.HistoryTasks.Application;
 using Clickra.Core.Modules.Image.Application;
 using Clickra.Core.Modules.Markdown.Application;
@@ -18,6 +19,7 @@ public static class ConversionUseCases
     private static readonly ConversionUseCaseRegistry Registry = new(
         new IConversionUseCase[]
         {
+            new BatchRenameUseCase(),
             new CompressPdfUseCase(),
             new DecryptPdfUseCase(),
             new ExcelToPdfUseCase(),

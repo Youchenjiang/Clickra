@@ -8,6 +8,8 @@ public abstract class ConversionUseCaseBase : IConversionUseCase
 {
     public abstract string Command { get; }
     public virtual IReadOnlySet<ConversionCapability> Capabilities => new HashSet<ConversionCapability>();
+    public virtual bool GeneratesHistoryTask => true;
+    public virtual bool AcceptsAllFileExtensions => false;
 
     protected abstract string UseCaseName { get; }
 
@@ -29,11 +31,14 @@ public abstract class ConversionUseCaseBase : IConversionUseCase
         if (request.InputFiles.Count < ConvertCommandRegistry.GetMinFiles(Command))
             return ConversionValidationResult.Failure(InputRequirementError);
 
-        string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(Command);
-        string? invalid = request.InputFiles.FirstOrDefault(path =>
-            !allowed.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase));
-        if (invalid is not null)
-            return ConversionValidationResult.Failure(UnsupportedInputError(invalid));
+        if (!AcceptsAllFileExtensions)
+        {
+            string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(Command);
+            string? invalid = request.InputFiles.FirstOrDefault(path =>
+                !allowed.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase));
+            if (invalid is not null)
+                return ConversionValidationResult.Failure(UnsupportedInputError(invalid));
+        }
 
         var inputValidation = ValidateInputs(request);
         if (!inputValidation.IsValid)
