@@ -76,7 +76,10 @@ public sealed class BatchRenameUseCase : ConversionUseCaseBase
             renamePlan.Items.Select(i => i.NewPath).ToList(),
             Capabilities,
             normalizedOptions,
-            TrackTaskLifecycle: false);
+            ExistingTaskId: request.ExistingTaskId,
+            BestEffortTaskPersistence: request.BestEffortTaskPersistence,
+            TrackTaskLifecycle: request.TrackTaskLifecycle,
+            TaskLifecycleRepository: request.TaskLifecycleRepository);
     }
 
     public override async Task<ConversionResult> ExecuteAsync(
@@ -108,11 +111,11 @@ public sealed class BatchRenameUseCase : ConversionUseCaseBase
             if (renamePlan.Items.All(i => i.Status == RenameItemStatus.Unchanged))
             {
                 stopwatch.Stop();
-                lifecycle?.CompleteFailure("No files were renamed because the provided options resulted in no changes.", outputPath: "");
+                lifecycle?.CompleteSuccess(outputPath: "");
                 return new ConversionResult(
-                    ConversionResultStatus.Failed,
+                    ConversionResultStatus.Succeeded,
                     [],
-                    "No files were renamed because the provided options resulted in no changes.",
+                    null,
                     stopwatch.Elapsed,
                     0,
                     lifecycle?.TaskId ?? plan.ExistingTaskId ?? Guid.NewGuid().ToString("N"));
@@ -130,7 +133,7 @@ public sealed class BatchRenameUseCase : ConversionUseCaseBase
             if (!result.Succeeded)
             {
                 var error = result.Errors.Count > 0 ? string.Join("; ", result.Errors) : "Batch rename execution failed.";
-                lifecycle?.CompleteFailure(error, outputPath: "");
+                lifecycle?.CompleteFailure(error, outputPath: outputFiles.FirstOrDefault() ?? "");
                 return new ConversionResult(
                     ConversionResultStatus.Failed,
                     outputFiles,
