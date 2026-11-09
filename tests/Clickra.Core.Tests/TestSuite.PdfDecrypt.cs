@@ -264,18 +264,14 @@ static partial class TestSuite
             };
             var compProcessor = new Clickra.Core.Modules.PdfCompression.Processing.PdfCompressionProcessor();
             var exComp = Assert.Throws<PdfEncryptedException>(() =>
-            {
-                compProcessor.Process(new List<string> { encryptedPath }, outCompress, compOptions);
-            });
+                compProcessor.Process(new List<string> { encryptedPath }, outCompress, compOptions));
             Assert.True(exComp.Message.Contains(Localization.T("pdf_err_encrypted_compress", DecryptTestLanguage)),
                 "Expected localized compression encryption error.");
             Assert.True(exComp.ResourceKey == "pdf_err_encrypted_compress", "Expected resource key match.");
 
             var mergeProcessor = new Clickra.Core.Modules.PdfMerge.Processing.PdfMergeProcessor();
             var exMerge = Assert.Throws<PdfEncryptedException>(() =>
-            {
-                mergeProcessor.Process(new List<string> { encryptedPath }, outMerge, compOptions);
-            });
+                mergeProcessor.Process(new List<string> { encryptedPath }, outMerge, compOptions));
             Assert.True(exMerge.Message.Contains(Localization.T("pdf_err_encrypted_merge", DecryptTestLanguage)),
                 "Expected localized merge encryption error.");
             Assert.True(exMerge.ResourceKey == "pdf_err_encrypted_merge", "Expected resource key match.");
@@ -287,9 +283,7 @@ static partial class TestSuite
             };
             var transProcessor = new Clickra.Core.Modules.PdfTranslation.Processing.PdfTranslateProcessor();
             var exTrans = Assert.Throws<PdfEncryptedException>(() =>
-            {
-                transProcessor.Process(new List<string> { encryptedPath }, outTranslate, transOptions);
-            });
+                transProcessor.Process(new List<string> { encryptedPath }, outTranslate, transOptions));
             Assert.True(exTrans.Message.Contains(Localization.T("pdf_err_encrypted_translate", DecryptTestLanguage)),
                 "Expected localized translation encryption error.");
             Assert.True(exTrans.ResourceKey == "pdf_err_encrypted_translate", "Expected resource key match.");
