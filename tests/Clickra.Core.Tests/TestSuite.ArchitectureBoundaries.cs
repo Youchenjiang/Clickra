@@ -1859,10 +1859,33 @@ static partial class TestSuite
             "Native presentation must not execute BatchRenameUseCase.ExecuteAsync directly; it must delegate to ConversionExecutionService.");
         Assert.False(cliBatchRename.Contains("BatchRenameUseCase.ExecuteAsync", StringComparison.Ordinal),
             "CLI batch-rename execution must route through ConversionExecutionService.");
-        Assert.True(nativeAdapter.Contains("ConversionExecutionService.Execute(", StringComparison.Ordinal),
-            "Native batch-rename routing must execute via ConversionExecutionService.Execute.");
-        Assert.True(cliBatchRename.Contains("ConversionExecutionService.Execute(", StringComparison.Ordinal),
-            "CLI batch-rename routing must execute via ConversionExecutionService.Execute.");
+
+        string nativeMethod = ExtractMethodBody(nativeAdapter, "void RunBatchRename(");
+        string cliMethod = ExtractMethodBody(cliBatchRename, "void ExecuteCliPlan(");
+
+        Assert.True(nativeMethod.Contains("ConversionExecutionService.Execute(", StringComparison.Ordinal),
+            "Native RunBatchRename method body must execute via ConversionExecutionService.Execute.");
+        Assert.True(cliMethod.Contains("ConversionExecutionService.Execute(", StringComparison.Ordinal),
+            "CLI ExecuteCliPlan method body must execute via ConversionExecutionService.Execute.");
+    }
+
+    private static string ExtractMethodBody(string source, string methodName)
+    {
+        int start = source.IndexOf(methodName, StringComparison.Ordinal);
+        if (start < 0) return string.Empty;
+        int openBrace = source.IndexOf('{', start);
+        if (openBrace < 0) return string.Empty;
+        int depth = 1;
+        for (int i = openBrace + 1; i < source.Length; i++)
+        {
+            if (source[i] == '{') depth++;
+            else if (source[i] == '}')
+            {
+                depth--;
+                if (depth == 0) return source[openBrace..(i + 1)];
+            }
+        }
+        return source[openBrace..];
     }
 
     private static void AssertMigratedWorkflowHasSingleExecutionOwner(
