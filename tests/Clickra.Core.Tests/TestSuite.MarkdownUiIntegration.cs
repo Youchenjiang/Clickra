@@ -40,7 +40,7 @@ static partial class TestSuite
         string window = MarkdownSource("src/Clickra.CLI/Progress/ProgressWindow.cs");
         string options = MarkdownSource("src/Clickra.CLI/Progress/ProgressWindow.MarkdownOptions.cs");
         string controls = MarkdownSource("src/Clickra.CLI/Progress/ProgressWindow.Controls.cs");
-        RequireInOrder(window, "_isPromptingMarkdownOptions = existingTaskId is null", "&& _commandOptions is null", "&& IsMarkdownCommand(command)");
+        RequireInOrder(window, "_isPromptingMarkdownOptions = existingTaskId is null", "&& _commandOptions is null", "ConversionCapability.MarkdownOptions");
         RequireInOrder(window, "if (!_isPromptingMarkdownOptions)", "StartProcessingThread(_hwnd)");
         RequireInOrder(window, "private void StartProcessingThread", "if (_processingStarted) return;", "_processingStarted = true;", "bgThread.Start()");
         RequireInOrder(window, "private void ResolveMarkdownDecision", "if (_markdownDecisionResolved) return;", "_markdownDecisionResolved = true;", "_markdownDecision?.Invoke(startConversion)");
