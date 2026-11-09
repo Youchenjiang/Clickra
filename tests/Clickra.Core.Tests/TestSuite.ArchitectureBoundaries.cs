@@ -413,6 +413,7 @@ static partial class TestSuite
             "PdfCompression",
             "PdfDecrypt",
             "PdfMerge",
+            "PdfPrint",
             "PdfSplit",
             "PdfToImage",
             ArchitecturePdfTranslationModuleName
@@ -487,7 +488,8 @@ static partial class TestSuite
         }
 
         string[] procFiles = Directory.GetFiles(procDir, "*.cs", SearchOption.AllDirectories)
-            .Where(f => Path.GetFileName(f).Contains("Processor") || Path.GetFileName(f).Contains("Executor") || Path.GetFileName(f).Contains("Engine"))
+            .Where(f => (Path.GetFileName(f).Contains("Processor") || Path.GetFileName(f).Contains("Executor"))
+                     && !Path.GetFileName(f).EndsWith("Engine.cs", StringComparison.OrdinalIgnoreCase))
             .ToArray();
 
         if (procFiles.Length == 0)
@@ -504,20 +506,34 @@ static partial class TestSuite
             "FileProcessor"
         };
 
+        var classRegex = new Regex(
+            @"\b(?:public|internal|private|protected)?\s*(?:(static|abstract|sealed)\s+)?class\s+([A-Za-z0-9_]+)(?:\s*:\s*([^{]+))?\{",
+            RegexOptions.Compiled,
+            ArchitectureRegexTimeout);
+
         foreach (string file in procFiles)
         {
             string source = File.ReadAllText(file);
-            if (source.Contains("abstract class", StringComparison.Ordinal)
-                || source.Contains("interface ", StringComparison.Ordinal)
-                || source.Contains("static class", StringComparison.Ordinal))
-                continue;
-
-            bool inheritsRequiredBase = allowedProcessorBases.Any(b =>
-                Regex.IsMatch(source, $@":\s*([A-Za-z0-9_.,<>\s]*\b)?{b}\b", RegexOptions.CultureInvariant, ArchitectureRegexTimeout));
-
-            if (!inheritsRequiredBase)
+            var matches = classRegex.Matches(source);
+            foreach (Match match in matches)
             {
-                violations.Add($"{Path.GetFileName(file)} in {module}: processor class must inherit from SingleFileProcessorBase or MultiFileProcessorBase.");
+                string modifier = match.Groups[1].Value;
+                string className = match.Groups[2].Value;
+                string baseList = match.Groups[3].Value;
+
+                if (modifier == "static" || modifier == "abstract")
+                    continue;
+
+                if (!className.Contains("Processor") && !className.Contains("Executor"))
+                    continue;
+
+                bool inheritsRequiredBase = allowedProcessorBases.Any(b =>
+                    Regex.IsMatch(baseList, $@"\b{b}\b", RegexOptions.CultureInvariant, ArchitectureRegexTimeout));
+
+                if (!inheritsRequiredBase)
+                {
+                    violations.Add($"{className} in {Path.GetFileName(file)} ({module}): processor class must inherit from SingleFileProcessorBase or MultiFileProcessorBase.");
+                }
             }
         }
     }
@@ -537,35 +553,43 @@ static partial class TestSuite
 
     private static void ValidateAuthorizedModuleDirectories(string modulesRoot, List<string> violations)
     {
-        string[] authorizedPresentation = { "PdfSplit", "HistoryTasks", ArchitectureSettingsModuleName };
-        string[] authorizedInfrastructure = { "Office" };
-        string[] authorizedDomain = { "BatchRename" };
+        var authorizedByModule = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Office"] = new(StringComparer.OrdinalIgnoreCase) { "Application", "Processing", ArchitectureInfrastructureDirectory },
+            ["Image"] = new(StringComparer.OrdinalIgnoreCase) { "Application", "Processing" },
+            ["Markdown"] = new(StringComparer.OrdinalIgnoreCase) { "Application", "Processing" },
+            ["BatchRename"] = new(StringComparer.OrdinalIgnoreCase) { "Application", "Processing", "Domain" },
+            ["PdfCompression"] = new(StringComparer.OrdinalIgnoreCase) { "Application", "Processing" },
+            ["PdfDecrypt"] = new(StringComparer.OrdinalIgnoreCase) { "Application", "Processing" },
+            ["PdfMerge"] = new(StringComparer.OrdinalIgnoreCase) { "Application", "Processing" },
+            ["PdfPrint"] = new(StringComparer.OrdinalIgnoreCase) { "Application", "Processing", "Ports" },
+            ["PdfSplit"] = new(StringComparer.OrdinalIgnoreCase) { "Application", "Processing", ArchitecturePresentationDirectory },
+            ["PdfToImage"] = new(StringComparer.OrdinalIgnoreCase) { "Application", "Processing" },
+            [ArchitecturePdfTranslationModuleName] = new(StringComparer.OrdinalIgnoreCase) { "Application", "Processing", "Model", "Pipeline", "Translation" },
+            ["HistoryTasks"] = new(StringComparer.OrdinalIgnoreCase) { "Application", ArchitecturePresentationDirectory },
+            [ArchitectureSettingsModuleName] = new(StringComparer.OrdinalIgnoreCase) { "Application", "Model", ArchitecturePresentationDirectory }
+        };
 
         foreach (string moduleDir in Directory.GetDirectories(modulesRoot))
         {
             string moduleName = Path.GetFileName(moduleDir);
-            string presDir = Path.Combine(moduleDir, ArchitecturePresentationDirectory);
-            if (Directory.Exists(presDir) && !authorizedPresentation.Contains(moduleName, StringComparer.OrdinalIgnoreCase))
+            if (!authorizedByModule.TryGetValue(moduleName, out var allowedDirs))
             {
-                violations.Add($"Module {moduleName} contains unexpected Presentation/ directory.");
+                violations.Add($"Module {moduleName} is not recognized in authorized module directory configuration.");
+                continue;
             }
 
-            string infraDir = Path.Combine(moduleDir, ArchitectureInfrastructureDirectory);
-            if (Directory.Exists(infraDir) && !authorizedInfrastructure.Contains(moduleName, StringComparer.OrdinalIgnoreCase))
+            foreach (string subDir in Directory.GetDirectories(moduleDir))
             {
-                violations.Add($"Module {moduleName} contains unexpected Infrastructure/ directory.");
-            }
-
-            string domainDir = Path.Combine(moduleDir, "Domain");
-            if (Directory.Exists(domainDir) && !authorizedDomain.Contains(moduleName, StringComparer.OrdinalIgnoreCase))
-            {
-                violations.Add($"Module {moduleName} contains unexpected Domain/ directory.");
-            }
-
-            string execDir = Path.Combine(moduleDir, "Execution");
-            if (Directory.Exists(execDir))
-            {
-                violations.Add($"Module {moduleName} contains forbidden Execution/ directory.");
+                string dirName = Path.GetFileName(subDir);
+                if (dirName.Equals("Execution", StringComparison.OrdinalIgnoreCase))
+                {
+                    violations.Add($"Module {moduleName} contains forbidden Execution/ directory.");
+                }
+                else if (!allowedDirs.Contains(dirName))
+                {
+                    violations.Add($"Module {moduleName} contains unauthorized directory: {dirName}/.");
+                }
             }
         }
     }
