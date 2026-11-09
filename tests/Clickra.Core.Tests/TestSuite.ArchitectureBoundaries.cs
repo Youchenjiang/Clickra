@@ -404,7 +404,19 @@ static partial class TestSuite
 
     private static void ValidateConversionModules(string modulesRoot, List<string> violations)
     {
-        string[] conversionModules = { "Image", "Markdown", "Office", "PdfCompression", "PdfDecrypt", "PdfMerge", "PdfSplit", ArchitecturePdfTranslationModuleName };
+        string[] conversionModules =
+        {
+            "BatchRename",
+            "Image",
+            "Markdown",
+            "Office",
+            "PdfCompression",
+            "PdfDecrypt",
+            "PdfMerge",
+            "PdfSplit",
+            "PdfToImage",
+            ArchitecturePdfTranslationModuleName
+        };
 
         foreach (string module in conversionModules)
         {
@@ -434,6 +446,7 @@ static partial class TestSuite
 
         var allowedBases = new[]
         {
+            "ConversionUseCaseBase",
             "PerFileConversionUseCaseBase",
             "SingleOutputConversionUseCaseBase",
             "OfficeToPdfUseCaseBase",
@@ -462,25 +475,24 @@ static partial class TestSuite
         string procDir = Path.Combine(moduleDir, "Processing");
         string execDir = Path.Combine(moduleDir, "Execution");
 
-        if (Directory.Exists(execDir) && !module.Equals(ArchitecturePdfTranslationModuleName, StringComparison.OrdinalIgnoreCase))
+        if (Directory.Exists(execDir))
         {
-            violations.Add($"{module}: Execution/ directory is prohibited; only PdfTranslation may use Execution/.");
+            violations.Add($"{module}: Execution/ directory is strictly prohibited across all modules; processors must reside in Processing/.");
         }
 
-        bool hasProc = Directory.Exists(procDir);
-        bool hasExec = module.Equals(ArchitecturePdfTranslationModuleName, StringComparison.OrdinalIgnoreCase) && Directory.Exists(execDir);
-
-        if (!hasProc && !hasExec)
+        if (!Directory.Exists(procDir))
         {
             violations.Add($"{module}: missing mandatory Processing/ directory.");
             return;
         }
 
-        string targetDir = hasProc ? procDir : execDir;
-        string[] procFiles = Directory.GetFiles(targetDir, "*Processor*.cs", SearchOption.AllDirectories);
+        string[] procFiles = Directory.GetFiles(procDir, "*.cs", SearchOption.AllDirectories)
+            .Where(f => Path.GetFileName(f).Contains("Processor") || Path.GetFileName(f).Contains("Executor") || Path.GetFileName(f).Contains("Engine"))
+            .ToArray();
+
         if (procFiles.Length == 0)
         {
-            violations.Add($"{module}: Processing directory must contain at least one Processor file.");
+            violations.Add($"{module}: Processing directory must contain at least one Processor/Executor file.");
             return;
         }
 
@@ -495,7 +507,9 @@ static partial class TestSuite
         foreach (string file in procFiles)
         {
             string source = File.ReadAllText(file);
-            if (source.Contains("abstract class", StringComparison.Ordinal) || source.Contains("interface ", StringComparison.Ordinal))
+            if (source.Contains("abstract class", StringComparison.Ordinal)
+                || source.Contains("interface ", StringComparison.Ordinal)
+                || source.Contains("static class", StringComparison.Ordinal))
                 continue;
 
             bool inheritsRequiredBase = allowedProcessorBases.Any(b =>
@@ -525,6 +539,7 @@ static partial class TestSuite
     {
         string[] authorizedPresentation = { "PdfSplit", "HistoryTasks", ArchitectureSettingsModuleName };
         string[] authorizedInfrastructure = { "Office" };
+        string[] authorizedDomain = { "BatchRename" };
 
         foreach (string moduleDir in Directory.GetDirectories(modulesRoot))
         {
@@ -539,6 +554,18 @@ static partial class TestSuite
             if (Directory.Exists(infraDir) && !authorizedInfrastructure.Contains(moduleName, StringComparer.OrdinalIgnoreCase))
             {
                 violations.Add($"Module {moduleName} contains unexpected Infrastructure/ directory.");
+            }
+
+            string domainDir = Path.Combine(moduleDir, "Domain");
+            if (Directory.Exists(domainDir) && !authorizedDomain.Contains(moduleName, StringComparer.OrdinalIgnoreCase))
+            {
+                violations.Add($"Module {moduleName} contains unexpected Domain/ directory.");
+            }
+
+            string execDir = Path.Combine(moduleDir, "Execution");
+            if (Directory.Exists(execDir))
+            {
+                violations.Add($"Module {moduleName} contains forbidden Execution/ directory.");
             }
         }
     }

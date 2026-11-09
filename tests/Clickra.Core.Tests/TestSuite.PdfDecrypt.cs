@@ -285,7 +285,7 @@ static partial class TestSuite
                 ["targetLang"] = "en",
                 [ExecutionLocalizationOptions.LanguageKey] = DecryptTestLanguage
             };
-            var transProcessor = new Clickra.Core.Modules.PdfTranslation.Execution.PdfTranslateProcessor();
+            var transProcessor = new Clickra.Core.Modules.PdfTranslation.Processing.PdfTranslateProcessor();
             var exTrans = Assert.Throws<PdfEncryptedException>(() =>
             {
                 transProcessor.Process(new List<string> { encryptedPath }, outTranslate, transOptions);
