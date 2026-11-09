@@ -175,6 +175,9 @@ static partial class TestSuite
             "Architecture boundaries: migrated compress workflow has one execution owner",
             TestCompressWorkflowHasSingleExecutionOwner);
         runner.RunGuard(
+            "Architecture boundaries: migrated batch rename workflow has one execution owner",
+            TestBatchRenameWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
             "Architecture boundaries: migrated img2pdf workflow has one execution owner",
             TestImg2PdfWorkflowHasSingleExecutionOwner);
         runner.RunGuard(
@@ -1843,6 +1846,71 @@ static partial class TestSuite
             "FileProcessor.CompressPdf",
             nameof(CompressPdfUseCase),
             "compression");
+
+    private static void TestBatchRenameWorkflowHasSingleExecutionOwner()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string nativeAdapter = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureNativeExecutionAdapterFile));
+        string cliBatchRename = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", "ClickraStartup.BatchRename.cs"));
+
+        string nativeMethod = ExtractMethodBody(nativeAdapter, "void RunBatchRename(");
+        string cliMethod = ExtractMethodBody(cliBatchRename, "void ExecuteCliPlan(");
+
+        AssertBatchRenameExecutionRouted(nativeMethod, cliMethod);
+
+        // Negative verification: demonstrate that direct executor/use-case calls or missing service calls are rejected
+        Assert.Throws<InvalidOperationException>(() =>
+            AssertBatchRenameExecutionRouted("void RunBatchRename() { /* missing service call */ }", cliMethod));
+        Assert.Throws<InvalidOperationException>(() =>
+            AssertBatchRenameExecutionRouted("void RunBatchRename() { BatchRenameExecutor.ExecuteAsync(); ConversionExecutionService.Execute(); }", cliMethod));
+        Assert.Throws<InvalidOperationException>(() =>
+            AssertBatchRenameExecutionRouted("void RunBatchRename() { BatchRenameUseCase.ExecuteAsync(); ConversionExecutionService.Execute(); }", cliMethod));
+        Assert.Throws<InvalidOperationException>(() =>
+            AssertBatchRenameExecutionRouted(nativeMethod, "void ExecuteCliPlan() { /* missing service call */ }"));
+        Assert.Throws<InvalidOperationException>(() =>
+            AssertBatchRenameExecutionRouted(nativeMethod, "void ExecuteCliPlan() { BatchRenameExecutor.ExecuteAsync(); ConversionExecutionService.Execute(); }"));
+        Assert.Throws<InvalidOperationException>(() =>
+            AssertBatchRenameExecutionRouted(nativeMethod, "void ExecuteCliPlan() { BatchRenameUseCase.ExecuteAsync(); ConversionExecutionService.Execute(); }"));
+    }
+
+    private static void AssertBatchRenameExecutionRouted(string nativeMethod, string cliMethod)
+    {
+        Assert.False(nativeMethod.Contains("BatchRenameUseCase.ExecuteAsync", StringComparison.Ordinal),
+            "Native presentation must not execute BatchRenameUseCase.ExecuteAsync directly; it must delegate to ConversionExecutionService.");
+        Assert.False(cliMethod.Contains("BatchRenameUseCase.ExecuteAsync", StringComparison.Ordinal),
+            "CLI batch-rename execution must route through ConversionExecutionService.");
+
+        Assert.False(nativeMethod.Contains("BatchRenameExecutor.ExecuteAsync", StringComparison.Ordinal),
+            "Native presentation must not invoke BatchRenameExecutor.ExecuteAsync directly.");
+        Assert.False(cliMethod.Contains("BatchRenameExecutor.ExecuteAsync", StringComparison.Ordinal),
+            "CLI presentation must not invoke BatchRenameExecutor.ExecuteAsync directly.");
+
+        Assert.True(nativeMethod.Contains("ConversionExecutionService.Execute(", StringComparison.Ordinal),
+            "Native RunBatchRename method body must execute via ConversionExecutionService.Execute.");
+        Assert.True(cliMethod.Contains("ConversionExecutionService.Execute(", StringComparison.Ordinal),
+            "CLI ExecuteCliPlan method body must execute via ConversionExecutionService.Execute.");
+    }
+
+    private static string ExtractMethodBody(string source, string methodName)
+    {
+        int start = source.IndexOf(methodName, StringComparison.Ordinal);
+        if (start < 0) return string.Empty;
+        int openBrace = source.IndexOf('{', start);
+        if (openBrace < 0) return string.Empty;
+        int depth = 1;
+        for (int i = openBrace + 1; i < source.Length; i++)
+        {
+            if (source[i] == '{') depth++;
+            else if (source[i] == '}')
+            {
+                depth--;
+                if (depth == 0) return source[openBrace..(i + 1)];
+            }
+        }
+        return source[openBrace..];
+    }
 
     private static void AssertMigratedWorkflowHasSingleExecutionOwner(
         string legacyOutputSuffix,

@@ -231,45 +231,55 @@ internal sealed class NativeConversionExecutionAdapter
 
     private void RunBatchRename(List<string> files, Action<int, int, string> progressCallback)
     {
-        Clickra.Core.Modules.BatchRename.Domain.BatchRenamePlan plan;
-
-        if (_commandOptions?.TryGetValue("plan", out object? planObj) == true && planObj is Clickra.Core.Modules.BatchRename.Domain.BatchRenamePlan existingPlan)
+        ConversionPlan plan;
+        try
         {
-            plan = existingPlan;
+            plan = ConversionExecutionService.Plan(
+                Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName,
+                files,
+                options: _commandOptions,
+                outputOverride: _outputDirOverride,
+                TrackTaskLifecycle: true,
+                planOptions: new ExecutionPlanOptions(_existingTaskId, true, _startIndex));
         }
-        else
+        catch (Exception ex)
         {
-            var options = _commandOptions?.TryGetValue("options", out object? optObj) == true && optObj is Clickra.Core.Modules.BatchRename.Application.BatchRenameOptions opt
-                ? opt
-                : new Clickra.Core.Modules.BatchRename.Application.BatchRenameOptions();
-            var targetFiles = Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.ResolveTargetFiles(files);
-            plan = Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.Plan(targetFiles, options);
-        }
-
-        string taskId = Guid.NewGuid().ToString("N");
-        _taskStarted(taskId);
-
-        int total = plan.Items.Count;
-        if (total == 0)
-        {
-            _completeResult(new ConversionResult(ConversionResultStatus.Succeeded, new List<string>(), null, TimeSpan.Zero, 0, taskId), Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName, Localization.T("cli_progress_no_files"), true);
+            _completeResult(
+                new ConversionResult(
+                    ConversionResultStatus.Failed,
+                    [],
+                    ex.Message,
+                    TimeSpan.Zero,
+                    0,
+                    _existingTaskId ?? Guid.NewGuid().ToString("N")),
+                Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName,
+                Localization.T("batch_rename_done"),
+                true);
             return;
         }
 
-        var progress = new CallbackProgress<Clickra.Core.Modules.BatchRename.Processing.BatchRenameProgress>(p =>
+        var progress = new CallbackProgress<ConversionProgress>(p =>
         {
-            string name = Path.GetFileName(p.CurrentFile);
-            string stageMsg = Localization.T("batch_rename_progress_stage", name, p.CompletedCount, p.TotalCount);
-            progressCallback(p.CompletedCount * 100, total * 100, stageMsg);
+            string name = Path.GetFileName(p.Message);
+            string stageMsg = Localization.T("batch_rename_progress_stage", name, p.Current / 100, p.Total / 100);
+            progressCallback(p.Current, p.Total, stageMsg);
         });
 
-        var resultTask = Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.ExecuteAsync(plan, progress, _cancellationToken);
-        resultTask.Wait(_cancellationToken);
-        var renameResult = resultTask.Result;
+        ConversionResult result = ConversionExecutionService.Execute(
+            plan,
+            progress: progress,
+            observer: new TaskIdExecutionObserver(_taskStarted, _recordTaskIndex),
+            cancellationToken: _cancellationToken);
 
-        var outputFiles = renameResult.RenamedFiles.Select(r => r.NewPath).ToList();
-        string summaryMsg = string.Format(Localization.T("batch_rename_toast_body"), renameResult.RenamedFiles.Count);
-        _completeResult(new ConversionResult(ConversionResultStatus.Succeeded, outputFiles, summaryMsg, TimeSpan.Zero, outputFiles.Count, taskId), Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName, Localization.T("batch_rename_done"), true);
+        string? summaryMsg = result.Status == ConversionResultStatus.Succeeded
+            ? string.Format(Localization.T("batch_rename_toast_body"), result.Outputs.Count)
+            : null;
+
+        _completeResult(
+            result,
+            Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName,
+            summaryMsg ?? Localization.T("batch_rename_done"),
+            true);
     }
 
     private void RunDecrypt(List<string> files, Action<int, int, string> progressCallback)

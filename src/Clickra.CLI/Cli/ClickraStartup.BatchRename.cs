@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Clickra.Core.Application;
 using Clickra.Core.Modules.BatchRename.Application;
 using Clickra.Core.Modules.BatchRename.Domain;
 using Clickra.Core.Modules.BatchRename.Processing;
@@ -154,20 +155,30 @@ internal static partial class ClickraStartup
             Console.WriteLine("[Info] Cyclic rename dependency detected. Executing 2-phase atomic swap...");
         }
 
-        var progress = new Progress<BatchRenameProgress>(p =>
+        var progress = new Progress<ConversionProgress>(p =>
         {
-            Console.WriteLine($"  [{p.CompletedCount}/{p.TotalCount}] {p.CurrentFile} ({p.Percentage}%)");
+            Console.WriteLine($"  [{p.Current / 100}/{p.Total / 100}] {p.Message}");
         });
 
         try
         {
-            var result = BatchRenameUseCase.ExecuteAsync(plan, progress, CancellationToken.None).GetAwaiter().GetResult();
-            Console.WriteLine($"Batch rename completed: {result.RenamedFiles.Count} succeeded, {result.Errors.Count} failed.");
-            if (!result.Succeeded || result.Errors.Count > 0)
+            var conversionPlan = ConversionExecutionService.Plan(
+                BatchRenameUseCase.CommandName,
+                plan.Items.Select(i => i.OriginalPath).ToList(),
+                options: new Dictionary<string, object> { ["plan"] = plan },
+                TrackTaskLifecycle: false);
+
+            var result = ConversionExecutionService.Execute(
+                conversionPlan,
+                progress: progress,
+                cancellationToken: CancellationToken.None);
+
+            Console.WriteLine($"Batch rename completed: {result.Outputs.Count} succeeded.");
+            if (result.Status != ConversionResultStatus.Succeeded)
             {
-                foreach (var err in result.Errors)
+                if (!string.IsNullOrWhiteSpace(result.Error))
                 {
-                    Console.WriteLine($"  [Error] {err}");
+                    Console.WriteLine($"  [Error] {result.Error}");
                 }
                 Environment.ExitCode = 1;
             }
