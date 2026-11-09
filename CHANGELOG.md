@@ -1,5 +1,11 @@
 # Changelog
 
+## [v3.19.1.0] - 2026-11-09
+
+- **單一執行管線歸一 (Single Pipeline Engine Unification)**：徹底落實模組化統一實施憲章之機制二（根治 D1 技術債）。將散落在 CLI 與 Native 適配層中批次命名等用例之獨立執行邏輯，全數收斂至核心層 `ConversionExecutionService.Execute` 單一執行管線。
+- **批次命名生命週期整合 (Batch Rename Task Lifecycle Integration)**：將 `BatchRenameUseCase` 執行路徑對齊 `ConversionUseCaseBase` 之 `StartExecution` 與生命週期狀態轉換，統一回報進度、任務標識與取消狀態。
+- **架構邊界單一執行擁有者守門 (Single Execution Owner Guard)**：於架構邊界測試新增 `TestBatchRenameWorkflowHasSingleExecutionOwner`，防止展示層與 CLI 繞過 `ConversionExecutionService` 私自呼叫底層執行器。
+
 ## [v3.19.0.0] - 2026-11-09
 
 - **用例自宣告契約架構重構 (Polymorphic Self-Declaration Contracts)**：依據模組化統一宣言消除 GUI、CLI 與適配層中針對轉換命令的硬編碼分支邏輯；於 `IConversionUseCase` 引入 `RequiredInputType`、`Capabilities`、`GeneratesHistoryTask` 與 `AcceptsAllFileExtensions` 自宣告屬性，實現轉檔用例的自我描述與多型派送。

@@ -55,7 +55,7 @@
     - 為所有右鍵轉檔命令新增專屬圖示（PDF、Word、Excel、PPT、圖片操作），並提供 PowerShell 產生腳本。
 - [ ] **[F1-15] v3.19.0 Core Decoupling & Module Standardization**：核心跨平台解耦與模組標準化。
     - [x] 實作用例自宣告協議（消除畫面端 10+ 處寫死的指令 ID 分支，根治 C4 債務；Phase 1 完成）。
-    - 統一單一執行管線 ConversionExecutionService（消除 CLI 與視窗平行排程，根治 D1 債務）。
+    - [x] 統一單一執行管線 ConversionExecutionService（消除 CLI 與視窗平行排程，根治 D1 債務；Phase 2 完成）。
     - 建立模組黃金標準目錄（Application/、Processing/、Domain/、Presentation/、Infrastructure/）。
     - 導入 Roslyn AST 自動化架構守衛單元測試（Guard 1~4）。
     - 解耦 Windows 專屬依賴（GDI+、Imazen.WebP、Windows.Data.Pdf 轉跨平台 SkiaSharp / PDFium 方案）。
