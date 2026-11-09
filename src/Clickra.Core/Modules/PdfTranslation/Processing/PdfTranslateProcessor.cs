@@ -6,7 +6,7 @@ using Clickra.Core.Modules.PdfTranslation.Pipeline;
 using Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing;
 using Clickra.Core.Processors;
 
-namespace Clickra.Core.Modules.PdfTranslation.Execution;
+namespace Clickra.Core.Modules.PdfTranslation.Processing;
 
 public class PdfTranslateProcessor : SingleFileProcessorBase
 {
