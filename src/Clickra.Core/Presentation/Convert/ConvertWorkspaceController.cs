@@ -185,9 +185,11 @@ public sealed class ConvertWorkspaceController
     }
 
     public IReadOnlyList<string> GetPickerExtensions() =>
-        SelectedCommand is null || ConversionExecutionController.AcceptsAllFileExtensions(SelectedCommand)
-            ? ConvertCommandRegistry.AllSupportedExtensions
-            : ConvertCommandRegistry.GetAllowedExtensions(SelectedCommand);
+        SelectedCommand is not null && ConversionExecutionController.AcceptsAllFileExtensions(SelectedCommand)
+            ? [ "*" ]
+            : (SelectedCommand is null
+                ? ConvertCommandRegistry.AllSupportedExtensions
+                : ConvertCommandRegistry.GetAllowedExtensions(SelectedCommand));
 
     public ConvertCommandPresentation? GetSelectedPresentation() =>
         SelectedCommand is not null && CommandByKey.TryGetValue(SelectedCommand, out ConvertCommandPresentation? presentation)

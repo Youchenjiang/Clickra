@@ -17,13 +17,23 @@ public interface IConversionUseCase
     IReadOnlySet<ConversionCapability> Capabilities => new HashSet<ConversionCapability>();
 
     /// <summary>Self-declared input requirement consumed by presentation surfaces without hardcoding command IDs.</summary>
-    RequiredInputType InputRequirement =>
-        Capabilities.Contains(ConversionCapability.Password) ? RequiredInputType.Password :
-        Capabilities.Contains(ConversionCapability.SplitPages) ? RequiredInputType.PageRange :
-        (Capabilities.Contains(ConversionCapability.MarkdownOptions) ||
-         Capabilities.Contains(ConversionCapability.PrintOptions) ||
-         Capabilities.Contains(ConversionCapability.BatchRename)) ? RequiredInputType.CustomOptions :
-        RequiredInputType.None;
+    RequiredInputType InputRequirement
+    {
+        get
+        {
+            if (Capabilities.Contains(ConversionCapability.Password))
+                return RequiredInputType.Password;
+            if (Capabilities.Contains(ConversionCapability.SplitPages))
+                return RequiredInputType.PageRange;
+            if (Capabilities.Contains(ConversionCapability.MarkdownOptions) ||
+                Capabilities.Contains(ConversionCapability.PrintOptions) ||
+                Capabilities.Contains(ConversionCapability.BatchRename))
+            {
+                return RequiredInputType.CustomOptions;
+            }
+            return RequiredInputType.None;
+        }
+    }
 
     /// <summary>Self-declared lifecycle behavior: whether running this use case records a history task.</summary>
     bool GeneratesHistoryTask => true;

@@ -48,5 +48,6 @@ public enum ConversionCapability
     SplitPages,
     MarkdownOptions,
     BatchRename,
-    PrintOptions
+    PrintOptions,
+    Compression
 }

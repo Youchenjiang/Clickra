@@ -70,7 +70,11 @@ public static class BatchRenameExecutor
 
         for (int i = 0; i < items.Count; i++)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+            {
+                Rollback(completed);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
 
             var item = items[i];
             try
@@ -104,7 +108,14 @@ public static class BatchRenameExecutor
         // Phase 1: Move each file to a temporary GUID filename in the same directory
         for (int i = 0; i < items.Count; i++)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+            {
+                foreach (var (orig, temp) in phase1Completed)
+                {
+                    try { File.Move(temp, orig); } catch { /* best effort rollback */ }
+                }
+                cancellationToken.ThrowIfCancellationRequested();
+            }
 
             var item = items[i];
             string dir = Path.GetDirectoryName(item.OriginalPath) ?? "";
@@ -133,7 +144,19 @@ public static class BatchRenameExecutor
         // Phase 2: Move each temporary file to its final destination
         for (int i = 0; i < items.Count; i++)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+            {
+                foreach (var (orig, newP) in phase2Completed)
+                {
+                    string tempP = phase1Completed.First(p => p.Original == orig).Temp;
+                    try { File.Move(newP, tempP); } catch { /* best effort rollback */ }
+                }
+                foreach (var (orig, temp) in phase1Completed)
+                {
+                    try { File.Move(temp, orig); } catch { /* best effort rollback */ }
+                }
+                cancellationToken.ThrowIfCancellationRequested();
+            }
 
             var item = items[i];
             string tempPath = phase1Completed[i].Temp;
