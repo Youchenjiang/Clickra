@@ -87,7 +87,8 @@ public sealed class BatchRenameUseCase : ConversionUseCaseBase
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(plan);
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        ArgumentNullException.ThrowIfNull(interaction);
+        var (stopwatch, lifecycle) = StartExecution(plan, interaction, true, "", observer);
 
         try
         {
@@ -107,18 +108,19 @@ public sealed class BatchRenameUseCase : ConversionUseCaseBase
             if (renamePlan.Items.All(i => i.Status == RenameItemStatus.Unchanged))
             {
                 stopwatch.Stop();
+                lifecycle?.CompleteFailure("No files were renamed because the provided options resulted in no changes.", outputPath: "");
                 return new ConversionResult(
                     ConversionResultStatus.Failed,
                     [],
                     "No files were renamed because the provided options resulted in no changes.",
                     stopwatch.Elapsed,
                     0,
-                    plan.ExistingTaskId ?? Guid.NewGuid().ToString("N"));
+                    lifecycle?.TaskId ?? plan.ExistingTaskId ?? Guid.NewGuid().ToString("N"));
             }
 
             var renameProgress = progress is null ? null : new Progress<BatchRenameProgress>(p =>
             {
-                progress.Report(new ConversionProgress(p.CompletedCount, p.TotalCount, p.CurrentFile));
+                progress.Report(new ConversionProgress(p.CompletedCount * 100, p.TotalCount * 100, p.CurrentFile));
             });
 
             var result = await BatchRenameExecutor.ExecuteAsync(renamePlan, renameProgress, cancellationToken);
@@ -128,44 +130,48 @@ public sealed class BatchRenameUseCase : ConversionUseCaseBase
             if (!result.Succeeded)
             {
                 var error = result.Errors.Count > 0 ? string.Join("; ", result.Errors) : "Batch rename execution failed.";
+                lifecycle?.CompleteFailure(error, outputPath: "");
                 return new ConversionResult(
                     ConversionResultStatus.Failed,
                     outputFiles,
                     error,
                     stopwatch.Elapsed,
                     outputFiles.Count,
-                    plan.ExistingTaskId ?? Guid.NewGuid().ToString("N"));
+                    lifecycle?.TaskId ?? plan.ExistingTaskId ?? Guid.NewGuid().ToString("N"));
             }
 
+            lifecycle?.CompleteSuccess(outputPath: outputFiles.FirstOrDefault() ?? "");
             return new ConversionResult(
                 ConversionResultStatus.Succeeded,
                 outputFiles,
                 null,
                 stopwatch.Elapsed,
                 outputFiles.Count,
-                plan.ExistingTaskId ?? Guid.NewGuid().ToString("N"));
+                lifecycle?.TaskId ?? plan.ExistingTaskId ?? Guid.NewGuid().ToString("N"));
         }
         catch (OperationCanceledException)
         {
             stopwatch.Stop();
+            lifecycle?.CompleteFailure("Canceled", outputPath: "");
             return new ConversionResult(
                 ConversionResultStatus.Canceled,
                 [],
                 null,
                 stopwatch.Elapsed,
                 0,
-                plan.ExistingTaskId ?? Guid.NewGuid().ToString("N"));
+                lifecycle?.TaskId ?? plan.ExistingTaskId ?? Guid.NewGuid().ToString("N"));
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
+            lifecycle?.CompleteFailure(ex.Message, outputPath: "");
             return new ConversionResult(
                 ConversionResultStatus.Failed,
                 [],
                 ex.Message,
                 stopwatch.Elapsed,
                 0,
-                plan.ExistingTaskId ?? Guid.NewGuid().ToString("N"));
+                lifecycle?.TaskId ?? plan.ExistingTaskId ?? Guid.NewGuid().ToString("N"));
         }
     }
 
