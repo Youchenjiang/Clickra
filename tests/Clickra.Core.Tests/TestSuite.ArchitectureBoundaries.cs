@@ -1855,13 +1855,37 @@ static partial class TestSuite
         string nativeAdapter = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureNativeExecutionAdapterFile));
         string cliBatchRename = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", "ClickraStartup.BatchRename.cs"));
 
-        Assert.False(nativeAdapter.Contains("BatchRenameUseCase.ExecuteAsync", StringComparison.Ordinal),
-            "Native presentation must not execute BatchRenameUseCase.ExecuteAsync directly; it must delegate to ConversionExecutionService.");
-        Assert.False(cliBatchRename.Contains("BatchRenameUseCase.ExecuteAsync", StringComparison.Ordinal),
-            "CLI batch-rename execution must route through ConversionExecutionService.");
-
         string nativeMethod = ExtractMethodBody(nativeAdapter, "void RunBatchRename(");
         string cliMethod = ExtractMethodBody(cliBatchRename, "void ExecuteCliPlan(");
+
+        AssertBatchRenameExecutionRouted(nativeMethod, cliMethod);
+
+        // Negative verification: demonstrate that direct executor/use-case calls or missing service calls are rejected
+        Assert.Throws<InvalidOperationException>(() =>
+            AssertBatchRenameExecutionRouted("void RunBatchRename() { /* missing service call */ }", cliMethod));
+        Assert.Throws<InvalidOperationException>(() =>
+            AssertBatchRenameExecutionRouted("void RunBatchRename() { BatchRenameExecutor.ExecuteAsync(); ConversionExecutionService.Execute(); }", cliMethod));
+        Assert.Throws<InvalidOperationException>(() =>
+            AssertBatchRenameExecutionRouted("void RunBatchRename() { BatchRenameUseCase.ExecuteAsync(); ConversionExecutionService.Execute(); }", cliMethod));
+        Assert.Throws<InvalidOperationException>(() =>
+            AssertBatchRenameExecutionRouted(nativeMethod, "void ExecuteCliPlan() { /* missing service call */ }"));
+        Assert.Throws<InvalidOperationException>(() =>
+            AssertBatchRenameExecutionRouted(nativeMethod, "void ExecuteCliPlan() { BatchRenameExecutor.ExecuteAsync(); ConversionExecutionService.Execute(); }"));
+        Assert.Throws<InvalidOperationException>(() =>
+            AssertBatchRenameExecutionRouted(nativeMethod, "void ExecuteCliPlan() { BatchRenameUseCase.ExecuteAsync(); ConversionExecutionService.Execute(); }"));
+    }
+
+    private static void AssertBatchRenameExecutionRouted(string nativeMethod, string cliMethod)
+    {
+        Assert.False(nativeMethod.Contains("BatchRenameUseCase.ExecuteAsync", StringComparison.Ordinal),
+            "Native presentation must not execute BatchRenameUseCase.ExecuteAsync directly; it must delegate to ConversionExecutionService.");
+        Assert.False(cliMethod.Contains("BatchRenameUseCase.ExecuteAsync", StringComparison.Ordinal),
+            "CLI batch-rename execution must route through ConversionExecutionService.");
+
+        Assert.False(nativeMethod.Contains("BatchRenameExecutor.ExecuteAsync", StringComparison.Ordinal),
+            "Native presentation must not invoke BatchRenameExecutor.ExecuteAsync directly.");
+        Assert.False(cliMethod.Contains("BatchRenameExecutor.ExecuteAsync", StringComparison.Ordinal),
+            "CLI presentation must not invoke BatchRenameExecutor.ExecuteAsync directly.");
 
         Assert.True(nativeMethod.Contains("ConversionExecutionService.Execute(", StringComparison.Ordinal),
             "Native RunBatchRename method body must execute via ConversionExecutionService.Execute.");
