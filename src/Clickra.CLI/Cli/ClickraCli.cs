@@ -17,6 +17,7 @@ using Clickra.Core.Modules.PdfPrint.Application;
 using Clickra.Core.Modules.PdfSplit.Application;
 using Clickra.Core.Modules.PdfToImage.Application;
 using Clickra.Core.Modules.PdfTranslation.Application;
+using Clickra.Core.Presentation.Convert;
 using Clickra.Core.Processors;
 using Clickra.UI;
 
@@ -147,9 +148,7 @@ partial class ClickraCli
         /// <summary>Handles local Markdown conversion without requiring an Office engine.</summary>
         private static bool DispatchMarkdownCommand(string command, List<string> files, bool quiet, string outputDir, string? outputDirOverride)
         {
-            bool toPdf = command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase);
-            bool toWord = command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
-            if (!toPdf && !toWord) return false;
+            if (!ConversionExecutionController.HasCapability(command, ConversionCapability.MarkdownOptions)) return false;
 
             string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(command);
             ValidateExtensions(files, command, quiet, allowed);

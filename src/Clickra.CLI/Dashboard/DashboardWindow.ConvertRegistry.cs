@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using Clickra.Core;
+using Clickra.Core.Application;
 using Clickra.Core.Presentation.Convert;
 using static Clickra.UI.Native.Win32;
 
@@ -25,7 +26,7 @@ public static partial class DashboardWindow
 
         public string GetOpenFilter()
         {
-            if (Command.Equals("batch-rename", StringComparison.OrdinalIgnoreCase))
+            if (ConversionExecutionController.AcceptsAllFileExtensions(Command))
                 return "All Files (*.*)\0*.*\0\0";
             string patterns = string.Join(";", Extensions.Select(extension => $"*{extension}"));
             return $"Supported Files ({patterns})\0{patterns}\0All Files (*.*)\0*.*\0\0";
@@ -130,17 +131,18 @@ public static partial class DashboardWindow
         }
 
         var filesCopy = new List<string>(_convertWorkspace.SelectedFiles);
-        bool markdownCommand = command.Command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase)
-            || command.Command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
-        bool batchRenameCommand = command.Command.Equals("batch-rename", StringComparison.OrdinalIgnoreCase);
+        bool requiresPreflightPrompt = ConversionExecutionController.RequiresOptions(command.Command)
+            || ConversionExecutionController.HasCapability(command.Command, ConversionCapability.PrintOptions)
+            || ConversionExecutionController.HasCapability(command.Command, ConversionCapability.BatchRename);
+        bool generatesHistory = ConversionExecutionController.GeneratesHistoryTask(command.Command);
 
         _convertWorkspace.BeginRun();
-        StartConvertProgress(command, hwnd, filesCopy, markdownCommand);
+        StartConvertProgress(command, hwnd, filesCopy, requiresPreflightPrompt);
 
-        if (markdownCommand) return;
+        if (requiresPreflightPrompt) return;
 
         _convertWorkspace.ClearFiles();
-        if (!batchRenameCommand)
+        if (generatesHistory)
         {
             _activeTab = 2;
             RefreshHistoryData();
@@ -152,8 +154,9 @@ public static partial class DashboardWindow
         NativeConvertCommand command,
         IntPtr hwnd,
         List<string> filesCopy,
-        bool markdownCommand)
+        bool hasPreflightPrompt)
     {
+        bool generatesHistory = ConversionExecutionController.GeneratesHistoryTask(command.Command);
         var thread = new System.Threading.Thread(() =>
         {
             try
@@ -161,15 +164,18 @@ public static partial class DashboardWindow
                 ProgressWindow.Show(
                     command.Command,
                     filesCopy,
-                    markdownDecision: markdownCommand
+                    markdownDecision: hasPreflightPrompt
                         ? started =>
                         {
                             if (!started || !IsWindow(hwnd)) return;
                             PostDashboardAction(hwnd, () =>
                             {
                                 _convertWorkspace.ClearFiles();
-                                _activeTab = 2;
-                                RefreshHistoryData();
+                                if (generatesHistory)
+                                {
+                                    _activeTab = 2;
+                                    RefreshHistoryData();
+                                }
                             });
                         }
                         : null);

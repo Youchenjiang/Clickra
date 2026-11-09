@@ -12,6 +12,7 @@ using Clickra.Core;
 using Clickra.Core.Modules.HistoryTasks.Application;
 using Clickra.Core.Modules.PdfPrint.Application;
 using Clickra.Core.Application;
+using Clickra.Core.Presentation.Convert;
 
 using static Clickra.UI.Native.Win32;
 
@@ -182,13 +183,13 @@ public partial class ProgressWindow
                 _scrollOffset = 0f;
                 _isPromptingMarkdownOptions = existingTaskId is null
                     && _commandOptions is null
-                    && IsMarkdownCommand(command);
+                    && ConversionExecutionController.HasCapability(command, ConversionCapability.MarkdownOptions);
                 _isPromptingPrintOptions = existingTaskId is null
                     && _commandOptions is null
-                    && IsPrintCommand(command);
+                    && ConversionExecutionController.HasCapability(command, ConversionCapability.PrintOptions);
                 _isPromptingBatchRename = existingTaskId is null
                     && _commandOptions is null
-                    && IsBatchRenameCommand(command);
+                    && ConversionExecutionController.HasCapability(command, ConversionCapability.BatchRename);
                 _markdownTemplateStatus = Loc("md_options_template_none");
             }
             if (_isPromptingMarkdownOptions || _isPromptingPrintOptions || _isPromptingBatchRename)
@@ -340,13 +341,6 @@ public partial class ProgressWindow
                 centerRect: centerRect);
         }
 
-        private static bool IsMarkdownCommand(string command) =>
-            command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase)
-            || command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
-
-        private static bool IsPrintCommand(string command) =>
-            command.Equals(PrintPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase);
-
         private int GetStandardClientHeight()
         {
             if (_isPromptingVisualSplitter) return 420;
@@ -361,9 +355,6 @@ public partial class ProgressWindow
             if (_isPromptingBatchRename) return Clickra.UI.Layout.BatchRenameLayout.ClientHeight;
             return GetStandardClientHeight();
         }
-
-        private static bool IsBatchRenameCommand(string command) =>
-            command.Equals(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName, StringComparison.OrdinalIgnoreCase);
 
         internal void ResizeClientSurface(IntPtr hwnd, int clientW, int clientH)
         {
