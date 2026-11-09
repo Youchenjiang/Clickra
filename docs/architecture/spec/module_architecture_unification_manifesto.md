@@ -117,8 +117,22 @@
 3. **`Domain/` (選用)**：純領域規則、實體、值物件（零外部相依，適用於批次命名等複雜領域模型）。
 4. **`Presentation/` (選用)**：模組特化之 UI 狀態控制器（例如 `BatchRename/Presentation/BatchRenamePreviewController`），僅計算預覽排版與驗證，嚴禁依賴底層處理器。
 5. **`Infrastructure/` (選用)**：模組特化之外部工具包裝或底層驅動適配。
-- **歷史特例與遷移路徑**：`PdfTranslation/Execution/` 為早期過渡目錄，將於 `v3.19.0` 執行管線統整時整併入 `Processing/`，後續新模組禁止新增 `Execution/`。
+- **歷史特例整併**：`PdfTranslation/Execution/` 為早期過渡目錄，已於 `v3.19.2.0`（Phase 3）全數遷移至 `Processing/`，全模組一律禁止出現 `Execution/`。
 - **禁忌**：Options 嚴禁出現在 `Processing/`。
+
+##### 兩層領域分類與對稱子模組標準 (Two-Tier Domain Taxonomy & Symmetrical Sub-modules)
+為徹底根除專案歷史累積之粒度不對稱（如 PDF 按功能細分、Image/Office 卻多用例混裝），全專案模組架構定案採行「兩層領域分類」規範，兼具頂層整潔、領域內聚與 100% 對稱標準化：
+1. **五大一級領域目錄 (`src/Clickra.Core/Modules/{Domain}/`)**：
+   - **`Doc/` (文件領域)**：`Word/`, `Excel/`, `Ppt/`, `Markdown/`，可設 `Shared/` 放 COM/Office 底層工具。
+   - **`File/` (檔案組織領域)**：`BatchRename/`, `Classification/` (F2-22)。
+   - **`Img/` (圖像處理領域)**：`ToPdf/`, `Compression/`, `FormatConvert/`, `Stitch/`，設 `Shared/` 放 `WicImageHelper.cs` 等專屬底層。
+   - **`Pdf/` (PDF 運算領域)**：`Compression/`, `Decrypt/`, `Merge/`, `Print/`, `Split/`, `ToImage/`, `Translation/`，可設 `Shared/`。
+   - **`Sys/` (系統核心領域)**：`HistoryTasks/`, `Settings/`。
+2. **三道機械化防線（CI 守門測試強制約束）**：
+   - **防線一（領域根層純淨）**：一級領域根目錄（如 `Modules/Img/`）嚴禁存放任何 `.cs` 散落程式碼，只能存放子目錄。
+   - **防線二（領域共用封裝）**：若子目錄名為 `Shared/`（或 `Infrastructure/`），**嚴禁實作任何 `IConversionUseCase`**（只放專屬底層 Helper）；跨領域嚴禁跨層依賴（如 `Pdf` 嚴禁 reference `Img.Shared`）。
+   - **防線三（功能子模組 100% 對稱）**：非 `Shared/` 的功能子目錄（如 `Img/Compression`、`Pdf/Split`），必須且只能有**剛好 1 個 `IConversionUseCase`**，並嚴格遵循 `Application/`、`Processing/` 黃金結構。
+*註：本兩層領域分類標準定案於架構憲章，排定於架構重構的最終收尾階段（Final Taxonomy Polish Phase）專項批次執行，以確保主要管線與跨平台解耦之迭代穩定。*
 
 #### 機制四：架構守衛機械化防線 (Automated Architecture Guards)
 在 `tests/Clickra.Core.Tests/TestSuite.ArchitectureBoundaries.cs` 增列硬性單元測試：
