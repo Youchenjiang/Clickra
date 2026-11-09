@@ -131,9 +131,8 @@ public static partial class DashboardWindow
         }
 
         var filesCopy = new List<string>(_convertWorkspace.SelectedFiles);
-        bool requiresPreflightPrompt = ConversionExecutionController.RequiresOptions(command.Command)
-            || ConversionExecutionController.HasCapability(command.Command, ConversionCapability.PrintOptions)
-            || ConversionExecutionController.HasCapability(command.Command, ConversionCapability.BatchRename);
+        bool requiresPreflightPrompt = ConversionExecutionController.GetInputRequirement(command.Command) == RequiredInputType.CustomOptions
+            || ConversionExecutionController.RequiresOptions(command.Command);
         bool generatesHistory = ConversionExecutionController.GeneratesHistoryTask(command.Command);
 
         _convertWorkspace.BeginRun();
@@ -150,6 +149,20 @@ public static partial class DashboardWindow
         InvalidateRect(hwnd, IntPtr.Zero, false);
     }
 
+    private static void OnPreflightDecision(IntPtr hwnd, bool started, bool generatesHistory)
+    {
+        if (!started || !IsWindow(hwnd)) return;
+        PostDashboardAction(hwnd, () =>
+        {
+            _convertWorkspace.ClearFiles();
+            if (generatesHistory)
+            {
+                _activeTab = 2;
+                RefreshHistoryData();
+            }
+        });
+    }
+
     private static void StartConvertProgress(
         NativeConvertCommand command,
         IntPtr hwnd,
@@ -157,28 +170,15 @@ public static partial class DashboardWindow
         bool hasPreflightPrompt)
     {
         bool generatesHistory = ConversionExecutionController.GeneratesHistoryTask(command.Command);
+        Action<bool>? onDecision = hasPreflightPrompt
+            ? started => OnPreflightDecision(hwnd, started, generatesHistory)
+            : null;
+
         var thread = new System.Threading.Thread(() =>
         {
             try
             {
-                ProgressWindow.Show(
-                    command.Command,
-                    filesCopy,
-                    markdownDecision: hasPreflightPrompt
-                        ? started =>
-                        {
-                            if (!started || !IsWindow(hwnd)) return;
-                            PostDashboardAction(hwnd, () =>
-                            {
-                                _convertWorkspace.ClearFiles();
-                                if (generatesHistory)
-                                {
-                                    _activeTab = 2;
-                                    RefreshHistoryData();
-                                }
-                            });
-                        }
-                        : null);
+                ProgressWindow.Show(command.Command, filesCopy, markdownDecision: onDecision);
             }
             catch (Exception ex)
             {
@@ -186,21 +186,26 @@ public static partial class DashboardWindow
             }
             finally
             {
-                if (IsWindow(hwnd))
-                {
-                    PostDashboardAction(hwnd, () =>
-                    {
-                        _convertWorkspace.EndRun();
-                        InvalidateRect(hwnd, IntPtr.Zero, false);
-                    });
-                }
-                else
-                {
-                    _convertWorkspace.EndRun();
-                }
+                HandleProgressExit(hwnd);
             }
         });
         thread.SetApartmentState(System.Threading.ApartmentState.STA);
         thread.Start();
+    }
+
+    private static void HandleProgressExit(IntPtr hwnd)
+    {
+        if (IsWindow(hwnd))
+        {
+            PostDashboardAction(hwnd, () =>
+            {
+                _convertWorkspace.EndRun();
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            });
+        }
+        else
+        {
+            _convertWorkspace.EndRun();
+        }
     }
 }

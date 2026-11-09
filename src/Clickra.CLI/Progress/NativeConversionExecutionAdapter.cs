@@ -72,7 +72,7 @@ internal sealed class NativeConversionExecutionAdapter
             RunSplit(files, progressCallback);
             return true;
         }
-        if (command.Equals(CompressPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+        if (ConversionExecutionController.HasCapability(command, ConversionCapability.Compression))
         {
             RunCompress(files, progressCallback);
             return true;

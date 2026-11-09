@@ -183,12 +183,15 @@ public partial class ProgressWindow
                 _scrollOffset = 0f;
                 _isPromptingMarkdownOptions = existingTaskId is null
                     && _commandOptions is null
+                    && ConversionExecutionController.GetInputRequirement(command) == RequiredInputType.CustomOptions
                     && ConversionExecutionController.HasCapability(command, ConversionCapability.MarkdownOptions);
                 _isPromptingPrintOptions = existingTaskId is null
                     && _commandOptions is null
+                    && ConversionExecutionController.GetInputRequirement(command) == RequiredInputType.CustomOptions
                     && ConversionExecutionController.HasCapability(command, ConversionCapability.PrintOptions);
                 _isPromptingBatchRename = existingTaskId is null
                     && _commandOptions is null
+                    && ConversionExecutionController.GetInputRequirement(command) == RequiredInputType.CustomOptions
                     && ConversionExecutionController.HasCapability(command, ConversionCapability.BatchRename);
                 _markdownTemplateStatus = Loc("md_options_template_none");
             }
@@ -380,6 +383,7 @@ public partial class ProgressWindow
 
         private void StartProcessingThread(IntPtr hwnd)
         {
+            ResolveMarkdownDecision(true);
             if (_processingStarted) return;
             _processingStarted = true;
             Thread bgThread = new(() => RunProcessing(hwnd)) { IsBackground = true };
