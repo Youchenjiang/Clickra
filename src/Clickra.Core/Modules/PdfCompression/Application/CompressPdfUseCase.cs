@@ -13,6 +13,8 @@ public sealed class CompressPdfUseCase : PerFileConversionUseCaseBase
     public const string LevelOptionKey = "level";
 
     public override string Command => CommandName;
+    public override IReadOnlySet<ConversionCapability> Capabilities =>
+        new HashSet<ConversionCapability> { ConversionCapability.Compression };
     protected override string UseCaseName => nameof(CompressPdfUseCase);
     protected override string InputRequirementError => "At least one PDF file is required.";
     protected override string OutputCountError => "PDF compression requires one output per input.";

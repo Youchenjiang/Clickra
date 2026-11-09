@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using Clickra.Core;
+using Clickra.Core.Application;
 using Clickra.Core.Presentation.Convert;
 using static Clickra.UI.Native.Win32;
 
@@ -25,7 +26,7 @@ public static partial class DashboardWindow
 
         public string GetOpenFilter()
         {
-            if (Command.Equals("batch-rename", StringComparison.OrdinalIgnoreCase))
+            if (ConversionExecutionController.AcceptsAllFileExtensions(Command))
                 return "All Files (*.*)\0*.*\0\0";
             string patterns = string.Join(";", Extensions.Select(extension => $"*{extension}"));
             return $"Supported Files ({patterns})\0{patterns}\0All Files (*.*)\0*.*\0\0";
@@ -130,17 +131,17 @@ public static partial class DashboardWindow
         }
 
         var filesCopy = new List<string>(_convertWorkspace.SelectedFiles);
-        bool markdownCommand = command.Command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase)
-            || command.Command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
-        bool batchRenameCommand = command.Command.Equals("batch-rename", StringComparison.OrdinalIgnoreCase);
+        bool requiresPreflightPrompt = ConversionExecutionController.GetInputRequirement(command.Command) == RequiredInputType.CustomOptions
+            || ConversionExecutionController.RequiresOptions(command.Command);
+        bool generatesHistory = ConversionExecutionController.GeneratesHistoryTask(command.Command);
 
         _convertWorkspace.BeginRun();
-        StartConvertProgress(command, hwnd, filesCopy, markdownCommand);
+        StartConvertProgress(command, hwnd, filesCopy, requiresPreflightPrompt);
 
-        if (markdownCommand) return;
+        if (requiresPreflightPrompt) return;
 
         _convertWorkspace.ClearFiles();
-        if (!batchRenameCommand)
+        if (generatesHistory)
         {
             _activeTab = 2;
             RefreshHistoryData();
@@ -148,31 +149,36 @@ public static partial class DashboardWindow
         InvalidateRect(hwnd, IntPtr.Zero, false);
     }
 
+    private static void OnPreflightDecision(IntPtr hwnd, bool started, bool generatesHistory)
+    {
+        if (!started || !IsWindow(hwnd)) return;
+        PostDashboardAction(hwnd, () =>
+        {
+            _convertWorkspace.ClearFiles();
+            if (generatesHistory)
+            {
+                _activeTab = 2;
+                RefreshHistoryData();
+            }
+        });
+    }
+
     private static void StartConvertProgress(
         NativeConvertCommand command,
         IntPtr hwnd,
         List<string> filesCopy,
-        bool markdownCommand)
+        bool hasPreflightPrompt)
     {
+        bool generatesHistory = ConversionExecutionController.GeneratesHistoryTask(command.Command);
+        Action<bool>? onDecision = hasPreflightPrompt
+            ? started => OnPreflightDecision(hwnd, started, generatesHistory)
+            : null;
+
         var thread = new System.Threading.Thread(() =>
         {
             try
             {
-                ProgressWindow.Show(
-                    command.Command,
-                    filesCopy,
-                    markdownDecision: markdownCommand
-                        ? started =>
-                        {
-                            if (!started || !IsWindow(hwnd)) return;
-                            PostDashboardAction(hwnd, () =>
-                            {
-                                _convertWorkspace.ClearFiles();
-                                _activeTab = 2;
-                                RefreshHistoryData();
-                            });
-                        }
-                        : null);
+                ProgressWindow.Show(command.Command, filesCopy, markdownDecision: onDecision);
             }
             catch (Exception ex)
             {
@@ -180,21 +186,26 @@ public static partial class DashboardWindow
             }
             finally
             {
-                if (IsWindow(hwnd))
-                {
-                    PostDashboardAction(hwnd, () =>
-                    {
-                        _convertWorkspace.EndRun();
-                        InvalidateRect(hwnd, IntPtr.Zero, false);
-                    });
-                }
-                else
-                {
-                    _convertWorkspace.EndRun();
-                }
+                HandleProgressExit(hwnd);
             }
         });
         thread.SetApartmentState(System.Threading.ApartmentState.STA);
         thread.Start();
+    }
+
+    private static void HandleProgressExit(IntPtr hwnd)
+    {
+        if (IsWindow(hwnd))
+        {
+            PostDashboardAction(hwnd, () =>
+            {
+                _convertWorkspace.EndRun();
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            });
+        }
+        else
+        {
+            _convertWorkspace.EndRun();
+        }
     }
 }

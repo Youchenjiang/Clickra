@@ -70,7 +70,11 @@ public static class BatchRenameExecutor
 
         for (int i = 0; i < items.Count; i++)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+            {
+                Rollback(completed);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
 
             var item = items[i];
             try
@@ -97,14 +101,36 @@ public static class BatchRenameExecutor
         IProgress<BatchRenameProgress>? progress,
         CancellationToken cancellationToken)
     {
+        var (phase1Success, phase1Completed, phase1Errors) = StageTwoPhaseFiles(items, progress, cancellationToken);
+        if (!phase1Success)
+        {
+            return new BatchRenameResult(false, 0, [], phase1Errors);
+        }
+
+        var (phase2Success, phase2Completed, phase2Errors) = FinalizeTwoPhaseFiles(items, phase1Completed, progress, cancellationToken);
+        if (!phase2Success)
+        {
+            return new BatchRenameResult(false, phase2Completed.Count, phase2Completed, phase2Errors);
+        }
+
+        return new BatchRenameResult(true, phase2Completed.Count, phase2Completed, []);
+    }
+
+    private static (bool Success, List<(string Original, string Temp)> Completed, List<string> Errors) StageTwoPhaseFiles(
+        List<RenameItem> items,
+        IProgress<BatchRenameProgress>? progress,
+        CancellationToken cancellationToken)
+    {
         var phase1Completed = new List<(string Original, string Temp)>();
-        var phase2Completed = new List<(string Original, string NewPath)>();
         var errors = new List<string>();
 
-        // Phase 1: Move each file to a temporary GUID filename in the same directory
         for (int i = 0; i < items.Count; i++)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+            {
+                RollbackStagedFiles(phase1Completed);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
 
             var item = items[i];
             string dir = Path.GetDirectoryName(item.OriginalPath) ?? "";
@@ -118,22 +144,34 @@ public static class BatchRenameExecutor
             catch (Exception ex)
             {
                 errors.Add($"Phase 1 staging failed on '{item.OriginalName}': {ex.Message}");
-                // Rollback Phase 1 moves
-                foreach (var (orig, temp) in phase1Completed)
-                {
-                    try { File.Move(temp, orig); } catch { /* best effort rollback */ }
-                }
-                return new BatchRenameResult(false, 0, [], errors);
+                RollbackStagedFiles(phase1Completed);
+                return (false, phase1Completed, errors);
             }
 
             int percent = (int)Math.Round((i + 1) * 50.0 / items.Count);
             progress?.Report(new BatchRenameProgress(i + 1, items.Count * 2, item.OriginalName, percent));
         }
 
-        // Phase 2: Move each temporary file to its final destination
+        return (true, phase1Completed, errors);
+    }
+
+    private static (bool Success, List<(string Original, string NewPath)> Completed, List<string> Errors) FinalizeTwoPhaseFiles(
+        List<RenameItem> items,
+        List<(string Original, string Temp)> phase1Completed,
+        IProgress<BatchRenameProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        var phase2Completed = new List<(string Original, string NewPath)>();
+        var errors = new List<string>();
+
         for (int i = 0; i < items.Count; i++)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+            {
+                RollbackFinalizedFiles(phase1Completed, phase2Completed);
+                RollbackStagedFiles(phase1Completed);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
 
             var item = items[i];
             string tempPath = phase1Completed[i].Temp;
@@ -146,15 +184,33 @@ public static class BatchRenameExecutor
             catch (Exception ex)
             {
                 errors.Add($"Phase 2 finalization failed on '{item.NewName}': {ex.Message}");
-                // Incomplete phase 2: roll back what we can
-                return new BatchRenameResult(false, phase2Completed.Count, phase2Completed, errors);
+                return (false, phase2Completed, errors);
             }
 
             int percent = 50 + (int)Math.Round((i + 1) * 50.0 / items.Count);
             progress?.Report(new BatchRenameProgress(items.Count + i + 1, items.Count * 2, item.NewName, percent));
         }
 
-        return new BatchRenameResult(true, phase2Completed.Count, phase2Completed, []);
+        return (true, phase2Completed, errors);
+    }
+
+    private static void RollbackStagedFiles(List<(string Original, string Temp)> staged)
+    {
+        foreach (var (orig, temp) in staged)
+        {
+            try { File.Move(temp, orig); } catch { /* best effort rollback */ }
+        }
+    }
+
+    private static void RollbackFinalizedFiles(
+        List<(string Original, string Temp)> staged,
+        List<(string Original, string NewPath)> finalized)
+    {
+        foreach (var (orig, newP) in finalized)
+        {
+            string tempP = staged.First(p => p.Original == orig).Temp;
+            try { File.Move(newP, tempP); } catch { /* best effort rollback */ }
+        }
     }
 
     private static void Rollback(List<(string OldPath, string NewPath)> completed)

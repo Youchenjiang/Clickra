@@ -4,15 +4,170 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Clickra.Core.Application;
 using Clickra.Core.Modules.BatchRename.Domain;
 using Clickra.Core.Modules.BatchRename.Processing;
+using Clickra.Core.Processors;
 
 namespace Clickra.Core.Modules.BatchRename.Application;
 
 /// <summary>Application service orchestrating batch file renaming.</summary>
-public static class BatchRenameUseCase
+public sealed class BatchRenameUseCase : ConversionUseCaseBase
 {
     public const string CommandName = "batch-rename";
+
+    public override string Command => CommandName;
+    public override IReadOnlySet<ConversionCapability> Capabilities =>
+        new HashSet<ConversionCapability> { ConversionCapability.BatchRename };
+    public override bool GeneratesHistoryTask => false;
+    public override bool AcceptsAllFileExtensions => true;
+
+    protected override string UseCaseName => nameof(BatchRenameUseCase);
+    protected override string InputRequirementError => "At least one input file or directory is required for batch rename.";
+    protected override string UnsupportedInputError(string path) => $"Unsupported input '{path}'.";
+
+    public override ConversionValidationResult Validate(ConversionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (!request.Command.Equals(Command, StringComparison.OrdinalIgnoreCase))
+            return ConversionValidationResult.Failure($"{UseCaseName} cannot handle '{request.Command}'.");
+        if (request.InputFiles.Count < 1)
+            return ConversionValidationResult.Failure(InputRequirementError);
+
+        var targetFiles = ResolveTargetFiles(request.InputFiles);
+        if (targetFiles.Count == 0)
+            return ConversionValidationResult.Failure("No target files found for batch rename.");
+
+        return ConversionValidationResult.Success();
+    }
+
+    public override ConversionPlan Plan(ConversionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var validation = Validate(request);
+        if (!validation.IsValid)
+            throw new InvalidOperationException(validation.Error);
+
+        var targetFiles = ResolveTargetFiles(request.InputFiles);
+        if (targetFiles.Count == 0)
+            throw new InvalidOperationException("No target files found for batch rename.");
+
+        BatchRenamePlan? renamePlan = null;
+        if (request.Options != null && request.Options.TryGetValue("plan", out object? planObj) && planObj is BatchRenamePlan p)
+        {
+            renamePlan = p;
+        }
+
+        var options = request.Options != null && request.Options.TryGetValue("options", out object? optObj) && optObj is BatchRenameOptions opt
+            ? opt
+            : new BatchRenameOptions();
+
+        renamePlan ??= BatchRenameEngine.GeneratePlan(targetFiles, options);
+
+        var normalizedOptions = new Dictionary<string, object>
+        {
+            ["options"] = options,
+            ["plan"] = renamePlan
+        };
+
+        return new ConversionPlan(
+            Command,
+            targetFiles,
+            renamePlan.Items.Select(i => i.NewPath).ToList(),
+            Capabilities,
+            normalizedOptions,
+            TrackTaskLifecycle: false);
+    }
+
+    public override async Task<ConversionResult> ExecuteAsync(
+        ConversionPlan plan,
+        IConversionInteraction interaction,
+        IProgress<ConversionProgress>? progress,
+        IConversionExecutionObserver? observer = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        try
+        {
+            BatchRenamePlan renamePlan;
+            if (plan.NormalizedOptions.TryGetValue("plan", out object? planObj) && planObj is BatchRenamePlan p)
+            {
+                renamePlan = p;
+            }
+            else
+            {
+                var options = plan.NormalizedOptions.TryGetValue("options", out object? optObj) && optObj is BatchRenameOptions opt
+                    ? opt
+                    : new BatchRenameOptions();
+                renamePlan = BatchRenameEngine.GeneratePlan(plan.Inputs, options);
+            }
+
+            if (renamePlan.Items.All(i => i.Status == RenameItemStatus.Unchanged))
+            {
+                stopwatch.Stop();
+                return new ConversionResult(
+                    ConversionResultStatus.Failed,
+                    [],
+                    "No files were renamed because the provided options resulted in no changes.",
+                    stopwatch.Elapsed,
+                    0,
+                    plan.ExistingTaskId ?? Guid.NewGuid().ToString("N"));
+            }
+
+            var renameProgress = progress is null ? null : new Progress<BatchRenameProgress>(p =>
+            {
+                progress.Report(new ConversionProgress(p.CompletedCount, p.TotalCount, p.CurrentFile));
+            });
+
+            var result = await BatchRenameExecutor.ExecuteAsync(renamePlan, renameProgress, cancellationToken);
+            stopwatch.Stop();
+
+            var outputFiles = result.RenamedFiles.Select(r => r.NewPath).ToList();
+            if (!result.Succeeded)
+            {
+                var error = result.Errors.Count > 0 ? string.Join("; ", result.Errors) : "Batch rename execution failed.";
+                return new ConversionResult(
+                    ConversionResultStatus.Failed,
+                    outputFiles,
+                    error,
+                    stopwatch.Elapsed,
+                    outputFiles.Count,
+                    plan.ExistingTaskId ?? Guid.NewGuid().ToString("N"));
+            }
+
+            return new ConversionResult(
+                ConversionResultStatus.Succeeded,
+                outputFiles,
+                null,
+                stopwatch.Elapsed,
+                outputFiles.Count,
+                plan.ExistingTaskId ?? Guid.NewGuid().ToString("N"));
+        }
+        catch (OperationCanceledException)
+        {
+            stopwatch.Stop();
+            return new ConversionResult(
+                ConversionResultStatus.Canceled,
+                [],
+                null,
+                stopwatch.Elapsed,
+                0,
+                plan.ExistingTaskId ?? Guid.NewGuid().ToString("N"));
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            return new ConversionResult(
+                ConversionResultStatus.Failed,
+                [],
+                ex.Message,
+                stopwatch.Elapsed,
+                0,
+                plan.ExistingTaskId ?? Guid.NewGuid().ToString("N"));
+        }
+    }
 
     /// <summary>Evaluates and produces a validated rename plan without modifying files.</summary>
     public static BatchRenamePlan Plan(IReadOnlyList<string> filePaths, BatchRenameOptions options)

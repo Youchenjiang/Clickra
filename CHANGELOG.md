@@ -1,5 +1,11 @@
 # Changelog
 
+## [v3.19.0.0] - 2026-11-09
+
+- **用例自宣告契約架構重構 (Polymorphic Self-Declaration Contracts)**：依據模組化統一宣言消除 GUI、CLI 與適配層中針對轉換命令的硬編碼分支邏輯；於 `IConversionUseCase` 引入 `RequiredInputType`、`Capabilities`、`GeneratesHistoryTask` 與 `AcceptsAllFileExtensions` 自宣告屬性，實現轉檔用例的自我描述與多型派送。
+- **批次命名用例標準化 (Batch Rename Use Case Standardization)**：將批次命名重構為標準化 `IConversionUseCase` 並註冊至核心用例目錄，無縫整合用例生命週期與架構隔離守門，支援事務性更名與取消回滾機制。
+- **轉檔工作區萬用副檔名支援 (Unrestricted Extension File Picker)**：針對自宣告支援所有副檔名的用例（如批次命名），檔案選取器支援選取任意副檔名文件，不再受限於預設文件副檔名清單。
+
 ## [v3.18.0.0] - 2026-11-05
 
 - **資料夾與檔案批次命名 (Folder & File Batch Renaming)**：推出 `[F2-21]` 批次命名核心規則引擎與 CLI 工具（`Clickra batch-rename`），支援自訂流水號與補零、前後綴、正則與字串尋找取代、日期時間戳插入、大小寫轉換、副檔名修改、Windows 保留字元與裝置名稱安全過濾，以及雙階段 GUID 循環安全交換更名（`A ⇄ B`）。

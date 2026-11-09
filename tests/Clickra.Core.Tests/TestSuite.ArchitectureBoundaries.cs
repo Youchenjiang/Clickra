@@ -1642,6 +1642,7 @@ static partial class TestSuite
     {
         string[] productCommands = new[] { "pdf", "word", "excel", "ppt", "markdown", "image" }
             .SelectMany(ConvertCommandMetadata.GetCommandsForType)
+            .Append(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(command => command, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -1667,6 +1668,9 @@ static partial class TestSuite
         IConversionUseCase ppt = ConversionUseCases.GetRequired(PptToPdfUseCase.CommandName);
         IConversionUseCase word = ConversionUseCases.GetRequired(WordToPdfUseCase.CommandName);
         IConversionUseCase pdf2img = ConversionUseCases.GetRequired(PdfToImageUseCase.CommandName);
+        IConversionUseCase batchRename = ConversionUseCases.GetRequired(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName);
+        Assert.True(batchRename is Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase,
+            "batch-rename must resolve through the product-wide application use-case catalog.");
         Assert.True(compress is CompressPdfUseCase,
             "compress-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(decrypt is DecryptPdfUseCase,
@@ -1759,7 +1763,18 @@ static partial class TestSuite
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(PdfToImageUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one pdf2img owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one batch-rename owner.");
 
+        Assert.True(batchRename.Capabilities.Contains(ConversionCapability.BatchRename),
+            "batch-rename must declare the BatchRename capability.");
+        Assert.False(batchRename.GeneratesHistoryTask,
+            "batch-rename must declare GeneratesHistoryTask => false.");
+        Assert.True(batchRename.AcceptsAllFileExtensions,
+            "batch-rename must declare AcceptsAllFileExtensions => true.");
+        Assert.True(print.Capabilities.Contains(ConversionCapability.PrintOptions),
+            "print-pdf must declare the PrintOptions capability.");
         Assert.True(decrypt.Capabilities.Contains(ConversionCapability.Password),
             "decrypt-pdf must declare the Password capability.");
         Assert.True(split.Capabilities.Contains(ConversionCapability.SplitPages),
@@ -1768,6 +1783,18 @@ static partial class TestSuite
             "md2pdf must declare the MarkdownOptions capability.");
         Assert.True(markdownWord.Capabilities.Contains(ConversionCapability.MarkdownOptions),
             "md2word must declare the MarkdownOptions capability.");
+
+        Assert.True(decrypt.InputRequirement == RequiredInputType.Password,
+            "decrypt-pdf input requirement must be Password.");
+        Assert.True(split.InputRequirement == RequiredInputType.PageRange,
+            "split-pdf input requirement must be PageRange.");
+        Assert.True(markdownPdf.InputRequirement == RequiredInputType.CustomOptions,
+            "md2pdf input requirement must be CustomOptions.");
+        Assert.True(batchRename.InputRequirement == RequiredInputType.CustomOptions,
+            "batch-rename input requirement must be CustomOptions.");
+        Assert.True(compress.InputRequirement == RequiredInputType.None,
+            "compress-pdf input requirement must be None.");
+
         Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.RequiresOptions(MarkdownToPdfUseCase.CommandName),
             "ConversionExecutionController.RequiresOptions must return true for md2pdf.");
         Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.RequiresOptions(MarkdownToWordUseCase.CommandName),
@@ -1778,6 +1805,20 @@ static partial class TestSuite
             "ConversionExecutionController.HasCapability must recognize Password on decrypt-pdf.");
         Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.HasCapability(SplitPdfUseCase.CommandName, ConversionCapability.SplitPages),
             "ConversionExecutionController.HasCapability must recognize SplitPages on split-pdf.");
+        Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.HasCapability(PrintPdfUseCase.CommandName, ConversionCapability.PrintOptions),
+            "ConversionExecutionController.HasCapability must recognize PrintOptions on print-pdf.");
+        Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.HasCapability(Clickra.Core.Modules.PdfCompression.Application.CompressPdfUseCase.CommandName, ConversionCapability.Compression),
+            "ConversionExecutionController.HasCapability must recognize Compression on compress-pdf.");
+        Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.HasCapability(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName, ConversionCapability.BatchRename),
+            "ConversionExecutionController.HasCapability must recognize BatchRename on batch-rename.");
+        Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.AcceptsAllFileExtensions(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName),
+            "ConversionExecutionController.AcceptsAllFileExtensions must return true for batch-rename.");
+        Assert.False(Clickra.Core.Presentation.Convert.ConversionExecutionController.AcceptsAllFileExtensions(WordToPdfUseCase.CommandName),
+            "ConversionExecutionController.AcceptsAllFileExtensions must return false for word2pdf.");
+        Assert.False(Clickra.Core.Presentation.Convert.ConversionExecutionController.GeneratesHistoryTask(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName),
+            "ConversionExecutionController.GeneratesHistoryTask must return false for batch-rename.");
+        Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.GeneratesHistoryTask(WordToPdfUseCase.CommandName),
+            "ConversionExecutionController.GeneratesHistoryTask must return true for word2pdf.");
         Assert.False(Clickra.Core.Presentation.Convert.ConversionExecutionController.HasCapability(WordToPdfUseCase.CommandName, ConversionCapability.Password),
             "ConversionExecutionController.HasCapability must return false for undeclared capability.");
     }

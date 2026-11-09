@@ -56,6 +56,18 @@ public sealed class ConversionExecutionController
     public static bool RequiresOptions(string command) =>
         HasCapability(command, ConversionCapability.MarkdownOptions);
 
+    public static RequiredInputType GetInputRequirement(string command) =>
+        ConversionUseCases.TryGet(command, out IConversionUseCase? useCase) && useCase is not null
+            ? useCase.InputRequirement
+            : RequiredInputType.None;
+
+    public static bool AcceptsAllFileExtensions(string command) =>
+        ConversionUseCases.TryGet(command, out IConversionUseCase? useCase) && useCase is not null &&
+        useCase.AcceptsAllFileExtensions;
+
+    public static bool GeneratesHistoryTask(string command) =>
+        !ConversionUseCases.TryGet(command, out IConversionUseCase? useCase) || useCase is null || useCase.GeneratesHistoryTask;
+
     public ConversionExecutionPlanPresentation Prepare(
         string command,
         IReadOnlyList<string> files,

@@ -15,6 +15,7 @@ using Clickra.Core.Modules.PdfPrint.Application;
 using Clickra.Core.Modules.PdfSplit.Application;
 using Clickra.Core.Modules.PdfToImage.Application;
 using Clickra.Core.Modules.PdfTranslation.Application;
+using Clickra.Core.Presentation.Convert;
 using Clickra.Core.Processors;
 
 namespace Clickra.UI;
@@ -53,27 +54,30 @@ internal sealed class NativeConversionExecutionAdapter
         List<string> files,
         Action<int, int, string> progressCallback)
     {
-        if (command.Equals(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+        // Specialized commands dispatch polymorphically based on use-case capabilities:
+        // BatchRenameUseCase ("batch-rename"), DecryptPdfUseCase ("decrypt-pdf"),
+        // SplitPdfUseCase ("split-pdf"), CompressPdfUseCase ("compress-pdf"), PrintPdfUseCase ("print-pdf").
+        if (ConversionExecutionController.HasCapability(command, ConversionCapability.BatchRename))
         {
             RunBatchRename(files, progressCallback);
             return true;
         }
-        if (command.Equals(DecryptPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+        if (ConversionExecutionController.HasCapability(command, ConversionCapability.Password))
         {
             RunDecrypt(files, progressCallback);
             return true;
         }
-        if (command.Equals(SplitPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+        if (ConversionExecutionController.HasCapability(command, ConversionCapability.SplitPages))
         {
             RunSplit(files, progressCallback);
             return true;
         }
-        if (command.Equals(CompressPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+        if (ConversionExecutionController.HasCapability(command, ConversionCapability.Compression))
         {
             RunCompress(files, progressCallback);
             return true;
         }
-        if (command.Equals(PrintPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+        if (ConversionExecutionController.HasCapability(command, ConversionCapability.PrintOptions))
         {
             RunPrint(files, progressCallback);
             return true;

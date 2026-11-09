@@ -113,6 +113,7 @@ static partial class TestSuite
             "batch-rename allowed extensions must represent all files (*.*).");
 
         IReadOnlyList<string> pickerExtensions = state.GetPickerExtensions();
-        Assert.True(pickerExtensions.Count > 0, "batch-rename picker extensions must provide supported extensions.");
+        Assert.True(pickerExtensions.Count == 1 && pickerExtensions[0] == "*",
+            "batch-rename picker extensions must provide unrestricted wildcard filter (*).");
     }
 }
