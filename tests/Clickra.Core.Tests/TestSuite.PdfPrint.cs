@@ -1,4 +1,4 @@
-﻿using Clickra.Core.Modules.Pdf.Print.Application;
+using Clickra.Core.Modules.Pdf.Print.Application;
 using Clickra.Core.Modules.Pdf.Print.Ports;
 using Clickra.Core.Modules.Pdf.Print.Processing;
 using Clickra.Core.Application;

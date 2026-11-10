@@ -1,4 +1,4 @@
-﻿using Clickra.Core.Processors;
+using Clickra.Core.Processors;
 using Clickra.Core.Modules.Pdf.Translation.Model;
 
 namespace Clickra.Core.Tests;

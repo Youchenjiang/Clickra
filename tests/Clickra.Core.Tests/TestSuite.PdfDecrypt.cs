@@ -1,4 +1,4 @@
-﻿using Clickra.Core;
+using Clickra.Core;
 using Clickra.Core.Application;
 using Clickra.Core.Modules.Pdf.Decrypt.Application;
 using Clickra.Core.Processors;

@@ -1,4 +1,4 @@
-﻿using Clickra.Core.Processors;
+using Clickra.Core.Processors;
 
 namespace Clickra.Core.Tests;
 

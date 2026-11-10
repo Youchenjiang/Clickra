@@ -20,6 +20,10 @@ static partial class TestSuite
     private const string ArchitectureApplicationDirectory = "Application";
     private const string ArchitectureProcessingDirectory = "Processing";
     private const string ArchitectureTranslationDirectory = "Translation";
+    private const string ArchitectureSharedDirectory = "Shared";
+    private const string ArchitectureExecutionDirectory = "Execution";
+    private const string ArchitectureCompressionSubmodule = "Compression";
+    private const string ArchitectureMergeSubmodule = "Merge";
     private const string ArchitectureModulesDirectory = "Modules";
     private const string ArchitectureFluentProjectDirectory = "Clickra.Fluent";
     private const string ArchitectureDashboardDirectory = "Dashboard";
@@ -244,7 +248,7 @@ static partial class TestSuite
             Path.Combine(application, "PerFileConversionUseCaseBase.cs"),
             Path.Combine(application, "SingleOutputConversionUseCaseBase.cs"),
             Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory,
-                "Doc", "Shared", ArchitectureApplicationDirectory, "OfficeToPdfUseCaseBase.cs")
+                "Doc", ArchitectureSharedDirectory, ArchitectureApplicationDirectory, "OfficeToPdfUseCaseBase.cs")
         };
         foreach (string path in familyPaths)
         {
@@ -431,18 +435,18 @@ static partial class TestSuite
             Path.Combine("Doc", "Ppt"),
             Path.Combine("Doc", "Markdown"),
             Path.Combine("File", "BatchRename"),
-            Path.Combine("Img", "Compression"),
+            Path.Combine("Img", ArchitectureCompressionSubmodule),
             Path.Combine("Img", "FormatConvert"),
-            Path.Combine("Img", "Merge"),
+            Path.Combine("Img", ArchitectureMergeSubmodule),
             Path.Combine("Img", "Stitch"),
             Path.Combine("Img", "ToPdf"),
-            Path.Combine("Pdf", "Compression"),
+            Path.Combine("Pdf", ArchitectureCompressionSubmodule),
             Path.Combine("Pdf", "Decrypt"),
-            Path.Combine("Pdf", "Merge"),
+            Path.Combine("Pdf", ArchitectureMergeSubmodule),
             Path.Combine("Pdf", "Print"),
             Path.Combine("Pdf", "Split"),
             Path.Combine("Pdf", "ToImage"),
-            Path.Combine("Pdf", "Translation")
+            Path.Combine("Pdf", ArchitectureTranslationDirectory)
         };
 
         foreach (string module in conversionModules)
@@ -500,7 +504,7 @@ static partial class TestSuite
     private static void ValidateModuleProcessingLayer(string module, string moduleDir, List<string> violations)
     {
         string procDir = Path.Combine(moduleDir, ArchitectureProcessingDirectory);
-        string execDir = Path.Combine(moduleDir, "Execution");
+        string execDir = Path.Combine(moduleDir, ArchitectureExecutionDirectory);
 
         if (Directory.Exists(execDir))
         {
@@ -595,7 +599,7 @@ static partial class TestSuite
                 ["Excel"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
                 ["Markdown"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
                 ["Ppt"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
-                ["Shared"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, ArchitectureInfrastructureDirectory },
+                [ArchitectureSharedDirectory] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, ArchitectureInfrastructureDirectory },
                 ["Word"] = new(appAndProc, StringComparer.OrdinalIgnoreCase)
             },
             ["File"] = new(StringComparer.OrdinalIgnoreCase)
@@ -604,22 +608,22 @@ static partial class TestSuite
             },
             ["Img"] = new(StringComparer.OrdinalIgnoreCase)
             {
-                ["Compression"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+                [ArchitectureCompressionSubmodule] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
                 ["FormatConvert"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
-                ["Merge"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
-                ["Shared"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureInfrastructureDirectory },
+                [ArchitectureMergeSubmodule] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+                [ArchitectureSharedDirectory] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureInfrastructureDirectory },
                 ["Stitch"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
                 ["ToPdf"] = new(appAndProc, StringComparer.OrdinalIgnoreCase)
             },
             ["Pdf"] = new(StringComparer.OrdinalIgnoreCase)
             {
-                ["Compression"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+                [ArchitectureCompressionSubmodule] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
                 ["Decrypt"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
-                ["Merge"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+                [ArchitectureMergeSubmodule] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
                 ["Print"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, "Ports" },
                 ["Split"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, ArchitecturePresentationDirectory },
                 ["ToImage"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
-                ["Translation"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, "Model", "Pipeline", ArchitectureTranslationDirectory }
+                [ArchitectureTranslationDirectory] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, "Model", "Pipeline", ArchitectureTranslationDirectory }
             },
             ["Sys"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -637,33 +641,52 @@ static partial class TestSuite
                 continue;
             }
 
-            foreach (string subDir in Directory.GetDirectories(domainDir))
+            ValidateDomainSubmodules(domainName, domainDir, allowedSubmodules, violations);
+        }
+    }
+
+    private static void ValidateDomainSubmodules(
+        string domainName,
+        string domainDir,
+        Dictionary<string, HashSet<string>> allowedSubmodules,
+        List<string> violations)
+    {
+        foreach (string subDir in Directory.GetDirectories(domainDir))
+        {
+            string subName = Path.GetFileName(subDir);
+            if (subName.Equals(ArchitectureExecutionDirectory, StringComparison.OrdinalIgnoreCase))
             {
-                string subName = Path.GetFileName(subDir);
-                if (subName.Equals("Execution", StringComparison.OrdinalIgnoreCase))
-                {
-                    violations.Add($"Domain {domainName} contains forbidden Execution/ directory.");
-                    continue;
-                }
+                violations.Add($"Domain {domainName} contains forbidden Execution/ directory.");
+                continue;
+            }
 
-                if (!allowedSubmodules.TryGetValue(subName, out var allowedLayers))
-                {
-                    violations.Add($"Domain {domainName} contains unauthorized submodule directory: {subName}/.");
-                    continue;
-                }
+            if (!allowedSubmodules.TryGetValue(subName, out var allowedLayers))
+            {
+                violations.Add($"Domain {domainName} contains unauthorized submodule directory: {subName}/.");
+                continue;
+            }
 
-                foreach (string layerDir in Directory.GetDirectories(subDir))
-                {
-                    string layerName = Path.GetFileName(layerDir);
-                    if (layerName.Equals("Execution", StringComparison.OrdinalIgnoreCase))
-                    {
-                        violations.Add($"Submodule {domainName}/{subName} contains forbidden Execution/ directory.");
-                    }
-                    else if (!allowedLayers.Contains(layerName))
-                    {
-                        violations.Add($"Submodule {domainName}/{subName} contains unauthorized layer directory: {layerName}/.");
-                    }
-                }
+            ValidateSubmoduleLayers(domainName, subName, subDir, allowedLayers, violations);
+        }
+    }
+
+    private static void ValidateSubmoduleLayers(
+        string domainName,
+        string subName,
+        string subDir,
+        HashSet<string> allowedLayers,
+        List<string> violations)
+    {
+        foreach (string layerDir in Directory.GetDirectories(subDir))
+        {
+            string layerName = Path.GetFileName(layerDir);
+            if (layerName.Equals(ArchitectureExecutionDirectory, StringComparison.OrdinalIgnoreCase))
+            {
+                violations.Add($"Submodule {domainName}/{subName} contains forbidden Execution/ directory.");
+            }
+            else if (!allowedLayers.Contains(layerName))
+            {
+                violations.Add($"Submodule {domainName}/{subName} contains unauthorized layer directory: {layerName}/.");
             }
         }
     }
@@ -1963,7 +1986,7 @@ static partial class TestSuite
 
         string core = Path.Combine(root, "src", ArchitectureCoreProjectDirectory);
         string legacyProviderDirectory = Path.Combine(core, ArchitectureTranslationDirectory);
-        string module = Path.Combine(core, ArchitectureModulesDirectory, "Pdf", "Translation");
+        string module = Path.Combine(core, ArchitectureModulesDirectory, "Pdf", ArchitectureTranslationDirectory);
         string providerDirectory = Path.Combine(module, ArchitectureTranslationDirectory);
         string legacyPdfTranslationDirectory = Path.Combine(module, "Pipeline", ArchitectureTranslationDirectory);
         string textProcessingDirectory = Path.Combine(module, "Pipeline", "TextProcessing");
@@ -2671,8 +2694,18 @@ static partial class TestSuite
             return;
 
         var violations = new List<string>();
+        CheckSharedDirectoriesDoNotImplementUseCases(modulesRoot, root, violations);
+        CheckCrossDomainSharedReferences(modulesRoot, root, violations);
 
-        string[] sharedDirs = Directory.EnumerateDirectories(modulesRoot, "Shared", SearchOption.AllDirectories).ToArray();
+        Assert.True(
+            violations.Count == 0,
+            "Defense Line 2: Shared sub-modules must forbid conversion use cases and cross-domain leakage:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static void CheckSharedDirectoriesDoNotImplementUseCases(string modulesRoot, string root, List<string> violations)
+    {
+        string[] sharedDirs = Directory.EnumerateDirectories(modulesRoot, ArchitectureSharedDirectory, SearchOption.AllDirectories).ToArray();
         foreach (string sharedDir in sharedDirs)
         {
             foreach (string file in Directory.EnumerateFiles(sharedDir, "*.cs", SearchOption.AllDirectories))
@@ -2684,7 +2717,10 @@ static partial class TestSuite
                 }
             }
         }
+    }
 
+    private static void CheckCrossDomainSharedReferences(string modulesRoot, string root, List<string> violations)
+    {
         var conversionDomains = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Doc", "File", "Img", "Pdf" };
         var allowlistedCrossDomainSharedReferences = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -2706,21 +2742,14 @@ static partial class TestSuite
                         continue;
 
                     string forbiddenShared = $"Clickra.Core.Modules.{otherDomain}.Shared";
-                    if (source.Contains(forbiddenShared, StringComparison.Ordinal))
+                    if (source.Contains(forbiddenShared, StringComparison.Ordinal)
+                        && (conversionDomains.Contains(domainName) || !allowlistedCrossDomainSharedReferences.Contains(relative)))
                     {
-                        if (conversionDomains.Contains(domainName) || !allowlistedCrossDomainSharedReferences.Contains(relative))
-                        {
-                            violations.Add($"{relative}: domain '{domainName}' must not reference foreign domain shared namespace '{forbiddenShared}'.");
-                        }
+                        violations.Add($"{relative}: domain '{domainName}' must not reference foreign domain shared namespace '{forbiddenShared}'.");
                     }
                 }
             }
         }
-
-        Assert.True(
-            violations.Count == 0,
-            "Defense Line 2: Shared sub-modules must forbid conversion use cases and cross-domain leakage:" +
-            Environment.NewLine + string.Join(Environment.NewLine, violations));
     }
 
     private static void TestFunctionalSubmodulesAreSymmetrical()
@@ -2741,40 +2770,10 @@ static partial class TestSuite
             foreach (string subDir in Directory.EnumerateDirectories(domainDir, "*", SearchOption.TopDirectoryOnly))
             {
                 string subName = Path.GetFileName(subDir);
-                if (string.Equals(subName, "Shared", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(subName, ArchitectureSharedDirectory, StringComparison.OrdinalIgnoreCase))
                     continue;
 
-                string appDir = Path.Combine(subDir, ArchitectureApplicationDirectory);
-                string procDir = Path.Combine(subDir, ArchitectureProcessingDirectory);
-                string execDir = Path.Combine(subDir, "Execution");
-
-                if (Directory.Exists(execDir))
-                {
-                    violations.Add($"{domain}/{subName}: contains forbidden Execution/ directory.");
-                }
-
-                if (!Directory.Exists(appDir))
-                {
-                    violations.Add($"{domain}/{subName}: missing mandatory {ArchitectureApplicationDirectory}/ directory.");
-                }
-
-                if (!Directory.Exists(procDir))
-                {
-                    violations.Add($"{domain}/{subName}: missing mandatory {ArchitectureProcessingDirectory}/ directory.");
-                }
-
-                if (Directory.Exists(appDir))
-                {
-                    var useCases = Directory.EnumerateFiles(appDir, "*UseCase*.cs", SearchOption.AllDirectories)
-                        .Where(f => !Path.GetFileName(f).Contains("Base"))
-                        .Select(f => Path.GetFileName(f))
-                        .ToList();
-
-                    if (useCases.Count == 0)
-                    {
-                        violations.Add($"{domain}/{subName}: functional sub-module must have at least one conversion UseCase.");
-                    }
-                }
+                ValidateFunctionalSubmodule(domain, subName, subDir, violations);
             }
         }
 
@@ -2782,6 +2781,41 @@ static partial class TestSuite
             violations.Count == 0,
             "Defense Line 3: Functional sub-modules must be symmetrical and follow golden structure:" +
             Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static void ValidateFunctionalSubmodule(string domain, string subName, string subDir, List<string> violations)
+    {
+        string appDir = Path.Combine(subDir, ArchitectureApplicationDirectory);
+        string procDir = Path.Combine(subDir, ArchitectureProcessingDirectory);
+        string execDir = Path.Combine(subDir, ArchitectureExecutionDirectory);
+
+        if (Directory.Exists(execDir))
+        {
+            violations.Add($"{domain}/{subName}: contains forbidden Execution/ directory.");
+        }
+
+        if (!Directory.Exists(appDir))
+        {
+            violations.Add($"{domain}/{subName}: missing mandatory {ArchitectureApplicationDirectory}/ directory.");
+        }
+
+        if (!Directory.Exists(procDir))
+        {
+            violations.Add($"{domain}/{subName}: missing mandatory {ArchitectureProcessingDirectory}/ directory.");
+        }
+
+        if (Directory.Exists(appDir))
+        {
+            var useCases = Directory.EnumerateFiles(appDir, "*UseCase*.cs", SearchOption.AllDirectories)
+                .Where(f => !Path.GetFileName(f).Contains("Base"))
+                .Select(f => Path.GetFileName(f))
+                .ToList();
+
+            if (useCases.Count == 0)
+            {
+                violations.Add($"{domain}/{subName}: functional sub-module must have at least one conversion UseCase.");
+            }
+        }
     }
 
     private static string NormalizeRepoPath(string root, string file) =>
