@@ -8,7 +8,7 @@ using Windows.Graphics.Imaging;
 using Windows.Storage.Streams;
 using Imazen.WebP;
 
-namespace Clickra.Core.Modules.Image.Processing;
+namespace Clickra.Core.Modules.Img.Shared.Infrastructure;
 
 /// <summary>
 /// Bridges Windows Imaging Component (WIC) and WinRT (Windows.Graphics.Imaging) APIs

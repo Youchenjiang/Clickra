@@ -1,6 +1,6 @@
 using Clickra.Core.Modules.Sys.Settings.Application;
 using Clickra.Core.Application;
-namespace Clickra.Core.Modules.Image.Application;
+namespace Clickra.Core.Modules.Img.Shared.Application;
 
 internal static class ImageOutputSafety
 {

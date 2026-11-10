@@ -7,7 +7,8 @@ using System.Threading;
 using System.Linq;
 using Clickra.Core.Processors;
 
-namespace Clickra.Core.Modules.Image.Processing;
+namespace Clickra.Core.Modules.Img.FormatConvert.Processing;
+using Clickra.Core.Modules.Img.Shared.Infrastructure;
 
 /// <summary>Converts an image file to a target format (png / jpg / webp / gif / heic).
 /// The target format is supplied through the "format" option; files that are

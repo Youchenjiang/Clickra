@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -8,7 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Clickra.Core.Modules.Image.Processing;
+using Imazen.WebP;
 using Clickra.Core.Modules.Pdf.Split.Processing;
 using Clickra.Core.Modules.Pdf.ToImage.Application;
 using Clickra.Core.Processors;
@@ -353,12 +353,21 @@ public class PdfToImageProcessor : SingleFileProcessorBase
                 SaveJpegWithQuality(bmp, outputPath, 90L);
                 break;
             case "webp":
-                WicImageHelper.SaveAsWebp(bmp, outputPath, 90);
+                SaveWebpWithQuality(bmp, outputPath, 90);
                 break;
             default:
                 bmp.Save(outputPath, ImageFormat.Png);
                 break;
         }
+    }
+
+    private static void SaveWebpWithQuality(Bitmap image, string outputPath, int quality)
+    {
+        string? dir = Path.GetDirectoryName(outputPath);
+        if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+        using var output = System.IO.File.Create(outputPath);
+        var encoder = new SimpleEncoder();
+        encoder.Encode(image, output, Math.Clamp(quality, 1, 100));
     }
 
     private static void SaveJpegWithQuality(Bitmap bmp, string outputPath, long quality)

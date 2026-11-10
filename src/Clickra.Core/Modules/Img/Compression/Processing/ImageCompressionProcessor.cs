@@ -9,9 +9,11 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Clickra.Core.Processors;
-using Clickra.Core.Modules.Image.Application;
+using Clickra.Core.Modules.Img.Compression.Application;
 
-namespace Clickra.Core.Modules.Image.Processing;
+namespace Clickra.Core.Modules.Img.Compression.Processing;
+using Clickra.Core.Modules.Img.FormatConvert.Processing;
+using Clickra.Core.Modules.Img.Shared.Infrastructure;
 
 /// <summary>Compresses an image in its existing format: re-encodes at the saved quality level
 /// and, when a max long edge is configured, downscales to it. The caller supplies the output

@@ -1,6 +1,10 @@
 using Clickra.Core.Modules.File.BatchRename.Application;
 using Clickra.Core.Modules.Sys.HistoryTasks.Application;
-using Clickra.Core.Modules.Image.Application;
+using Clickra.Core.Modules.Img.Compression.Application;
+using Clickra.Core.Modules.Img.FormatConvert.Application;
+using Clickra.Core.Modules.Img.Merge.Application;
+using Clickra.Core.Modules.Img.Stitch.Application;
+using Clickra.Core.Modules.Img.ToPdf.Application;
 using Clickra.Core.Modules.Doc.Markdown.Application;
 using Clickra.Core.Modules.Doc.Excel.Application;
 using Clickra.Core.Modules.Doc.Ppt.Application;

@@ -6,7 +6,8 @@ using PdfSharp.Pdf;
 using PdfSharp.Drawing;
 using Clickra.Core.Processors;
 
-namespace Clickra.Core.Modules.Image.Processing;
+namespace Clickra.Core.Modules.Img.ToPdf.Processing;
+using Clickra.Core.Modules.Img.Shared.Infrastructure;
 
 public class ImageToPdfProcessor : MultiFileProcessorBase
 {

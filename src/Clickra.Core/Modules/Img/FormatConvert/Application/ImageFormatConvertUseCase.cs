@@ -1,9 +1,10 @@
 using Clickra.Core.Modules.Sys.Settings.Application;
 using Clickra.Core.Application;
-using Clickra.Core.Modules.Image.Processing;
+using Clickra.Core.Modules.Img.FormatConvert.Processing;
 using Clickra.Core.Processors;
 
-namespace Clickra.Core.Modules.Image.Application;
+namespace Clickra.Core.Modules.Img.FormatConvert.Application;
+using Clickra.Core.Modules.Img.Shared.Application;
 
 /// <summary>Authoritative application workflow for one img-to-* image conversion command.</summary>
 public sealed class ImageFormatConvertUseCase : PerFileConversionUseCaseBase
