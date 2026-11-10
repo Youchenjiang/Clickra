@@ -1,4 +1,4 @@
-﻿using Clickra.Core.Modules.BatchRename.Application;
+using Clickra.Core.Modules.File.BatchRename.Application;
 using Clickra.Core.Modules.HistoryTasks.Application;
 using Clickra.Core.Modules.Image.Application;
 using Clickra.Core.Modules.Markdown.Application;

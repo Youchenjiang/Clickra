@@ -5,11 +5,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Clickra.Core.Application;
-using Clickra.Core.Modules.BatchRename.Domain;
-using Clickra.Core.Modules.BatchRename.Processing;
+using Clickra.Core.Modules.File.BatchRename.Domain;
+using Clickra.Core.Modules.File.BatchRename.Processing;
 using Clickra.Core.Processors;
 
-namespace Clickra.Core.Modules.BatchRename.Application;
+namespace Clickra.Core.Modules.File.BatchRename.Application;
 
 /// <summary>Application service orchestrating batch file renaming.</summary>
 public sealed class BatchRenameUseCase : ConversionUseCaseBase
@@ -200,7 +200,7 @@ public sealed class BatchRenameUseCase : ConversionUseCaseBase
 
         foreach (string input in inputs)
         {
-            if (File.Exists(input))
+            if (System.IO.File.Exists(input))
             {
                 result.Add(Path.GetFullPath(input));
             }

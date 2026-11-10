@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 
-namespace Clickra.Core.Modules.BatchRename.Processing;
+namespace Clickra.Core.Modules.File.BatchRename.Processing;
 
 /// <summary>Enforces Windows filesystem naming rules and detects hazardous filename patterns.</summary>
 public static class RenameSafetyGuard

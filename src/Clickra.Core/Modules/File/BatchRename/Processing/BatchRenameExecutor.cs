@@ -4,9 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Clickra.Core.Modules.BatchRename.Domain;
+using Clickra.Core.Modules.File.BatchRename.Domain;
 
-namespace Clickra.Core.Modules.BatchRename.Processing;
+namespace Clickra.Core.Modules.File.BatchRename.Processing;
 
 /// <summary>Progress report emitted during batch renaming.</summary>
 public sealed record BatchRenameProgress(
@@ -79,7 +79,7 @@ public static class BatchRenameExecutor
             var item = items[i];
             try
             {
-                File.Move(item.OriginalPath, item.NewPath);
+                System.IO.File.Move(item.OriginalPath, item.NewPath);
                 completed.Add((item.OriginalPath, item.NewPath));
             }
             catch (Exception ex)
@@ -138,7 +138,7 @@ public static class BatchRenameExecutor
 
             try
             {
-                File.Move(item.OriginalPath, tempPath);
+                System.IO.File.Move(item.OriginalPath, tempPath);
                 phase1Completed.Add((item.OriginalPath, tempPath));
             }
             catch (Exception ex)
@@ -178,7 +178,7 @@ public static class BatchRenameExecutor
 
             try
             {
-                File.Move(tempPath, item.NewPath);
+                System.IO.File.Move(tempPath, item.NewPath);
                 phase2Completed.Add((item.OriginalPath, item.NewPath));
             }
             catch (Exception ex)
@@ -198,7 +198,7 @@ public static class BatchRenameExecutor
     {
         foreach (var (orig, temp) in staged)
         {
-            try { File.Move(temp, orig); } catch { /* best effort rollback */ }
+            try { System.IO.File.Move(temp, orig); } catch { /* best effort rollback */ }
         }
     }
 
@@ -209,7 +209,7 @@ public static class BatchRenameExecutor
         foreach (var (orig, newP) in finalized)
         {
             string tempP = staged.First(p => p.Original == orig).Temp;
-            try { File.Move(newP, tempP); } catch { /* best effort rollback */ }
+            try { System.IO.File.Move(newP, tempP); } catch { /* best effort rollback */ }
         }
     }
 
@@ -220,9 +220,9 @@ public static class BatchRenameExecutor
             try
             {
                 var (oldPath, newPath) = completed[i];
-                if (File.Exists(newPath))
+                if (System.IO.File.Exists(newPath))
                 {
-                    File.Move(newPath, oldPath);
+                    System.IO.File.Move(newPath, oldPath);
                 }
             }
             catch

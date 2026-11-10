@@ -1,6 +1,6 @@
 using System;
 
-namespace Clickra.Core.Modules.BatchRename.Application;
+namespace Clickra.Core.Modules.File.BatchRename.Application;
 
 /// <summary>Position where sequential numbers or timestamps are inserted.</summary>
 public enum InsertPosition

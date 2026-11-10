@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Clickra.Core.Modules.BatchRename.Domain;
+namespace Clickra.Core.Modules.File.BatchRename.Domain;
 
 /// <summary>Status of an individual file within a rename plan.</summary>
 public enum RenameItemStatus

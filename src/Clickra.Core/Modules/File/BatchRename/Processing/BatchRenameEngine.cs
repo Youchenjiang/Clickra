@@ -4,10 +4,10 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Clickra.Core.Modules.BatchRename.Application;
-using Clickra.Core.Modules.BatchRename.Domain;
+using Clickra.Core.Modules.File.BatchRename.Application;
+using Clickra.Core.Modules.File.BatchRename.Domain;
 
-namespace Clickra.Core.Modules.BatchRename.Processing;
+namespace Clickra.Core.Modules.File.BatchRename.Processing;
 
 /// <summary>Generates and validates proposed rename plans based on specified options.</summary>
 public static class BatchRenameEngine
@@ -50,7 +50,7 @@ public static class BatchRenameEngine
 
         foreach (var (source, _, origName, newName, newPath) in preliminaryItems)
         {
-            if (!File.Exists(source))
+            if (!System.IO.File.Exists(source))
             {
                 finalItems.Add(new RenameItem(source, origName, newName, newPath,
                     RenameItemStatus.MissingSourceFile, "Source file does not exist."));
@@ -79,7 +79,7 @@ public static class BatchRenameEngine
                 continue;
             }
 
-            if (File.Exists(newPath) && !sourcePathSet.Contains(newPath))
+            if (System.IO.File.Exists(newPath) && !sourcePathSet.Contains(newPath))
             {
                 finalItems.Add(new RenameItem(source, origName, newName, newPath,
                     RenameItemStatus.ConflictExistingFile, "A file with this name already exists in the target directory."));
@@ -155,11 +155,11 @@ public static class BatchRenameEngine
         DateTime dt = DateTime.UtcNow.ToLocalTime(); // skipcq: CS-W1091 — File rename timestamp formats in local wall-clock time.
         try
         {
-            if (File.Exists(filePath))
+            if (System.IO.File.Exists(filePath))
             {
                 dt = options.Source == TimestampSource.CreatedTime
-                    ? File.GetCreationTime(filePath)
-                    : File.GetLastWriteTime(filePath);
+                    ? System.IO.File.GetCreationTime(filePath)
+                    : System.IO.File.GetLastWriteTime(filePath);
             }
         }
         catch
