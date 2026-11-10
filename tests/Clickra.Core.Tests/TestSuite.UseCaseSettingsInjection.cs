@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using Clickra.Core.Application;
-using Clickra.Core.Modules.Image.Application;
-using Clickra.Core.Modules.Image.Processing;
+using Clickra.Core.Modules.Img.Compression.Application;
+using Clickra.Core.Modules.Img.FormatConvert.Application;
+using Clickra.Core.Modules.Img.Compression.Processing;
+using Clickra.Core.Modules.Img.FormatConvert.Processing;
 using Clickra.Core.Modules.Doc.Markdown.Application;
 using Clickra.Core.Modules.Doc.Shared.Application;
 using Clickra.Core.Modules.Doc.Word.Application;

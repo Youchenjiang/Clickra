@@ -9,7 +9,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Application;
-using Clickra.Core.Modules.Image.Processing;
+using Clickra.Core.Modules.Img.Compression.Processing;
+using Clickra.Core.Modules.Img.Compression.Application;
 using Clickra.Core.Processors;
 using Clickra.Shared;
 

@@ -1,6 +1,7 @@
 using Clickra.Core;
 using Clickra.Core.Application;
-using Clickra.Core.Modules.Image.Processing;
+using Clickra.Core.Modules.Img.FormatConvert.Processing;
+using Clickra.Core.Modules.Img.FormatConvert.Application;
 using Clickra.Core.Processors;
 using Clickra.Shared;
 using System;
