@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 using Clickra.Core.Application;
 using Clickra.Core.Modules.Pdf.Print.Application;
 using Clickra.Core.Modules.Pdf.ToImage.Application;
@@ -224,6 +224,15 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: migrated Markdown Word workflow has one execution owner",
             TestMarkdownToWordWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: domain roots have no loose source files",
+            TestDomainRootsHaveNoLooseSourceFiles);
+        runner.RunGuard(
+            "Architecture boundaries: shared submodules forbid conversion use cases and cross-domain leakage",
+            TestSharedSubmodulesForbidConversionUseCasesAndCrossDomainLeakage);
+        runner.RunGuard(
+            "Architecture boundaries: functional submodules are symmetrical",
+            TestFunctionalSubmodulesAreSymmetrical);
     }
 
     private static void TestConversionExecutionFamiliesShareLifecycleResultMapping()
@@ -235,7 +244,7 @@ static partial class TestSuite
             Path.Combine(application, "PerFileConversionUseCaseBase.cs"),
             Path.Combine(application, "SingleOutputConversionUseCaseBase.cs"),
             Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory,
-                "Office", ArchitectureApplicationDirectory, "OfficeToPdfUseCaseBase.cs")
+                "Doc", "Shared", ArchitectureApplicationDirectory, "OfficeToPdfUseCaseBase.cs")
         };
         foreach (string path in familyPaths)
         {
@@ -365,7 +374,7 @@ static partial class TestSuite
         Assert.True(
             invalidFirstAxis.Length == 0,
             "Modules are capability-first. Technical roles belong inside a capability, for example " +
-            "Modules/PdfTranslation/Model rather than Modules/Models/PdfTranslation. " +
+            "Modules/Pdf/Translation/Model rather than Modules/Models/Pdf/Translation. " +
             $"Invalid first-axis directories: {string.Join(", ", invalidFirstAxis)}");
 
         var namespaceViolations = new List<string>();
@@ -417,17 +426,23 @@ static partial class TestSuite
     {
         string[] conversionModules =
         {
-            "BatchRename",
-            "Image",
-            "Markdown",
-            "Office",
-            "PdfCompression",
-            "PdfDecrypt",
-            "PdfMerge",
-            "PdfPrint",
-            "PdfSplit",
-            "PdfToImage",
-            ArchitecturePdfTranslationModuleName
+            Path.Combine("Doc", "Word"),
+            Path.Combine("Doc", "Excel"),
+            Path.Combine("Doc", "Ppt"),
+            Path.Combine("Doc", "Markdown"),
+            Path.Combine("File", "BatchRename"),
+            Path.Combine("Img", "Compression"),
+            Path.Combine("Img", "FormatConvert"),
+            Path.Combine("Img", "Merge"),
+            Path.Combine("Img", "Stitch"),
+            Path.Combine("Img", "ToPdf"),
+            Path.Combine("Pdf", "Compression"),
+            Path.Combine("Pdf", "Decrypt"),
+            Path.Combine("Pdf", "Merge"),
+            Path.Combine("Pdf", "Print"),
+            Path.Combine("Pdf", "Split"),
+            Path.Combine("Pdf", "ToImage"),
+            Path.Combine("Pdf", "Translation")
         };
 
         foreach (string module in conversionModules)
@@ -573,42 +588,81 @@ static partial class TestSuite
     private static void ValidateAuthorizedModuleDirectories(string modulesRoot, List<string> violations)
     {
         var appAndProc = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory };
-        var authorizedByModule = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase)
+        var authorizedByDomainAndSubmodule = new Dictionary<string, Dictionary<string, HashSet<string>>>(StringComparer.OrdinalIgnoreCase)
         {
-            ["Office"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, ArchitectureInfrastructureDirectory },
-            ["Image"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
-            ["Markdown"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
-            ["BatchRename"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, "Domain" },
-            ["PdfCompression"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
-            ["PdfDecrypt"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
-            ["PdfMerge"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
-            ["PdfPrint"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, "Ports" },
-            ["PdfSplit"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, ArchitecturePresentationDirectory },
-            ["PdfToImage"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
-            [ArchitecturePdfTranslationModuleName] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, "Model", "Pipeline", ArchitectureTranslationDirectory },
-            ["HistoryTasks"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitecturePresentationDirectory },
-            [ArchitectureSettingsModuleName] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, "Model", ArchitecturePresentationDirectory }
+            ["Doc"] = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Excel"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+                ["Markdown"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+                ["Ppt"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+                ["Shared"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, ArchitectureInfrastructureDirectory },
+                ["Word"] = new(appAndProc, StringComparer.OrdinalIgnoreCase)
+            },
+            ["File"] = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["BatchRename"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, "Domain" }
+            },
+            ["Img"] = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Compression"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+                ["FormatConvert"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+                ["Merge"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+                ["Shared"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureInfrastructureDirectory },
+                ["Stitch"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+                ["ToPdf"] = new(appAndProc, StringComparer.OrdinalIgnoreCase)
+            },
+            ["Pdf"] = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Compression"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+                ["Decrypt"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+                ["Merge"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+                ["Print"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, "Ports" },
+                ["Split"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, ArchitecturePresentationDirectory },
+                ["ToImage"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+                ["Translation"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, "Model", "Pipeline", ArchitectureTranslationDirectory }
+            },
+            ["Sys"] = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["HistoryTasks"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitecturePresentationDirectory },
+                [ArchitectureSettingsModuleName] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, "Model", ArchitecturePresentationDirectory }
+            }
         };
 
-        foreach (string moduleDir in Directory.GetDirectories(modulesRoot))
+        foreach (string domainDir in Directory.GetDirectories(modulesRoot))
         {
-            string moduleName = Path.GetFileName(moduleDir);
-            if (!authorizedByModule.TryGetValue(moduleName, out var allowedDirs))
+            string domainName = Path.GetFileName(domainDir);
+            if (!authorizedByDomainAndSubmodule.TryGetValue(domainName, out var allowedSubmodules))
             {
-                violations.Add($"Module {moduleName} is not recognized in authorized module directory configuration.");
+                violations.Add($"Domain {domainName} is not recognized in authorized module directory configuration.");
                 continue;
             }
 
-            foreach (string subDir in Directory.GetDirectories(moduleDir))
+            foreach (string subDir in Directory.GetDirectories(domainDir))
             {
-                string dirName = Path.GetFileName(subDir);
-                if (dirName.Equals("Execution", StringComparison.OrdinalIgnoreCase))
+                string subName = Path.GetFileName(subDir);
+                if (subName.Equals("Execution", StringComparison.OrdinalIgnoreCase))
                 {
-                    violations.Add($"Module {moduleName} contains forbidden Execution/ directory.");
+                    violations.Add($"Domain {domainName} contains forbidden Execution/ directory.");
+                    continue;
                 }
-                else if (!allowedDirs.Contains(dirName))
+
+                if (!allowedSubmodules.TryGetValue(subName, out var allowedLayers))
                 {
-                    violations.Add($"Module {moduleName} contains unauthorized directory: {dirName}/.");
+                    violations.Add($"Domain {domainName} contains unauthorized submodule directory: {subName}/.");
+                    continue;
+                }
+
+                foreach (string layerDir in Directory.GetDirectories(subDir))
+                {
+                    string layerName = Path.GetFileName(layerDir);
+                    if (layerName.Equals("Execution", StringComparison.OrdinalIgnoreCase))
+                    {
+                        violations.Add($"Submodule {domainName}/{subName} contains forbidden Execution/ directory.");
+                    }
+                    else if (!allowedLayers.Contains(layerName))
+                    {
+                        violations.Add($"Submodule {domainName}/{subName} contains unauthorized layer directory: {layerName}/.");
+                    }
                 }
             }
         }
@@ -617,16 +671,12 @@ static partial class TestSuite
     private static void ValidatePresentationReferences(string root, string modulesRoot, List<string> violations)
     {
         var forbiddenPattern = new Regex(
-            @"\busing\s+Clickra\.Core\.Modules\.[A-Za-z0-9_]+\.(?:Processing|Infrastructure|Execution)\s*;|\bClickra\.Core\.Modules\.[A-Za-z0-9_]+\.(?:Processing|Infrastructure|Execution)\b",
+            @"\busing\s+Clickra\.Core\.Modules\.[A-Za-z0-9_.]+\.(?:Processing|Infrastructure|Execution)\s*;|\bClickra\.Core\.Modules\.[A-Za-z0-9_.]+\.(?:Processing|Infrastructure|Execution)\b",
             RegexOptions.Compiled,
             ArchitectureRegexTimeout);
 
-        foreach (string moduleDir in Directory.GetDirectories(modulesRoot))
+        foreach (string presDir in Directory.EnumerateDirectories(modulesRoot, ArchitecturePresentationDirectory, SearchOption.AllDirectories))
         {
-            string presDir = Path.Combine(moduleDir, ArchitecturePresentationDirectory);
-            if (!Directory.Exists(presDir))
-                continue;
-
             foreach (string file in Directory.GetFiles(presDir, "*.cs", SearchOption.AllDirectories))
             {
                 string source = File.ReadAllText(file);
@@ -1081,7 +1131,7 @@ static partial class TestSuite
     private static void TestMarkdownPresentationOptionsHaveSingleOwner()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
-        string processingDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, "Markdown", ArchitectureProcessingDirectory);
+        string processingDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, "Doc", "Markdown", ArchitectureProcessingDirectory);
         string profile = File.ReadAllText(Path.Combine(processingDir, "MarkdownRenderProfile.cs"));
         string pdf = File.ReadAllText(Path.Combine(processingDir, "MarkdownToPdfProcessor.cs"));
         string word = File.ReadAllText(Path.Combine(processingDir, "MarkdownToWordProcessor.cs"));
@@ -1251,7 +1301,7 @@ static partial class TestSuite
     private static readonly IReadOnlyDictionary<string, InfrastructureSettingsAllowance> InfrastructureSettingsAllowlist =
         new Dictionary<string, InfrastructureSettingsAllowance>(StringComparer.OrdinalIgnoreCase)
         {
-            ["src/Clickra.Core/Modules/Office/Infrastructure/LibreOfficeEngineInstaller.cs"] = new(
+            ["src/Clickra.Core/Modules/Doc/Shared/Infrastructure/LibreOfficeEngineInstaller.cs"] = new(
                 OwnedKeys: new HashSet<string>(StringComparer.Ordinal)
                 {
                     "LibreOfficeInstalledByClickra",
@@ -1423,6 +1473,7 @@ static partial class TestSuite
             "src",
             ArchitectureCoreProjectDirectory,
             ArchitectureModulesDirectory,
+            "Sys",
             ArchitectureSettingsModuleName,
             ArchitectureApplicationDirectory,
             "SettingsController.cs");
@@ -1447,7 +1498,7 @@ static partial class TestSuite
         {
             string member = match.Groups["member"].Value;
             if (!AllowedSettingsGatewayMembers.Contains(member))
-                violations.Add($"src/Clickra.Core/Modules/{ArchitectureSettingsModuleName}/Application/SettingsController.cs: unexpected ClickraStorage.{member} access");
+                violations.Add($"src/Clickra.Core/Modules/Sys/{ArchitectureSettingsModuleName}/Application/SettingsController.cs: unexpected ClickraStorage.{member} access");
         }
 
         Assert.True(
@@ -1494,7 +1545,7 @@ static partial class TestSuite
         var violations = PresentationSettingsViolations(root).ToList();
 
         string gateway = File.ReadAllText(Path.Combine(
-            root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, ArchitectureSettingsModuleName, ArchitectureApplicationDirectory, "SettingsController.cs"));
+            root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, "Sys", ArchitectureSettingsModuleName, ArchitectureApplicationDirectory, "SettingsController.cs"));
         foreach (string typedContract in new[]
                  {
                      "public static string Language",
@@ -1506,7 +1557,7 @@ static partial class TestSuite
             violations.Add($"SettingsController missing typed contract: {typedContract}");
 
         string presentationGateway = File.ReadAllText(Path.Combine(
-            root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, ArchitectureSettingsModuleName, ArchitecturePresentationDirectory, "SettingsPresentationController.cs"));
+            root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, "Sys", ArchitectureSettingsModuleName, ArchitecturePresentationDirectory, "SettingsPresentationController.cs"));
 
         foreach (string typedContract in new[]
                  {
@@ -1551,6 +1602,7 @@ static partial class TestSuite
             "src",
             ArchitectureCoreProjectDirectory,
             ArchitectureModulesDirectory,
+            "Sys",
             "HistoryTasks",
             ArchitectureApplicationDirectory,
             "ParkedTaskController.cs");
@@ -1579,7 +1631,7 @@ static partial class TestSuite
         {
             string member = match.Groups["member"].Value;
             if (!AllowedParkedTaskGatewayMembers.Contains(member))
-                violations.Add($"src/Clickra.Core/Modules/HistoryTasks/Application/ParkedTaskController.cs: unexpected ClickraStorage.{member} access");
+                violations.Add($"src/Clickra.Core/Modules/Sys/HistoryTasks/Application/ParkedTaskController.cs: unexpected ClickraStorage.{member} access");
         }
 
         Assert.True(
@@ -1864,7 +1916,7 @@ static partial class TestSuite
         var violations = new List<string>();
 
         var forbidden = new Regex(
-            @"\b(?:ClickraStorage|ClickraSettings|ConversionStatus)\b|using\s+Clickra\.Core\.(?:Storage|Processors|Infrastructure)\s*;|using\s+Clickra\.Core\.Modules\.[A-Za-z0-9_]+\.(?:Processing|Infrastructure)\s*;",
+            @"\b(?:ClickraStorage|ClickraSettings|ConversionStatus)\b|using\s+Clickra\.Core\.(?:Storage|Processors|Infrastructure)\s*;|using\s+Clickra\.Core\.Modules\.[A-Za-z0-9_.]+\.(?:Processing|Infrastructure)\s*;",
             RegexOptions.Compiled,
             ArchitectureRegexTimeout);
 
@@ -1911,7 +1963,7 @@ static partial class TestSuite
 
         string core = Path.Combine(root, "src", ArchitectureCoreProjectDirectory);
         string legacyProviderDirectory = Path.Combine(core, ArchitectureTranslationDirectory);
-        string module = Path.Combine(core, ArchitectureModulesDirectory, "PdfTranslation");
+        string module = Path.Combine(core, ArchitectureModulesDirectory, "Pdf", "Translation");
         string providerDirectory = Path.Combine(module, ArchitectureTranslationDirectory);
         string legacyPdfTranslationDirectory = Path.Combine(module, "Pipeline", ArchitectureTranslationDirectory);
         string textProcessingDirectory = Path.Combine(module, "Pipeline", "TextProcessing");
@@ -1919,11 +1971,11 @@ static partial class TestSuite
         Assert.False(
             Directory.Exists(legacyProviderDirectory) &&
             Directory.EnumerateFiles(legacyProviderDirectory, "*.cs", SearchOption.AllDirectories).Any(),
-            "PDF translation providers must stay inside Modules/PdfTranslation rather than returning to Core/Translation.");
+            "PDF translation providers must stay inside Modules/Pdf/Translation rather than returning to Core/Translation.");
         Assert.False(
             Directory.Exists(legacyPdfTranslationDirectory) &&
             Directory.EnumerateFiles(legacyPdfTranslationDirectory, "*.cs", SearchOption.AllDirectories).Any(),
-            "The ambiguous PdfTranslation/Pipeline/Translation source context must not return.");
+            "The ambiguous Pdf/Translation/Pipeline/Translation source context must not return.");
         Assert.True(
             Directory.Exists(textProcessingDirectory),
             "PDF translation text processing must have an explicit TextProcessing context.");
@@ -1934,7 +1986,7 @@ static partial class TestSuite
             Assert.True(
                 Regex.IsMatch(
                     source,
-                    @"\bnamespace\s+Clickra\.Core\.Modules\.PdfTranslation\.Translation\s*(?:;|\{)",
+                    @"\bnamespace\s+Clickra\.Core\.Modules\.Pdf\.Translation\.Translation\s*(?:;|\{)",
                     RegexOptions.CultureInvariant,
                     ArchitectureRegexTimeout),
                 $"{NormalizeRepoPath(root, file)} must remain translation-provider infrastructure.");
@@ -1946,7 +1998,7 @@ static partial class TestSuite
             Assert.True(
                 Regex.IsMatch(
                     source,
-                    @"\bnamespace\s+Clickra\.Core\.Modules\.PdfTranslation\.Pipeline\.TextProcessing\s*(?:;|\{)",
+                    @"\bnamespace\s+Clickra\.Core\.Modules\.Pdf\.Translation\.Pipeline\.TextProcessing\s*(?:;|\{)",
                     RegexOptions.CultureInvariant,
                     ArchitectureRegexTimeout),
                 $"{NormalizeRepoPath(root, file)} must remain inside the PDF TextProcessing context.");
@@ -2569,6 +2621,167 @@ static partial class TestSuite
             IConversionExecutionObserver? observer = null,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+    }
+
+    private static void TestDomainRootsHaveNoLooseSourceFiles()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
+        string modulesRoot = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory);
+        if (!Directory.Exists(modulesRoot))
+            return;
+
+        string[] authorizedDomains = { "Doc", "File", "Img", "Pdf", "Sys" };
+        var violations = new List<string>();
+
+        foreach (string dir in Directory.EnumerateDirectories(modulesRoot, "*", SearchOption.TopDirectoryOnly))
+        {
+            string domainName = Path.GetFileName(dir);
+            if (!authorizedDomains.Contains(domainName, StringComparer.OrdinalIgnoreCase))
+            {
+                violations.Add($"Unauthorized domain directory under Modules: {domainName}");
+            }
+        }
+
+        foreach (string domain in authorizedDomains)
+        {
+            string domainDir = Path.Combine(modulesRoot, domain);
+            if (!Directory.Exists(domainDir)) continue;
+
+            string[] looseFiles = Directory.EnumerateFiles(domainDir, "*.cs", SearchOption.TopDirectoryOnly)
+                .Select(f => NormalizeRepoPath(root, f))
+                .ToArray();
+
+            if (looseFiles.Length > 0)
+            {
+                violations.Add($"Domain root '{domain}' contains loose source files: {string.Join(", ", looseFiles)}");
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "Defense Line 1: Domain roots must be clean with no loose source files:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static void TestSharedSubmodulesForbidConversionUseCasesAndCrossDomainLeakage()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
+        string modulesRoot = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory);
+        if (!Directory.Exists(modulesRoot))
+            return;
+
+        var violations = new List<string>();
+
+        string[] sharedDirs = Directory.EnumerateDirectories(modulesRoot, "Shared", SearchOption.AllDirectories).ToArray();
+        foreach (string sharedDir in sharedDirs)
+        {
+            foreach (string file in Directory.EnumerateFiles(sharedDir, "*.cs", SearchOption.AllDirectories))
+            {
+                string source = File.ReadAllText(file);
+                if (Regex.IsMatch(source, @":\s*([A-Za-z0-9_.,<>\s]*\b)?IConversionUseCase\b", RegexOptions.CultureInvariant, ArchitectureRegexTimeout))
+                {
+                    violations.Add($"{NormalizeRepoPath(root, file)}: Shared sub-directory must not implement IConversionUseCase.");
+                }
+            }
+        }
+
+        var conversionDomains = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Doc", "File", "Img", "Pdf" };
+        var allowlistedCrossDomainSharedReferences = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "src/Clickra.Core/Modules/Sys/Settings/Application/LibreOfficeSettingsController.cs"
+        };
+
+        string[] domainDirs = Directory.EnumerateDirectories(modulesRoot, "*", SearchOption.TopDirectoryOnly).ToArray();
+        foreach (string domainDir in domainDirs)
+        {
+            string domainName = Path.GetFileName(domainDir);
+            foreach (string file in Directory.EnumerateFiles(domainDir, "*.cs", SearchOption.AllDirectories))
+            {
+                string relative = NormalizeRepoPath(root, file);
+                string source = File.ReadAllText(file);
+                foreach (string otherDomainDir in domainDirs)
+                {
+                    string otherDomain = Path.GetFileName(otherDomainDir);
+                    if (string.Equals(domainName, otherDomain, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    string forbiddenShared = $"Clickra.Core.Modules.{otherDomain}.Shared";
+                    if (source.Contains(forbiddenShared, StringComparison.Ordinal))
+                    {
+                        if (conversionDomains.Contains(domainName) || !allowlistedCrossDomainSharedReferences.Contains(relative))
+                        {
+                            violations.Add($"{relative}: domain '{domainName}' must not reference foreign domain shared namespace '{forbiddenShared}'.");
+                        }
+                    }
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "Defense Line 2: Shared sub-modules must forbid conversion use cases and cross-domain leakage:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static void TestFunctionalSubmodulesAreSymmetrical()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
+        string modulesRoot = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory);
+        if (!Directory.Exists(modulesRoot))
+            return;
+
+        var violations = new List<string>();
+        var conversionDomains = new[] { "Doc", "File", "Img", "Pdf" };
+
+        foreach (string domain in conversionDomains)
+        {
+            string domainDir = Path.Combine(modulesRoot, domain);
+            if (!Directory.Exists(domainDir)) continue;
+
+            foreach (string subDir in Directory.EnumerateDirectories(domainDir, "*", SearchOption.TopDirectoryOnly))
+            {
+                string subName = Path.GetFileName(subDir);
+                if (string.Equals(subName, "Shared", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                string appDir = Path.Combine(subDir, ArchitectureApplicationDirectory);
+                string procDir = Path.Combine(subDir, ArchitectureProcessingDirectory);
+                string execDir = Path.Combine(subDir, "Execution");
+
+                if (Directory.Exists(execDir))
+                {
+                    violations.Add($"{domain}/{subName}: contains forbidden Execution/ directory.");
+                }
+
+                if (!Directory.Exists(appDir))
+                {
+                    violations.Add($"{domain}/{subName}: missing mandatory {ArchitectureApplicationDirectory}/ directory.");
+                }
+
+                if (!Directory.Exists(procDir))
+                {
+                    violations.Add($"{domain}/{subName}: missing mandatory {ArchitectureProcessingDirectory}/ directory.");
+                }
+
+                if (Directory.Exists(appDir))
+                {
+                    var useCases = Directory.EnumerateFiles(appDir, "*UseCase*.cs", SearchOption.AllDirectories)
+                        .Where(f => !Path.GetFileName(f).Contains("Base"))
+                        .Select(f => Path.GetFileName(f))
+                        .ToList();
+
+                    if (useCases.Count == 0)
+                    {
+                        violations.Add($"{domain}/{subName}: functional sub-module must have at least one conversion UseCase.");
+                    }
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "Defense Line 3: Functional sub-modules must be symmetrical and follow golden structure:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
     }
 
     private static string NormalizeRepoPath(string root, string file) =>
