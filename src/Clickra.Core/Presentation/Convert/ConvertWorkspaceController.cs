@@ -145,8 +145,7 @@ public sealed class ConvertWorkspaceController
 
     public bool IsCommandCompatible(string command)
     {
-        if (!CommandByKey.ContainsKey(command)) return false;
-        if (!command.Equals(BatchRenameCommand, StringComparison.OrdinalIgnoreCase) && !ConvertCommandRegistry.IsKnownCommand(command)) return false;
+        if (!IsKnownCommand(command)) return false;
         if (_selectedFiles.Count == 0) return true;
         return ValidateCommand(command).IsValid;
     }

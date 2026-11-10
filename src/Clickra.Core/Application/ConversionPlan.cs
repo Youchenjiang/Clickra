@@ -49,5 +49,7 @@ public enum ConversionCapability
     MarkdownOptions,
     BatchRename,
     PrintOptions,
-    Compression
+    Compression,
+    Translation,
+    ImageToPdf
 }

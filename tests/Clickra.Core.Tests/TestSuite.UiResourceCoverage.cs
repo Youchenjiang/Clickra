@@ -540,29 +540,30 @@ static partial class TestSuite
         }
 
         // 2. NativeConversionExecutionAdapter must guarantee coverage for all commands
-        // either through explicit branch or through ConversionUseCases fallback.
+        // through polymorphic capability routing, SingleOutputConversionUseCaseBase,
+        // and ConversionUseCases fallback.
         Assert.True(adapterSource.Contains("ConversionUseCases.TryGet(command, out", StringComparison.Ordinal),
             "NativeConversionExecutionAdapter.TryRun must include a ConversionUseCases fallback to prevent unhandled command drops.");
 
-        // 3. Specialized commands that require dedicated UI/interaction flows must have their dedicated dispatch
-        string[] specializedCommands =
-        [
-            "decrypt-pdf",
-            "split-pdf",
-            "compress-pdf",
-            "print-pdf",
-            "img2pdf",
-            "merge-pdf",
-            "img-merge",
-            "img-stitch",
-            "translate-pdf"
-        ];
+        Assert.True(adapterSource.Contains("SingleOutputConversionUseCaseBase", StringComparison.Ordinal),
+            "NativeConversionExecutionAdapter must handle SingleOutputConversionUseCaseBase polymorphically.");
 
-        foreach (string cmd in specializedCommands)
+        // 3. Specialized commands that require dedicated UI/interaction flows must have capability-driven dispatch
+        var requiredCapabilities = new[]
         {
-            Assert.True(adapterSource.Contains(cmd, StringComparison.OrdinalIgnoreCase)
-                        || adapterSource.Contains(cmd.Replace("-", "", StringComparison.Ordinal), StringComparison.OrdinalIgnoreCase),
-                $"NativeConversionExecutionAdapter must explicitly route specialized workflow for '{cmd}'.");
+            ConversionCapability.Password,
+            ConversionCapability.SplitPages,
+            ConversionCapability.Compression,
+            ConversionCapability.PrintOptions,
+            ConversionCapability.BatchRename,
+            ConversionCapability.Translation,
+            ConversionCapability.ImageToPdf
+        };
+
+        foreach (ConversionCapability capability in requiredCapabilities)
+        {
+            Assert.True(adapterSource.Contains($"ConversionCapability.{capability}", StringComparison.Ordinal),
+                $"NativeConversionExecutionAdapter must explicitly route capability '{capability}'.");
         }
     }
 }

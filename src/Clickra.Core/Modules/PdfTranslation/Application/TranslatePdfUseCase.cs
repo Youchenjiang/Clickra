@@ -18,6 +18,9 @@ public sealed class TranslatePdfUseCase : PerFileConversionUseCaseBase
 
     public override string Command => CommandName;
 
+    public override IReadOnlySet<ConversionCapability> Capabilities { get; } =
+        new HashSet<ConversionCapability> { ConversionCapability.Translation };
+
     protected override string UseCaseName => nameof(TranslatePdfUseCase);
 
     protected override string InputRequirementError => "At least one PDF file is required.";

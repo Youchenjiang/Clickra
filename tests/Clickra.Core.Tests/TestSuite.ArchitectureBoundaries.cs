@@ -3,6 +3,9 @@ using Clickra.Core.Application;
 using Clickra.Core.Modules.PdfPrint.Application;
 using Clickra.Core.Modules.PdfToImage.Application;
 using Clickra.Shared;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Clickra.Core.Tests;
 
@@ -11,6 +14,7 @@ static partial class TestSuite
     private const int ArchitectureViolationBaselineCeiling = 0;
     private const int ProcessorGlobalStateBaselineCeiling = 0;
     private const string RepositoryRootMissingMessage = "Could not locate the repository root.";
+    private const string BatchRenameCommandIdentifier = "BatchRenameCommand";
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
     private const string ArchitectureApplicationDirectory = "Application";
@@ -18,6 +22,8 @@ static partial class TestSuite
     private const string ArchitectureTranslationDirectory = "Translation";
     private const string ArchitectureModulesDirectory = "Modules";
     private const string ArchitectureFluentProjectDirectory = "Clickra.Fluent";
+    private const string ArchitectureDashboardDirectory = "Dashboard";
+    private const string ArchitectureLayoutDirectory = "Layout";
     private const string ArchitectureProgressDirectory = "Progress";
     private const string ArchitectureProcessorsDirectory = "Processors";
     private const string ArchitectureProgressProcessFile = "ProgressWindow.Process.cs";
@@ -146,6 +152,9 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: conversion modules conform to module architecture conventions",
             TestModuleConventionsEnforced);
+        runner.RunGuard(
+            "Architecture boundaries: presentation layers forbid hardcoded command branching",
+            TestPresentationForbidsHardcodedCommands);
         runner.RunGuard(
             "Architecture boundaries: conversion execution families share lifecycle result mapping",
             TestConversionExecutionFamiliesShareLifecycleResultMapping);
@@ -626,6 +635,376 @@ static partial class TestSuite
                     violations.Add($"{NormalizeRepoPath(root, file)}: Presentation layer must not reference Processing or Infrastructure.");
                 }
             }
+        }
+    }
+
+    private static void TestPresentationForbidsHardcodedCommands()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        var forbiddenCommands = new HashSet<string>(
+            ConversionUseCases.Commands
+                .Append("batch-rename"),
+            StringComparer.OrdinalIgnoreCase);
+
+        var forbiddenIdentifiers = new HashSet<string>(StringComparer.Ordinal)
+        {
+            BatchRenameCommandIdentifier,
+            "CommandName",
+            "CmdMergePdf",
+            "CmdCompressPdf",
+            "CmdImg2Pdf",
+            "CmdImgMerge",
+            "PngCommand",
+            "JpgCommand",
+            "WebpCommand",
+            "GifCommand",
+            "HeicCommand"
+        };
+
+        var violations = new List<string>();
+        var presentationFiles = CollectPresentationSourceFiles(root);
+
+        foreach (string file in presentationFiles)
+        {
+            string source = File.ReadAllText(file);
+            var walker = new HardcodedCommandBranchingWalker(
+                forbiddenCommands,
+                forbiddenIdentifiers,
+                violation => violations.Add($"{NormalizeRepoPath(root, file)}:{violation}"));
+            InspectSourceTree(source, walker);
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "Presentation code must remain 100% polymorphic and must not contain hardcoded command branching:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
+
+        VerifyHardcodedCommandDetectionCoverage(forbiddenCommands, forbiddenIdentifiers);
+    }
+
+    private static void InspectSourceTree(string source, HardcodedCommandBranchingWalker walker)
+    {
+        SyntaxTree tree = CSharpSyntaxTree.ParseText(
+            source,
+            CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest));
+        SyntaxNode astRoot = tree.GetRoot();
+        walker.Visit(astRoot);
+
+        foreach (var trivia in astRoot.DescendantTrivia().Where(t => t.IsKind(SyntaxKind.DisabledTextTrivia)))
+        {
+            string disabled = trivia.ToString();
+            if (string.IsNullOrWhiteSpace(disabled)) continue;
+            SyntaxTree disabledTree = CSharpSyntaxTree.ParseText(
+                disabled,
+                CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest));
+            walker.Visit(disabledTree.GetRoot());
+        }
+    }
+
+    private static List<string> CollectPresentationSourceFiles(string root)
+    {
+        var scanDirs = new List<string>
+        {
+            Path.Combine(root, "src", ArchitectureFluentProjectDirectory),
+            Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureDashboardDirectory),
+            Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory),
+            Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", ArchitectureLayoutDirectory),
+            Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitecturePresentationDirectory)
+        };
+
+        string modulesDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory);
+        if (Directory.Exists(modulesDir))
+        {
+            scanDirs.AddRange(
+                Directory.EnumerateDirectories(modulesDir, ArchitecturePresentationDirectory, SearchOption.AllDirectories));
+        }
+
+        var files = new List<string>();
+        foreach (string dir in scanDirs)
+        {
+            if (!Directory.Exists(dir)) continue;
+            foreach (string file in Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories))
+            {
+                string norm = file.Replace('\\', '/');
+                if (norm.Contains("/bin/", StringComparison.OrdinalIgnoreCase) ||
+                    norm.Contains("/obj/", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+                files.Add(file);
+            }
+        }
+        return files;
+    }
+
+    private static void VerifyHardcodedCommandDetectionCoverage(
+        HashSet<string> forbiddenCommands,
+        HashSet<string> forbiddenIdentifiers)
+    {
+        string[] testSnippets =
+        {
+            "class C { void M(string c) { if (c == \"md2pdf\") {} } }",
+            "class C { void M(string c) { if (\"batch-rename\" == c) {} } }",
+            "class C { void M(string c) { if (c != \"split-pdf\") {} } }",
+            "class C { void M(string c) { if (c.Equals(\"decrypt-pdf\")) {} } }",
+            "class C { void M(string c) { if (string.Equals(c, \"compress-pdf\")) {} } }",
+            "class C { void M(string c) { switch(c) { case \"translate-pdf\": break; } } }",
+            "class C { void M(string c) { var x = c switch { \"print-pdf\" => 1, _ => 0 }; } }",
+            "class C { void M(string c) { if (c is \"pdf2img\") {} } }",
+            "class C { void M(string c) { if (c is not \"img2pdf\") {} } }",
+            "class C { void M(string c) { if (c is \"img-merge\" or \"img-stitch\") {} } }",
+            "class C { void M(object o) { if (o is { Command: \"excel2pdf\" }) {} } }",
+            "class C { int M(object o) => o switch { (\"md2pdf\", _) => 1, _ => 0 }; }",
+            "class C { void M(object o) { switch (o) { case (\"split-pdf\", _): break; } } }",
+            "class C { void M(string c) { if (c == MarkdownToPdfUseCase.CommandName) {} } }",
+            "class C { void M(string c) { if (c == ImageFormatConvertUseCase.PngCommand) {} } }",
+            $"class C {{ void M(string c) {{ if (c == {BatchRenameCommandIdentifier}) {{}} }} }}",
+            $"class C {{ void M(string c) {{ if (c.Equals({BatchRenameCommandIdentifier})) {{}} }} }}",
+            "#if NEVER\nclass C { void M(string c) { if (c == \"compress-pdf\") {} } }\n#endif"
+        };
+
+        foreach (string snippet in testSnippets)
+        {
+            var detected = new List<string>();
+            var walker = new HardcodedCommandBranchingWalker(
+                forbiddenCommands,
+                forbiddenIdentifiers,
+                detected.Add);
+            InspectSourceTree(snippet, walker);
+
+            Assert.True(
+                detected.Count > 0,
+                $"Guard 4 AST detection must catch hardcoded command snippet: {snippet}");
+        }
+
+        string cleanSnippet = "class C { void M(string c) { var catalog = new[] { new Item(\"md2pdf\", 1) }; if (catalog.Length > 0) {} } }";
+        var cleanDetected = new List<string>();
+        var cleanWalker = new HardcodedCommandBranchingWalker(
+            forbiddenCommands,
+            forbiddenIdentifiers,
+            cleanDetected.Add);
+        InspectSourceTree(cleanSnippet, cleanWalker);
+
+        Assert.True(
+            cleanDetected.Count == 0,
+            "Non-branching catalog initialization must not be flagged by Guard 4.");
+    }
+
+    private sealed class HardcodedCommandBranchingWalker : CSharpSyntaxWalker
+    {
+        private readonly HashSet<string> _forbiddenCommands;
+        private readonly HashSet<string> _forbiddenIdentifiers;
+        private readonly Action<string> _onViolation;
+
+        public HardcodedCommandBranchingWalker(
+            HashSet<string> forbiddenCommands,
+            HashSet<string> forbiddenIdentifiers,
+            Action<string> onViolation)
+        {
+            _forbiddenCommands = forbiddenCommands;
+            _forbiddenIdentifiers = forbiddenIdentifiers;
+            _onViolation = onViolation;
+        }
+
+        public override void VisitBinaryExpression(BinaryExpressionSyntax node)
+        {
+            if ((node.IsKind(SyntaxKind.EqualsExpression) || node.IsKind(SyntaxKind.NotEqualsExpression)) &&
+                (IsForbiddenExpression(node.Left) || IsForbiddenExpression(node.Right)))
+            {
+                Report(node, $"Binary comparison against command '{node.ToString().Trim()}'");
+            }
+            base.VisitBinaryExpression(node);
+        }
+
+        public override void VisitInvocationExpression(InvocationExpressionSyntax node)
+        {
+            if (IsEqualsInvocation(node, out ExpressionSyntax? forbiddenExpr))
+            {
+                Report(node, $"Equals invocation against command '{forbiddenExpr?.ToString().Trim()}'");
+            }
+            base.VisitInvocationExpression(node);
+        }
+
+        public override void VisitSwitchStatement(SwitchStatementSyntax node)
+        {
+            foreach (SwitchSectionSyntax section in node.Sections)
+            {
+                foreach (SwitchLabelSyntax label in section.Labels)
+                {
+                    if (label is CaseSwitchLabelSyntax cs && IsForbiddenExpression(cs.Value))
+                    {
+                        Report(label, $"Switch case against command '{cs.Value.ToString().Trim()}'");
+                    }
+                    else if (label is CasePatternSwitchLabelSyntax cp &&
+                             ContainsForbiddenPattern(cp.Pattern, out ExpressionSyntax? expr))
+                    {
+                        Report(label, $"Switch pattern case against command '{expr?.ToString().Trim()}'");
+                    }
+                }
+            }
+            base.VisitSwitchStatement(node);
+        }
+
+        public override void VisitSwitchExpression(SwitchExpressionSyntax node)
+        {
+            foreach (SwitchExpressionArmSyntax arm in node.Arms)
+            {
+                if (ContainsForbiddenPattern(arm.Pattern, out ExpressionSyntax? expr))
+                {
+                    Report(arm, $"Switch expression arm against command '{expr?.ToString().Trim()}'");
+                }
+            }
+            base.VisitSwitchExpression(node);
+        }
+
+        public override void VisitIsPatternExpression(IsPatternExpressionSyntax node)
+        {
+            if (ContainsForbiddenPattern(node.Pattern, out ExpressionSyntax? expr))
+            {
+                Report(node, $"Pattern match against command '{expr?.ToString().Trim()}'");
+            }
+            base.VisitIsPatternExpression(node);
+        }
+
+        private bool IsEqualsInvocation(InvocationExpressionSyntax node, out ExpressionSyntax? forbiddenExpr)
+        {
+            forbiddenExpr = null;
+            bool isEquals = false;
+
+            if (node.Expression is MemberAccessExpressionSyntax ma &&
+                string.Equals(ma.Name.Identifier.ValueText, "Equals", StringComparison.OrdinalIgnoreCase))
+            {
+                isEquals = true;
+                if (IsForbiddenExpression(ma.Expression))
+                {
+                    forbiddenExpr = ma.Expression;
+                    return true;
+                }
+            }
+            else if (node.Expression is IdentifierNameSyntax id &&
+                     string.Equals(id.Identifier.ValueText, "Equals", StringComparison.OrdinalIgnoreCase))
+            {
+                isEquals = true;
+            }
+
+            if (isEquals)
+            {
+                ArgumentSyntax? matchingArg = node.ArgumentList.Arguments
+                    .FirstOrDefault(arg => IsForbiddenExpression(arg.Expression));
+                if (matchingArg is not null)
+                {
+                    forbiddenExpr = matchingArg.Expression;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private bool ContainsForbiddenPattern(PatternSyntax? pattern, out ExpressionSyntax? forbiddenExpr)
+        {
+            forbiddenExpr = null;
+            if (pattern is null) return false;
+
+            while (pattern is ParenthesizedPatternSyntax pp)
+            {
+                pattern = pp.Pattern;
+            }
+
+            if (pattern is ConstantPatternSyntax cp && IsForbiddenExpression(cp.Expression))
+            {
+                forbiddenExpr = cp.Expression;
+                return true;
+            }
+
+            if (pattern is UnaryPatternSyntax up)
+            {
+                return ContainsForbiddenPattern(up.Pattern, out forbiddenExpr);
+            }
+
+            if (pattern is BinaryPatternSyntax bp)
+            {
+                return ContainsForbiddenPattern(bp.Left, out forbiddenExpr) ||
+                       ContainsForbiddenPattern(bp.Right, out forbiddenExpr);
+            }
+
+            if (pattern is RecursivePatternSyntax rp)
+            {
+                return ContainsForbiddenSubpattern(rp.PropertyPatternClause?.Subpatterns, out forbiddenExpr) ||
+                       ContainsForbiddenSubpattern(rp.PositionalPatternClause?.Subpatterns, out forbiddenExpr);
+            }
+
+            return false;
+        }
+
+        private bool ContainsForbiddenSubpattern(
+            IEnumerable<SubpatternSyntax>? subpatterns,
+            out ExpressionSyntax? forbiddenExpr)
+        {
+            forbiddenExpr = null;
+            if (subpatterns is null) return false;
+
+            foreach (SubpatternSyntax sub in subpatterns)
+            {
+                if (ContainsForbiddenPattern(sub.Pattern, out forbiddenExpr))
+                    return true;
+            }
+            return false;
+        }
+
+        private static ExpressionSyntax Unwrap(ExpressionSyntax? expr)
+        {
+            while (expr is ParenthesizedExpressionSyntax parenthesized)
+            {
+                expr = parenthesized.Expression;
+            }
+            return expr!;
+        }
+
+        private bool IsForbiddenExpression(ExpressionSyntax? expr)
+        {
+            if (expr is null) return false;
+            expr = Unwrap(expr);
+
+            if (expr is LiteralExpressionSyntax literal &&
+                literal.IsKind(SyntaxKind.StringLiteralExpression) &&
+                _forbiddenCommands.Contains(literal.Token.ValueText))
+            {
+                return true;
+            }
+
+            if (expr is IdentifierNameSyntax id && _forbiddenIdentifiers.Contains(id.Identifier.ValueText))
+            {
+                return true;
+            }
+
+            return expr is MemberAccessExpressionSyntax ma && IsForbiddenMemberAccess(ma);
+        }
+
+        private bool IsForbiddenMemberAccess(MemberAccessExpressionSyntax ma)
+        {
+            string member = ma.Name.Identifier.ValueText;
+            if (_forbiddenIdentifiers.Contains(member))
+                return true;
+
+            if (ma.Expression is not IdentifierNameSyntax target)
+                return false;
+
+            string targetName = target.Identifier.ValueText;
+            bool isTargetAllowed = targetName.EndsWith("UseCase", StringComparison.Ordinal) ||
+                                  targetName.Equals("ConvertCommandMetadata", StringComparison.Ordinal) ||
+                                  targetName.Equals("ConvertWorkspaceController", StringComparison.Ordinal);
+
+            bool isMemberForbidden = member.EndsWith("Command", StringComparison.Ordinal) ||
+                                     member.Equals("CommandName", StringComparison.Ordinal);
+
+            return isTargetAllowed && isMemberForbidden;
+        }
+
+        private void Report(SyntaxNode node, string message)
+        {
+            int line = node.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+            _onViolation($"line {line}: {message}");
         }
     }
 
@@ -1290,7 +1669,7 @@ static partial class TestSuite
                      (Path.Combine(ArchitecturePresentationDirectory, "Convert", "ConvertWorkspaceController.cs"), "Clickra.Core.Presentation.Convert"),
                      (Path.Combine(ArchitecturePresentationDirectory, "Convert", "ConversionExecutionController.cs"), "Clickra.Core.Presentation.Convert"),
                      (Path.Combine(ArchitecturePresentationDirectory, "Progress", "TaskProgressController.cs"), "Clickra.Core.Presentation.Progress"),
-                     (Path.Combine(ArchitecturePresentationDirectory, "Dashboard", "DashboardPresentationController.cs"), "Clickra.Core.Presentation.Dashboard")
+                     (Path.Combine(ArchitecturePresentationDirectory, ArchitectureDashboardDirectory, "DashboardPresentationController.cs"), "Clickra.Core.Presentation.Dashboard")
 
                  })
         {
@@ -1384,9 +1763,9 @@ static partial class TestSuite
         string core = Path.Combine(root, "src", ArchitectureCoreProjectDirectory);
         var expectations = new[]
         {
-            (Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", "Layout", "DashboardLayout.cs"), "namespace Clickra.UI.Layout;"),
-            (Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", "Layout", "HistoryLayout.cs"), "namespace Clickra.UI.Layout;"),
-            (Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", "Layout", "VectorIcons.cs"), "namespace Clickra.UI.Layout;")
+            (Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", ArchitectureLayoutDirectory, "DashboardLayout.cs"), "namespace Clickra.UI.Layout;"),
+            (Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", ArchitectureLayoutDirectory, "HistoryLayout.cs"), "namespace Clickra.UI.Layout;"),
+            (Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", ArchitectureLayoutDirectory, "VectorIcons.cs"), "namespace Clickra.UI.Layout;")
         };
 
         foreach ((string file, string namespaceDeclaration) in expectations)
@@ -1417,7 +1796,7 @@ static partial class TestSuite
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
         var files = new List<string>();
         files.AddRange(Directory.EnumerateFiles(
-            Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Dashboard"),
+            Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureDashboardDirectory),
             "*.cs",
             SearchOption.TopDirectoryOnly));
 
@@ -1453,7 +1832,7 @@ static partial class TestSuite
         }
 
         string nativeDashboard = string.Join(Environment.NewLine,
-            Directory.EnumerateFiles(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Dashboard"), "*.cs")
+            Directory.EnumerateFiles(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureDashboardDirectory), "*.cs")
                 .Select(File.ReadAllText));
         string nativeProgress = string.Join(Environment.NewLine,
             Directory.EnumerateFiles(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory), "ProgressWindow*.cs")
