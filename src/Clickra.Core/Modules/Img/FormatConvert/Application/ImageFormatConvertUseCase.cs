@@ -1,0 +1,92 @@
+using Clickra.Core.Modules.Sys.Settings.Application;
+using Clickra.Core.Application;
+using Clickra.Core.Modules.Img.FormatConvert.Processing;
+using Clickra.Core.Processors;
+
+namespace Clickra.Core.Modules.Img.FormatConvert.Application;
+using Clickra.Core.Modules.Img.Shared.Application;
+
+/// <summary>Authoritative application workflow for one img-to-* image conversion command.</summary>
+public sealed class ImageFormatConvertUseCase : PerFileConversionUseCaseBase
+{
+    public const string PngCommand = "img-to-png";
+    public const string JpgCommand = "img-to-jpg";
+    public const string WebpCommand = "img-to-webp";
+    public const string GifCommand = "img-to-gif";
+    public const string HeicCommand = "img-to-heic";
+
+    private readonly string _targetFormat;
+
+    public ImageFormatConvertUseCase(string command)
+    {
+        Command = command switch
+        {
+            PngCommand => PngCommand,
+            JpgCommand => JpgCommand,
+            WebpCommand => WebpCommand,
+            GifCommand => GifCommand,
+            HeicCommand => HeicCommand,
+            _ => throw new ArgumentOutOfRangeException(nameof(command), command, "Unknown image format conversion command.")
+        };
+        _targetFormat = Command["img-to-".Length..];
+    }
+
+    public override string Command { get; }
+    protected override string UseCaseName => $"ImageFormatConvertUseCase for '{Command}'";
+    protected override string InputRequirementError => "At least one image file is required.";
+    protected override string OutputCountError => "Image format conversion requires one output per input.";
+    protected override string UnsupportedInputError(string path) => $"Unsupported image input '{path}'.";
+    protected override string GetOutputFileName(string input) =>
+        Path.GetFileNameWithoutExtension(input) +
+        ImageFormatConvertProcessor.ToOutputExtension(_targetFormat);
+    protected override string NormalizeOutputOverride(string outputOverride) => outputOverride;
+
+    protected override IReadOnlyDictionary<string, object> NormalizeOptions(ConversionRequest request)
+    {
+        var options = request.Options is null
+            ? new Dictionary<string, object>(StringComparer.Ordinal)
+            : new Dictionary<string, object>(request.Options, StringComparer.Ordinal);
+        if (!options.ContainsKey(ExecutionLocalizationOptions.LanguageKey) || options[ExecutionLocalizationOptions.LanguageKey] is null)
+        {
+            options[ExecutionLocalizationOptions.LanguageKey] = SettingsController.Language;
+        }
+        return options;
+    }
+
+    protected override void ValidateOutputs(
+        IReadOnlyList<string> inputs,
+        IReadOnlyList<string> outputs,
+        ConversionRequest request)
+    {
+        string? language = request.Options?.TryGetValue(ExecutionLocalizationOptions.LanguageKey, out object? lang) == true
+            ? lang?.ToString()
+            : null;
+        ImageOutputSafety.EnsureUniqueOutputs(outputs, language);
+        ImageOutputSafety.EnsureOutputsDoNotOverwriteInputs(inputs, outputs, language);
+    }
+
+    protected override async Task ExecuteFileAsync(
+        int index,
+        ConversionPlan plan,
+        IConversionInteraction interaction,
+        IProgress<ConversionProgress>? progress,
+        object? executionState,
+        CancellationToken cancellationToken)
+    {
+        var processor = new ImageFormatConvertProcessor();
+        var options = new Dictionary<string, object>
+        {
+            ["format"] = _targetFormat,
+            [ExecutionLocalizationOptions.LanguageKey] = plan.NormalizedOptions[ExecutionLocalizationOptions.LanguageKey].ToString() ?? ClickraSettings.DefaultEmpty
+        };
+        await Task.Run(
+            () => processor.Process(
+                new List<string> { plan.Inputs[index] },
+                plan.Outputs[index],
+                options,
+                (current, total, message) =>
+                    ReportFileProgress(plan, index, progress, current, message),
+                cancellationToken),
+            cancellationToken);
+    }
+}

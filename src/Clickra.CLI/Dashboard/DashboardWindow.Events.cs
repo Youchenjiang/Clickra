@@ -4,7 +4,7 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using Clickra.Core;
 using Clickra.UI.Layout;
-using Clickra.Core.Modules.Settings.Model;
+using Clickra.Core.Modules.Sys.Settings.Model;
 using static Clickra.UI.Native.Win32;
 
 namespace Clickra.UI

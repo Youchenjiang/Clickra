@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using Clickra.Core.Modules.HistoryTasks.Application;
+using Clickra.Core.Modules.Sys.HistoryTasks.Application;
 using Clickra.Core.Storage;
 
 namespace Clickra.Core.Application;

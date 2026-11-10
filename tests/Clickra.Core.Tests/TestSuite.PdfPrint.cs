@@ -1,6 +1,6 @@
-using Clickra.Core.Modules.PdfPrint.Application;
-using Clickra.Core.Modules.PdfPrint.Ports;
-using Clickra.Core.Modules.PdfPrint.Processing;
+using Clickra.Core.Modules.Pdf.Print.Application;
+using Clickra.Core.Modules.Pdf.Print.Ports;
+using Clickra.Core.Modules.Pdf.Print.Processing;
 using Clickra.Core.Application;
 
 namespace Clickra.Core.Tests;

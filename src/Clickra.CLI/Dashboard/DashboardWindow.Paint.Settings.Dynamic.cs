@@ -1,9 +1,9 @@
 using System;
 using System.Drawing;
 using Clickra.Core;
-using Clickra.Core.Modules.Settings.Application;
+using Clickra.Core.Modules.Sys.Settings.Application;
 using Clickra.UI.Layout;
-using Clickra.Core.Modules.Settings.Model;
+using Clickra.Core.Modules.Sys.Settings.Model;
 
 namespace Clickra.UI;
 

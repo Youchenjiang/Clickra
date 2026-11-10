@@ -1,6 +1,6 @@
 using Clickra.Core;
 using Clickra.Core.Presentation.Convert;
-using Clickra.Core.Modules.HistoryTasks.Presentation;
+using Clickra.Core.Modules.Sys.HistoryTasks.Presentation;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -348,7 +348,7 @@ public sealed partial class TaskProgressPage : Page
     {
         if (_parkRequested) throw ConversionExecutionController.CreateParkSignal(_parkReason, fileIndex);
         string? password = null;
-        if (Clickra.Core.Modules.PdfSplit.Processing.PdfSplitProcessor.IsPasswordProtected(pdfPath))
+        if (Clickra.Core.Modules.Pdf.Split.Processing.PdfSplitProcessor.IsPasswordProtected(pdfPath))
         {
             password = await PromptPasswordAsync(fileIndex);
             if (password is null) return null;

@@ -6,8 +6,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Clickra.Core.Application;
-using Clickra.Core.Modules.PdfToImage.Application;
-using Clickra.Core.Modules.PdfToImage.Processing;
+using Clickra.Core.Modules.Pdf.ToImage.Application;
+using Clickra.Core.Modules.Pdf.ToImage.Processing;
 using PdfSharp.Pdf;
 
 #pragma warning disable CA1416 // Validate platform compatibility

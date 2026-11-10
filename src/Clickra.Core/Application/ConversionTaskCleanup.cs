@@ -1,5 +1,5 @@
 using System;
-using Clickra.Core.Modules.HistoryTasks.Application;
+using Clickra.Core.Modules.Sys.HistoryTasks.Application;
 using Clickra.Core.Storage;
 
 namespace Clickra.Core.Application;

@@ -398,7 +398,8 @@ static partial class TestSuite
                 "src",
                 "Clickra.Core",
                 "Modules",
-                "Office",
+                "Doc",
+                "Shared",
                 "Application",
                 "OfficeToPdfUseCaseBase.cs"));
 

@@ -1,4 +1,4 @@
-using Clickra.Core.Modules.HistoryTasks.Application;
+using Clickra.Core.Modules.Sys.HistoryTasks.Application;
 
 namespace Clickra.Core.Application;
 

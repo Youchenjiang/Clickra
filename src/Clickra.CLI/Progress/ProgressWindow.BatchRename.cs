@@ -11,9 +11,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Application;
-using Clickra.Core.Modules.BatchRename.Application;
-using Clickra.Core.Modules.BatchRename.Domain;
-using Clickra.Core.Modules.BatchRename.Processing;
+using Clickra.Core.Modules.File.BatchRename.Application;
+using Clickra.Core.Modules.File.BatchRename.Domain;
+using Clickra.Core.Modules.File.BatchRename.Processing;
 using Clickra.UI.Layout;
 
 using static Clickra.UI.Native.Win32;

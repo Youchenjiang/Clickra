@@ -6,9 +6,9 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Clickra.Core;
-using Clickra.Core.Modules.PdfPrint.Application;
-using Clickra.Core.Modules.PdfPrint.Ports;
-using Clickra.Core.Modules.PdfPrint.Processing;
+using Clickra.Core.Modules.Pdf.Print.Application;
+using Clickra.Core.Modules.Pdf.Print.Ports;
+using Clickra.Core.Modules.Pdf.Print.Processing;
 using Clickra.Core.Processors;
 using Clickra.Core.Rendering;
 using Clickra.UI.Layout;
@@ -24,7 +24,7 @@ public partial class ProgressWindow
 
     private bool _isPromptingPrintOptions;
     private Action<bool>? _printDecision = null; // skipcq: CS-R1137
-    private bool _printDecisionResolved;
+    private bool _printDecisionResolved; // skipcq: CS-R1137
 
     private List<string> _installedPrinters = new();
     private int _printPrinterIndex;
@@ -90,8 +90,8 @@ public partial class ProgressWindow
         Cancel
     }
 
-    private PrintElement _hoveredPrintElement = PrintElement.None;
-    private PrintElement _pressedPrintElement = PrintElement.None;
+    private PrintElement _hoveredPrintElement = PrintElement.None; // skipcq: CS-R1137
+    private PrintElement _pressedPrintElement = PrintElement.None; // skipcq: CS-R1137
 
     private readonly IPrinterDiscoveryService _printerDiscovery = new SystemPrinterDiscoveryService();
     private readonly Dictionary<int, Bitmap> _printThumbnails = new();
@@ -114,6 +114,7 @@ public partial class ProgressWindow
                 _duplexIndex = 0;
             }
         }
+        // skipcq: CS-R1008
         catch
         {
             _supportedPaperSizes = new List<string> { "A4" };
@@ -137,6 +138,7 @@ public partial class ProgressWindow
             RefreshPrinterCapabilities(_printerDiscovery);
 
             var printersToWarm = _installedPrinters.ToList();
+            // skipcq: CS-P1022
             Task.Run(() =>
             {
                 foreach (string printer in printersToWarm)
@@ -147,6 +149,7 @@ public partial class ProgressWindow
                 }
             }, _cts.Token);
         }
+        // skipcq: CS-R1008
         catch
         {
             _installedPrinters = new List<string> { "Default Printer" };
@@ -200,6 +203,7 @@ public partial class ProgressWindow
         string filePath = _files[0];
         string fontName = PdfPageThumbnailRenderer.GetTextFontName(SettingsPresentationController.Shared.Language);
 
+        // skipcq: CS-P1022
         Task.Run(() => RenderThumbnailBackground(filePath, page, fontName), _cts.Token);
     }
 
@@ -209,23 +213,14 @@ public partial class ProgressWindow
         Bitmap? bmp = null;
         try
         {
-            using (var doc = PdfDocument.Open(filePath))
-            {
-                if (page >= 1 && page <= doc.NumberOfPages)
-                {
-                    var p = doc.GetPage(page);
-                    int rot = p.Rotation.Value;
-                    bool isRotated = rot == 90 || rot == 270;
-                    _pdfPageWidthPt = (float)(isRotated ? p.Height : p.Width);
-                    _pdfPageHeightPt = (float)(isRotated ? p.Width : p.Height);
-                }
-            }
+            ReadPdfPageDimensions(filePath, page);
             bmp = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, page, 456, fontName);
             if (bmp != null && _printDarken)
             {
                 PdfContrastEnhancer.Enhance(bmp, 2.2);
             }
         }
+        // skipcq: CS-R1008
         catch
         {
             // Render failure falls back to null
@@ -241,6 +236,19 @@ public partial class ProgressWindow
         if (_hwnd != IntPtr.Zero)
         {
             PostMessageW(_hwnd, WM_USER_INVALIDATE, IntPtr.Zero, IntPtr.Zero);
+        }
+    }
+
+    private void ReadPdfPageDimensions(string filePath, int page)
+    {
+        using var doc = PdfDocument.Open(filePath);
+        if (page >= 1 && page <= doc.NumberOfPages)
+        {
+            var p = doc.GetPage(page);
+            int rot = p.Rotation.Value;
+            bool isRotated = rot == 90 || rot == 270;
+            _pdfPageWidthPt = (float)(isRotated ? p.Height : p.Width);
+            _pdfPageHeightPt = (float)(isRotated ? p.Width : p.Height);
         }
     }
 
@@ -348,13 +356,7 @@ public partial class ProgressWindow
         var footerRect = ScalePrintRect(PrintOptionsLayout.CardFooterRect, s);
 
         // 1. Card Outer Shell: Rounded rectangle, subtle background & border
-        using (var cardPath = UIHelper.GetRoundedRectPath(cardRect, 6 * s))
-        using (var cardBgBrush = new SolidBrush(Color.FromArgb(24, 25, 29)))
-        using (var cardBorderPen = new Pen(Color.FromArgb(52, 56, 66), 1f * s))
-        {
-            g.FillPath(cardBgBrush, cardPath);
-            g.DrawPath(cardBorderPen, cardPath);
-        }
+        PaintCardOuterShell(g, s, cardRect);
 
         // 2. Card Header
         var paperDim = PaperSizeRegistry.GetDimensions(currentPaperText);
@@ -370,37 +372,43 @@ public partial class ProgressWindow
         PaintCardFooter(g, s, msgFont, bodyBrush, footerRect);
 
         // Re-stroke outer card rounded border so sub-panel fills don't square off corners
-        using (var cardBorderPen = new Pen(Color.FromArgb(52, 56, 66), 1f * s))
-        using (var cardPath = UIHelper.GetRoundedRectPath(cardRect, 6 * s))
-        {
-            g.DrawPath(cardBorderPen, cardPath);
-        }
+        RestrokeCardBorder(g, s, cardRect);
+    }
+
+    private static void PaintCardOuterShell(Graphics g, float s, RectangleF cardRect)
+    {
+        using var cardPath = UIHelper.GetRoundedRectPath(cardRect, 6 * s);
+        using var cardBgBrush = new SolidBrush(Color.FromArgb(24, 25, 29));
+        using var cardBorderPen = new Pen(Color.FromArgb(52, 56, 66), 1f * s);
+        g.FillPath(cardBgBrush, cardPath);
+        g.DrawPath(cardBorderPen, cardPath);
+    }
+
+    private static void RestrokeCardBorder(Graphics g, float s, RectangleF cardRect)
+    {
+        using var cardBorderPen = new Pen(Color.FromArgb(52, 56, 66), 1f * s);
+        using var cardPath = UIHelper.GetRoundedRectPath(cardRect, 6 * s);
+        g.DrawPath(cardBorderPen, cardPath);
     }
 
     private void PaintCardHeader(Graphics g, float s, Font msgFont, Font tipFont, RectangleF headerRect, PaperDimension paperDim)
     {
-        using (var headerBg = new SolidBrush(Color.FromArgb(28, 30, 36)))
-        {
-            g.FillRectangle(headerBg, headerRect);
-        }
-        using (var headerBottomPen = new Pen(Color.FromArgb(44, 46, 54), 1f * s))
-        {
-            g.DrawLine(headerBottomPen, headerRect.Left, headerRect.Bottom, headerRect.Right, headerRect.Bottom);
-        }
+        using var headerBg = new SolidBrush(Color.FromArgb(28, 30, 36));
+        g.FillRectangle(headerBg, headerRect);
+        using var headerBottomPen = new Pen(Color.FromArgb(44, 46, 54), 1f * s);
+        g.DrawLine(headerBottomPen, headerRect.Left, headerRect.Bottom, headerRect.Right, headerRect.Bottom);
 
         // Card Header Left: "即時預覽" (Live Preview)
         string previewTitle = Loc("print_options_preview");
-        using (var previewTitleBrush = new SolidBrush(Color.FromArgb(220, 225, 235)))
-        using (var titleFormat = new StringFormat
+        using var previewTitleBrush = new SolidBrush(Color.FromArgb(220, 225, 235));
+        using var titleFormat = new StringFormat
         {
             Alignment = StringAlignment.Near,
             LineAlignment = StringAlignment.Center,
             FormatFlags = StringFormatFlags.NoWrap
-        })
-        {
-            var titleRect = new RectangleF(headerRect.Left + (12f * s), headerRect.Top, headerRect.Width - (130f * s), headerRect.Height);
-            g.DrawString(previewTitle, msgFont, previewTitleBrush, titleRect, titleFormat);
-        }
+        };
+        var titleRect = new RectangleF(headerRect.Left + (12f * s), headerRect.Top, headerRect.Width - (130f * s), headerRect.Height);
+        g.DrawString(previewTitle, msgFont, previewTitleBrush, titleRect, titleFormat);
 
         // Card Header Right: Paper Size specification pill
         string paperInfo = $"{paperDim.DisplayName} · {paperDim.WidthMm:0}×{paperDim.HeightMm:0} mm";
@@ -411,16 +419,14 @@ public partial class ProgressWindow
         float pillY = headerRect.Top + ((headerRect.Height - pillH) / 2f);
         var paperPillRect = new RectangleF(pillX, pillY, pillW, pillH);
 
-        using (var pillPath = UIHelper.GetRoundedRectPath(paperPillRect, 3 * s))
-        using (var pillBg = new SolidBrush(Color.FromArgb(36, 40, 48)))
-        using (var pillBorder = new Pen(Color.FromArgb(62, 68, 80), 1f * s))
-        using (var pillTextBrush = new SolidBrush(Color.FromArgb(185, 195, 210)))
-        using (var pillFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
-        {
-            g.FillPath(pillBg, pillPath);
-            g.DrawPath(pillBorder, pillPath);
-            g.DrawString(paperInfo, tipFont, pillTextBrush, paperPillRect, pillFormat);
-        }
+        using var pillPath = UIHelper.GetRoundedRectPath(paperPillRect, 3 * s);
+        using var pillBg = new SolidBrush(Color.FromArgb(36, 40, 48));
+        using var pillBorder = new Pen(Color.FromArgb(62, 68, 80), 1f * s);
+        using var pillTextBrush = new SolidBrush(Color.FromArgb(185, 195, 210));
+        using var pillFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        g.FillPath(pillBg, pillPath);
+        g.DrawPath(pillBorder, pillPath);
+        g.DrawString(paperInfo, tipFont, pillTextBrush, paperPillRect, pillFormat);
     }
 
     private void PaintCardViewport(Graphics g, float s, Font tipFont, Brush mutedBrush, RectangleF viewportRect, PaperDimension paperDim)
@@ -483,42 +489,35 @@ public partial class ProgressWindow
     {
         bool isZoomPillHovered = _hoveredPrintElement == PrintElement.PreviewArea;
         var zoomPillRect = ScalePrintRect(PrintOptionsLayout.ZoomPillRect, s);
-        using (var zoomPath = UIHelper.GetRoundedRectPath(zoomPillRect, zoomPillRect.Height / 2f))
-        using (var zoomBg = new SolidBrush(isZoomPillHovered ? Color.FromArgb(235, 38, 44, 58) : Color.FromArgb(180, 24, 26, 32)))
-        using (var zoomBorder = new Pen(isZoomPillHovered ? UIHelper.GetSystemColorizationColor() : Color.FromArgb(70, 75, 88), 1f * s))
-        using (var zoomTextBrush = new SolidBrush(isZoomPillHovered ? Color.White : Color.FromArgb(195, 200, 210)))
-        {
-            g.FillPath(zoomBg, zoomPath);
-            g.DrawPath(zoomBorder, zoomPath);
-            float iconX = zoomPillRect.Left + (11f * s);
-            float iconY = zoomPillRect.Top + (zoomPillRect.Height / 2f);
-            VectorIcons.DrawMagnifier(g, iconX, iconY, 10f * s, zoomTextBrush.Color, 1.4f * s);
+        using var zoomPath = UIHelper.GetRoundedRectPath(zoomPillRect, zoomPillRect.Height / 2f);
+        using var zoomBg = new SolidBrush(isZoomPillHovered ? Color.FromArgb(235, 38, 44, 58) : Color.FromArgb(180, 24, 26, 32));
+        using var zoomBorder = new Pen(isZoomPillHovered ? UIHelper.GetSystemColorizationColor() : Color.FromArgb(70, 75, 88), 1f * s);
+        using var zoomTextBrush = new SolidBrush(isZoomPillHovered ? Color.White : Color.FromArgb(195, 200, 210));
 
-            var textRect = new RectangleF(zoomPillRect.Left + (18f * s), zoomPillRect.Top, zoomPillRect.Width - (20f * s), zoomPillRect.Height);
-            using var textFormat = new StringFormat { LineAlignment = StringAlignment.Center };
-            g.DrawString(Loc("pdf_split_zoom_tag"), tipFont, zoomTextBrush, textRect, textFormat);
-        }
+        g.FillPath(zoomBg, zoomPath);
+        g.DrawPath(zoomBorder, zoomPath);
+        float iconX = zoomPillRect.Left + (11f * s);
+        float iconY = zoomPillRect.Top + (zoomPillRect.Height / 2f);
+        VectorIcons.DrawMagnifier(g, iconX, iconY, 10f * s, zoomTextBrush.Color, 1.4f * s);
+
+        var textRect = new RectangleF(zoomPillRect.Left + (18f * s), zoomPillRect.Top, zoomPillRect.Width - (20f * s), zoomPillRect.Height);
+        using var textFormat = new StringFormat { LineAlignment = StringAlignment.Center };
+        g.DrawString(Loc("pdf_split_zoom_tag"), tipFont, zoomTextBrush, textRect, textFormat);
     }
 
     private void PaintCardFooter(Graphics g, float s, Font msgFont, Brush bodyBrush, RectangleF footerRect)
     {
-        using (var footerBg = new SolidBrush(Color.FromArgb(28, 30, 36)))
-        {
-            g.FillRectangle(footerBg, footerRect);
-        }
-        using (var footerTopPen = new Pen(Color.FromArgb(44, 46, 54), 1f * s))
-        {
-            g.DrawLine(footerTopPen, footerRect.Left, footerRect.Top, footerRect.Right, footerRect.Top);
-        }
+        using var footerBg = new SolidBrush(Color.FromArgb(28, 30, 36));
+        g.FillRectangle(footerBg, footerRect);
+        using var footerTopPen = new Pen(Color.FromArgb(44, 46, 54), 1f * s);
+        g.DrawLine(footerTopPen, footerRect.Left, footerRect.Top, footerRect.Right, footerRect.Top);
 
         DrawPrintButton(g, s, PrintOptionsLayout.PrevPageButton, "<",
             new ButtonVisualState(false, Enabled: _printPreviewModel.CanNavigatePrevious, Hovered: _hoveredPrintElement == PrintElement.PrevPage, Pressed: _pressedPrintElement == PrintElement.PrevPage));
 
-        using (var pageFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
-        {
-            string pageText = Loc("print_options_page_indicator", _printPreviewModel.CurrentPageNumber, _printPreviewModel.TotalPages);
-            g.DrawString(pageText, msgFont, bodyBrush, ScalePrintRect(PrintOptionsLayout.PageTextRect, s), pageFormat);
-        }
+        using var pageFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        string pageText = Loc("print_options_page_indicator", _printPreviewModel.CurrentPageNumber, _printPreviewModel.TotalPages);
+        g.DrawString(pageText, msgFont, bodyBrush, ScalePrintRect(PrintOptionsLayout.PageTextRect, s), pageFormat);
 
         DrawPrintButton(g, s, PrintOptionsLayout.NextPageButton, ">",
             new ButtonVisualState(false, Enabled: _printPreviewModel.CanNavigateNext, Hovered: _hoveredPrintElement == PrintElement.NextPage, Pressed: _pressedPrintElement == PrintElement.NextPage));
@@ -568,6 +567,7 @@ public partial class ProgressWindow
         g.DrawString(text, _msgFont ?? SystemFonts.DefaultFont, textBrush, rect, format);
     }
 
+    // skipcq: CS-R1013
     private static void GetButtonColors(ButtonVisualState state, Color accent, out Color bg, out Color border)
     {
         if (!state.Enabled)
@@ -643,6 +643,7 @@ public partial class ProgressWindow
         g.DrawString(text, _msgFont ?? SystemFonts.DefaultFont, textBrush, labelRect, format);
     }
 
+    // skipcq: CS-R1013
     private static void GetCheckboxColors(bool isChecked, bool hovered, Color accent, out Color bg, out Color border)
     {
         if (isChecked)
@@ -754,6 +755,7 @@ public partial class ProgressWindow
         }
     }
 
+    // skipcq: CS-R1013
     private static void GetDropdownButtonColors(bool enabled, bool isOpen, bool isHovered, Color accent, out Color bg, out Color border, out Color chevronCol)
     {
         if (!enabled)
@@ -783,19 +785,10 @@ public partial class ProgressWindow
         var scaledPopup = ScalePrintRect(popupRect, s);
 
         // Drop shadow for floating popup
-        using (var shadowBrush = new SolidBrush(Color.FromArgb(120, 0, 0, 0)))
-        {
-            g.FillRectangle(shadowBrush, scaledPopup.X + (3f * s), scaledPopup.Y + (3f * s), scaledPopup.Width, scaledPopup.Height);
-        }
+        PaintDropdownShadow(g, s, scaledPopup);
 
         // Popup background & border
-        using (var popupPath = UIHelper.GetRoundedRectPath(scaledPopup, 4 * s))
-        using (var bgBrush = new SolidBrush(Color.FromArgb(32, 32, 34)))
-        using (var borderPen = new Pen(Color.FromArgb(75, 80, 90), 1f * s))
-        {
-            g.FillPath(bgBrush, popupPath);
-            g.DrawPath(borderPen, popupPath);
-        }
+        PaintDropdownBackground(g, s, scaledPopup);
 
         var items = GetOpenDropdownItems();
         int selectedIdx = GetOpenDropdownSelectedIndex();
@@ -873,10 +866,7 @@ public partial class ProgressWindow
         float trackW = 4f * s;
         float trackH = (popupRect.Height - 8) * s;
 
-        using (var trackBrush = new SolidBrush(Color.FromArgb(42, 42, 45)))
-        {
-            g.FillRectangle(trackBrush, trackX, trackY, trackW, trackH);
-        }
+        PaintScrollbarTrack(g, trackX, trackY, trackW, trackH);
 
         float thumbH = Math.Max(16f * s, ((float)maxVisible / itemsCount) * trackH);
         float thumbY = trackY + (((float)_dropdownScrollOffset / maxScroll) * (trackH - thumbH));
@@ -884,6 +874,27 @@ public partial class ProgressWindow
         using var thumbBrush = new SolidBrush(Color.FromArgb(110, 115, 125));
         using var thumbPath = UIHelper.GetRoundedRectPath(new RectangleF(trackX, thumbY, trackW, thumbH), 2 * s);
         g.FillPath(thumbBrush, thumbPath);
+    }
+
+    private static void PaintDropdownShadow(Graphics g, float s, RectangleF scaledPopup)
+    {
+        using var shadowBrush = new SolidBrush(Color.FromArgb(120, 0, 0, 0));
+        g.FillRectangle(shadowBrush, scaledPopup.X + (3f * s), scaledPopup.Y + (3f * s), scaledPopup.Width, scaledPopup.Height);
+    }
+
+    private static void PaintDropdownBackground(Graphics g, float s, RectangleF scaledPopup)
+    {
+        using var popupPath = UIHelper.GetRoundedRectPath(scaledPopup, 4 * s);
+        using var bgBrush = new SolidBrush(Color.FromArgb(32, 32, 34));
+        using var borderPen = new Pen(Color.FromArgb(75, 80, 90), 1f * s);
+        g.FillPath(bgBrush, popupPath);
+        g.DrawPath(borderPen, popupPath);
+    }
+
+    private static void PaintScrollbarTrack(Graphics g, float trackX, float trackY, float trackW, float trackH)
+    {
+        using var trackBrush = new SolidBrush(Color.FromArgb(42, 42, 45));
+        g.FillRectangle(trackBrush, trackX, trackY, trackW, trackH);
     }
 
     private void HandleOpenDropdownClick(IntPtr hwnd, int mouseX, int mouseY)
@@ -937,6 +948,10 @@ public partial class ProgressWindow
 
             case PrintDropdownType.Duplex:
                 _duplexIndex = Math.Clamp(itemIdx, 0, 2);
+                break;
+
+            default:
+                // No action needed for other dropdown types
                 break;
         }
     }
@@ -1417,7 +1432,7 @@ public partial class ProgressWindow
         {
             PrintOrientation.Landscape => true,
             PrintOrientation.Portrait => false,
-            _ => _pdfPageWidthPt > _pdfPageHeightPt || (bmp != null && bmp.Width > bmp.Height)
+            _ => _pdfPageWidthPt > _pdfPageHeightPt || (bmp is not null && bmp.Width > bmp.Height)
         };
         float targetPaperW = isLandscape ? Math.Max(paperDim.WidthPt, paperDim.HeightPt) : Math.Min(paperDim.WidthPt, paperDim.HeightPt);
         float targetPaperH = isLandscape ? Math.Min(paperDim.WidthPt, paperDim.HeightPt) : Math.Max(paperDim.WidthPt, paperDim.HeightPt);

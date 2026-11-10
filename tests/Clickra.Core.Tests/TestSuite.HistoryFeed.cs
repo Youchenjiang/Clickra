@@ -34,10 +34,10 @@ static partial class TestSuite
         runner.Run("History feed: presentation reuses immutable application query contracts", () =>
         {
             Assert.True(typeof(HistoryItem).GetProperty(nameof(HistoryItem.Entry))?.PropertyType
-                == typeof(Clickra.Core.Modules.HistoryTasks.Application.HistoryQueryRecord),
+                == typeof(Clickra.Core.Modules.Sys.HistoryTasks.Application.HistoryQueryRecord),
                 "HistoryItem.Entry must use the application query record without a second snapshot type.");
             Assert.True(typeof(HistoryItem).GetProperty(nameof(HistoryItem.Retention))?.PropertyType
-                == typeof(Clickra.Core.Modules.HistoryTasks.Application.ParkedRetentionQueryState?),
+                == typeof(Clickra.Core.Modules.Sys.HistoryTasks.Application.ParkedRetentionQueryState?),
                 "Parked retention must use the application query state without a presentation copy.");
         });
         runner.Run("History feed: one list carries active, parked and completed items in display order",
@@ -247,7 +247,7 @@ static partial class TestSuite
         }
 
         // 清單本身住在 Core，兩個介面才可能共用；放進任一個介面就不可能被另一個使用。
-        string feed = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Modules", "HistoryTasks", "Presentation", "HistoryFeed.cs"));
+        string feed = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Modules", "Sys", "HistoryTasks", "Presentation", "HistoryFeed.cs"));
         foreach (string member in new[] { "HistoryItemKind.Active", "HistoryItemKind.Parked", "HistoryItemKind.Completed", "DescribeRetention" })
         {
             Assert.True(feed.Contains(member, StringComparison.Ordinal),
@@ -262,7 +262,7 @@ static partial class TestSuite
 
         string cli = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.History.cs"));
         string fluent = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.History.cs"));
-        string model = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Modules", "HistoryTasks", "Presentation", "HistoryFeed.cs"));
+        string model = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Modules", "Sys", "HistoryTasks", "Presentation", "HistoryFeed.cs"));
 
         // 每一列的事實都取自項目，而不是當場重算。
         foreach ((string surface, string source) in new[] { (CliDashboardSurface, cli), (FluentHistorySurface, fluent) })

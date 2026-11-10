@@ -9,7 +9,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Application;
-using Clickra.Core.Modules.Image.Processing;
+using Clickra.Core.Modules.Img.Compression.Processing;
+using Clickra.Core.Modules.Img.Compression.Application;
 using Clickra.Core.Processors;
 using Clickra.Shared;
 
@@ -207,8 +208,8 @@ static partial class TestSuite
         {
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException("Could not locate repository root.");
-            string processor = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Modules", "Image", "Processing", "ImageCompressionProcessor.cs"));
-            string wic = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Modules", "Image", "Processing", "WicImageHelper.cs"));
+            string processor = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Modules", "Img", "Compression", "Processing", "ImageCompressionProcessor.cs"));
+            string wic = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Modules", "Img", "Shared", "Infrastructure", "WicImageHelper.cs"));
 
             Assert.True(processor.Contains("IsMultiFrameImage(filePath, extension)", StringComparison.Ordinal)
                         && processor.Contains("error_img_compress_multiframe_resize", StringComparison.Ordinal),

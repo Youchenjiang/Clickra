@@ -2,7 +2,7 @@ using System;
 using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
-using Clickra.Core.Modules.Markdown.Application;
+using Clickra.Core.Modules.Doc.Shared.Application;
 using Clickra.Core.Processors;
 using Clickra.UI.Layout;
 

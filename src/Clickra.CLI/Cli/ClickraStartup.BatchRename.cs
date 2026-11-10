@@ -5,8 +5,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Clickra.Core.Application;
-using Clickra.Core.Modules.BatchRename.Application;
-using Clickra.Core.Modules.BatchRename.Domain;
+using Clickra.Core.Modules.File.BatchRename.Application;
+using Clickra.Core.Modules.File.BatchRename.Domain;
 
 namespace Clickra;
 

@@ -123,7 +123,7 @@
 ##### 兩層領域分類與對稱子模組標準 (Two-Tier Domain Taxonomy & Symmetrical Sub-modules)
 為徹底根除專案歷史累積之粒度不對稱（如 PDF 按功能細分、Image/Office 卻多用例混裝），全專案模組架構定案採行「兩層領域分類」規範，兼具頂層整潔、領域內聚與 100% 對稱標準化：
 1. **五大一級領域目錄 (`src/Clickra.Core/Modules/{Domain}/`)**：
-   - **`Doc/` (文件領域)**：`Word/`, `Excel/`, `Ppt/`, `Markdown/`，可設 `Shared/` 放 COM/Office 底層工具。
+   - **`Doc/` (文件領域)**：`Word/`, `Excel/`, `Ppt/`, `MarkdownPdf/`, `MarkdownWord/`，可設 `Shared/` 放 COM/Office/Markdown 共用底層工具與契約。
    - **`File/` (檔案組織領域)**：`BatchRename/`, `Classification/` (F2-22)。
    - **`Img/` (圖像處理領域)**：`ToPdf/`, `Compression/`, `FormatConvert/`, `Stitch/`，設 `Shared/` 放 `WicImageHelper.cs` 等專屬底層。
    - **`Pdf/` (PDF 運算領域)**：`Compression/`, `Decrypt/`, `Merge/`, `Print/`, `Split/`, `ToImage/`, `Translation/`，可設 `Shared/`。

@@ -1,5 +1,5 @@
 using Clickra.Core;
-using Clickra.Core.Modules.PdfSplit.Presentation;
+using Clickra.Core.Modules.Pdf.Split.Presentation;
 using Clickra.Core.Processors;
 using Clickra.Core.Rendering;
 using Microsoft.UI.Xaml;

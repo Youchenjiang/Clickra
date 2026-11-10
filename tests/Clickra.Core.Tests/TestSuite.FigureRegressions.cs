@@ -1,5 +1,5 @@
 using Clickra.Core.Processors;
-using Clickra.Core.Modules.PdfTranslation.Model;
+using Clickra.Core.Modules.Pdf.Translation.Model;
 
 namespace Clickra.Core.Tests;
 
@@ -170,7 +170,7 @@ static partial class TestSuite
         runner.Run("Pentest Figure 7 success-rate axis label is chart protected", () =>
         {
             var method = typeof(PdfTranslateProcessor).Assembly
-                .GetType("Clickra.Core.Modules.PdfTranslation.Pipeline.PdfTranslationPipeline")
+                .GetType("Clickra.Core.Modules.Pdf.Translation.Pipeline.PdfTranslationPipeline")
                 ?.GetMethod(
                 "IsLikelyBarChartAxisLabel",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);

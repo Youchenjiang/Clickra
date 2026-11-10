@@ -1,4 +1,4 @@
-using Clickra.Core.Modules.Settings.Application;
+using Clickra.Core.Modules.Sys.Settings.Application;
 using System;
 using System.IO;
 using System.Linq;
@@ -7,7 +7,7 @@ using System.Drawing.Drawing2D;
 using System.Collections.Generic;
 using Clickra.Core;
 using Clickra.UI.Layout;
-using Clickra.Core.Modules.Settings.Model;
+using Clickra.Core.Modules.Sys.Settings.Model;
 
 using static Clickra.UI.Native.Win32;
 

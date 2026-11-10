@@ -1,5 +1,13 @@
 # Changelog
 
+## [v3.19.4.0] - 2026-11-10
+
+- **兩層領域分類重構與對稱子模組標準化 (Two-Tier Domain Taxonomy & Symmetrical Sub-modules)**：徹底落實模組架構統一憲章 Phase 5 收尾階段。將核心模組收斂至五大一級領域：`Doc/` (Word, Excel, Ppt, Markdown, Shared)、`File/` (BatchRename)、`Img/` (Compression, FormatConvert, Merge, Stitch, ToPdf, Shared)、`Pdf/` (Compression, Decrypt, Merge, Print, Split, ToImage, Translation) 與 `Sys/` (HistoryTasks, Settings)。
+- **三道機械化架構防線 (Three Defense Lines Architecture Guards)**：新增自動化 CI 架構防禦守門：
+  - 防線一（領域根層純淨）：一級領域根目錄嚴禁散落 `.cs` 原始碼，只能存放子模組目錄。
+  - 防線二（領域共用封裝與隔離）：`Shared/` 子目錄嚴禁實作 `IConversionUseCase`，跨領域嚴禁跨層依賴外領域之 `Shared` 底層。
+  - 防線三（功能子模組 100% 對稱）：非 `Shared/` 的功能子模組嚴格對齊 `Application/`、`Processing/` 黃金結構，且各有專屬 UseCase 實作。
+
 ## [v3.19.3.0] - 2026-11-10
 
 - **畫面端硬編碼指令禁絕 Roslyn AST 守衛 (Presentation Hardcoded Command Elimination Guard)**：落實模組化統一實施憲章之機制四（Guard 4）。於測試套件引入 Roslyn C# 語法分析器，全面掃描全專案畫面端代碼（Clickra.Fluent、Clickra.CLI/Dashboard、Clickra.CLI/Progress、Clickra.Core/Presentation 及各模組 Presentation），嚴格禁止任何針對具體指令 ID 的硬編碼條件分支（`==`、`!=`、`.Equals(...)`、`switch` 語句、`switch` 表達式及 `is` 模式比對），強制落實前端 100% 盲盒多型架構。

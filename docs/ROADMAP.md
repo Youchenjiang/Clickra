@@ -118,7 +118,7 @@
 
     - [x] 導入模組目錄白名單、Options 歸位與分層防穿透自動化架構守衛測試（Guard 1~3；Phase 3 完成）。
     - [x] 導入畫面端硬編碼指令禁絕 Roslyn AST 守衛（Guard 4；Phase 4 完成）。
-    - [ ] 兩層領域分類重構與對稱子模組標準化（Doc, File, Img, Pdf, Sys 二級領域與 Shared 封裝；最終收尾階段）。
+    - [x] 兩層領域分類重構與對稱子模組標準化（Doc, File, Img, Pdf, Sys 二級領域與 Shared 封裝；Phase 5 完成）。
 
     - 解耦 Windows 專屬依賴（GDI+、Imazen.WebP、Windows.Data.Pdf 轉跨平台 SkiaSharp / PDFium 方案）。
 

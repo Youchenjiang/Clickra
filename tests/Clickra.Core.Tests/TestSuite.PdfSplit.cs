@@ -1,7 +1,7 @@
 using Clickra.Core;
 using Clickra.Core.Application;
-using Clickra.Core.Modules.PdfSplit.Application;
-using Clickra.Core.Modules.PdfSplit.Processing;
+using Clickra.Core.Modules.Pdf.Split.Application;
+using Clickra.Core.Modules.Pdf.Split.Processing;
 using Clickra.Core.Processors;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;

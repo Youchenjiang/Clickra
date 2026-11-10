@@ -1,4 +1,4 @@
-using Clickra.Core.Modules.Settings.Application;
+using Clickra.Core.Modules.Sys.Settings.Application;
 namespace Clickra.Core.Application;
 
 /// <summary>Shared application lifecycle for one-input/one-output file conversions.</summary>
@@ -144,6 +144,7 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
                 await executeAction(password);
                 return;
             }
+            // skipcq: CS-R1008
             catch (Exception ex) when (isPasswordError(ex))
             {
                 string? supplied = await interaction.RequestPasswordAsync(
