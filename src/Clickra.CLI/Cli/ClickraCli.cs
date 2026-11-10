@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 using Clickra.Core;
 using Clickra.Core.Application;
 using Clickra.Core.Modules.Image.Application;
-using Clickra.Core.Modules.Markdown.Application;
+using Clickra.Core.Modules.Doc.Markdown.Application;
 using Clickra.Core.Modules.Pdf.Compression.Application;
 using Clickra.Core.Modules.Pdf.Decrypt.Application;
 using Clickra.Core.Modules.Pdf.Merge.Application;
