@@ -10,6 +10,8 @@ public sealed class Img2PdfUseCase : PerFileConversionUseCaseBase
     public const string CommandName = "img2pdf";
 
     public override string Command => CommandName;
+    public override IReadOnlySet<ConversionCapability> Capabilities { get; } =
+        new HashSet<ConversionCapability> { ConversionCapability.ImageToPdf };
     protected override string UseCaseName => nameof(Img2PdfUseCase);
     protected override string InputRequirementError => "At least one image file is required.";
     protected override string OutputCountError => "Image-to-PDF conversion requires one output per input.";
