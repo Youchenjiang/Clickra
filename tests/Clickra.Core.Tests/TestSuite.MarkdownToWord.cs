@@ -7,7 +7,7 @@ using System.Threading;
 using System.Xml.Linq;
 using Clickra.Core;
 using Clickra.Core.Application;
-using Clickra.Core.Modules.Markdown.Processing;
+using Clickra.Core.Modules.Doc.Markdown.Processing;
 using Clickra.Core.Processors;
 using Clickra.Shared;
 
