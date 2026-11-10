@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -188,6 +188,7 @@ public class PdfSplitProcessor : SingleFileProcessorBase
     {
         try
         {
+            // skipcq: CS-W1100
             using var inDoc = PdfReader.Open(fullPath, PdfDocumentOpenMode.Import);
             return false;
         }
@@ -195,6 +196,7 @@ public class PdfSplitProcessor : SingleFileProcessorBase
         {
             return true;
         }
+        // skipcq: CS-R1008
         catch
         {
             return false;

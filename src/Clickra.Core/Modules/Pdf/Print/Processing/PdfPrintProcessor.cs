@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using System.Drawing.Printing;
 using Clickra.Core.Modules.Pdf.Print.Application;
 using Clickra.Core.Modules.Pdf.Split.Application;
@@ -31,8 +31,10 @@ public static class PdfPrintProcessor
             throw new InvalidOperationException("No valid pages selected for printing.");
 
         string docName = Path.GetFileNameWithoutExtension(pdfPath);
-        using var printDoc = new PrintDocument();
-        printDoc.DocumentName = docName;
+        using var printDoc = new PrintDocument
+        {
+            DocumentName = docName
+        };
 
         string effectiveLang = !string.IsNullOrWhiteSpace(options.Language) ? options.Language : "en";
         string defaultFontName = PdfPageThumbnailRenderer.GetTextFontName(effectiveLang);
@@ -178,15 +180,13 @@ public static class PdfPrintProcessor
             int destY = pageBounds.Y + margin + (printAreaH - destH) / 2;
             return new Rectangle(destX, destY, destW, destH);
         }
-        else
-        {
-            // 1 pt = 1/72 inch = 100/72 hundredths of an inch in PrintDocument physical coordinates
-            int destW = (int)Math.Round(pdfPageWidthPt * (100f / 72f));
-            int destH = (int)Math.Round(pdfPageHeightPt * (100f / 72f));
-            int destX = pageBounds.X + (pageBounds.Width - destW) / 2;
-            int destY = pageBounds.Y + (pageBounds.Height - destH) / 2;
-            return new Rectangle(destX, destY, destW, destH);
-        }
+
+        // 1 pt = 1/72 inch = 100/72 hundredths of an inch in PrintDocument physical coordinates
+        int fallbackW = (int)Math.Round(pdfPageWidthPt * (100f / 72f));
+        int fallbackH = (int)Math.Round(pdfPageHeightPt * (100f / 72f));
+        int fallbackX = pageBounds.X + (pageBounds.Width - fallbackW) / 2;
+        int fallbackY = pageBounds.Y + (pageBounds.Height - fallbackH) / 2;
+        return new Rectangle(fallbackX, fallbackY, fallbackW, fallbackH);
     }
 
     private static void RenderAndDrawPage(
@@ -200,7 +200,7 @@ public static class PdfPrintProcessor
         Rectangle pageBounds = e.PageBounds;
         float pdfW = pageBounds.Width / 100f * 72f;
         float pdfH = pageBounds.Height / 100f * 72f;
-        if (pageDimensions != null && pageDimensions.TryGetValue(pageNum, out var dim) && dim.widthPt > 0 && dim.heightPt > 0)
+        if (pageDimensions is not null && pageDimensions.TryGetValue(pageNum, out var dim) && dim.widthPt > 0 && dim.heightPt > 0)
         {
             pdfW = dim.widthPt;
             pdfH = dim.heightPt;

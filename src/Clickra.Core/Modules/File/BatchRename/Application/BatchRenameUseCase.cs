@@ -15,6 +15,7 @@ namespace Clickra.Core.Modules.File.BatchRename.Application;
 public sealed class BatchRenameUseCase : ConversionUseCaseBase
 {
     public const string CommandName = "batch-rename";
+    private static readonly BatchRenameOptions DefaultBatchRenameOptions = new();
 
     public override string Command => CommandName;
     public override IReadOnlySet<ConversionCapability> Capabilities =>
@@ -53,14 +54,14 @@ public sealed class BatchRenameUseCase : ConversionUseCaseBase
             throw new InvalidOperationException("No target files found for batch rename.");
 
         BatchRenamePlan? renamePlan = null;
-        if (request.Options != null && request.Options.TryGetValue("plan", out object? planObj) && planObj is BatchRenamePlan p)
+        if (request.Options is not null && request.Options.TryGetValue("plan", out object? planObj) && planObj is BatchRenamePlan p)
         {
             renamePlan = p;
         }
 
-        var options = request.Options != null && request.Options.TryGetValue("options", out object? optObj) && optObj is BatchRenameOptions opt
+        var options = request.Options is not null && request.Options.TryGetValue("options", out object? optObj) && optObj is BatchRenameOptions opt
             ? opt
-            : new BatchRenameOptions();
+            : DefaultBatchRenameOptions;
 
         renamePlan ??= BatchRenameEngine.GeneratePlan(targetFiles, options);
 
@@ -104,7 +105,7 @@ public sealed class BatchRenameUseCase : ConversionUseCaseBase
             {
                 var options = plan.NormalizedOptions.TryGetValue("options", out object? optObj) && optObj is BatchRenameOptions opt
                     ? opt
-                    : new BatchRenameOptions();
+                    : DefaultBatchRenameOptions;
                 renamePlan = BatchRenameEngine.GeneratePlan(plan.Inputs, options);
             }
 

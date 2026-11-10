@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -78,11 +78,12 @@ public class OpenAiTranslator : ITranslationEngine
         try
         {
             var batchResults = await TranslateJsonArrayBatchAsync(texts, targetLanguage, cancellationToken);
-            if (batchResults != null && batchResults.Count == texts.Count)
+            if (batchResults is not null && batchResults.Count == texts.Count)
             {
                 return batchResults;
             }
         }
+        // skipcq: CS-R1008
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested && !TranslationProviderLimits.IsLimit(ex))
         {
             // Fall back to item-by-item translation when JSON batching fails.

@@ -144,6 +144,7 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
                 await executeAction(password);
                 return;
             }
+            // skipcq: CS-R1008
             catch (Exception ex) when (isPasswordError(ex))
             {
                 string? supplied = await interaction.RequestPasswordAsync(
