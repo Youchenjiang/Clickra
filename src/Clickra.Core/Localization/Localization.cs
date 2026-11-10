@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
-using Clickra.Core.Modules.Settings.Application;
+using Clickra.Core.Modules.Sys.Settings.Application;
 
 namespace Clickra.Core
 {

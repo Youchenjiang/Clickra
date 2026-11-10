@@ -1,4 +1,4 @@
-using Clickra.Core.Modules.Settings.Application;
+using Clickra.Core.Modules.Sys.Settings.Application;
 using Clickra.Core.Application;
 using Clickra.Core.Modules.Markdown.Processing;
 using Clickra.Core.Processors;

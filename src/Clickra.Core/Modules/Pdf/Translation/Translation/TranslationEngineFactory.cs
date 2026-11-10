@@ -1,5 +1,5 @@
 ﻿using System;
-using Clickra.Core.Modules.Settings.Application;
+using Clickra.Core.Modules.Sys.Settings.Application;
 
 namespace Clickra.Core.Modules.Pdf.Translation.Translation;
 

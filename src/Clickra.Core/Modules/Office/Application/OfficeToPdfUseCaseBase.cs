@@ -1,7 +1,7 @@
 using Clickra.Core.Application;
 using Clickra.Core.Modules.Office.Infrastructure;
 using Clickra.Core.Modules.Office.Processing;
-using Clickra.Core.Modules.Settings.Application;
+using Clickra.Core.Modules.Sys.Settings.Application;
 using Clickra.Core.Processors;
 
 namespace Clickra.Core.Modules.Office.Application;

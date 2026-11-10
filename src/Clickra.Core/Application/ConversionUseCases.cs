@@ -1,5 +1,5 @@
 using Clickra.Core.Modules.File.BatchRename.Application;
-using Clickra.Core.Modules.HistoryTasks.Application;
+using Clickra.Core.Modules.Sys.HistoryTasks.Application;
 using Clickra.Core.Modules.Image.Application;
 using Clickra.Core.Modules.Markdown.Application;
 using Clickra.Core.Modules.Office.Application;
