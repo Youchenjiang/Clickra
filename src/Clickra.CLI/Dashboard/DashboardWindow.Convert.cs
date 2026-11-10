@@ -1,4 +1,4 @@
-using Clickra.Core.Modules.Settings.Application;
+using Clickra.Core.Modules.Sys.Settings.Application;
 using System;
 using System.IO;
 using System.Linq;
