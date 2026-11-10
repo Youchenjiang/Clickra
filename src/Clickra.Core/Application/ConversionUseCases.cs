@@ -1,15 +1,15 @@
-using Clickra.Core.Modules.BatchRename.Application;
+﻿using Clickra.Core.Modules.BatchRename.Application;
 using Clickra.Core.Modules.HistoryTasks.Application;
 using Clickra.Core.Modules.Image.Application;
 using Clickra.Core.Modules.Markdown.Application;
 using Clickra.Core.Modules.Office.Application;
-using Clickra.Core.Modules.PdfCompression.Application;
-using Clickra.Core.Modules.PdfDecrypt.Application;
-using Clickra.Core.Modules.PdfMerge.Application;
-using Clickra.Core.Modules.PdfPrint.Application;
-using Clickra.Core.Modules.PdfSplit.Application;
-using Clickra.Core.Modules.PdfToImage.Application;
-using Clickra.Core.Modules.PdfTranslation.Application;
+using Clickra.Core.Modules.Pdf.Compression.Application;
+using Clickra.Core.Modules.Pdf.Decrypt.Application;
+using Clickra.Core.Modules.Pdf.Merge.Application;
+using Clickra.Core.Modules.Pdf.Print.Application;
+using Clickra.Core.Modules.Pdf.Split.Application;
+using Clickra.Core.Modules.Pdf.ToImage.Application;
+using Clickra.Core.Modules.Pdf.Translation.Application;
 
 namespace Clickra.Core.Application;
 
