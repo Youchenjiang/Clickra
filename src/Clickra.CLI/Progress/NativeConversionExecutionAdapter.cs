@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Application;
-using Clickra.Core.Modules.Image.Application;
+using Clickra.Core.Modules.Img.FormatConvert.Application;
 using Clickra.Core.Modules.Pdf.Split.Application;
 using Clickra.Core.Presentation.Convert;
 using Clickra.Core.Processors;
