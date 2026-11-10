@@ -34,10 +34,10 @@ static partial class TestSuite
         runner.Run("History feed: presentation reuses immutable application query contracts", () =>
         {
             Assert.True(typeof(HistoryItem).GetProperty(nameof(HistoryItem.Entry))?.PropertyType
-                == typeof(Clickra.Core.Modules.HistoryTasks.Application.HistoryQueryRecord),
+                == typeof(Clickra.Core.Modules.Sys.HistoryTasks.Application.HistoryQueryRecord),
                 "HistoryItem.Entry must use the application query record without a second snapshot type.");
             Assert.True(typeof(HistoryItem).GetProperty(nameof(HistoryItem.Retention))?.PropertyType
-                == typeof(Clickra.Core.Modules.HistoryTasks.Application.ParkedRetentionQueryState?),
+                == typeof(Clickra.Core.Modules.Sys.HistoryTasks.Application.ParkedRetentionQueryState?),
                 "Parked retention must use the application query state without a presentation copy.");
         });
         runner.Run("History feed: one list carries active, parked and completed items in display order",

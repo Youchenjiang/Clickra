@@ -11,7 +11,7 @@ using Clickra.Core.Modules.Pdf.Compression.Application;
 using Clickra.Core.Modules.Pdf.Compression.Processing;
 using Clickra.Core.Modules.Pdf.Decrypt.Application;
 using Clickra.Core.Modules.Pdf.Translation.Application;
-using Clickra.Core.Modules.Settings.Application;
+using Clickra.Core.Modules.Sys.Settings.Application;
 using Clickra.Core.Presentation.Convert;
 using Clickra.Core.Processors;
 
