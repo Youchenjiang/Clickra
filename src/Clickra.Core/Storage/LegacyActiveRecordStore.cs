@@ -4,18 +4,6 @@ using System.IO;
 
 namespace Clickra.Core.Storage;
 
-internal sealed record LegacyActiveRecordCompletion
-{
-    internal string Command { get; init; } = string.Empty;
-    internal string StartTime { get; init; } = string.Empty;
-    internal bool IsSuccess { get; init; }
-    internal string ErrorMessage { get; init; } = string.Empty;
-    internal string? EndTime { get; init; }
-    internal long ElapsedMs { get; init; }
-    internal string? InputPaths { get; init; }
-    internal string? OutputPath { get; init; }
-}
-
 /// <summary>Owns the legacy singleton active.tmp compatibility format and lifecycle.</summary>
 internal static class LegacyActiveRecordStore
 {

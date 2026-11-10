@@ -1,5 +1,10 @@
 # Changelog
 
+## [v3.19.5.0] - 2026-11-11
+
+- **儲存層單向解耦與資料契約純化 (Storage Contracts Decoupling & Pure Data Records)**：落實核心解耦與模組標準化 Phase 6（根治 E7 循環相依債務）。將儲存層共用之資料結構與列舉（`ConversionStatus`、`StorageTaskReasons`、`HistoryEntry`、`CompleteTaskRequest`、`ResumedTaskInfo`、`ParkedRetentionInfo`、`TaskFileData`、`LegacyActiveRecordCompletion`）抽離至獨立契約檔案 `TaskRecords.cs`，消除 `ClickraStorage`、`TaskRecordStore` 與 `LegacyActiveRecordStore` 之間的雙向相依。
+- **純粹資料契約架構防禦守門 (Pure Data Contract Architectural Guard)**：於架構邊界測試強化驗證，嚴格守護 `TaskRecords.cs` 為 100% 零 I/O、零互斥鎖（`File.`、`Directory.`、`RunWithMutex`、`System.IO`）之純淨資料契約，確保底層持久化邏輯與上層契約徹底單向解耦。
+
 ## [v3.19.4.0] - 2026-11-10
 
 - **兩層領域分類重構與對稱子模組標準化 (Two-Tier Domain Taxonomy & Symmetrical Sub-modules)**：徹底落實模組架構統一憲章 Phase 5 收尾階段。將核心模組收斂至五大一級領域：`Doc/` (Word, Excel, Ppt, Markdown, Shared)、`File/` (BatchRename)、`Img/` (Compression, FormatConvert, Merge, Stitch, ToPdf, Shared)、`Pdf/` (Compression, Decrypt, Merge, Print, Split, ToImage, Translation) 與 `Sys/` (HistoryTasks, Settings)。

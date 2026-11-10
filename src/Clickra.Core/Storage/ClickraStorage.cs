@@ -2,15 +2,6 @@ using System;
 
 namespace Clickra.Core.Storage;
 
-public enum ConversionStatus
-{
-    Pending,
-    InProgress,
-    Parked,
-    Success,
-    Failed
-}
-
 /// <summary>
 /// Compatibility facade for Clickra's historical public storage surface.
 /// Persistence ownership lives in focused storage components; new product code should prefer

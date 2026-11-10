@@ -1780,10 +1780,19 @@ static partial class TestSuite
                      "TaskQueueStore.cs",
                      "LegacyActiveRecordStore.cs",
                      "ParkedTaskCoordinator.cs",
-                     "TaskPruningCoordinator.cs"
+                     "TaskPruningCoordinator.cs",
+                     "TaskRecords.cs"
                  })
         {
             Assert.True(File.Exists(Path.Combine(storage, owner)), $"Focused storage owner is missing: {owner}");
+        }
+
+        string taskRecords = File.ReadAllText(Path.Combine(storage, "TaskRecords.cs"));
+        foreach (string prohibited in new[] { "File.", "Directory.", "RunWithMutex", "Store.", "System.IO" })
+        {
+            Assert.False(
+                taskRecords.Contains(prohibited, StringComparison.Ordinal),
+                $"TaskRecords.cs must remain a pure data contract with no persistence dependencies: {prohibited}");
         }
 
         string facade = string.Join(
