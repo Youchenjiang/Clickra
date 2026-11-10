@@ -985,13 +985,11 @@ static partial class TestSuite
                 if (ma.Expression is IdentifierNameSyntax target &&
                     (target.Identifier.ValueText.EndsWith("UseCase", StringComparison.Ordinal) ||
                      target.Identifier.ValueText.Equals("ConvertCommandMetadata", StringComparison.Ordinal) ||
-                     target.Identifier.ValueText.Equals("ConvertWorkspaceController", StringComparison.Ordinal)))
+                     target.Identifier.ValueText.Equals("ConvertWorkspaceController", StringComparison.Ordinal)) &&
+                    (member.EndsWith("Command", StringComparison.Ordinal) ||
+                     member.Equals("CommandName", StringComparison.Ordinal)))
                 {
-                    if (member.EndsWith("Command", StringComparison.Ordinal) ||
-                        member.Equals("CommandName", StringComparison.Ordinal))
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
 
