@@ -7,14 +7,16 @@ using System.Runtime.InteropServices;
 namespace Clickra.Launcher;
 
 /// <summary>
-/// Clickra Launcher ??NativeAOT entry point, zero dependency.
-/// COM activation via IApplicationActivationManager ??Fluent optional.
-/// Fallback ??AOT Dashboard.
+/// Clickra Launcher — NativeAOT entry point, zero dependency.
+/// COM activation via IApplicationActivationManager for packaged Fluent optional app.
+/// Direct activation for unpackaged Fluent development.
+/// Fallback — NativeAOT Dashboard.
 /// </summary>
 internal static class Program
 {
     private const string AotExe = "Clickra.exe";
     private const int FluentTimeoutMs = 5000;
+    internal const string RoutedEnvironmentVariable = "CLICKRA_LAUNCHER_ROUTED";
 
     private static int Main(string[] args)
     {
@@ -22,8 +24,16 @@ internal static class Program
         if (string.IsNullOrEmpty(exeDir))
             exeDir = Path.GetDirectoryName(Environment.ProcessPath);
 
-        // Try COM activation for Fluent optional package
-        if (TryActivateFluent(args, out uint pid))
+        // 1. Try COM activation for packaged Fluent optional package
+        bool launchedFluent = TryActivateFluent(args, out uint pid);
+
+        // 2. Fallback to direct activation for unpackaged Fluent development
+        if (!launchedFluent && exeDir != null)
+        {
+            launchedFluent = TryLaunchUnpackagedFluent(exeDir, args, out pid);
+        }
+
+        if (launchedFluent)
         {
             Thread.Sleep(FluentTimeoutMs);
             try
@@ -32,7 +42,7 @@ internal static class Program
                 if (!proc.HasExited)
                     return 0;
             }
-            catch (ArgumentException) { /* Process already exited or invalid PID ??safe to ignore. */ }
+            catch (ArgumentException) { /* Process already exited or invalid PID — safe to ignore. */ }
         }
 
         // Fallback: NativeAOT Dashboard
@@ -41,10 +51,39 @@ internal static class Program
         if (aotPath == null) return 1;
 
         var psi = new ProcessStartInfo(aotPath) { UseShellExecute = false };
+        psi.Environment[RoutedEnvironmentVariable] = "1";
         foreach (string arg in args)
             psi.ArgumentList.Add(arg);
         Process.Start(psi)?.Dispose();
         return 0;
+    }
+
+    private static bool TryLaunchUnpackagedFluent(string exeDir, string[] args, out uint processId)
+    {
+        processId = 0;
+        string fluentExe = Path.Combine(exeDir, "Clickra.Fluent.exe");
+        if (!File.Exists(fluentExe))
+            return false;
+
+        try
+        {
+            var psi = new ProcessStartInfo(fluentExe)
+            {
+                UseShellExecute = true,
+            };
+            if (args.Length > 0)
+            {
+                psi.Arguments = string.Join(" ", args.Select(QuoteArgument));
+            }
+            using var proc = Process.Start(psi);
+            if (proc is null) return false;
+            processId = (uint)proc.Id;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static bool TryActivateFluent(string[] args, out uint processId)
