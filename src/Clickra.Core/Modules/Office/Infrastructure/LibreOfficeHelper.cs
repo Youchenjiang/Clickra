@@ -37,7 +37,7 @@ public static class LibreOfficeHelper
 
     public static bool TryResolveExecutable(string? configuredPath, out string executablePath)
     {
-        executablePath = EnumerateExecutableCandidates(configuredPath).FirstOrDefault(File.Exists) ?? "";
+        executablePath = EnumerateExecutableCandidates(configuredPath).FirstOrDefault(System.IO.File.Exists) ?? "";
         return executablePath.Length > 0;
     }
 
@@ -81,7 +81,7 @@ public static class LibreOfficeHelper
     public static bool TryGetExecutableVersion(string executablePath, out string version)
     {
         version = "";
-        if (string.IsNullOrWhiteSpace(executablePath) || !File.Exists(executablePath))
+        if (string.IsNullOrWhiteSpace(executablePath) || !System.IO.File.Exists(executablePath))
             return false;
 
         try
@@ -286,15 +286,15 @@ public static class LibreOfficeHelper
             throw new InvalidOperationException(string.Format(Localization.T("error_libreoffice_exit_code", language), exitCode, FormatLibreOfficeExitCode(exitCode), details));
 
         string convertedPath = Path.Combine(paths.TemporaryDirectory, Path.GetFileNameWithoutExtension(paths.Input) + ".pdf");
-        if (!File.Exists(convertedPath))
+        if (!System.IO.File.Exists(convertedPath))
             throw new InvalidOperationException(string.Format(Localization.T("error_libreoffice_output_missing", language), details));
 
         string? outputDir = Path.GetDirectoryName(paths.Output);
         if (!string.IsNullOrEmpty(outputDir))
             Directory.CreateDirectory(outputDir);
-        if (File.Exists(paths.Output))
-            File.Delete(paths.Output);
-        File.Move(convertedPath, paths.Output);
+        if (System.IO.File.Exists(paths.Output))
+            System.IO.File.Delete(paths.Output);
+        System.IO.File.Move(convertedPath, paths.Output);
     }
 
     private static void TryKillProcess(Process process)
@@ -347,7 +347,7 @@ public static class LibreOfficeHelper
 
     public static bool LooksLikeLibreOfficeExecutable(string executablePath)
     {
-        if (string.IsNullOrWhiteSpace(executablePath) || !File.Exists(executablePath))
+        if (string.IsNullOrWhiteSpace(executablePath) || !System.IO.File.Exists(executablePath))
             return false;
 
         string fileName = Path.GetFileName(executablePath);
@@ -371,7 +371,7 @@ public static class LibreOfficeHelper
         foreach (string requiredFile in requiredFiles)
         {
             string path = Path.Combine(programDir, requiredFile);
-            if (!File.Exists(path))
+            if (!System.IO.File.Exists(path))
                 return false;
             try
             {
@@ -395,7 +395,7 @@ public static class LibreOfficeHelper
             if (!string.IsNullOrWhiteSpace(programDir))
             {
                 string windowedLauncher = Path.Combine(programDir, LibreOfficeExecutableName);
-                if (File.Exists(windowedLauncher))
+                if (System.IO.File.Exists(windowedLauncher))
                     return windowedLauncher;
             }
         }

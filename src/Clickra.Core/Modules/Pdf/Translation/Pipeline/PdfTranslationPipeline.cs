@@ -93,7 +93,7 @@ public static class PdfTranslationPipeline
             stageReport = PdfParagraphTranslationStage.TranslatePages(
                 pageParagraphs, inputPath, targetLang, language, dataDirectory, onProgress, operationToken);
 
-            if (File.Exists(partialOutputPath)) File.Delete(partialOutputPath);
+            if (System.IO.File.Exists(partialOutputPath)) System.IO.File.Delete(partialOutputPath);
             layoutSummary = PdfTranslatedPdfRebuilder.Rebuild(
                 new PdfTranslationRebuildRequest(
                     inputPath,
@@ -151,7 +151,7 @@ public static class PdfTranslationPipeline
                 Succeeded = true
             };
             healthReport.Save(healthPath);
-            File.Move(partialOutputPath, finalOutputPath, overwrite: true);
+            System.IO.File.Move(partialOutputPath, finalOutputPath, overwrite: true);
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
@@ -173,9 +173,9 @@ public static class PdfTranslationPipeline
         }
         finally
         {
-            if (File.Exists(partialOutputPath))
+            if (System.IO.File.Exists(partialOutputPath))
             {
-                try { File.Delete(partialOutputPath); } catch (IOException) { /* Ignore transient cleanup error */ }
+                try { System.IO.File.Delete(partialOutputPath); } catch (IOException) { /* Ignore transient cleanup error */ }
             }
         }
     }

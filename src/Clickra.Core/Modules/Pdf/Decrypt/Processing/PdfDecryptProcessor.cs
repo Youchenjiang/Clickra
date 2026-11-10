@@ -16,7 +16,7 @@ public class PdfDecryptProcessor : SingleFileProcessorBase
     /// </summary>
     public static bool IsEncrypted(string filePath)
     {
-        if (!File.Exists(filePath)) return false;
+        if (!System.IO.File.Exists(filePath)) return false;
         try
         {
             using var doc = PdfReader.Open(filePath, PdfDocumentOpenMode.Import);

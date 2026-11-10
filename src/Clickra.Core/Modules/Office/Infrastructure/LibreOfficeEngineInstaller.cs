@@ -177,7 +177,7 @@ namespace Clickra.Core.Modules.Office.Infrastructure;
 
             foreach (string candidate in candidates)
             {
-                if (File.Exists(candidate))
+                if (System.IO.File.Exists(candidate))
                     return candidate;
             }
 
@@ -202,7 +202,7 @@ namespace Clickra.Core.Modules.Office.Infrastructure;
             var resolved = new List<string>();
             foreach (string candidate in candidates)
             {
-                if (File.Exists(candidate) &&
+                if (System.IO.File.Exists(candidate) &&
                     resolved.All(existing => !PathsReferToSameInstallation(existing, candidate)))
                 {
                     resolved.Add(candidate);
@@ -240,7 +240,7 @@ namespace Clickra.Core.Modules.Office.Infrastructure;
             string installerPath,
             CancellationToken cancellationToken)
         {
-            if (string.IsNullOrWhiteSpace(installerPath) || !File.Exists(installerPath))
+            if (string.IsNullOrWhiteSpace(installerPath) || !System.IO.File.Exists(installerPath))
                 throw new FileNotFoundException("LibreOffice installer was not found.", installerPath);
 
             var startInfo = new ProcessStartInfo
@@ -610,7 +610,7 @@ namespace Clickra.Core.Modules.Office.Infrastructure;
             foreach (string fileName in requiredFiles)
             {
                 string path = Path.Combine(programDir, fileName);
-                if (!File.Exists(path))
+                if (!System.IO.File.Exists(path))
                     return false;
                 try
                 {
@@ -628,7 +628,7 @@ namespace Clickra.Core.Modules.Office.Infrastructure;
 
         public static string ComputeSha256(string filePath)
         {
-            using var stream = File.OpenRead(filePath);
+            using var stream = System.IO.File.OpenRead(filePath);
             byte[] hash = SHA256.HashData(stream);
             return Convert.ToHexString(hash).ToLowerInvariant();
         }
@@ -696,8 +696,8 @@ namespace Clickra.Core.Modules.Office.Infrastructure;
                 if (!string.IsNullOrWhiteSpace(targetParent))
                     Directory.CreateDirectory(targetParent);
 
-                await using var source = File.OpenRead(sourceFile);
-                await using var target = File.Create(targetFile);
+                await using var source = System.IO.File.OpenRead(sourceFile);
+                await using var target = System.IO.File.Create(targetFile);
                 await source.CopyToAsync(target, cancellationToken);
 
                 copiedBytes += source.Length;
@@ -722,7 +722,7 @@ namespace Clickra.Core.Modules.Office.Infrastructure;
             string targetPath = Path.Combine(downloadDirectory, fileName);
             string tempPath = targetPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
 
-            if (File.Exists(targetPath) && VerifySha256(targetPath, package.Sha256))
+            if (System.IO.File.Exists(targetPath) && VerifySha256(targetPath, package.Sha256))
             {
                 progress?.Report(100);
                 return targetPath;
@@ -752,7 +752,7 @@ namespace Clickra.Core.Modules.Office.Infrastructure;
                 using (response)
                 {
                     await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
-                    await using var destination = File.Create(tempPath);
+                    await using var destination = System.IO.File.Create(tempPath);
                     byte[] buffer = new byte[1024 * 128];
                     long totalRead = 0;
                     long expectedBytes = response.Content.Headers.ContentLength ?? package.DownloadBytes;
@@ -771,21 +771,21 @@ namespace Clickra.Core.Modules.Office.Infrastructure;
 
                 if (!VerifySha256(tempPath, package.Sha256))
                 {
-                    try { File.Delete(tempPath); } catch { }
+                    try { System.IO.File.Delete(tempPath); } catch { }
                     throw new InvalidOperationException("Downloaded LibreOffice package failed SHA256 verification.");
                 }
 
-                if (File.Exists(targetPath))
-                    File.Delete(targetPath);
-                File.Move(tempPath, targetPath);
+                if (System.IO.File.Exists(targetPath))
+                    System.IO.File.Delete(targetPath);
+                System.IO.File.Move(tempPath, targetPath);
                 progress?.Report(100);
                 return targetPath;
             }
             finally
             {
-                if (File.Exists(tempPath))
+                if (System.IO.File.Exists(tempPath))
                 {
-                    try { File.Delete(tempPath); } catch { }
+                    try { System.IO.File.Delete(tempPath); } catch { }
                 }
             }
         }

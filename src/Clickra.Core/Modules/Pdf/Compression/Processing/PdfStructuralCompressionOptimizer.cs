@@ -43,7 +43,7 @@ internal static class PdfStructuralCompressionOptimizer
                 UnembedLargeFonts(document);
             }
 
-            if (settings.TargetDpi > 0 && !string.IsNullOrEmpty(inputPath) && File.Exists(inputPath))
+            if (settings.TargetDpi > 0 && !string.IsNullOrEmpty(inputPath) && System.IO.File.Exists(inputPath))
                 DownsampleAndRecompressImages(document, settings.TargetDpi, settings.JpegQuality, inputPath);
         }
 

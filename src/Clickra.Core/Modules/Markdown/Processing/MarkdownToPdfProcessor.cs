@@ -1123,7 +1123,7 @@ public sealed class MarkdownToPdfProcessor : MarkdownSingleFileProcessorBase
                 imagePath = Path.GetFullPath(Path.Combine(_baseDirectory, Uri.UnescapeDataString(url.Replace('/', Path.DirectorySeparatorChar))));
             }
 
-            return File.Exists(imagePath);
+            return System.IO.File.Exists(imagePath);
         }
 
         private void RenderPlainText(string text, double size, XFontStyleEx style, XBrush brush, double indent, double lineHeight)

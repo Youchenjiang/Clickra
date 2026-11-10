@@ -30,7 +30,7 @@ public sealed class NativePdfCompressionEngine : IPdfCompressionEngine
         Action<int, int, string>? onProgress = null,
         CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(inputPath))
+        if (!System.IO.File.Exists(inputPath))
             throw new FileNotFoundException("Input PDF file was not found.", inputPath);
 
         long inputBytes = new FileInfo(inputPath).Length;
@@ -80,7 +80,7 @@ public sealed class NativePdfCompressionEngine : IPdfCompressionEngine
             onProgress?.Invoke(93, 100, "正在重新封裝 PDF...");
             output.Save(tempOutput);
 
-            if (!File.Exists(tempOutput) || new FileInfo(tempOutput).Length <= 0)
+            if (!System.IO.File.Exists(tempOutput) || new FileInfo(tempOutput).Length <= 0)
                 throw new InvalidOperationException("PDF optimization failed: output PDF file was not created.");
 
             long outputBytes = new FileInfo(tempOutput).Length;
@@ -115,10 +115,10 @@ public sealed class NativePdfCompressionEngine : IPdfCompressionEngine
 
     private static void ReplaceOutput(string tempOutput, string outputPath)
     {
-        if (File.Exists(outputPath))
-            File.Delete(outputPath);
+        if (System.IO.File.Exists(outputPath))
+            System.IO.File.Delete(outputPath);
 
-        File.Move(tempOutput, outputPath);
+        System.IO.File.Move(tempOutput, outputPath);
     }
 
     public static string FormatCompressionSummary(long inputBytes, long outputBytes)

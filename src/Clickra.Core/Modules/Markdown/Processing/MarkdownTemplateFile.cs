@@ -25,7 +25,7 @@ public static class MarkdownTemplateFile
         if (!info.Exists) throw new FileNotFoundException("Markdown template file not found.", fullPath);
         if (info.Length > MaxFileBytes) throw new InvalidDataException("Markdown template file is too large.");
 
-        using JsonDocument document = JsonDocument.Parse(File.ReadAllBytes(fullPath), new JsonDocumentOptions
+        using JsonDocument document = JsonDocument.Parse(System.IO.File.ReadAllBytes(fullPath), new JsonDocumentOptions
         {
             AllowTrailingCommas = false,
             CommentHandling = JsonCommentHandling.Disallow,

@@ -145,17 +145,17 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
                     {
                         ZipArchiveEntry entry = archive.CreateEntry("word/media/" + image.FileName, CompressionLevel.Optimal);
                         using Stream target = entry.Open();
-                        using FileStream source = File.OpenRead(image.SourcePath);
+                        using FileStream source = System.IO.File.OpenRead(image.SourcePath);
                         source.CopyTo(target);
                     }
                 }
                 _token.ThrowIfCancellationRequested();
-                File.Move(tempPath, outputPath, true);
+                System.IO.File.Move(tempPath, outputPath, true);
                 backupScope.Commit();
             }
             finally
             {
-                if (File.Exists(tempPath)) File.Delete(tempPath);
+                if (System.IO.File.Exists(tempPath)) System.IO.File.Delete(tempPath);
             }
         }
 
@@ -641,7 +641,7 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
             catch (ArgumentException) { return false; }
             catch (NotSupportedException) { return false; }
             catch (PathTooLongException) { return false; }
-            if (!File.Exists(candidate)) return false;
+            if (!System.IO.File.Exists(candidate)) return false;
             path = candidate;
             return true;
         }

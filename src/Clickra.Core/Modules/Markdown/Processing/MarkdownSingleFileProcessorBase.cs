@@ -51,10 +51,10 @@ public abstract class MarkdownSingleFileProcessorBase : MultiFileProcessorBase
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!File.Exists(filePath)) throw new FileNotFoundException("Markdown file not found", filePath);
+        if (!System.IO.File.Exists(filePath)) throw new FileNotFoundException("Markdown file not found", filePath);
 
         onProgress?.Invoke(15, 100, ExecutionLocalizationOptions.Text(language, progressKey, Path.GetFileName(filePath)));
-        MarkdownDocument document = Markdig.Markdown.Parse(File.ReadAllText(filePath), Pipeline);
+        MarkdownDocument document = Markdig.Markdown.Parse(System.IO.File.ReadAllText(filePath), Pipeline);
         cancellationToken.ThrowIfCancellationRequested();
         return document;
     }

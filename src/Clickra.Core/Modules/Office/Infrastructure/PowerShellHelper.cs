@@ -222,7 +222,7 @@ exit 1
             onProgress,
             cancellationToken);
 
-        if (!File.Exists(outputPdfPath))
+        if (!System.IO.File.Exists(outputPdfPath))
         {
             throw new InvalidOperationException(string.Format(Localization.T("error_office_output_missing", language), appType));
         }

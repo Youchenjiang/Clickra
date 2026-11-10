@@ -19,7 +19,7 @@ public static class PdfPrintProcessor
         Action<int, int, string>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(pdfPath))
+        if (!System.IO.File.Exists(pdfPath))
             throw new FileNotFoundException("PDF file not found", pdfPath);
 
         int totalDocPages = PdfPageCountQuery.Get(pdfPath);

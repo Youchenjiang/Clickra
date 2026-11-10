@@ -38,7 +38,7 @@ public class ImageToPdfProcessor : MultiFileProcessorBase
     protected override void ProcessFile(string filePath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
     {
         onProgress?.Invoke((fileIndex * 100) + 50, totalFiles * 100, $"正在處理圖片: {Path.GetFileName(filePath)} ({fileIndex + 1}/{totalFiles})...");
-        if (!File.Exists(filePath)) throw new FileNotFoundException("Image file not found", filePath);
+        if (!System.IO.File.Exists(filePath)) throw new FileNotFoundException("Image file not found", filePath);
 
         var holder = LoadXImageSafely(filePath);
         _pageResources.Add(holder);

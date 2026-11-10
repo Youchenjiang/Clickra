@@ -39,7 +39,7 @@ namespace Clickra.Core.Modules.Image.Processing;
             cancellationToken.ThrowIfCancellationRequested();
             onProgress?.Invoke((fileIndex * 100) + 50, totalFiles * 100, $"正在轉換圖片格式: {Path.GetFileName(filePath)} ({fileIndex + 1}/{totalFiles})...");
 
-            if (!File.Exists(filePath)) throw new FileNotFoundException("Image file not found", filePath);
+            if (!System.IO.File.Exists(filePath)) throw new FileNotFoundException("Image file not found", filePath);
 
             string sourceExt = Path.GetExtension(filePath).ToLowerInvariant();
             string targetExt = "." + _format.TrimStart('.').ToLowerInvariant();

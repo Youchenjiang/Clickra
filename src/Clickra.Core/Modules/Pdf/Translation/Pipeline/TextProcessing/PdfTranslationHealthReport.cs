@@ -49,7 +49,7 @@ public sealed class PdfTranslationHealthReport
     public void Save(string path)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path) ?? ".");
-        using var stream = File.Create(path);
+        using var stream = System.IO.File.Create(path);
         using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
         writer.WriteStartObject();
         writer.WriteString(nameof(InputPath), InputPath);

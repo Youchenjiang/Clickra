@@ -149,7 +149,7 @@ internal static class PdfParagraphTranslationStage
             string logLine = $"[{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss}] [File: {Path.GetFileName(inputPath)}] [Page {pageIndex + 1}] {message}{Environment.NewLine}";
             lock (logLock)
             {
-                File.AppendAllText(logPath, logLine);
+                System.IO.File.AppendAllText(logPath, logLine);
             }
         }
         catch { }

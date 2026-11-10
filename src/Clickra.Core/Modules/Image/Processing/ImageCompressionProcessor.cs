@@ -82,7 +82,7 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
         onProgress?.Invoke((fileIndex * 100) + 10, totalFiles * 100, ExecutionLocalizationOptions.Text(_language,
             "img_compress_progress_compressing", Path.GetFileName(filePath), fileIndex + 1, totalFiles));
 
-        if (!File.Exists(filePath)) throw new FileNotFoundException("Image file not found", filePath);
+        if (!System.IO.File.Exists(filePath)) throw new FileNotFoundException("Image file not found", filePath);
 
         // Compressing into the file being read would destroy the only copy of the input; application
         // output planning rejects collisions, so reaching this means a caller built its own path.
@@ -500,7 +500,7 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
         lock (state.SyncRoot)
         {
             if (state.LatestSequence != _requestSequence) return;
-            File.Move(candidatePath, _outputPath!, overwrite: true);
+            System.IO.File.Move(candidatePath, _outputPath!, overwrite: true);
         }
     }
 
@@ -508,8 +508,8 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
     {
         try
         {
-            if (File.Exists(path))
-                File.Delete(path);
+            if (System.IO.File.Exists(path))
+                System.IO.File.Delete(path);
         }
         catch
         {

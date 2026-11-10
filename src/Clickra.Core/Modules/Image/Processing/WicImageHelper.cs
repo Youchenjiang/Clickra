@@ -90,7 +90,7 @@ public static class WicImageHelper
     /// </summary>
     public static Bitmap LoadImageSafely(string filePath)
     {
-        if (!File.Exists(filePath))
+        if (!System.IO.File.Exists(filePath))
             throw new FileNotFoundException("Image file not found.", filePath);
 
         string ext = Path.GetExtension(filePath).ToLowerInvariant();
@@ -103,7 +103,7 @@ public static class WicImageHelper
         {
             try
             {
-                using var fileStream = File.OpenRead(filePath);
+                using var fileStream = System.IO.File.OpenRead(filePath);
                 using var original = new Bitmap(fileStream);
                 var bitmap = new Bitmap(original);
                 ApplyExifOrientation(original, bitmap);
@@ -158,7 +158,7 @@ public static class WicImageHelper
     /// not depend on an optional Windows Store codec.</summary>
     private static Bitmap LoadWebpViaLibwebp(string filePath)
     {
-        byte[] bytes = File.ReadAllBytes(filePath);
+        byte[] bytes = System.IO.File.ReadAllBytes(filePath);
         var decoder = new SimpleDecoder();
         return decoder.DecodeFromBytes(bytes, bytes.LongLength);
     }
@@ -169,7 +169,7 @@ public static class WicImageHelper
     /// </summary>
     private static Bitmap LoadViaWic(string filePath)
     {
-        using var fileStream = File.OpenRead(filePath);
+        using var fileStream = System.IO.File.OpenRead(filePath);
         using var inRas = fileStream.AsRandomAccessStream();
 
         var decoder = BitmapDecoder.CreateAsync(inRas).AsTask().GetAwaiter().GetResult();
@@ -207,7 +207,7 @@ public static class WicImageHelper
         string? dir = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
 
-        using var outStream = File.Create(outputPath);
+        using var outStream = System.IO.File.Create(outputPath);
         using var outRas = outStream.AsRandomAccessStream();
 
         BitmapEncoder encoder;
@@ -245,7 +245,7 @@ public static class WicImageHelper
             throw new NotSupportedException(Localization.T("error_heic_codec_missing", language));
         }
 
-        using var fileStream = File.OpenRead(inputPath);
+        using var fileStream = System.IO.File.OpenRead(inputPath);
         using var inRas = fileStream.AsRandomAccessStream();
 
         var decoder = BitmapDecoder.CreateAsync(inRas).AsTask().GetAwaiter().GetResult();
@@ -306,7 +306,7 @@ public static class WicImageHelper
     {
         string? dir = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-        using var output = File.Create(outputPath);
+        using var output = System.IO.File.Create(outputPath);
         var encoder = new SimpleEncoder();
         encoder.Encode(image, output, Math.Clamp(quality, 1, 100));
     }

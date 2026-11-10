@@ -22,7 +22,7 @@ public sealed class DecryptPdfUseCase : PerFileConversionUseCaseBase
 
     protected override ConversionValidationResult ValidateInputs(ConversionRequest request)
     {
-        if (request.InputFiles.Any(f => File.Exists(f) && !PdfDecryptProcessor.IsEncrypted(f)))
+        if (request.InputFiles.Any(f => System.IO.File.Exists(f) && !PdfDecryptProcessor.IsEncrypted(f)))
         {
             string lang = ExecutionLocalizationOptions.ReadLanguage(request.Options);
             return ConversionValidationResult.Failure(Localization.T("pdf_not_encrypted", lang));
