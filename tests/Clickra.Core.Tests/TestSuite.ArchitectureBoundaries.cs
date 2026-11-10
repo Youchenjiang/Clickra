@@ -2086,7 +2086,7 @@ static partial class TestSuite
     {
         string[] productCommands = new[] { "pdf", "word", "excel", "ppt", "markdown", "image" }
             .SelectMany(ConvertCommandMetadata.GetCommandsForType)
-            .Append(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName)
+            .Append(Clickra.Core.Modules.File.BatchRename.Application.BatchRenameUseCase.CommandName)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(command => command, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -2112,8 +2112,8 @@ static partial class TestSuite
         IConversionUseCase ppt = ConversionUseCases.GetRequired(PptToPdfUseCase.CommandName);
         IConversionUseCase word = ConversionUseCases.GetRequired(WordToPdfUseCase.CommandName);
         IConversionUseCase pdf2img = ConversionUseCases.GetRequired(PdfToImageUseCase.CommandName);
-        IConversionUseCase batchRename = ConversionUseCases.GetRequired(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName);
-        Assert.True(batchRename is Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase,
+        IConversionUseCase batchRename = ConversionUseCases.GetRequired(Clickra.Core.Modules.File.BatchRename.Application.BatchRenameUseCase.CommandName);
+        Assert.True(batchRename is Clickra.Core.Modules.File.BatchRename.Application.BatchRenameUseCase,
             "batch-rename must resolve through the product-wide application use-case catalog.");
         Assert.True(compress is CompressPdfUseCase,
             "compress-pdf must resolve through the product-wide application use-case catalog.");
@@ -2208,7 +2208,7 @@ static partial class TestSuite
                 command.Equals(PdfToImageUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one pdf2img owner.");
         Assert.True(ConversionUseCases.Commands.Count(command =>
-                command.Equals(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+                command.Equals(Clickra.Core.Modules.File.BatchRename.Application.BatchRenameUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one batch-rename owner.");
 
         Assert.True(batchRename.Capabilities.Contains(ConversionCapability.BatchRename),
@@ -2253,13 +2253,13 @@ static partial class TestSuite
             "ConversionExecutionController.HasCapability must recognize PrintOptions on print-pdf.");
         Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.HasCapability(Clickra.Core.Modules.Pdf.Compression.Application.CompressPdfUseCase.CommandName, ConversionCapability.Compression),
             "ConversionExecutionController.HasCapability must recognize Compression on compress-pdf.");
-        Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.HasCapability(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName, ConversionCapability.BatchRename),
+        Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.HasCapability(Clickra.Core.Modules.File.BatchRename.Application.BatchRenameUseCase.CommandName, ConversionCapability.BatchRename),
             "ConversionExecutionController.HasCapability must recognize BatchRename on batch-rename.");
-        Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.AcceptsAllFileExtensions(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName),
+        Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.AcceptsAllFileExtensions(Clickra.Core.Modules.File.BatchRename.Application.BatchRenameUseCase.CommandName),
             "ConversionExecutionController.AcceptsAllFileExtensions must return true for batch-rename.");
         Assert.False(Clickra.Core.Presentation.Convert.ConversionExecutionController.AcceptsAllFileExtensions(WordToPdfUseCase.CommandName),
             "ConversionExecutionController.AcceptsAllFileExtensions must return false for word2pdf.");
-        Assert.False(Clickra.Core.Presentation.Convert.ConversionExecutionController.GeneratesHistoryTask(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName),
+        Assert.False(Clickra.Core.Presentation.Convert.ConversionExecutionController.GeneratesHistoryTask(Clickra.Core.Modules.File.BatchRename.Application.BatchRenameUseCase.CommandName),
             "ConversionExecutionController.GeneratesHistoryTask must return false for batch-rename.");
         Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.GeneratesHistoryTask(WordToPdfUseCase.CommandName),
             "ConversionExecutionController.GeneratesHistoryTask must return true for word2pdf.");
