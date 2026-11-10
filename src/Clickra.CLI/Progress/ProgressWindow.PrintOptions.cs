@@ -209,8 +209,8 @@ public partial class ProgressWindow
         Bitmap? bmp = null;
         try
         {
-            using (var doc = PdfDocument.Open(filePath))
             {
+                using var doc = PdfDocument.Open(filePath);
                 if (page >= 1 && page <= doc.NumberOfPages)
                 {
                     var p = doc.GetPage(page);
@@ -348,10 +348,10 @@ public partial class ProgressWindow
         var footerRect = ScalePrintRect(PrintOptionsLayout.CardFooterRect, s);
 
         // 1. Card Outer Shell: Rounded rectangle, subtle background & border
-        using (var cardPath = UIHelper.GetRoundedRectPath(cardRect, 6 * s))
-        using (var cardBgBrush = new SolidBrush(Color.FromArgb(24, 25, 29)))
-        using (var cardBorderPen = new Pen(Color.FromArgb(52, 56, 66), 1f * s))
         {
+            using var cardPath = UIHelper.GetRoundedRectPath(cardRect, 6 * s);
+            using var cardBgBrush = new SolidBrush(Color.FromArgb(24, 25, 29));
+            using var cardBorderPen = new Pen(Color.FromArgb(52, 56, 66), 1f * s);
             g.FillPath(cardBgBrush, cardPath);
             g.DrawPath(cardBorderPen, cardPath);
         }
@@ -370,37 +370,31 @@ public partial class ProgressWindow
         PaintCardFooter(g, s, msgFont, bodyBrush, footerRect);
 
         // Re-stroke outer card rounded border so sub-panel fills don't square off corners
-        using (var cardBorderPen = new Pen(Color.FromArgb(52, 56, 66), 1f * s))
-        using (var cardPath = UIHelper.GetRoundedRectPath(cardRect, 6 * s))
         {
+            using var cardBorderPen = new Pen(Color.FromArgb(52, 56, 66), 1f * s);
+            using var cardPath = UIHelper.GetRoundedRectPath(cardRect, 6 * s);
             g.DrawPath(cardBorderPen, cardPath);
         }
     }
 
     private void PaintCardHeader(Graphics g, float s, Font msgFont, Font tipFont, RectangleF headerRect, PaperDimension paperDim)
     {
-        using (var headerBg = new SolidBrush(Color.FromArgb(28, 30, 36)))
-        {
-            g.FillRectangle(headerBg, headerRect);
-        }
-        using (var headerBottomPen = new Pen(Color.FromArgb(44, 46, 54), 1f * s))
-        {
-            g.DrawLine(headerBottomPen, headerRect.Left, headerRect.Bottom, headerRect.Right, headerRect.Bottom);
-        }
+        using var headerBg = new SolidBrush(Color.FromArgb(28, 30, 36));
+        g.FillRectangle(headerBg, headerRect);
+        using var headerBottomPen = new Pen(Color.FromArgb(44, 46, 54), 1f * s);
+        g.DrawLine(headerBottomPen, headerRect.Left, headerRect.Bottom, headerRect.Right, headerRect.Bottom);
 
         // Card Header Left: "即時預覽" (Live Preview)
         string previewTitle = Loc("print_options_preview");
-        using (var previewTitleBrush = new SolidBrush(Color.FromArgb(220, 225, 235)))
-        using (var titleFormat = new StringFormat
+        using var previewTitleBrush = new SolidBrush(Color.FromArgb(220, 225, 235));
+        using var titleFormat = new StringFormat
         {
             Alignment = StringAlignment.Near,
             LineAlignment = StringAlignment.Center,
             FormatFlags = StringFormatFlags.NoWrap
-        })
-        {
-            var titleRect = new RectangleF(headerRect.Left + (12f * s), headerRect.Top, headerRect.Width - (130f * s), headerRect.Height);
-            g.DrawString(previewTitle, msgFont, previewTitleBrush, titleRect, titleFormat);
-        }
+        };
+        var titleRect = new RectangleF(headerRect.Left + (12f * s), headerRect.Top, headerRect.Width - (130f * s), headerRect.Height);
+        g.DrawString(previewTitle, msgFont, previewTitleBrush, titleRect, titleFormat);
 
         // Card Header Right: Paper Size specification pill
         string paperInfo = $"{paperDim.DisplayName} · {paperDim.WidthMm:0}×{paperDim.HeightMm:0} mm";
@@ -411,16 +405,14 @@ public partial class ProgressWindow
         float pillY = headerRect.Top + ((headerRect.Height - pillH) / 2f);
         var paperPillRect = new RectangleF(pillX, pillY, pillW, pillH);
 
-        using (var pillPath = UIHelper.GetRoundedRectPath(paperPillRect, 3 * s))
-        using (var pillBg = new SolidBrush(Color.FromArgb(36, 40, 48)))
-        using (var pillBorder = new Pen(Color.FromArgb(62, 68, 80), 1f * s))
-        using (var pillTextBrush = new SolidBrush(Color.FromArgb(185, 195, 210)))
-        using (var pillFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
-        {
-            g.FillPath(pillBg, pillPath);
-            g.DrawPath(pillBorder, pillPath);
-            g.DrawString(paperInfo, tipFont, pillTextBrush, paperPillRect, pillFormat);
-        }
+        using var pillPath = UIHelper.GetRoundedRectPath(paperPillRect, 3 * s);
+        using var pillBg = new SolidBrush(Color.FromArgb(36, 40, 48));
+        using var pillBorder = new Pen(Color.FromArgb(62, 68, 80), 1f * s);
+        using var pillTextBrush = new SolidBrush(Color.FromArgb(185, 195, 210));
+        using var pillFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        g.FillPath(pillBg, pillPath);
+        g.DrawPath(pillBorder, pillPath);
+        g.DrawString(paperInfo, tipFont, pillTextBrush, paperPillRect, pillFormat);
     }
 
     private void PaintCardViewport(Graphics g, float s, Font tipFont, Brush mutedBrush, RectangleF viewportRect, PaperDimension paperDim)
@@ -483,42 +475,35 @@ public partial class ProgressWindow
     {
         bool isZoomPillHovered = _hoveredPrintElement == PrintElement.PreviewArea;
         var zoomPillRect = ScalePrintRect(PrintOptionsLayout.ZoomPillRect, s);
-        using (var zoomPath = UIHelper.GetRoundedRectPath(zoomPillRect, zoomPillRect.Height / 2f))
-        using (var zoomBg = new SolidBrush(isZoomPillHovered ? Color.FromArgb(235, 38, 44, 58) : Color.FromArgb(180, 24, 26, 32)))
-        using (var zoomBorder = new Pen(isZoomPillHovered ? UIHelper.GetSystemColorizationColor() : Color.FromArgb(70, 75, 88), 1f * s))
-        using (var zoomTextBrush = new SolidBrush(isZoomPillHovered ? Color.White : Color.FromArgb(195, 200, 210)))
-        {
-            g.FillPath(zoomBg, zoomPath);
-            g.DrawPath(zoomBorder, zoomPath);
-            float iconX = zoomPillRect.Left + (11f * s);
-            float iconY = zoomPillRect.Top + (zoomPillRect.Height / 2f);
-            VectorIcons.DrawMagnifier(g, iconX, iconY, 10f * s, zoomTextBrush.Color, 1.4f * s);
+        using var zoomPath = UIHelper.GetRoundedRectPath(zoomPillRect, zoomPillRect.Height / 2f);
+        using var zoomBg = new SolidBrush(isZoomPillHovered ? Color.FromArgb(235, 38, 44, 58) : Color.FromArgb(180, 24, 26, 32));
+        using var zoomBorder = new Pen(isZoomPillHovered ? UIHelper.GetSystemColorizationColor() : Color.FromArgb(70, 75, 88), 1f * s);
+        using var zoomTextBrush = new SolidBrush(isZoomPillHovered ? Color.White : Color.FromArgb(195, 200, 210));
 
-            var textRect = new RectangleF(zoomPillRect.Left + (18f * s), zoomPillRect.Top, zoomPillRect.Width - (20f * s), zoomPillRect.Height);
-            using var textFormat = new StringFormat { LineAlignment = StringAlignment.Center };
-            g.DrawString(Loc("pdf_split_zoom_tag"), tipFont, zoomTextBrush, textRect, textFormat);
-        }
+        g.FillPath(zoomBg, zoomPath);
+        g.DrawPath(zoomBorder, zoomPath);
+        float iconX = zoomPillRect.Left + (11f * s);
+        float iconY = zoomPillRect.Top + (zoomPillRect.Height / 2f);
+        VectorIcons.DrawMagnifier(g, iconX, iconY, 10f * s, zoomTextBrush.Color, 1.4f * s);
+
+        var textRect = new RectangleF(zoomPillRect.Left + (18f * s), zoomPillRect.Top, zoomPillRect.Width - (20f * s), zoomPillRect.Height);
+        using var textFormat = new StringFormat { LineAlignment = StringAlignment.Center };
+        g.DrawString(Loc("pdf_split_zoom_tag"), tipFont, zoomTextBrush, textRect, textFormat);
     }
 
     private void PaintCardFooter(Graphics g, float s, Font msgFont, Brush bodyBrush, RectangleF footerRect)
     {
-        using (var footerBg = new SolidBrush(Color.FromArgb(28, 30, 36)))
-        {
-            g.FillRectangle(footerBg, footerRect);
-        }
-        using (var footerTopPen = new Pen(Color.FromArgb(44, 46, 54), 1f * s))
-        {
-            g.DrawLine(footerTopPen, footerRect.Left, footerRect.Top, footerRect.Right, footerRect.Top);
-        }
+        using var footerBg = new SolidBrush(Color.FromArgb(28, 30, 36));
+        g.FillRectangle(footerBg, footerRect);
+        using var footerTopPen = new Pen(Color.FromArgb(44, 46, 54), 1f * s);
+        g.DrawLine(footerTopPen, footerRect.Left, footerRect.Top, footerRect.Right, footerRect.Top);
 
         DrawPrintButton(g, s, PrintOptionsLayout.PrevPageButton, "<",
             new ButtonVisualState(false, Enabled: _printPreviewModel.CanNavigatePrevious, Hovered: _hoveredPrintElement == PrintElement.PrevPage, Pressed: _pressedPrintElement == PrintElement.PrevPage));
 
-        using (var pageFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
-        {
-            string pageText = Loc("print_options_page_indicator", _printPreviewModel.CurrentPageNumber, _printPreviewModel.TotalPages);
-            g.DrawString(pageText, msgFont, bodyBrush, ScalePrintRect(PrintOptionsLayout.PageTextRect, s), pageFormat);
-        }
+        using var pageFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        string pageText = Loc("print_options_page_indicator", _printPreviewModel.CurrentPageNumber, _printPreviewModel.TotalPages);
+        g.DrawString(pageText, msgFont, bodyBrush, ScalePrintRect(PrintOptionsLayout.PageTextRect, s), pageFormat);
 
         DrawPrintButton(g, s, PrintOptionsLayout.NextPageButton, ">",
             new ButtonVisualState(false, Enabled: _printPreviewModel.CanNavigateNext, Hovered: _hoveredPrintElement == PrintElement.NextPage, Pressed: _pressedPrintElement == PrintElement.NextPage));
@@ -785,16 +770,16 @@ public partial class ProgressWindow
         var scaledPopup = ScalePrintRect(popupRect, s);
 
         // Drop shadow for floating popup
-        using (var shadowBrush = new SolidBrush(Color.FromArgb(120, 0, 0, 0)))
         {
+            using var shadowBrush = new SolidBrush(Color.FromArgb(120, 0, 0, 0));
             g.FillRectangle(shadowBrush, scaledPopup.X + (3f * s), scaledPopup.Y + (3f * s), scaledPopup.Width, scaledPopup.Height);
         }
 
         // Popup background & border
-        using (var popupPath = UIHelper.GetRoundedRectPath(scaledPopup, 4 * s))
-        using (var bgBrush = new SolidBrush(Color.FromArgb(32, 32, 34)))
-        using (var borderPen = new Pen(Color.FromArgb(75, 80, 90), 1f * s))
         {
+            using var popupPath = UIHelper.GetRoundedRectPath(scaledPopup, 4 * s);
+            using var bgBrush = new SolidBrush(Color.FromArgb(32, 32, 34));
+            using var borderPen = new Pen(Color.FromArgb(75, 80, 90), 1f * s);
             g.FillPath(bgBrush, popupPath);
             g.DrawPath(borderPen, popupPath);
         }
@@ -875,8 +860,8 @@ public partial class ProgressWindow
         float trackW = 4f * s;
         float trackH = (popupRect.Height - 8) * s;
 
-        using (var trackBrush = new SolidBrush(Color.FromArgb(42, 42, 45)))
         {
+            using var trackBrush = new SolidBrush(Color.FromArgb(42, 42, 45));
             g.FillRectangle(trackBrush, trackX, trackY, trackW, trackH);
         }
 
