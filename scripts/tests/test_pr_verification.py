@@ -155,6 +155,25 @@ class VerificationTests(unittest.TestCase):
         self.assertFalse(result["ready"])
         self.assertTrue(any("required checks skipped" in issue for issue in result["problems"]))
 
+    def test_top_level_review_finding_blocks_acceptance(self):
+        pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
+              "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
+                                    for name in pr_verification.REQUIRED]}
+        report = {
+            "counts": {"unresolved": 0},
+            "sonar": {"total": 0},
+            "reviews": [{
+                "author": "llamapreview",
+                "state": "COMMENTED",
+                "body": "### LlamaPReview — Blocking issues found\n\nSome issue details."
+            }]
+        }
+        result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
+        self.assertFalse(result["ready"])
+        self.assertTrue(any("unaddressed top-level review finding" in issue for issue in result["problems"]))
+        self.assertEqual(len(result["top_level_findings"]), 1)
+        self.assertEqual(result["top_level_findings"][0]["author"], "llamapreview")
+
 
 if __name__ == "__main__":
     unittest.main()

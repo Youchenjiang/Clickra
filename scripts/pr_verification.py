@@ -1,5 +1,7 @@
 """Conservative read-only final PR gate across GitHub and SonarQube."""
 
+import re
+
 PASS = {"SUCCESS", "PASS", "PASSED"}
 SKIP = {"SKIPPED", "SKIPPING", "NEUTRAL"}
 PENDING = {"PENDING", "QUEUED", "IN_PROGRESS", "WAITING", "REQUESTED", "EXPECTED"}
@@ -60,6 +62,27 @@ def _required_checks(files):
     return required
 
 
+def extract_top_review_findings(reviews):
+    """Detect top-level reviews reporting issues, changes requested, or blocker findings."""
+    findings = []
+    pattern = re.compile(
+        r"(?:blocking issues|finding details|### finding|\bissues found\b|\baction required\b)",
+        re.IGNORECASE,
+    )
+    for item in reviews:
+        body = item.get("body") or ""
+        state = item.get("state")
+        author = item.get("author") or (item.get("user") or {}).get("login") or "unknown"
+        if state == "CHANGES_REQUESTED" or bool(pattern.search(body)):
+            findings.append({
+                "author": author,
+                "state": state,
+                "url": item.get("url") or item.get("html_url") or "",
+                "body": body,
+            })
+    return findings
+
+
 def _finding_problems(report, groups, required):
     count = report["counts"]["unresolved"]
     sonar_count = report["sonar"]["total"]
@@ -68,6 +91,9 @@ def _finding_problems(report, groups, required):
                          (sonar_count, "SonarQube issues")):
         if value:
             problems.append(f"{value} {label}")
+    top_findings = extract_top_review_findings(report.get("reviews", []))
+    if top_findings:
+        problems.append(f"{len(top_findings)} unaddressed top-level review finding(s): {', '.join('@' + f['author'] for f in top_findings)}")
     for names, label in ((groups["failed"], "failed checks"),
                          (sorted(required.intersection(groups["skipped"])), "required checks skipped"),
                          (groups["pending"], "pending checks")):
@@ -117,11 +143,13 @@ def summarize(pr, report, *, remote_sha):
         {"id": t["id"], "path": t["path"], "line": t["line"], "outdated": t["outdated"]}
         for t in report.get("threads", []) if not t.get("resolved")
     ]
+    top_findings = extract_top_review_findings(report.get("reviews", []))
     return {"ready": not problems, "state": pr.get("state"),
             "historical_checks_passed": (pr.get("state") == "MERGED" and
                                          not _finding_problems(report, groups, required)),
             "problems": problems, "passed": groups["passed"],
             "skipped": groups["skipped"], "head": head, "sonar_issues": sonar_count,
             "unresolved_threads": count, "unresolved_thread_details": unresolved_details,
+            "top_level_findings": top_findings,
             "checks": _check_details(checks, required),
             "sonar_quality": quality}
