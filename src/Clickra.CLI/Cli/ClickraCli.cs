@@ -12,7 +12,7 @@ using Clickra.Core.Modules.Img.Compression.Application;
 using Clickra.Core.Modules.Img.Merge.Application;
 using Clickra.Core.Modules.Img.Stitch.Application;
 using Clickra.Core.Modules.Img.ToPdf.Application;
-using Clickra.Core.Modules.Doc.Markdown.Application;
+using Clickra.Core.Modules.Doc.Shared.Application;
 using Clickra.Core.Modules.Pdf.Compression.Application;
 using Clickra.Core.Modules.Pdf.Decrypt.Application;
 using Clickra.Core.Modules.Pdf.Merge.Application;
