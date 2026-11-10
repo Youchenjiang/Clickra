@@ -1,6 +1,6 @@
-using Clickra.Core.Modules.Doc.Markdown.Application;
+using Clickra.Core.Modules.Doc.Shared.Application;
 
-namespace Clickra.Core.Modules.Doc.Markdown.Processing;
+namespace Clickra.Core.Modules.Doc.Shared.Processing;
 
 /// <summary>Renderer-neutral presentation contract shared by Markdown PDF and DOCX backends.</summary>
 public sealed record MarkdownDocumentTemplate(

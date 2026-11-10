@@ -1,22 +1,24 @@
+using Clickra.Core.Modules.Doc.Shared.Application;
 using Clickra.Core.Application;
-using Clickra.Core.Modules.Doc.Markdown.Processing;
+using Clickra.Core.Modules.Doc.Shared.Processing;
+using Clickra.Core.Modules.Doc.MarkdownWord.Processing;
 
-namespace Clickra.Core.Modules.Doc.Markdown.Application;
+namespace Clickra.Core.Modules.Doc.MarkdownWord.Application;
 
-/// <summary>Authoritative application workflow for converting Markdown documents to PDF.</summary>
-public sealed class MarkdownToPdfUseCase : MarkdownConversionUseCaseBase
+/// <summary>Authoritative application workflow for converting Markdown documents to Word.</summary>
+public sealed class MarkdownToWordUseCase : MarkdownConversionUseCaseBase
 {
-    public const string CommandName = "md2pdf";
+    public const string CommandName = "md2word";
 
     public override string Command => CommandName;
 
-    protected override string UseCaseName => nameof(MarkdownToPdfUseCase);
+    protected override string UseCaseName => nameof(MarkdownToWordUseCase);
 
     protected override string OutputCountError =>
-        "Markdown to PDF conversion requires one output per input.";
+        "Markdown to Word conversion requires one output per input.";
 
     protected override string GetOutputFileName(string input) =>
-        Path.GetFileNameWithoutExtension(input) + ".pdf";
+        Path.GetFileNameWithoutExtension(input) + ".docx";
 
     protected override Task ExecuteFileAsync(
         int index,
@@ -27,7 +29,7 @@ public sealed class MarkdownToPdfUseCase : MarkdownConversionUseCaseBase
         CancellationToken cancellationToken)
     {
         var options = (Dictionary<string, object>)executionState!;
-        var processor = new MarkdownToPdfProcessor();
+        var processor = new MarkdownToWordProcessor();
         return Task.Run(
             () => processor.Process(
                 new List<string> { plan.Inputs[index] },

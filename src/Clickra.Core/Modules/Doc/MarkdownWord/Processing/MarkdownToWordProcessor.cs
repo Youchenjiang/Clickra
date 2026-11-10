@@ -1,3 +1,4 @@
+using Clickra.Core.Modules.Doc.Shared.Processing;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -13,9 +14,10 @@ using Markdig.Extensions.Tables;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using Clickra.Core.Processors;
-using Clickra.Core.Modules.Doc.Markdown.Application;
+using Clickra.Core.Modules.Doc.Shared.Application;
+using Clickra.Core.Modules.Doc.MarkdownWord.Application;
 
-namespace Clickra.Core.Modules.Doc.Markdown.Processing;
+namespace Clickra.Core.Modules.Doc.MarkdownWord.Processing;
 
 /// <summary>Converts Markdown to a self-contained DOCX using Markdig and WordprocessingML.</summary>
 public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase

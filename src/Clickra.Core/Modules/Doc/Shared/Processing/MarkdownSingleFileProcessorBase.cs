@@ -6,7 +6,7 @@ using Markdig;
 using Markdig.Syntax;
 using Clickra.Core.Processors;
 
-namespace Clickra.Core.Modules.Doc.Markdown.Processing;
+namespace Clickra.Core.Modules.Doc.Shared.Processing;
 
 /// <summary>Common validation and output state for one-input Markdown conversions.</summary>
 public abstract class MarkdownSingleFileProcessorBase : MultiFileProcessorBase

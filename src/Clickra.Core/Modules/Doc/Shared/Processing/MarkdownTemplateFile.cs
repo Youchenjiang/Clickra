@@ -4,9 +4,9 @@ using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using Clickra.Core;
-using Clickra.Core.Modules.Doc.Markdown.Application;
+using Clickra.Core.Modules.Doc.Shared.Application;
 
-namespace Clickra.Core.Modules.Doc.Markdown.Processing;
+namespace Clickra.Core.Modules.Doc.Shared.Processing;
 
 /// <summary>Loads a versioned, data-only Markdown document template from JSON.</summary>
 public static class MarkdownTemplateFile

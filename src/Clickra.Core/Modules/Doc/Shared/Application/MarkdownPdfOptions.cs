@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace Clickra.Core.Modules.Doc.Markdown.Application;
+namespace Clickra.Core.Modules.Doc.Shared.Application;
 
 /// <summary>Shared one-shot Markdown presentation options used by Markdown renderers.</summary>
 public static class MarkdownPdfOptions

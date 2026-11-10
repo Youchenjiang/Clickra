@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Clickra.Core.Modules.Doc.Markdown.Application;
+using Clickra.Core.Modules.Doc.Shared.Application;
 
-namespace Clickra.Core.Modules.Doc.Markdown.Processing;
+namespace Clickra.Core.Modules.Doc.Shared.Processing;
 
 /// <summary>
 /// Renderer-neutral Markdown presentation state resolved once from conversion options.
