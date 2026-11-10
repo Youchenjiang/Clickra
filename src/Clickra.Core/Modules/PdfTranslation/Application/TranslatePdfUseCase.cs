@@ -1,7 +1,7 @@
 using Clickra.Core.Modules.Settings.Application;
 using Clickra.Core.Application;
 using Clickra.Core.Modules.PdfDecrypt.Application;
-using Clickra.Core.Modules.PdfTranslation.Execution;
+using Clickra.Core.Modules.PdfTranslation.Processing;
 using Clickra.Core.Processors;
 
 namespace Clickra.Core.Modules.PdfTranslation.Application;

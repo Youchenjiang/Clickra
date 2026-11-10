@@ -1,5 +1,11 @@
 # Changelog
 
+## [v3.19.2.0] - 2026-11-10
+
+- **模組黃金標準目錄標準化 (Module Structure Standardization)**：落實模組化統一實施憲章之機制三（根治 E6/E8 技術債）。將 PdfTranslation 歷史過渡目錄 Execution/ 徹底消除，PdfTranslateProcessor 歸位至 Processing/，達成全專案 13 個核心模組在子目錄結構（Application/、Processing/、Domain/、Presentation/、Infrastructure/）上的 100% 黃金標準對齊。
+- **架構邊界目錄白名單硬性守門 (Module Directory Whitelist Architectural Guard)**：於架構測試新增目錄白名單驗證，嚴格禁止任何模組目錄建立未獲授權之私有子資料夾（如 Execution/），防止架構侵蝕與目錄結構退化。
+- **Options 配置放置與分層穿透防護守門 (Options Placement & Layer Leakage Guard)**：新增自動化架構守門，強制所有 *Options.cs 只能駐留在 Application/（防止 E4 技術債），並防護展示層直接穿透引用底層 *.Processing 處理器。
+
 ## [v3.19.1.0] - 2026-11-09
 
 - **單一執行管線歸一 (Single Pipeline Engine Unification)**：徹底落實模組化統一實施憲章之機制二（根治 D1 技術債）。將散落在 CLI 與 Native 適配層中批次命名等用例之獨立執行邏輯，全數收斂至核心層 `ConversionExecutionService.Execute` 單一執行管線。

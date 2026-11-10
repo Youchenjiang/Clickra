@@ -14,6 +14,8 @@ static partial class TestSuite
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
     private const string ArchitectureApplicationDirectory = "Application";
+    private const string ArchitectureProcessingDirectory = "Processing";
+    private const string ArchitectureTranslationDirectory = "Translation";
     private const string ArchitectureModulesDirectory = "Modules";
     private const string ArchitectureFluentProjectDirectory = "Clickra.Fluent";
     private const string ArchitectureProgressDirectory = "Progress";
@@ -223,8 +225,8 @@ static partial class TestSuite
         {
             Path.Combine(application, "PerFileConversionUseCaseBase.cs"),
             Path.Combine(application, "SingleOutputConversionUseCaseBase.cs"),
-            Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Modules",
-                "Office", "Application", "OfficeToPdfUseCaseBase.cs")
+            Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory,
+                "Office", ArchitectureApplicationDirectory, "OfficeToPdfUseCaseBase.cs")
         };
         foreach (string path in familyPaths)
         {
@@ -404,7 +406,20 @@ static partial class TestSuite
 
     private static void ValidateConversionModules(string modulesRoot, List<string> violations)
     {
-        string[] conversionModules = { "Image", "Markdown", "Office", "PdfCompression", "PdfDecrypt", "PdfMerge", "PdfSplit", ArchitecturePdfTranslationModuleName };
+        string[] conversionModules =
+        {
+            "BatchRename",
+            "Image",
+            "Markdown",
+            "Office",
+            "PdfCompression",
+            "PdfDecrypt",
+            "PdfMerge",
+            "PdfPrint",
+            "PdfSplit",
+            "PdfToImage",
+            ArchitecturePdfTranslationModuleName
+        };
 
         foreach (string module in conversionModules)
         {
@@ -434,6 +449,7 @@ static partial class TestSuite
 
         var allowedBases = new[]
         {
+            "ConversionUseCaseBase",
             "PerFileConversionUseCaseBase",
             "SingleOutputConversionUseCaseBase",
             "OfficeToPdfUseCaseBase",
@@ -459,28 +475,28 @@ static partial class TestSuite
 
     private static void ValidateModuleProcessingLayer(string module, string moduleDir, List<string> violations)
     {
-        string procDir = Path.Combine(moduleDir, "Processing");
+        string procDir = Path.Combine(moduleDir, ArchitectureProcessingDirectory);
         string execDir = Path.Combine(moduleDir, "Execution");
 
-        if (Directory.Exists(execDir) && !module.Equals(ArchitecturePdfTranslationModuleName, StringComparison.OrdinalIgnoreCase))
+        if (Directory.Exists(execDir))
         {
-            violations.Add($"{module}: Execution/ directory is prohibited; only PdfTranslation may use Execution/.");
+            violations.Add($"{module}: Execution/ directory is strictly prohibited across all modules; processors must reside in {ArchitectureProcessingDirectory}/.");
         }
 
-        bool hasProc = Directory.Exists(procDir);
-        bool hasExec = module.Equals(ArchitecturePdfTranslationModuleName, StringComparison.OrdinalIgnoreCase) && Directory.Exists(execDir);
-
-        if (!hasProc && !hasExec)
+        if (!Directory.Exists(procDir))
         {
-            violations.Add($"{module}: missing mandatory Processing/ directory.");
+            violations.Add($"{module}: missing mandatory {ArchitectureProcessingDirectory}/ directory.");
             return;
         }
 
-        string targetDir = hasProc ? procDir : execDir;
-        string[] procFiles = Directory.GetFiles(targetDir, "*Processor*.cs", SearchOption.AllDirectories);
+        string[] procFiles = Directory.GetFiles(procDir, "*.cs", SearchOption.AllDirectories)
+            .Where(f => (Path.GetFileName(f).Contains("Processor") || Path.GetFileName(f).Contains("Executor"))
+                     && !Path.GetFileName(f).EndsWith("Engine.cs", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
         if (procFiles.Length == 0)
         {
-            violations.Add($"{module}: Processing directory must contain at least one Processor file.");
+            violations.Add($"{module}: Processing directory must contain at least one Processor/Executor file.");
             return;
         }
 
@@ -492,19 +508,43 @@ static partial class TestSuite
             "FileProcessor"
         };
 
+        var classRegex = new Regex(
+            @"\b(?:public|internal|private|protected)?\s*(?:(static|abstract|sealed)\s+)?class\s+([A-Za-z0-9_]+)(?:\s*:\s*([^{]+))?\{",
+            RegexOptions.Compiled,
+            ArchitectureRegexTimeout);
+
         foreach (string file in procFiles)
         {
-            string source = File.ReadAllText(file);
-            if (source.Contains("abstract class", StringComparison.Ordinal) || source.Contains("interface ", StringComparison.Ordinal))
-                continue;
+            ValidateProcessorFile(file, module, classRegex, allowedProcessorBases, violations);
+        }
+    }
 
-            bool inheritsRequiredBase = allowedProcessorBases.Any(b =>
-                Regex.IsMatch(source, $@":\s*([A-Za-z0-9_.,<>\s]*\b)?{b}\b", RegexOptions.CultureInvariant, ArchitectureRegexTimeout));
+    private static void ValidateProcessorFile(string file, string module, Regex classRegex, string[] allowedProcessorBases, List<string> violations)
+    {
+        string source = File.ReadAllText(file);
+        foreach (Match match in classRegex.Matches(source))
+        {
+            ValidateProcessorClass(match, file, module, allowedProcessorBases, violations);
+        }
+    }
 
-            if (!inheritsRequiredBase)
-            {
-                violations.Add($"{Path.GetFileName(file)} in {module}: processor class must inherit from SingleFileProcessorBase or MultiFileProcessorBase.");
-            }
+    private static void ValidateProcessorClass(Match match, string file, string module, string[] allowedProcessorBases, List<string> violations)
+    {
+        string modifier = match.Groups[1].Value;
+        if (modifier is "static" or "abstract")
+            return;
+
+        string className = match.Groups[2].Value;
+        if (!className.Contains("Processor") && !className.Contains("Executor"))
+            return;
+
+        string baseList = match.Groups[3].Value;
+        bool inheritsRequiredBase = allowedProcessorBases.Any(b =>
+            Regex.IsMatch(baseList, $@"\b{b}\b", RegexOptions.CultureInvariant, ArchitectureRegexTimeout));
+
+        if (!inheritsRequiredBase)
+        {
+            violations.Add($"{className} in {Path.GetFileName(file)} ({module}): processor class must inherit from SingleFileProcessorBase or MultiFileProcessorBase.");
         }
     }
 
@@ -514,7 +554,7 @@ static partial class TestSuite
         foreach (string file in allOptionFiles)
         {
             string relative = NormalizeRepoPath(root, file);
-            if (!relative.Contains("/Application/", StringComparison.OrdinalIgnoreCase))
+            if (!relative.Contains($"/{ArchitectureApplicationDirectory}/", StringComparison.OrdinalIgnoreCase))
             {
                 violations.Add($"Option file {relative} must reside under an Application/ directory.");
             }
@@ -523,22 +563,44 @@ static partial class TestSuite
 
     private static void ValidateAuthorizedModuleDirectories(string modulesRoot, List<string> violations)
     {
-        string[] authorizedPresentation = { "PdfSplit", "HistoryTasks", ArchitectureSettingsModuleName };
-        string[] authorizedInfrastructure = { "Office" };
+        var appAndProc = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory };
+        var authorizedByModule = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Office"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, ArchitectureInfrastructureDirectory },
+            ["Image"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+            ["Markdown"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+            ["BatchRename"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, "Domain" },
+            ["PdfCompression"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+            ["PdfDecrypt"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+            ["PdfMerge"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+            ["PdfPrint"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, "Ports" },
+            ["PdfSplit"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, ArchitecturePresentationDirectory },
+            ["PdfToImage"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+            [ArchitecturePdfTranslationModuleName] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, "Model", "Pipeline", ArchitectureTranslationDirectory },
+            ["HistoryTasks"] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitecturePresentationDirectory },
+            [ArchitectureSettingsModuleName] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, "Model", ArchitecturePresentationDirectory }
+        };
 
         foreach (string moduleDir in Directory.GetDirectories(modulesRoot))
         {
             string moduleName = Path.GetFileName(moduleDir);
-            string presDir = Path.Combine(moduleDir, ArchitecturePresentationDirectory);
-            if (Directory.Exists(presDir) && !authorizedPresentation.Contains(moduleName, StringComparer.OrdinalIgnoreCase))
+            if (!authorizedByModule.TryGetValue(moduleName, out var allowedDirs))
             {
-                violations.Add($"Module {moduleName} contains unexpected Presentation/ directory.");
+                violations.Add($"Module {moduleName} is not recognized in authorized module directory configuration.");
+                continue;
             }
 
-            string infraDir = Path.Combine(moduleDir, ArchitectureInfrastructureDirectory);
-            if (Directory.Exists(infraDir) && !authorizedInfrastructure.Contains(moduleName, StringComparer.OrdinalIgnoreCase))
+            foreach (string subDir in Directory.GetDirectories(moduleDir))
             {
-                violations.Add($"Module {moduleName} contains unexpected Infrastructure/ directory.");
+                string dirName = Path.GetFileName(subDir);
+                if (dirName.Equals("Execution", StringComparison.OrdinalIgnoreCase))
+                {
+                    violations.Add($"Module {moduleName} contains forbidden Execution/ directory.");
+                }
+                else if (!allowedDirs.Contains(dirName))
+                {
+                    violations.Add($"Module {moduleName} contains unauthorized directory: {dirName}/.");
+                }
             }
         }
     }
@@ -640,7 +702,7 @@ static partial class TestSuite
     private static void TestMarkdownPresentationOptionsHaveSingleOwner()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
-        string processingDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, "Markdown", "Processing");
+        string processingDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, "Markdown", ArchitectureProcessingDirectory);
         string profile = File.ReadAllText(Path.Combine(processingDir, "MarkdownRenderProfile.cs"));
         string pdf = File.ReadAllText(Path.Combine(processingDir, "MarkdownToPdfProcessor.cs"));
         string word = File.ReadAllText(Path.Combine(processingDir, "MarkdownToWordProcessor.cs"));
@@ -1469,10 +1531,10 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
         string core = Path.Combine(root, "src", ArchitectureCoreProjectDirectory);
-        string legacyProviderDirectory = Path.Combine(core, "Translation");
+        string legacyProviderDirectory = Path.Combine(core, ArchitectureTranslationDirectory);
         string module = Path.Combine(core, ArchitectureModulesDirectory, "PdfTranslation");
-        string providerDirectory = Path.Combine(module, "Translation");
-        string legacyPdfTranslationDirectory = Path.Combine(module, "Pipeline", "Translation");
+        string providerDirectory = Path.Combine(module, ArchitectureTranslationDirectory);
+        string legacyPdfTranslationDirectory = Path.Combine(module, "Pipeline", ArchitectureTranslationDirectory);
         string textProcessingDirectory = Path.Combine(module, "Pipeline", "TextProcessing");
 
         Assert.False(

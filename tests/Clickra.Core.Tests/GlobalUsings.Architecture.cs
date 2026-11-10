@@ -20,7 +20,7 @@ global using Clickra.Core.Modules.PdfSplit.Processing;
 global using Clickra.Core.Modules.PdfSplit.Presentation;
 global using Clickra.Core.Modules.Settings.Application;
 global using Clickra.Core.Modules.PdfTranslation.Application;
-global using Clickra.Core.Modules.PdfTranslation.Execution;
+global using Clickra.Core.Modules.PdfTranslation.Processing;
 global using Clickra.Core.Presentation;
 global using Clickra.Core.Modules.PdfTranslation.Pipeline;
 global using Clickra.UI.Layout;
