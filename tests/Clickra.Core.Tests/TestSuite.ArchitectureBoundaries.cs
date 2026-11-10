@@ -22,6 +22,7 @@ static partial class TestSuite
     private const string ArchitectureTranslationDirectory = "Translation";
     private const string ArchitectureModulesDirectory = "Modules";
     private const string ArchitectureFluentProjectDirectory = "Clickra.Fluent";
+    private const string ArchitectureDashboardDirectory = "Dashboard";
     private const string ArchitectureProgressDirectory = "Progress";
     private const string ArchitectureProcessorsDirectory = "Processors";
     private const string ArchitectureProgressProcessFile = "ProgressWindow.Process.cs";
@@ -684,7 +685,7 @@ static partial class TestSuite
         var scanDirs = new List<string>
         {
             Path.Combine(root, "src", ArchitectureFluentProjectDirectory),
-            Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Dashboard"),
+            Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureDashboardDirectory),
             Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory),
             Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitecturePresentationDirectory)
         };
@@ -793,12 +794,10 @@ static partial class TestSuite
 
         public override void VisitBinaryExpression(BinaryExpressionSyntax node)
         {
-            if (node.IsKind(SyntaxKind.EqualsExpression) || node.IsKind(SyntaxKind.NotEqualsExpression))
+            if ((node.IsKind(SyntaxKind.EqualsExpression) || node.IsKind(SyntaxKind.NotEqualsExpression)) &&
+                (IsForbiddenExpression(node.Left) || IsForbiddenExpression(node.Right)))
             {
-                if (IsForbiddenExpression(node.Left) || IsForbiddenExpression(node.Right))
-                {
-                    Report(node, $"Binary comparison against command '{node.ToString().Trim()}'");
-                }
+                Report(node, $"Binary comparison against command '{node.ToString().Trim()}'");
             }
             base.VisitBinaryExpression(node);
         }
@@ -876,13 +875,12 @@ static partial class TestSuite
 
             if (isEquals)
             {
-                foreach (ArgumentSyntax arg in node.ArgumentList.Arguments)
+                ArgumentSyntax? matchingArg = node.ArgumentList.Arguments
+                    .FirstOrDefault(arg => IsForbiddenExpression(arg.Expression));
+                if (matchingArg is not null)
                 {
-                    if (IsForbiddenExpression(arg.Expression))
-                    {
-                        forbiddenExpr = arg.Expression;
-                        return true;
-                    }
+                    forbiddenExpr = matchingArg.Expression;
+                    return true;
                 }
             }
             return false;
@@ -1629,7 +1627,7 @@ static partial class TestSuite
                      (Path.Combine(ArchitecturePresentationDirectory, "Convert", "ConvertWorkspaceController.cs"), "Clickra.Core.Presentation.Convert"),
                      (Path.Combine(ArchitecturePresentationDirectory, "Convert", "ConversionExecutionController.cs"), "Clickra.Core.Presentation.Convert"),
                      (Path.Combine(ArchitecturePresentationDirectory, "Progress", "TaskProgressController.cs"), "Clickra.Core.Presentation.Progress"),
-                     (Path.Combine(ArchitecturePresentationDirectory, "Dashboard", "DashboardPresentationController.cs"), "Clickra.Core.Presentation.Dashboard")
+                     (Path.Combine(ArchitecturePresentationDirectory, ArchitectureDashboardDirectory, "DashboardPresentationController.cs"), "Clickra.Core.Presentation.Dashboard")
 
                  })
         {
@@ -1756,7 +1754,7 @@ static partial class TestSuite
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
         var files = new List<string>();
         files.AddRange(Directory.EnumerateFiles(
-            Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Dashboard"),
+            Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureDashboardDirectory),
             "*.cs",
             SearchOption.TopDirectoryOnly));
 
@@ -1792,7 +1790,7 @@ static partial class TestSuite
         }
 
         string nativeDashboard = string.Join(Environment.NewLine,
-            Directory.EnumerateFiles(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Dashboard"), "*.cs")
+            Directory.EnumerateFiles(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureDashboardDirectory), "*.cs")
                 .Select(File.ReadAllText));
         string nativeProgress = string.Join(Environment.NewLine,
             Directory.EnumerateFiles(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory), "ProgressWindow*.cs")
