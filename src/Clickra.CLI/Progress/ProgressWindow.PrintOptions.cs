@@ -951,6 +951,7 @@ public partial class ProgressWindow
                 break;
 
             default:
+                // No action needed for other dropdown types
                 break;
         }
     }
