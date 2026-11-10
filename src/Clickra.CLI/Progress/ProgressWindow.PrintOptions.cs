@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -24,7 +24,7 @@ public partial class ProgressWindow
 
     private bool _isPromptingPrintOptions;
     private Action<bool>? _printDecision = null; // skipcq: CS-R1137
-    private bool _printDecisionResolved;
+    private bool _printDecisionResolved; // skipcq: CS-R1137
 
     private List<string> _installedPrinters = new();
     private int _printPrinterIndex;
@@ -90,8 +90,8 @@ public partial class ProgressWindow
         Cancel
     }
 
-    private PrintElement _hoveredPrintElement = PrintElement.None;
-    private PrintElement _pressedPrintElement = PrintElement.None;
+    private PrintElement _hoveredPrintElement = PrintElement.None; // skipcq: CS-R1137
+    private PrintElement _pressedPrintElement = PrintElement.None; // skipcq: CS-R1137
 
     private readonly IPrinterDiscoveryService _printerDiscovery = new SystemPrinterDiscoveryService();
     private readonly Dictionary<int, Bitmap> _printThumbnails = new();
@@ -568,6 +568,7 @@ public partial class ProgressWindow
         g.DrawString(text, _msgFont ?? SystemFonts.DefaultFont, textBrush, rect, format);
     }
 
+    // skipcq: CS-R1013
     private static void GetButtonColors(ButtonVisualState state, Color accent, out Color bg, out Color border)
     {
         if (!state.Enabled)
@@ -643,6 +644,7 @@ public partial class ProgressWindow
         g.DrawString(text, _msgFont ?? SystemFonts.DefaultFont, textBrush, labelRect, format);
     }
 
+    // skipcq: CS-R1013
     private static void GetCheckboxColors(bool isChecked, bool hovered, Color accent, out Color bg, out Color border)
     {
         if (isChecked)
