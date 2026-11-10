@@ -433,7 +433,8 @@ static partial class TestSuite
             Path.Combine("Doc", "Word"),
             Path.Combine("Doc", "Excel"),
             Path.Combine("Doc", "Ppt"),
-            Path.Combine("Doc", "Markdown"),
+            Path.Combine("Doc", "MarkdownPdf"),
+            Path.Combine("Doc", "MarkdownWord"),
             Path.Combine("File", "BatchRename"),
             Path.Combine("Img", ArchitectureCompressionSubmodule),
             Path.Combine("Img", "FormatConvert"),
@@ -597,7 +598,8 @@ static partial class TestSuite
             ["Doc"] = new(StringComparer.OrdinalIgnoreCase)
             {
                 ["Excel"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
-                ["Markdown"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+                ["MarkdownPdf"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
+                ["MarkdownWord"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
                 ["Ppt"] = new(appAndProc, StringComparer.OrdinalIgnoreCase),
                 [ArchitectureSharedDirectory] = new(StringComparer.OrdinalIgnoreCase) { ArchitectureApplicationDirectory, ArchitectureProcessingDirectory, ArchitectureInfrastructureDirectory },
                 ["Word"] = new(appAndProc, StringComparer.OrdinalIgnoreCase)
@@ -1154,10 +1156,12 @@ static partial class TestSuite
     private static void TestMarkdownPresentationOptionsHaveSingleOwner()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
-        string processingDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, "Doc", "Markdown", ArchitectureProcessingDirectory);
-        string profile = File.ReadAllText(Path.Combine(processingDir, "MarkdownRenderProfile.cs"));
-        string pdf = File.ReadAllText(Path.Combine(processingDir, "MarkdownToPdfProcessor.cs"));
-        string word = File.ReadAllText(Path.Combine(processingDir, "MarkdownToWordProcessor.cs"));
+        string sharedProcessingDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, "Doc", ArchitectureSharedDirectory, ArchitectureProcessingDirectory);
+        string pdfProcessingDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, "Doc", "MarkdownPdf", ArchitectureProcessingDirectory);
+        string wordProcessingDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, "Doc", "MarkdownWord", ArchitectureProcessingDirectory);
+        string profile = File.ReadAllText(Path.Combine(sharedProcessingDir, "MarkdownRenderProfile.cs"));
+        string pdf = File.ReadAllText(Path.Combine(pdfProcessingDir, "MarkdownToPdfProcessor.cs"));
+        string word = File.ReadAllText(Path.Combine(wordProcessingDir, "MarkdownToWordProcessor.cs"));
 
         foreach (string resolverCall in new[]
         {
@@ -2822,9 +2826,9 @@ static partial class TestSuite
                 .Select(f => Path.GetFileName(f))
                 .ToList();
 
-            if (useCases.Count == 0)
+            if (useCases.Count != 1)
             {
-                violations.Add($"{domain}/{subName}: functional sub-module must have at least one conversion UseCase.");
+                violations.Add($"{domain}/{subName}: functional sub-module must have exactly one conversion UseCase (found {useCases.Count}).");
             }
         }
     }
