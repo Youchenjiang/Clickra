@@ -1,5 +1,10 @@
 # Changelog
 
+## [v3.19.3.0] - 2026-11-10
+
+- **畫面端硬編碼指令禁絕 Roslyn AST 守衛 (Presentation Hardcoded Command Elimination Guard)**：落實模組化統一實施憲章之機制四（Guard 4）。於測試套件引入 Roslyn C# 語法分析器，全面掃描全專案畫面端代碼（Clickra.Fluent、Clickra.CLI/Dashboard、Clickra.CLI/Progress、Clickra.Core/Presentation 及各模組 Presentation），嚴格禁止任何針對具體指令 ID 的硬編碼條件分支（`==`、`!=`、`.Equals(...)`、`switch` 語句、`switch` 表達式及 `is` 模式比對），強制落實前端 100% 盲盒多型架構。
+- **工作區相容性檢查重構 (Convert Workspace Compatibility Cleanup)**：重構 `ConvertWorkspaceController.IsCommandCompatible`，移除遺留之 `BatchRenameCommand` 直接比對分支，統一委派至 `IsKnownCommand` 多型宣告。
+
 ## [v3.19.2.0] - 2026-11-10
 
 - **模組黃金標準目錄標準化 (Module Structure Standardization)**：落實模組化統一實施憲章之機制三（根治 E6/E8 技術債）。將 PdfTranslation 歷史過渡目錄 Execution/ 徹底消除，PdfTranslateProcessor 歸位至 Processing/，達成全專案 13 個核心模組在子目錄結構（Application/、Processing/、Domain/、Presentation/、Infrastructure/）上的 100% 黃金標準對齊。
