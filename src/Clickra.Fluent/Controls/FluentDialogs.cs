@@ -4,7 +4,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using Clickra.Core.Modules.Doc.Markdown.Application;
+using Clickra.Core.Modules.Doc.Shared.Application;
 using Clickra.Core.Processors;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
