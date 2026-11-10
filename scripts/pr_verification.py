@@ -62,7 +62,18 @@ def _required_checks(files):
     return required
 
 
-def extract_top_review_findings(reviews):
+def _is_finding_addressed(author, pr_body):
+    if not pr_body or not author:
+        return False
+    clean_author = author.lower().replace("[bot]", "")
+    pattern = re.compile(
+        rf"(?:addressed|resolved|fixed).*?@{clean_author}|@{clean_author}.*?(?:addressed|resolved|fixed)",
+        re.IGNORECASE,
+    )
+    return bool(pattern.search(pr_body.lower().replace("[bot]", "")))
+
+
+def extract_top_review_findings(reviews, pr_body=""):
     """Detect top-level reviews reporting issues, changes requested, or blocker findings."""
     findings = []
     pattern = re.compile(
@@ -73,17 +84,23 @@ def extract_top_review_findings(reviews):
         body = item.get("body") or ""
         state = item.get("state")
         author = item.get("author") or (item.get("user") or {}).get("login") or "unknown"
+        relation = item.get("head_relation") or item.get("relation") or "unscoped"
         if state == "CHANGES_REQUESTED" or bool(pattern.search(body)):
+            addressed = (state != "CHANGES_REQUESTED" and
+                         relation != "current" and
+                         _is_finding_addressed(author, pr_body))
             findings.append({
                 "author": author,
                 "state": state,
+                "relation": relation,
                 "url": item.get("url") or item.get("html_url") or "",
                 "body": body,
+                "addressed": addressed,
             })
     return findings
 
 
-def _finding_problems(report, groups, required):
+def _finding_problems(report, groups, required, pr_body=""):
     count = report["counts"]["unresolved"]
     sonar_count = report["sonar"]["total"]
     problems = []
@@ -91,9 +108,10 @@ def _finding_problems(report, groups, required):
                          (sonar_count, "SonarQube issues")):
         if value:
             problems.append(f"{value} {label}")
-    top_findings = extract_top_review_findings(report.get("reviews", []))
-    if top_findings:
-        problems.append(f"{len(top_findings)} unaddressed top-level review finding(s): {', '.join('@' + f['author'] for f in top_findings)}")
+    unaddressed = [f for f in extract_top_review_findings(report.get("reviews", []), pr_body)
+                   if not f["addressed"]]
+    if unaddressed:
+        problems.append(f"{len(unaddressed)} unaddressed top-level review finding(s): {', '.join('@' + f['author'] for f in unaddressed)}")
     for names, label in ((groups["failed"], "failed checks"),
                          (sorted(required.intersection(groups["skipped"])), "required checks skipped"),
                          (groups["pending"], "pending checks")):
@@ -127,7 +145,8 @@ def summarize(pr, report, *, remote_sha):
     groups = _classify_checks(checks, required)
     count = report["counts"]["unresolved"]
     sonar_count = report["sonar"]["total"]
-    problems = _pr_problems(pr, remote_sha) + _finding_problems(report, groups, required)
+    pr_body = pr.get("body") or ""
+    problems = _pr_problems(pr, remote_sha) + _finding_problems(report, groups, required, pr_body)
     quality = report.get("sonar_quality")
     if quality is not None:
         if quality.get("quality_gate", {}).get("status") != "OK":
@@ -143,10 +162,10 @@ def summarize(pr, report, *, remote_sha):
         {"id": t["id"], "path": t["path"], "line": t["line"], "outdated": t["outdated"]}
         for t in report.get("threads", []) if not t.get("resolved")
     ]
-    top_findings = extract_top_review_findings(report.get("reviews", []))
+    top_findings = extract_top_review_findings(report.get("reviews", []), pr_body)
     return {"ready": not problems, "state": pr.get("state"),
             "historical_checks_passed": (pr.get("state") == "MERGED" and
-                                         not _finding_problems(report, groups, required)),
+                                         not _finding_problems(report, groups, required, pr_body)),
             "problems": problems, "passed": groups["passed"],
             "skipped": groups["skipped"], "head": head, "sonar_issues": sonar_count,
             "unresolved_threads": count, "unresolved_thread_details": unresolved_details,
