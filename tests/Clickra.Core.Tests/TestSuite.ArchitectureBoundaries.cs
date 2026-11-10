@@ -1,7 +1,7 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Clickra.Core.Application;
-using Clickra.Core.Modules.PdfPrint.Application;
-using Clickra.Core.Modules.PdfToImage.Application;
+using Clickra.Core.Modules.Pdf.Print.Application;
+using Clickra.Core.Modules.Pdf.ToImage.Application;
 using Clickra.Shared;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -2251,7 +2251,7 @@ static partial class TestSuite
             "ConversionExecutionController.HasCapability must recognize SplitPages on split-pdf.");
         Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.HasCapability(PrintPdfUseCase.CommandName, ConversionCapability.PrintOptions),
             "ConversionExecutionController.HasCapability must recognize PrintOptions on print-pdf.");
-        Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.HasCapability(Clickra.Core.Modules.PdfCompression.Application.CompressPdfUseCase.CommandName, ConversionCapability.Compression),
+        Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.HasCapability(Clickra.Core.Modules.Pdf.Compression.Application.CompressPdfUseCase.CommandName, ConversionCapability.Compression),
             "ConversionExecutionController.HasCapability must recognize Compression on compress-pdf.");
         Assert.True(Clickra.Core.Presentation.Convert.ConversionExecutionController.HasCapability(Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName, ConversionCapability.BatchRename),
             "ConversionExecutionController.HasCapability must recognize BatchRename on batch-rename.");
