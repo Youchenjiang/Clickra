@@ -6,15 +6,7 @@ using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Application;
 using Clickra.Core.Modules.Image.Application;
-using Clickra.Core.Modules.Markdown.Application;
-using Clickra.Core.Modules.Office.Application;
-using Clickra.Core.Modules.PdfCompression.Application;
-using Clickra.Core.Modules.PdfDecrypt.Application;
-using Clickra.Core.Modules.PdfMerge.Application;
-using Clickra.Core.Modules.PdfPrint.Application;
 using Clickra.Core.Modules.PdfSplit.Application;
-using Clickra.Core.Modules.PdfToImage.Application;
-using Clickra.Core.Modules.PdfTranslation.Application;
 using Clickra.Core.Presentation.Convert;
 using Clickra.Core.Processors;
 
@@ -54,32 +46,48 @@ internal sealed class NativeConversionExecutionAdapter
         List<string> files,
         Action<int, int, string> progressCallback)
     {
-        // Specialized commands dispatch polymorphically based on use-case capabilities:
-        // BatchRenameUseCase ("batch-rename"), DecryptPdfUseCase ("decrypt-pdf"),
-        // SplitPdfUseCase ("split-pdf"), CompressPdfUseCase ("compress-pdf"), PrintPdfUseCase ("print-pdf").
+        // Specialized commands dispatch polymorphically based on use-case capabilities
         if (ConversionExecutionController.HasCapability(command, ConversionCapability.BatchRename))
         {
-            RunBatchRename(files, progressCallback);
+            RunBatchRename(command, files, progressCallback);
             return true;
         }
         if (ConversionExecutionController.HasCapability(command, ConversionCapability.Password))
         {
-            RunDecrypt(files, progressCallback);
+            RunDecrypt(command, files, progressCallback);
             return true;
         }
         if (ConversionExecutionController.HasCapability(command, ConversionCapability.SplitPages))
         {
-            RunSplit(files, progressCallback);
+            RunSplit(command, files, progressCallback);
             return true;
         }
         if (ConversionExecutionController.HasCapability(command, ConversionCapability.Compression))
         {
-            RunCompress(files, progressCallback);
+            RunCompress(command, files, progressCallback);
             return true;
         }
         if (ConversionExecutionController.HasCapability(command, ConversionCapability.PrintOptions))
         {
-            RunPrint(files, progressCallback);
+            RunPrint(command, files, progressCallback);
+            return true;
+        }
+        if (ConversionExecutionController.HasCapability(command, ConversionCapability.Translation))
+        {
+            RunTranslate(command, files, progressCallback);
+            return true;
+        }
+        if (ConversionExecutionController.HasCapability(command, ConversionCapability.ImageToPdf))
+        {
+            RunSimple(
+                command,
+                files,
+                progressCallback,
+                new SimpleApplicationRunOptions(
+                    null,
+                    true,
+                    new Img2PdfExecutionObserver(_taskStarted, files, progressCallback),
+                    Localization.T("cli_progress_converting_image_saving")));
             return true;
         }
         return false;
@@ -94,79 +102,32 @@ internal sealed class NativeConversionExecutionAdapter
         {
             return true;
         }
-        if (command.Equals(Img2PdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+
+        if (ConversionUseCases.TryGet(command, out IConversionUseCase? useCase))
         {
-            RunSimple(
-                command,
-                files,
-                progressCallback,
-                new SimpleApplicationRunOptions(
-                    null,
-                    true,
-                    new Img2PdfExecutionObserver(_taskStarted, files, progressCallback),
-                    Localization.T("cli_progress_converting_image_saving")));
-            return true;
-        }
-        if (command.Equals(MergePdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
-            || command.Equals(ImgMergeUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
-            || command.Equals(ImgStitchUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
-        {
-            RunSimple(
-                command,
-                files,
-                progressCallback,
-                new SimpleApplicationRunOptions(null, false, new TaskIdExecutionObserver(_taskStarted)));
-            return true;
-        }
-        if (command.Equals(ImgCompressUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
-        {
-            RunSimple(
-                command,
-                files,
-                progressCallback,
-                new SimpleApplicationRunOptions(
-                    _outputDirOverride,
-                    true,
-                    new TaskIdExecutionObserver(_taskStarted)));
-            return true;
-        }
-        if (ConversionUseCases.TryGet(command, out IConversionUseCase? useCase)
-            && useCase is ImageFormatConvertUseCase)
-        {
-            RunSimple(
-                command,
-                files,
-                progressCallback,
-                new SimpleApplicationRunOptions(
-                    _outputDirOverride,
-                    true,
-                    new TaskIdExecutionObserver(_taskStarted)));
-            return true;
-        }
-        if (command.Equals(TranslatePdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
-        {
-            RunTranslate(files, progressCallback);
-            return true;
-        }
-        if (command.Equals(WordToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
-            || command.Equals(PptToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
-            || command.Equals(ExcelToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
-        {
-            RunSimple(
-                command,
-                files,
-                progressCallback,
-                new SimpleApplicationRunOptions(
-                    _outputDirOverride,
-                    true,
-                    new TaskIdExecutionObserver(_taskStarted)));
-            return true;
-        }
-        if (command.Equals(MarkdownToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
-            || command.Equals(MarkdownToWordUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
-            || command.Equals(PdfToImageUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
-            || ConversionUseCases.TryGet(command, out _))
-        {
+            if (useCase is SingleOutputConversionUseCaseBase)
+            {
+                RunSimple(
+                    command,
+                    files,
+                    progressCallback,
+                    new SimpleApplicationRunOptions(null, false, new TaskIdExecutionObserver(_taskStarted)));
+                return true;
+            }
+
+            if (useCase is ImageFormatConvertUseCase)
+            {
+                RunSimple(
+                    command,
+                    files,
+                    progressCallback,
+                    new SimpleApplicationRunOptions(
+                        _outputDirOverride,
+                        true,
+                        new TaskIdExecutionObserver(_taskStarted)));
+                return true;
+            }
+
             RunSimple(
                 command,
                 files,
@@ -178,6 +139,7 @@ internal sealed class NativeConversionExecutionAdapter
                     CommandOptions: _commandOptions));
             return true;
         }
+
         return false;
     }
 
@@ -229,13 +191,13 @@ internal sealed class NativeConversionExecutionAdapter
             true);
     }
 
-    private void RunBatchRename(List<string> files, Action<int, int, string> progressCallback)
+    private void RunBatchRename(string command, List<string> files, Action<int, int, string> progressCallback)
     {
         ConversionPlan plan;
         try
         {
             plan = ConversionExecutionService.Plan(
-                Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName,
+                command,
                 files,
                 options: _commandOptions,
                 outputOverride: _outputDirOverride,
@@ -252,7 +214,7 @@ internal sealed class NativeConversionExecutionAdapter
                     TimeSpan.Zero,
                     0,
                     _existingTaskId ?? Guid.NewGuid().ToString("N")),
-                Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName,
+                command,
                 Localization.T("batch_rename_done"),
                 true);
             return;
@@ -277,15 +239,15 @@ internal sealed class NativeConversionExecutionAdapter
 
         _completeResult(
             result,
-            Clickra.Core.Modules.BatchRename.Application.BatchRenameUseCase.CommandName,
+            command,
             summaryMsg ?? Localization.T("batch_rename_done"),
             true);
     }
 
-    private void RunDecrypt(List<string> files, Action<int, int, string> progressCallback)
+    private void RunDecrypt(string command, List<string> files, Action<int, int, string> progressCallback)
     {
         ExecuteStandardPdfCommand(
-            DecryptPdfUseCase.CommandName,
+            command,
             files,
             progressCallback,
             new PdfCommandResourceKeys(
@@ -294,7 +256,7 @@ internal sealed class NativeConversionExecutionAdapter
                 "cli_progress_decrypting_pdf_saving"));
     }
 
-    private void RunSplit(List<string> files, Action<int, int, string> progressCallback)
+    private void RunSplit(string command, List<string> files, Action<int, int, string> progressCallback)
     {
         string pagesOption = GetSplitPagesOptionFromCommandLine();
         var commandOptions = new Dictionary<string, object>
@@ -302,7 +264,7 @@ internal sealed class NativeConversionExecutionAdapter
             [SplitPdfUseCase.PagesOptionKey] = pagesOption
         };
         ExecuteStandardPdfCommand(
-            SplitPdfUseCase.CommandName,
+            command,
             files,
             progressCallback,
             new PdfCommandResourceKeys(
@@ -313,10 +275,10 @@ internal sealed class NativeConversionExecutionAdapter
             promptPages: _promptSplitPages);
     }
 
-    private void RunPrint(List<string> files, Action<int, int, string> progressCallback)
+    private void RunPrint(string command, List<string> files, Action<int, int, string> progressCallback)
     {
         ExecuteStandardPdfCommand(
-            PrintPdfUseCase.CommandName,
+            command,
             files,
             progressCallback,
             new PdfCommandResourceKeys(
@@ -326,9 +288,9 @@ internal sealed class NativeConversionExecutionAdapter
             options: _commandOptions);
     }
 
-    private void RunCompress(List<string> files, Action<int, int, string> progressCallback)
+    private void RunCompress(string command, List<string> files, Action<int, int, string> progressCallback)
     {
-        var (plan, interaction) = PrepareResumableExecution(CompressPdfUseCase.CommandName, files);
+        var (plan, interaction) = PrepareResumableExecution(command, files);
         string compressionSummary = "";
         var progress = CreatePdfProgress(
             files,
@@ -354,7 +316,7 @@ internal sealed class NativeConversionExecutionAdapter
 
         _completeResult(
             result,
-            CompressPdfUseCase.CommandName,
+            command,
             string.IsNullOrWhiteSpace(compressionSummary)
                 ? Localization.T("cli_progress_compressing_pdf_done")
                 : compressionSummary,
@@ -380,7 +342,7 @@ internal sealed class NativeConversionExecutionAdapter
             (_, inputPath, isRetry, _) => Task.FromResult<string?>(_resolveDecryptPassword(inputPath, isRetry)),
             (_, _, _) => Task.FromResult<string?>(null),
             (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-        IProgress<ConversionProgress>? progress = command == Img2PdfUseCase.CommandName
+        IProgress<ConversionProgress>? progress = ConversionExecutionController.HasCapability(command, ConversionCapability.ImageToPdf)
             ? null
             : new CallbackProgress<ConversionProgress>(state =>
                 progressCallback(state.Current, state.Total, state.Message));
@@ -395,9 +357,9 @@ internal sealed class NativeConversionExecutionAdapter
         _completeResult(result, command, options.SuccessMessage, true);
     }
 
-    private void RunTranslate(List<string> files, Action<int, int, string> progressCallback)
+    private void RunTranslate(string command, List<string> files, Action<int, int, string> progressCallback)
     {
-        var (plan, interaction) = PrepareResumableExecution(TranslatePdfUseCase.CommandName, files);
+        var (plan, interaction) = PrepareResumableExecution(command, files);
         var observer = new TranslateExecutionObserver(_taskStarted, files, progressCallback);
         var progress = new CallbackProgress<ConversionProgress>(state =>
         {
@@ -426,7 +388,7 @@ internal sealed class NativeConversionExecutionAdapter
                 Localization.T("cli_progress_translating_pdf_saving"));
         }
 
-        _completeResult(result, TranslatePdfUseCase.CommandName, null, true);
+        _completeResult(result, command, null, true);
     }
 
     private (ConversionPlan Plan, IConversionInteraction Interaction)
