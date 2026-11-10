@@ -2728,25 +2728,36 @@ static partial class TestSuite
         };
 
         string[] domainDirs = Directory.EnumerateDirectories(modulesRoot, "*", SearchOption.TopDirectoryOnly).ToArray();
+        string[] allDomainNames = domainDirs.Select(Path.GetFileName).Where(n => !string.IsNullOrEmpty(n)).ToArray()!;
+
         foreach (string domainDir in domainDirs)
         {
             string domainName = Path.GetFileName(domainDir);
-            foreach (string file in Directory.EnumerateFiles(domainDir, "*.cs", SearchOption.AllDirectories))
-            {
-                string relative = NormalizeRepoPath(root, file);
-                string source = File.ReadAllText(file);
-                foreach (string otherDomainDir in domainDirs)
-                {
-                    string otherDomain = Path.GetFileName(otherDomainDir);
-                    if (string.Equals(domainName, otherDomain, StringComparison.OrdinalIgnoreCase))
-                        continue;
+            string[] otherDomains = allDomainNames.Where(n => !string.Equals(n, domainName, StringComparison.OrdinalIgnoreCase)).ToArray();
+            ValidateDomainFilesCrossDomainReferences(root, domainDir, domainName, otherDomains, conversionDomains, allowlistedCrossDomainSharedReferences, violations);
+        }
+    }
 
-                    string forbiddenShared = $"Clickra.Core.Modules.{otherDomain}.Shared";
-                    if (source.Contains(forbiddenShared, StringComparison.Ordinal)
-                        && (conversionDomains.Contains(domainName) || !allowlistedCrossDomainSharedReferences.Contains(relative)))
-                    {
-                        violations.Add($"{relative}: domain '{domainName}' must not reference foreign domain shared namespace '{forbiddenShared}'.");
-                    }
+    private static void ValidateDomainFilesCrossDomainReferences(
+        string root,
+        string domainDir,
+        string domainName,
+        string[] otherDomains,
+        HashSet<string> conversionDomains,
+        HashSet<string> allowlisted,
+        List<string> violations)
+    {
+        foreach (string file in Directory.EnumerateFiles(domainDir, "*.cs", SearchOption.AllDirectories))
+        {
+            string relative = NormalizeRepoPath(root, file);
+            string source = File.ReadAllText(file);
+            foreach (string otherDomain in otherDomains)
+            {
+                string forbiddenShared = $"Clickra.Core.Modules.{otherDomain}.Shared";
+                if (source.Contains(forbiddenShared, StringComparison.Ordinal)
+                    && (conversionDomains.Contains(domainName) || !allowlisted.Contains(relative)))
+                {
+                    violations.Add($"{relative}: domain '{domainName}' must not reference foreign domain shared namespace '{forbiddenShared}'.");
                 }
             }
         }
