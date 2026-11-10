@@ -6,7 +6,6 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using Microsoft.Win32;
 using Clickra.Core;
 using Clickra.Core.Processors;
 using Clickra.UI;
@@ -39,7 +38,7 @@ internal static partial class ClickraStartup
             var targetFiles = argList.Where(f => File.Exists(f) || Directory.Exists(f)).ToList();
             if (targetFiles.Count > 0)
             {
-                if (TryLaunchFluent(string.Join(" ", targetFiles.Select(f => $"\"{f}\""))))
+                if (TryDelegateToLauncher(args))
                     return;
                 DashboardWindow.Show(targetFiles);
                 return;
@@ -224,8 +223,7 @@ internal static partial class ClickraStartup
             var version = typeof(ClickraCli).Assembly.GetName().Version?.ToString(3) ?? "Unknown";
             if (args.Length == 0)
             {
-                // Try to launch Fluent UI if .NET Desktop Runtime is available.
-                if (TryLaunchFluent())
+                if (TryDelegateToLauncher(args))
                     return true;
                 DashboardWindow.Show();
                 return true;
@@ -272,93 +270,37 @@ internal static partial class ClickraStartup
     }
 
     // ------------------------------------------------------------------
-    // Fluent UI launcher — detects .NET Desktop Runtime and launches
-    // Clickra.Fluent.exe via MSIX shell activation when available.
+    // Launch routing: ClickraLauncher is the single L0 UI router.
+    // When invoked directly without routing, delegate to ClickraLauncher.exe.
     // ------------------------------------------------------------------
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern IntPtr LoadLibraryExW(string lpFileName, IntPtr hFile, uint dwFlags);
-
-    private const uint LoadLibrarySearchSystem32 = 0x00000800;
+    private const string RoutedEnvironmentVariable = "CLICKRA_LAUNCHER_ROUTED";
 
     /// <summary>
-    /// Attempts to detect .NET 8+ Desktop Runtime and Windows App Runtime,
-    /// then launches Clickra.Fluent.exe via shell activation (MSIX path).
-    /// Returns true if Fluent was launched; false if not available.
+    /// Delegates UI invocation to ClickraLauncher.exe (the single L0 launch router)
+    /// unless this process was already dispatched by ClickraLauncher.
+    /// Returns true if delegated to ClickraLauncher; false to continue in NativeAOT mode.
     /// </summary>
-    private static bool TryLaunchFluent(string? arguments = null)
+    private static bool TryDelegateToLauncher(string[] args)
     {
+        if (Environment.GetEnvironmentVariable(RoutedEnvironmentVariable) == "1")
+            return false;
+
+        string launcher = Path.Combine(AppContext.BaseDirectory, "ClickraLauncher.exe");
+        if (!File.Exists(launcher))
+            return false;
+
         try
         {
-            if (!HasDotNetDesktopRuntime()) return false;
-            if (!HasWindowsAppRuntime()) return false;
-
-            string exeDir = AppContext.BaseDirectory;
-            string fluentPath = Path.Combine(exeDir, "Clickra.Fluent.exe");
-            if (!File.Exists(fluentPath)) return false;
-
-            // Launch via UseShellExecute to go through the Windows shell,
-            // which should trigger proper MSIX activation for the exe.
-            var psi = new ProcessStartInfo(fluentPath)
-            {
-                UseShellExecute = true,
-            };
-            if (!string.IsNullOrEmpty(arguments))
-            {
-                psi.Arguments = arguments;
-            }
+            var psi = new ProcessStartInfo(launcher) { UseShellExecute = false };
+            foreach (string arg in args)
+                psi.ArgumentList.Add(arg);
             using var proc = Process.Start(psi);
-            if (proc is null) return false;
-
-            // Wait briefly to check if the process survives (WinUI 3 crash
-            // happens almost instantly if activation factory is missing).
-            bool survived = !proc.WaitForExit(2000);
-            return survived;
+            return proc is not null;
         }
         catch
         {
             return false;
         }
-    }
-
-    private static bool HasDotNetDesktopRuntime()
-    {
-        string fxName = "Microsoft.WindowsDesktop.App";
-        var hives = new[] { RegistryHive.LocalMachine, RegistryHive.CurrentUser };
-        var views = new[] { RegistryView.Registry64, RegistryView.Registry32 };
-        var archs = new[] { "x64", "arm64", "x86" };
-        return hives.Any(h => views.Any(v => archs.Any(a => CheckRegistryForDesktopFx(h, v, a, fxName))));
-    }
-
-    /// <summary>Checks a single registry location for the WindowsDesktop.App shared framework.</summary>
-    private static bool CheckRegistryForDesktopFx(RegistryHive hive, RegistryView view, string arch, string fxName)
-    {
-        string path = $@"SOFTWARE\dotnet\Setup\InstalledVersions\{arch}\sharedfx\{fxName}";
-        try
-        {
-            using var key = RegistryKey.OpenBaseKey(hive, view).OpenSubKey(path);
-            if (key == null) return false;
-            if (key.GetValue("Version") is string v && Version.TryParse(v, out var ver) && ver >= new Version(8, 0))
-                return true;
-            return key.GetSubKeyNames().Length > 0;
-        }
-        catch (System.Security.SecurityException)
-        {
-            // Registry access denied ??continue checking other hives/views.
-            return false;
-        }
-    }
-
-    private static bool HasWindowsAppRuntime()
-    {
-        // Check System32 for the bootstrap DLL.
-        IntPtr h = LoadLibraryExW("Microsoft.WindowsAppRuntime.Bootstrap.dll",
-                                  IntPtr.Zero, LoadLibrarySearchSystem32);
-        if (h != IntPtr.Zero) return true;
-
-        // Check same directory as this exe (inside MSIX package).
-        string bootstrap = Path.Combine(AppContext.BaseDirectory,
-            "Microsoft.WindowsAppRuntime.Bootstrap.dll");
-        return File.Exists(bootstrap);
     }
 }
