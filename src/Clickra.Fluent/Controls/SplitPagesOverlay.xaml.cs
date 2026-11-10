@@ -1,4 +1,4 @@
-﻿using Clickra.Core;
+using Clickra.Core;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;

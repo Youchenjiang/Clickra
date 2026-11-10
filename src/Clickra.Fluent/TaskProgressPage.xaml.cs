@@ -1,4 +1,4 @@
-﻿using Clickra.Core;
+using Clickra.Core;
 using Clickra.Core.Presentation.Convert;
 using Clickra.Core.Modules.Sys.HistoryTasks.Presentation;
 using Microsoft.UI.Xaml;
