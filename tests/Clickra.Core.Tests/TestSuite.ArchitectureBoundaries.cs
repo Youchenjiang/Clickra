@@ -23,6 +23,7 @@ static partial class TestSuite
     private const string ArchitectureModulesDirectory = "Modules";
     private const string ArchitectureFluentProjectDirectory = "Clickra.Fluent";
     private const string ArchitectureDashboardDirectory = "Dashboard";
+    private const string ArchitectureLayoutDirectory = "Layout";
     private const string ArchitectureProgressDirectory = "Progress";
     private const string ArchitectureProcessorsDirectory = "Processors";
     private const string ArchitectureProgressProcessFile = "ProgressWindow.Process.cs";
@@ -708,7 +709,7 @@ static partial class TestSuite
             Path.Combine(root, "src", ArchitectureFluentProjectDirectory),
             Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureDashboardDirectory),
             Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory),
-            Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", "Layout"),
+            Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", ArchitectureLayoutDirectory),
             Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitecturePresentationDirectory)
         };
 
@@ -929,24 +930,25 @@ static partial class TestSuite
 
             if (pattern is RecursivePatternSyntax rp)
             {
-                if (rp.PropertyPatternClause is not null)
-                {
-                    foreach (SubpatternSyntax sub in rp.PropertyPatternClause.Subpatterns)
-                    {
-                        if (ContainsForbiddenPattern(sub.Pattern, out forbiddenExpr))
-                            return true;
-                    }
-                }
-                if (rp.PositionalPatternClause is not null)
-                {
-                    foreach (SubpatternSyntax sub in rp.PositionalPatternClause.Subpatterns)
-                    {
-                        if (ContainsForbiddenPattern(sub.Pattern, out forbiddenExpr))
-                            return true;
-                    }
-                }
+                return ContainsForbiddenSubpattern(rp.PropertyPatternClause?.Subpatterns, out forbiddenExpr) ||
+                       ContainsForbiddenSubpattern(rp.PositionalPatternClause?.Subpatterns, out forbiddenExpr);
             }
 
+            return false;
+        }
+
+        private bool ContainsForbiddenSubpattern(
+            IEnumerable<SubpatternSyntax>? subpatterns,
+            out ExpressionSyntax? forbiddenExpr)
+        {
+            forbiddenExpr = null;
+            if (subpatterns is null) return false;
+
+            foreach (SubpatternSyntax sub in subpatterns)
+            {
+                if (ContainsForbiddenPattern(sub.Pattern, out forbiddenExpr))
+                    return true;
+            }
             return false;
         }
 
@@ -976,24 +978,27 @@ static partial class TestSuite
                 return true;
             }
 
-            if (expr is MemberAccessExpressionSyntax ma)
-            {
-                string member = ma.Name.Identifier.ValueText;
-                if (_forbiddenIdentifiers.Contains(member))
-                    return true;
+            return expr is MemberAccessExpressionSyntax ma && IsForbiddenMemberAccess(ma);
+        }
 
-                if (ma.Expression is IdentifierNameSyntax target &&
-                    (target.Identifier.ValueText.EndsWith("UseCase", StringComparison.Ordinal) ||
-                     target.Identifier.ValueText.Equals("ConvertCommandMetadata", StringComparison.Ordinal) ||
-                     target.Identifier.ValueText.Equals("ConvertWorkspaceController", StringComparison.Ordinal)) &&
-                    (member.EndsWith("Command", StringComparison.Ordinal) ||
-                     member.Equals("CommandName", StringComparison.Ordinal)))
-                {
-                    return true;
-                }
-            }
+        private bool IsForbiddenMemberAccess(MemberAccessExpressionSyntax ma)
+        {
+            string member = ma.Name.Identifier.ValueText;
+            if (_forbiddenIdentifiers.Contains(member))
+                return true;
 
-            return false;
+            if (ma.Expression is not IdentifierNameSyntax target)
+                return false;
+
+            string targetName = target.Identifier.ValueText;
+            bool isTargetAllowed = targetName.EndsWith("UseCase", StringComparison.Ordinal) ||
+                                  targetName.Equals("ConvertCommandMetadata", StringComparison.Ordinal) ||
+                                  targetName.Equals("ConvertWorkspaceController", StringComparison.Ordinal);
+
+            bool isMemberForbidden = member.EndsWith("Command", StringComparison.Ordinal) ||
+                                     member.Equals("CommandName", StringComparison.Ordinal);
+
+            return isTargetAllowed && isMemberForbidden;
         }
 
         private void Report(SyntaxNode node, string message)
@@ -1758,9 +1763,9 @@ static partial class TestSuite
         string core = Path.Combine(root, "src", ArchitectureCoreProjectDirectory);
         var expectations = new[]
         {
-            (Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", "Layout", "DashboardLayout.cs"), "namespace Clickra.UI.Layout;"),
-            (Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", "Layout", "HistoryLayout.cs"), "namespace Clickra.UI.Layout;"),
-            (Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", "Layout", "VectorIcons.cs"), "namespace Clickra.UI.Layout;")
+            (Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", ArchitectureLayoutDirectory, "DashboardLayout.cs"), "namespace Clickra.UI.Layout;"),
+            (Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", ArchitectureLayoutDirectory, "HistoryLayout.cs"), "namespace Clickra.UI.Layout;"),
+            (Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", ArchitectureLayoutDirectory, "VectorIcons.cs"), "namespace Clickra.UI.Layout;")
         };
 
         foreach ((string file, string namespaceDeclaration) in expectations)
