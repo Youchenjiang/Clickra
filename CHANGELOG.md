@@ -1,5 +1,11 @@
 # Changelog
 
+## [v3.19.6.0] - 2026-11-11
+
+- **L0 入口單一啟動路由器重構 (Unified L0 Launcher Router)**：落實核心解耦與模組標準化 Phase 7（根治 B2 技術債）。確立 `ClickraLauncher.exe` 為全專案唯一的 L0 UI 啟動與派送路由器，支援 MSIX 打包 COM 啟動與本機開發非打包啟動；當回退至原生 Win32 Dashboard 時注入 `CLICKRA_LAUNCHER_ROUTED=1` 環境標記，徹底杜絕各入口各自為政與重複嘗試。
+- **消除 CLI 與 Shell 端重複啟動邏輯與延遲 (Eliminate Duplicate Routing in CLI & Shell)**：重構 `ClickraStartup.cs`，移除 90 餘行冗餘之 Win32 註冊表掃描與 `LoadLibraryExW` 執行階段探測；同步重構 `ClickraShell/ComMethods.cs`，移除繞過啟動路由器直連 Fluent 的分支，所有右鍵操作統一委派至 `ClickraLauncher`。
+- **單一啟動來源架構防禦守門 (Single-Sourced Launcher Routing Architectural Guard)**：於架構測試新增 `TestLauncherRoutingIsSingleSourced`（守衛總數增至 93 項），靜態斷言 `ClickraStartup.cs` 與 `ClickraShell` 絕無私有 Fluent 偵測與啟動分支，永久保證 L0 啟動派送的單一來源原則。
+
 ## [v3.19.5.0] - 2026-11-11
 
 - **儲存層單向解耦與資料契約純化 (Storage Contracts Decoupling & Pure Data Records)**：落實核心解耦與模組標準化 Phase 6（根治 E7 循環相依債務）。將儲存層共用之資料結構與列舉（`ConversionStatus`、`StorageTaskReasons`、`HistoryEntry`、`CompleteTaskRequest`、`ResumedTaskInfo`、`ParkedRetentionInfo`、`TaskFileData`、`LegacyActiveRecordCompletion`）抽離至獨立契約檔案 `TaskRecords.cs`，消除 `ClickraStorage`、`TaskRecordStore` 與 `LegacyActiveRecordStore` 之間的雙向相依。

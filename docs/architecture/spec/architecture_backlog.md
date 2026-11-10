@@ -13,7 +13,7 @@
 |---|---|---|
 | A1–A5 | ✅ | 分支已拆成 PR 依序合併進 main（至 #197）；本區不再追蹤 |
 | B1 | ✅ | `ClickraLauncher/Program.cs` 改為逐一 `QuoteArgument` 後再 Join |
-| B2 | ⚠ | 仍有兩處各自判斷：`ClickraLauncher/Program.cs`（TryActivateFluent）、`Clickra.CLI/Cli/ClickraStartup.cs`（TryLaunchFluent） |
+| B2 | ✅ | 已由 `ClickraLauncher` 統一為單一 L0 啟動路由器並注入 `CLICKRA_LAUNCHER_ROUTED=1`；`ClickraStartup` 與 `ClickraShell` 消除重複判斷 |
 | B3 | ⚪ | 記錄即可 |
 | C1 | ✅ | `PdfSplit/Presentation` 已不引用 `PdfSplitProcessor` |
 | C2 | ❓ | 隨 C1 處理，註解未逐一確認 |
@@ -30,7 +30,7 @@
 | E3 | ⚠ | 畫面仍直接用 `PdfPageThumbnailRenderer`：`ProgressWindow.VisualSplitter.cs`、`UI/LocalizedUiFontSelector.cs`、`Fluent/Controls/VisualSplitterControl.xaml.cs` |
 | E4 | ✅ | `MarkdownPdfOptions`、`ImageCompressionLevel`、`OfficeConversionRequest` 都已移到各模組 `Application/`（E5 一併解掉） |
 | E6 | ✅ | `PdfTranslation/Model` 已不引用 Pipeline 的分析器 |
-| E7 | ⚠ | `ClickraStorage.*.cs` partial 檔仍在 `Core/Storage/`；拆紀錄型別的 commit `9f810c3b` 在未合併分支 `refactor/module-architecture-convergence` |
+| E7 | ✅ | `TaskRecords.cs` 已將儲存層共用之資料結構與列舉純化解耦，消除 `ClickraStorage` 與各 Store 循環相依 |
 | E8 | ✅ | 已建 `Pipeline/Shared/`（PR #194） |
 | E9 | ⚠ | 已有 `TestSuite.ArchitectureBoundaries.cs`，但模組慣例文件尚未寫 |
 
@@ -51,7 +51,7 @@
 | # | 優先 | 問題 | 位置 | 建議 |
 |---|---|---|---|---|
 | B1 | 🟡 | Launcher 轉交參數用 `string.Join(" ", args)`，含空白的檔案路徑會被拆開 | `src/ClickraLauncher/Program.cs:74` | 逐一加引號（或改用 `ConvertCommandRegistry.SplitCommandLine` 的反向）。目前只影響啟動 Fluent 的路徑，Fluent 未發佈所以還沒爆 |
-| B2 | 🟡 | 「要開哪個 UI」的判斷寫了三份 | `ClickraShell/ComMethods.cs:305`、`ClickraLauncher/Program.cs`（TryActivateFluent）、`Clickra.CLI/Cli/ClickraStartup.cs:226`（TryLaunchFluent） | 收斂成一個規則；至少三處行為要一致 |
+| B2 | 🟢 | 「要開哪個 UI」收斂至單一啟動路由器 | `ClickraLauncher/Program.cs` 統一處理打包/非打包啟動與回退，`ClickraStartup` 與 `ClickraShell` 消除重複判斷 | 已於 v3.19.6.0 (Phase 7) 完成 |
 | B3 | ⚪ | Fluent 沒有隨套件發佈，但每次啟動仍先嘗試：Launcher 必定 COM 啟動失敗、Clickra.exe 無參數時去找 `Clickra.Fluent.exe` | 同上 | 保留 Fluent 的決定不變；可考慮用建置旗標在未附 Fluent 時跳過嘗試 |
 
 ## C. L1 畫面
