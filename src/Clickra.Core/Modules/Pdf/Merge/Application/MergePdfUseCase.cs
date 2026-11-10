@@ -1,4 +1,4 @@
-﻿using Clickra.Core.Application;
+using Clickra.Core.Application;
 using Clickra.Core.Modules.Pdf.Decrypt.Application;
 using Clickra.Core.Modules.Pdf.Merge.Processing;
 using Clickra.Core.Processors;
@@ -18,16 +18,8 @@ public sealed class MergePdfUseCase : SingleOutputConversionUseCaseBase
     protected override string OutputCountError => "PDF merge requires exactly one output.";
     protected override string UnsupportedInputError(string path) => $"Unsupported merge input '{path}'.";
 
-    protected override ConversionValidationResult ValidateInputs(ConversionRequest request)
-    {
-        if (request.InputFiles.Any(f => System.IO.File.Exists(f) && PdfEncryptionQuery.IsEncrypted(f)))
-        {
-            string lang = ExecutionLocalizationOptions.ReadLanguage(request.Options);
-            return ConversionValidationResult.Failure(Localization.T("pdf_err_encrypted_merge", lang));
-        }
-
-        return ConversionValidationResult.Success();
-    }
+    protected override ConversionValidationResult ValidateInputs(ConversionRequest request) =>
+        PdfEncryptionQuery.ValidateNotEncrypted(request, "pdf_err_encrypted_merge");
 
     protected override async Task ExecuteSingleAsync(
         ConversionPlan plan,

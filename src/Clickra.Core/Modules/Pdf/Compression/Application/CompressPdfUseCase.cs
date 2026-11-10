@@ -1,4 +1,4 @@
-﻿using Clickra.Core.Modules.Sys.Settings.Application;
+using Clickra.Core.Modules.Sys.Settings.Application;
 using Clickra.Core.Application;
 using Clickra.Core.Modules.Pdf.Compression.Processing;
 using Clickra.Core.Modules.Pdf.Decrypt.Application;
@@ -22,16 +22,8 @@ public sealed class CompressPdfUseCase : PerFileConversionUseCaseBase
     protected override string GetOutputFileName(string input) =>
         Path.GetFileNameWithoutExtension(input) + "_compressed.pdf";
 
-    protected override ConversionValidationResult ValidateInputs(ConversionRequest request)
-    {
-        if (request.InputFiles.Any(f => System.IO.File.Exists(f) && PdfEncryptionQuery.IsEncrypted(f)))
-        {
-            string lang = ExecutionLocalizationOptions.ReadLanguage(request.Options);
-            return ConversionValidationResult.Failure(Localization.T("pdf_err_encrypted_compress", lang));
-        }
-
-        return ConversionValidationResult.Success();
-    }
+    protected override ConversionValidationResult ValidateInputs(ConversionRequest request) =>
+        PdfEncryptionQuery.ValidateNotEncrypted(request, "pdf_err_encrypted_compress");
 
     protected override ConversionValidationResult ValidateOptions(ConversionRequest request)
     {

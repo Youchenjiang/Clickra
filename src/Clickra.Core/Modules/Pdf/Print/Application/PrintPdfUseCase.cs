@@ -1,4 +1,4 @@
-﻿using Clickra.Core.Application;
+using Clickra.Core.Application;
 using Clickra.Core.Modules.Pdf.Decrypt.Application;
 using Clickra.Core.Modules.Pdf.Print.Ports;
 using Clickra.Core.Modules.Pdf.Print.Processing;
@@ -51,16 +51,8 @@ public sealed class PrintPdfUseCase : PerFileConversionUseCaseBase
     protected override string GetOutputFileName(string input) =>
         Path.GetFileNameWithoutExtension(input) + ".printed";
 
-    protected override ConversionValidationResult ValidateInputs(ConversionRequest request)
-    {
-        if (request.InputFiles.Any(f => System.IO.File.Exists(f) && PdfEncryptionQuery.IsEncrypted(f)))
-        {
-            string lang = ExecutionLocalizationOptions.ReadLanguage(request.Options);
-            return ConversionValidationResult.Failure(Localization.T("pdf_err_encrypted_print", lang));
-        }
-
-        return ConversionValidationResult.Success();
-    }
+    protected override ConversionValidationResult ValidateInputs(ConversionRequest request) =>
+        PdfEncryptionQuery.ValidateNotEncrypted(request, "pdf_err_encrypted_print");
 
     protected override ConversionValidationResult ValidateOptions(ConversionRequest request)
     {
