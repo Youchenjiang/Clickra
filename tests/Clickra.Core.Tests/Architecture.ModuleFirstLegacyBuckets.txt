@@ -39,5 +39,6 @@ src/Clickra.Core/Storage/StoragePathResolver.cs
 src/Clickra.Core/Storage/StorageRuntime.cs
 src/Clickra.Core/Storage/TaskPruningCoordinator.cs
 src/Clickra.Core/Storage/TaskQueueStore.cs
+src/Clickra.Core/Storage/TaskRecords.cs
 src/Clickra.Core/Storage/TaskRecordStore.cs
 src/Clickra.Core/Storage/TaskRetentionPolicy.cs
