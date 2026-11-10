@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -9,7 +9,7 @@ using System.Drawing;
 using System.Drawing.Text;
 using System.Drawing.Drawing2D;
 using Clickra.Core;
-using Clickra.Core.Modules.PdfSplit.Presentation;
+using Clickra.Core.Modules.Pdf.Split.Presentation;
 using Clickra.Core.Processors;
 
 using static Clickra.UI.Native.Win32;

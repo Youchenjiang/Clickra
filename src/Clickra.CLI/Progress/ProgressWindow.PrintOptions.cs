@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -6,9 +6,9 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Clickra.Core;
-using Clickra.Core.Modules.PdfPrint.Application;
-using Clickra.Core.Modules.PdfPrint.Ports;
-using Clickra.Core.Modules.PdfPrint.Processing;
+using Clickra.Core.Modules.Pdf.Print.Application;
+using Clickra.Core.Modules.Pdf.Print.Ports;
+using Clickra.Core.Modules.Pdf.Print.Processing;
 using Clickra.Core.Processors;
 using Clickra.Core.Rendering;
 using Clickra.UI.Layout;

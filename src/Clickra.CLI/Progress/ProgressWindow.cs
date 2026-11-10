@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -10,7 +10,7 @@ using System.Drawing.Text;
 using System.Drawing.Drawing2D;
 using Clickra.Core;
 using Clickra.Core.Modules.HistoryTasks.Application;
-using Clickra.Core.Modules.PdfPrint.Application;
+using Clickra.Core.Modules.Pdf.Print.Application;
 using Clickra.Core.Application;
 using Clickra.Core.Presentation.Convert;
 
