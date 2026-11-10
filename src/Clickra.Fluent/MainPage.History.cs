@@ -1,6 +1,6 @@
-using Clickra.Core.Modules.HistoryTasks.Application;
+using Clickra.Core.Modules.Sys.HistoryTasks.Application;
 using Clickra.Core;
-using Clickra.Core.Modules.HistoryTasks.Presentation;
+using Clickra.Core.Modules.Sys.HistoryTasks.Presentation;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
