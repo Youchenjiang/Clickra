@@ -648,7 +648,17 @@ static partial class TestSuite
 
         var forbiddenIdentifiers = new HashSet<string>(StringComparer.Ordinal)
         {
-            BatchRenameCommandIdentifier
+            BatchRenameCommandIdentifier,
+            "CommandName",
+            "CmdMergePdf",
+            "CmdCompressPdf",
+            "CmdImg2Pdf",
+            "CmdImgMerge",
+            "PngCommand",
+            "JpgCommand",
+            "WebpCommand",
+            "GifCommand",
+            "HeicCommand"
         };
 
         var violations = new List<string>();
@@ -657,19 +667,11 @@ static partial class TestSuite
         foreach (string file in presentationFiles)
         {
             string source = File.ReadAllText(file);
-            if (!QuickScanMightContainBranching(source))
-                continue;
-
-            SyntaxTree tree = CSharpSyntaxTree.ParseText(
-                source,
-                CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest));
-            SyntaxNode astRoot = tree.GetRoot();
-
             var walker = new HardcodedCommandBranchingWalker(
                 forbiddenCommands,
                 forbiddenIdentifiers,
                 violation => violations.Add($"{NormalizeRepoPath(root, file)}:{violation}"));
-            walker.Visit(astRoot);
+            InspectSourceTree(source, walker);
         }
 
         Assert.True(
@@ -680,6 +682,25 @@ static partial class TestSuite
         VerifyHardcodedCommandDetectionCoverage(forbiddenCommands, forbiddenIdentifiers);
     }
 
+    private static void InspectSourceTree(string source, HardcodedCommandBranchingWalker walker)
+    {
+        SyntaxTree tree = CSharpSyntaxTree.ParseText(
+            source,
+            CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest));
+        SyntaxNode astRoot = tree.GetRoot();
+        walker.Visit(astRoot);
+
+        foreach (var trivia in astRoot.DescendantTrivia().Where(t => t.IsKind(SyntaxKind.DisabledTextTrivia)))
+        {
+            string disabled = trivia.ToString();
+            if (string.IsNullOrWhiteSpace(disabled)) continue;
+            SyntaxTree disabledTree = CSharpSyntaxTree.ParseText(
+                disabled,
+                CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest));
+            walker.Visit(disabledTree.GetRoot());
+        }
+    }
+
     private static List<string> CollectPresentationSourceFiles(string root)
     {
         var scanDirs = new List<string>
@@ -687,6 +708,7 @@ static partial class TestSuite
             Path.Combine(root, "src", ArchitectureFluentProjectDirectory),
             Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureDashboardDirectory),
             Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory),
+            Path.Combine(root, "src", ArchitectureCliProjectDirectory, "UI", "Layout"),
             Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitecturePresentationDirectory)
         };
 
@@ -715,13 +737,6 @@ static partial class TestSuite
         return files;
     }
 
-    private static bool QuickScanMightContainBranching(string source) =>
-        source.Contains("==") ||
-        source.Contains("!=") ||
-        source.Contains("Equals", StringComparison.Ordinal) ||
-        source.Contains("switch", StringComparison.Ordinal) ||
-        source.Contains(" is ", StringComparison.Ordinal);
-
     private static void VerifyHardcodedCommandDetectionCoverage(
         HashSet<string> forbiddenCommands,
         HashSet<string> forbiddenIdentifiers)
@@ -739,21 +754,23 @@ static partial class TestSuite
             "class C { void M(string c) { if (c is not \"img2pdf\") {} } }",
             "class C { void M(string c) { if (c is \"img-merge\" or \"img-stitch\") {} } }",
             "class C { void M(object o) { if (o is { Command: \"excel2pdf\" }) {} } }",
+            "class C { int M(object o) => o switch { (\"md2pdf\", _) => 1, _ => 0 }; }",
+            "class C { void M(object o) { switch (o) { case (\"split-pdf\", _): break; } } }",
+            "class C { void M(string c) { if (c == MarkdownToPdfUseCase.CommandName) {} } }",
+            "class C { void M(string c) { if (c == ImageFormatConvertUseCase.PngCommand) {} } }",
             $"class C {{ void M(string c) {{ if (c == {BatchRenameCommandIdentifier}) {{}} }} }}",
-            $"class C {{ void M(string c) {{ if (c.Equals({BatchRenameCommandIdentifier})) {{}} }} }}"
+            $"class C {{ void M(string c) {{ if (c.Equals({BatchRenameCommandIdentifier})) {{}} }} }}",
+            "#if NEVER\nclass C { void M(string c) { if (c == \"compress-pdf\") {} } }\n#endif"
         };
 
         foreach (string snippet in testSnippets)
         {
-            SyntaxTree tree = CSharpSyntaxTree.ParseText(
-                snippet,
-                CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest));
             var detected = new List<string>();
             var walker = new HardcodedCommandBranchingWalker(
                 forbiddenCommands,
                 forbiddenIdentifiers,
                 detected.Add);
-            walker.Visit(tree.GetRoot());
+            InspectSourceTree(snippet, walker);
 
             Assert.True(
                 detected.Count > 0,
@@ -761,15 +778,12 @@ static partial class TestSuite
         }
 
         string cleanSnippet = "class C { void M(string c) { var catalog = new[] { new Item(\"md2pdf\", 1) }; if (catalog.Length > 0) {} } }";
-        SyntaxTree cleanTree = CSharpSyntaxTree.ParseText(
-            cleanSnippet,
-            CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest));
         var cleanDetected = new List<string>();
         var cleanWalker = new HardcodedCommandBranchingWalker(
             forbiddenCommands,
             forbiddenIdentifiers,
             cleanDetected.Add);
-        cleanWalker.Visit(cleanTree.GetRoot());
+        InspectSourceTree(cleanSnippet, cleanWalker);
 
         Assert.True(
             cleanDetected.Count == 0,
@@ -913,12 +927,23 @@ static partial class TestSuite
                        ContainsForbiddenPattern(bp.Right, out forbiddenExpr);
             }
 
-            if (pattern is RecursivePatternSyntax rp && rp.PropertyPatternClause is not null)
+            if (pattern is RecursivePatternSyntax rp)
             {
-                foreach (SubpatternSyntax sub in rp.PropertyPatternClause.Subpatterns)
+                if (rp.PropertyPatternClause is not null)
                 {
-                    if (ContainsForbiddenPattern(sub.Pattern, out forbiddenExpr))
-                        return true;
+                    foreach (SubpatternSyntax sub in rp.PropertyPatternClause.Subpatterns)
+                    {
+                        if (ContainsForbiddenPattern(sub.Pattern, out forbiddenExpr))
+                            return true;
+                    }
+                }
+                if (rp.PositionalPatternClause is not null)
+                {
+                    foreach (SubpatternSyntax sub in rp.PositionalPatternClause.Subpatterns)
+                    {
+                        if (ContainsForbiddenPattern(sub.Pattern, out forbiddenExpr))
+                            return true;
+                    }
                 }
             }
 
@@ -951,9 +976,23 @@ static partial class TestSuite
                 return true;
             }
 
-            if (expr is MemberAccessExpressionSyntax ma && _forbiddenIdentifiers.Contains(ma.Name.Identifier.ValueText))
+            if (expr is MemberAccessExpressionSyntax ma)
             {
-                return true;
+                string member = ma.Name.Identifier.ValueText;
+                if (_forbiddenIdentifiers.Contains(member))
+                    return true;
+
+                if (ma.Expression is IdentifierNameSyntax target &&
+                    (target.Identifier.ValueText.EndsWith("UseCase", StringComparison.Ordinal) ||
+                     target.Identifier.ValueText.Equals("ConvertCommandMetadata", StringComparison.Ordinal) ||
+                     target.Identifier.ValueText.Equals("ConvertWorkspaceController", StringComparison.Ordinal)))
+                {
+                    if (member.EndsWith("Command", StringComparison.Ordinal) ||
+                        member.Equals("CommandName", StringComparison.Ordinal))
+                    {
+                        return true;
+                    }
+                }
             }
 
             return false;
