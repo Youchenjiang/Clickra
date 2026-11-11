@@ -28,6 +28,17 @@ public sealed class VisualSplitModel
     public static VisualSplitModel FromFile(string filePath, string? password = null) =>
         new(Math.Max(1, PdfPageCountQuery.Get(filePath, password)));
 
+    /// <summary>
+    /// Renders a thumbnail bitmap for the specified page of a PDF file using the application thumbnail query.
+    /// </summary>
+    public static System.Drawing.Bitmap? RenderPage(
+        string filePath,
+        int pageNumber,
+        int targetWidth,
+        string? fontName = null,
+        string? password = null) =>
+        PdfPageThumbnailQuery.RenderPageFromFile(filePath, pageNumber, targetWidth, fontName, password);
+
     public VisualSplitModel(int totalPages)
     {
         TotalPages = Math.Max(1, totalPages);
