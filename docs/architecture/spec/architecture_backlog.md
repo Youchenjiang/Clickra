@@ -16,9 +16,9 @@
 | B2 | ✅ | 已由 `ClickraLauncher` 統一為單一 L0 啟動路由器並注入 `CLICKRA_LAUNCHER_ROUTED=1`；`ClickraStartup` 與 `ClickraShell` 消除重複判斷 |
 | B3 | ⚪ | 記錄即可 |
 | C1 | ✅ | `PdfSplit/Presentation` 已不引用 `PdfSplitProcessor` |
-| C2 | ❓ | 隨 C1 處理，註解未逐一確認 |
+| C2 | ✅ | 隨 C1 處理，XML 註解已確認皆對齊 `VisualSplitModel.BuildSpec` |
 | C3 | ⚪ | 記錄即可 |
-| C4 | ⚠ | 畫面端仍有指令判斷，例如 `ProgressWindow.cs:259` 的 `command.Equals("md2pdf", …)` |
+| C4 | ✅ | 用例自宣告協議落地，Roslyn AST 守衛全面禁止畫面端硬編碼指令判斷，畫面端指令分支數歸零 |
 | C5 | ✅ | `LibreOfficeEnginePackage` 只剩 Infrastructure 內部使用 |
 | D1 | ✅ | CLI 改呼叫 L2 的 `ConversionExecutionService.Plan/Execute` |
 | D2 | ✅ | renderer 已不直接呼叫 `PdfPageCountQuery` |
@@ -27,12 +27,12 @@
 | D5 | ✅ | 模組 Application 已不直接呼叫 `SettingsService` |
 | E1 | ✅ | `Localization` 已不讀 `ClickraStorage` |
 | E2 | ✅ | `Core/FileProcessor.cs` 已刪除 |
-| E3 | ⚠ | 畫面仍直接用 `PdfPageThumbnailRenderer`：`ProgressWindow.VisualSplitter.cs`、`UI/LocalizedUiFontSelector.cs`、`Fluent/Controls/VisualSplitterControl.xaml.cs` |
+| E3 | ✅ | 縮圖與頁面預覽抽離至 `VisualSplitModel.RenderPage`、`PdfPageThumbnailQuery` 與 `PdfPrintPreviewQuery`，畫面端與 Presentation 全面禁止直連底層繪圖類別 |
 | E4 | ✅ | `MarkdownPdfOptions`、`ImageCompressionLevel`、`OfficeConversionRequest` 都已移到各模組 `Application/`（E5 一併解掉） |
 | E6 | ✅ | `PdfTranslation/Model` 已不引用 Pipeline 的分析器 |
 | E7 | ✅ | `TaskRecords.cs` 已將儲存層共用之資料結構與列舉純化解耦，消除 `ClickraStorage` 與各 Store 循環相依 |
 | E8 | ✅ | 已建 `Pipeline/Shared/`（PR #194） |
-| E9 | ⚠ | 已有 `TestSuite.ArchitectureBoundaries.cs`，但模組慣例文件尚未寫 |
+| E9 | ✅ | 已建 `docs/development/module_conventions.md` 完整模組慣例文件，並由 `TestSuite.ArchitectureBoundaries.cs` 完整自動化守衛守住 |
 
 ---
 

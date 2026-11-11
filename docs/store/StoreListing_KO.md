@@ -1,6 +1,6 @@
 # Microsoft Store 목록 - 한국어
 
-다음은 Microsoft 파트너 센터 (Partner Center)에 직접 복사하여 붙여넣을 수 있는 전체 정보입니다 (v3.19.6.0 기준).
+다음은 Microsoft 파트너 센터 (Partner Center)에 직접 복사하여 붙여넣을 수 있는 전체 정보입니다 (v3.19.7.0 기준).
 
 ---
 

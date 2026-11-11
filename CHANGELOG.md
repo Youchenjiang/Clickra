@@ -1,5 +1,11 @@
 # Changelog
 
+## [v3.19.7.0] - 2026-11-11
+
+- **PDF 縮圖與預覽契約純化 (PDF Thumbnail & Preview Query Contracts)**：落實核心解耦與架構債務清理（根治 E3、C2、E9 技術債）。建立 `PdfPageThumbnailQuery` 與 `PdfPrintPreviewQuery` 應用層查詢邊界，並由 `VisualSplitModel.RenderPage` 統一提供畫面預覽點，徹底終結 Win32 與 WinUI 畫面端直接穿透呼叫底層繪圖類別 `PdfPageThumbnailRenderer` 之架構違規。
+- **UI 字型選擇與紙張維度模型解耦 (UI Font Selector & Paper Dimension Isolation)**：將語言字型選取抽離至 `LocalizedUiFontSelector`，使排版與底層點陣圖渲染分離；將 `PaperSizeRegistry` 與 `PaperDimension` 提升至 `Pdf.Print.Application`，消除畫面端對 `Print.Processing` 的直接依賴。
+- **畫面端禁絕底層繪圖架構守衛 (Presentation Renderer Boundary Guard)**：於架構測試新增 `TestPresentationDoesNotDependOnRawPdfPageThumbnailRenderer`（守衛總數增至 94 項），靜態斷言 CLI 與 Fluent 介面絕無直連底層渲染實作，全面結清架構清單之所有殘留債務。
+
 ## [v3.19.6.0] - 2026-11-11
 
 - **L0 入口單一啟動路由器重構 (Unified L0 Launcher Router)**：落實核心解耦與模組標準化 Phase 7（根治 B2 技術債）。確立 `ClickraLauncher.exe` 為全專案唯一的 L0 UI 啟動與派送路由器，支援 MSIX 打包 COM 啟動與本機開發非打包啟動；當回退至原生 Win32 Dashboard 時注入 `CLICKRA_LAUNCHER_ROUTED=1` 環境標記，徹底杜絕各入口各自為政與重複嘗試。
