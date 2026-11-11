@@ -229,5 +229,83 @@ static partial class TestSuite
                 PowerShellHelper.IsRecoverableMicrosoftOfficeFailure(new ArgumentException("Invalid Office conversion input.")),
                 "Programming/input errors must not be hidden by a fallback engine.");
         });
+
+        runner.Run("Office conversion strategy resolver dispatches and falls back correctly", () =>
+        {
+            var msFake = new FakeOfficeStrategy("microsoft", canConvert: true, isReady: true);
+            var loFake = new FakeOfficeStrategy("libreoffice", canConvert: true, isReady: true);
+            var resolver = new OfficeConversionStrategyResolver(msFake, loFake);
+
+            var request = new OfficeConversionRequest("Word", "test.docx", "test.pdf", 0, 1);
+            var autoSettings = new OfficeConversionSettings("auto", "en", "", false);
+            var libreSettings = new OfficeConversionSettings("libreoffice", "en", "", false);
+            var msSettings = new OfficeConversionSettings("microsoft", "en", "", false);
+
+            // 1. Explicit LibreOffice engine routes to LibreOffice
+            resolver.ExecuteConversion(request, libreSettings, null, CancellationToken.None);
+            Assert.Equal(0, msFake.ConvertedCount);
+            Assert.Equal(1, loFake.ConvertedCount);
+
+            // 2. Explicit Microsoft engine routes to Microsoft
+            resolver.ExecuteConversion(request, msSettings, null, CancellationToken.None);
+            Assert.Equal(1, msFake.ConvertedCount);
+            Assert.Equal(1, loFake.ConvertedCount);
+
+            // 3. Auto engine when Microsoft not ready routes directly to LibreOffice
+            msFake.IsReadyResult = false;
+            resolver.ExecuteConversion(request, autoSettings, null, CancellationToken.None);
+            Assert.Equal(1, msFake.ConvertedCount);
+            Assert.Equal(2, loFake.ConvertedCount);
+
+            // 4. Auto engine when Microsoft throws recoverable failure falls back to LibreOffice
+            msFake.IsReadyResult = true;
+            msFake.ExceptionToThrow = new InvalidOperationException("COM server crashed");
+            resolver.ExecuteConversion(request, autoSettings, null, CancellationToken.None);
+            Assert.Equal(3, loFake.ConvertedCount);
+
+            // 5. Auto engine when Microsoft throws non-recoverable error does not fall back
+            msFake.ExceptionToThrow = new ArgumentException("Bad parameter");
+            bool caughtNonRecoverable = false;
+            try
+            {
+                resolver.ExecuteConversion(request, autoSettings, null, CancellationToken.None);
+            }
+            catch (ArgumentException)
+            {
+                caughtNonRecoverable = true;
+            }
+            Assert.True(caughtNonRecoverable, "Non-recoverable exception should bubble up.");
+            Assert.Equal(3, loFake.ConvertedCount);
+        });
+    }
+
+    private sealed class FakeOfficeStrategy : IOfficeConversionStrategy
+    {
+        public FakeOfficeStrategy(string engineName, bool canConvert = true, bool isReady = true)
+        {
+            EngineName = engineName;
+            CanConvertResult = canConvert;
+            IsReadyResult = isReady;
+        }
+
+        public string EngineName { get; }
+        public bool CanConvertResult { get; set; }
+        public bool IsReadyResult { get; set; }
+        public int ConvertedCount { get; private set; }
+        public Exception? ExceptionToThrow { get; set; }
+
+        public bool CanConvert(string appType) => CanConvertResult;
+        public bool IsReady(string appType, OfficeConversionSettings settings) => IsReadyResult;
+
+        public void ConvertToPdf(
+            OfficeConversionRequest request,
+            OfficeConversionSettings settings,
+            Action<int, int, string>? onProgress,
+            CancellationToken cancellationToken)
+        {
+            if (ExceptionToThrow is not null)
+                throw ExceptionToThrow;
+            ConvertedCount++;
+        }
     }
 }
