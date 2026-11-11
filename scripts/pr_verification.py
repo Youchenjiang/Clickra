@@ -162,12 +162,18 @@ def summarize(pr, report, *, remote_sha):
         {"id": t["id"], "path": t["path"], "line": t["line"], "outdated": t["outdated"]}
         for t in report.get("threads", []) if not t.get("resolved")
     ]
+    sonar_details = [
+        {"key": i.get("key"), "message": i.get("message"), "component": i.get("component"),
+         "line": i.get("line"), "rule": i.get("rule"), "severity": i.get("severity")}
+        for i in (report.get("sonar") or {}).get("issues", [])
+    ]
     top_findings = extract_top_review_findings(report.get("reviews", []), pr_body)
     return {"ready": not problems, "state": pr.get("state"),
             "historical_checks_passed": (pr.get("state") == "MERGED" and
                                          not _finding_problems(report, groups, required, pr_body)),
             "problems": problems, "passed": groups["passed"],
             "skipped": groups["skipped"], "head": head, "sonar_issues": sonar_count,
+            "sonar_issue_details": sonar_details,
             "unresolved_threads": count, "unresolved_thread_details": unresolved_details,
             "top_level_findings": top_findings,
             "checks": _check_details(checks, required),
