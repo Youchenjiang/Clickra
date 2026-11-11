@@ -319,12 +319,14 @@ namespace ClickraShell
                 return 0;
             }
 
-            // Fallback for non-packaged (unpacked) deployments: launch Clickra.exe
-            // (NativeAOT), which handles argument execution and self-selects Fluent
-            // when runtimes are present, or Clickra.Fluent.exe if Clickra.exe is absent.
+            // Fallback for non-packaged deployments or when launcher is missing:
+            // delegate directly to Clickra.exe without bypassing the launcher router.
             string app = Path.Combine(moduleDir, "Clickra.exe");
-            if (!File.Exists(app)) app = Path.Combine(moduleDir, "Clickra.Fluent.exe");
-            if (File.Exists(app)) { try { Process.Start(new ProcessStartInfo(app, arguments) { UseShellExecute = false })?.Dispose(); } catch { /* Launcher may be locked during update — fall through to direct exe. */ } }
+            if (File.Exists(app))
+            {
+                try { Process.Start(new ProcessStartInfo(app, arguments) { UseShellExecute = false })?.Dispose(); }
+                catch { /* Launcher or app may be locked during update. */ }
+            }
             return 0;
         }
 

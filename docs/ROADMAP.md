@@ -120,10 +120,11 @@
     - [x] 導入畫面端硬編碼指令禁絕 Roslyn AST 守衛（Guard 4；Phase 4 完成）。
     - [x] 兩層領域分類重構與對稱子模組標準化（Doc, File, Img, Pdf, Sys 二級領域與 Shared 封裝；Phase 5 完成）。
     - [x] 儲存層單向解耦與資料契約純化（抽取 TaskRecords，消除 E7 循環相依債務；Phase 6 完成）。
+    - [x] L0 入口單一啟動路由器（ClickraLauncher 統一派送與環境標記，消除 B2 啟動重複判斷債務；Phase 7 完成）。
 
     - 解耦 Windows 專屬依賴（GDI+、Imazen.WebP、Windows.Data.Pdf 轉跨平台 SkiaSharp / PDFium 方案）。
 
-    - 規範詳見：[module_architecture_unification_manifesto.md](architecture/spec/module_architecture_unification_manifesto.md) 與 [v4_cross_platform_unification.md](specs/v4_cross_platform_unification.md)。
+    - 規範詳見：[module_architecture_unification_manifesto.md](architecture/spec/module_architecture_unification_manifesto.md)、[architecture_backlog.md](architecture/spec/architecture_backlog.md) 與 [v4_cross_platform_unification.md](specs/v4_cross_platform_unification.md)。
 
 - [ ] **[F1-16] v3.20.0 Universal Headless CLI (NativeAOT Cross-Platform)**：跨平台無頭終端工具。
 

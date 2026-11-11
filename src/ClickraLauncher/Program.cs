@@ -7,14 +7,16 @@ using System.Runtime.InteropServices;
 namespace Clickra.Launcher;
 
 /// <summary>
-/// Clickra Launcher ??NativeAOT entry point, zero dependency.
-/// COM activation via IApplicationActivationManager ??Fluent optional.
-/// Fallback ??AOT Dashboard.
+/// Clickra Launcher — NativeAOT entry point, zero dependency.
+/// COM activation via IApplicationActivationManager for packaged Fluent optional app.
+/// Direct activation for unpackaged Fluent development.
+/// Fallback — NativeAOT Dashboard.
 /// </summary>
 internal static class Program
 {
     private const string AotExe = "Clickra.exe";
     private const int FluentTimeoutMs = 5000;
+    internal const string RoutedEnvironmentVariable = "CLICKRA_LAUNCHER_ROUTED";
 
     private static int Main(string[] args)
     {
@@ -22,29 +24,87 @@ internal static class Program
         if (string.IsNullOrEmpty(exeDir))
             exeDir = Path.GetDirectoryName(Environment.ProcessPath);
 
-        // Try COM activation for Fluent optional package
-        if (TryActivateFluent(args, out uint pid))
+        // 1. Try COM activation for packaged Fluent optional package
+        bool launchedFluent = TryActivateFluent(args, out uint pid);
+
+        // 2. Fallback to direct activation for unpackaged Fluent development
+        if (!launchedFluent && exeDir != null)
         {
-            Thread.Sleep(FluentTimeoutMs);
-            try
-            {
-                var proc = Process.GetProcessById((int)pid);
-                if (!proc.HasExited)
-                    return 0;
-            }
-            catch (ArgumentException) { /* Process already exited or invalid PID ??safe to ignore. */ }
+            launchedFluent = TryLaunchUnpackagedFluent(exeDir, args, out pid);
         }
 
-        // Fallback: NativeAOT Dashboard
+        if (launchedFluent && IsFluentRunning(pid))
+        {
+            return 0;
+        }
+
+        return LaunchNativeFallback(exeDir, args);
+    }
+
+    private static bool IsFluentRunning(uint pid)
+    {
+        try
+        {
+            var proc = Process.GetProcessById((int)pid);
+            const int pollIntervalMs = 100;
+            int elapsedMs = 0;
+            while (elapsedMs < FluentTimeoutMs)
+            {
+                if (proc.HasExited)
+                {
+                    // Fluent exited or crashed early — immediately break to native fallback.
+                    return false;
+                }
+                Thread.Sleep(pollIntervalMs);
+                elapsedMs += pollIntervalMs;
+            }
+            return !proc.HasExited;
+        }
+        catch (ArgumentException)
+        {
+            // Process already exited or invalid PID — safe to fall back.
+            return false;
+        }
+    }
+
+    private static int LaunchNativeFallback(string? exeDir, string[] args)
+    {
         if (exeDir == null) return 1;
         string? aotPath = FindExe(exeDir, AotExe);
         if (aotPath == null) return 1;
 
         var psi = new ProcessStartInfo(aotPath) { UseShellExecute = false };
+        psi.Environment[RoutedEnvironmentVariable] = "1";
         foreach (string arg in args)
             psi.ArgumentList.Add(arg);
         Process.Start(psi)?.Dispose();
         return 0;
+    }
+
+    private static bool TryLaunchUnpackagedFluent(string exeDir, string[] args, out uint processId)
+    {
+        processId = 0;
+        string fluentExe = Path.Combine(exeDir, "Clickra.Fluent.exe");
+        if (!File.Exists(fluentExe))
+            return false;
+
+        try
+        {
+            var psi = new ProcessStartInfo(fluentExe)
+            {
+                UseShellExecute = false,
+            };
+            foreach (string arg in args)
+                psi.ArgumentList.Add(arg);
+            using var proc = Process.Start(psi);
+            if (proc is null) return false;
+            processId = (uint)proc.Id;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static bool TryActivateFluent(string[] args, out uint processId)
@@ -127,9 +187,40 @@ internal static class Program
     internal static string QuoteArgument(string arg)
     {
         if (string.IsNullOrEmpty(arg)) return "\"\"";
-        if (!arg.Contains(' ') && !arg.Contains('\t')) return arg;
-        if (arg.StartsWith('"') && arg.EndsWith('"')) return arg;
-        return $"\"{arg}\"";
+        if (!arg.Contains(' ') && !arg.Contains('\t') && !arg.Contains('"')) return arg;
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append('"');
+        int backslashes = 0;
+        for (int i = 0; i < arg.Length; i++)
+        {
+            char c = arg[i];
+            if (c == '\\')
+            {
+                backslashes++;
+            }
+            else if (c == '"')
+            {
+                sb.Append('\\', backslashes * 2 + 1);
+                sb.Append('"');
+                backslashes = 0;
+            }
+            else
+            {
+                if (backslashes > 0)
+                {
+                    sb.Append('\\', backslashes);
+                    backslashes = 0;
+                }
+                sb.Append(c);
+            }
+        }
+        if (backslashes > 0)
+        {
+            sb.Append('\\', backslashes * 2);
+        }
+        sb.Append('"');
+        return sb.ToString();
     }
 
     // skipcq: CS-R1138

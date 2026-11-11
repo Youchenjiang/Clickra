@@ -136,6 +136,9 @@ static partial class TestSuite
             "Architecture boundaries: storage does not own localized presentation text",
             TestStorageDoesNotOwnLocalizedPresentationText);
         runner.RunGuard(
+            "Architecture boundaries: launcher routing is single-sourced through ClickraLauncher",
+            TestLauncherRoutingIsSingleSourced);
+        runner.RunGuard(
             "Architecture boundaries: presentation and platform helpers have explicit ownership",
             TestPresentationAndPlatformHelpersHaveExplicitOwnership);
         runner.RunGuard(
@@ -1841,6 +1844,55 @@ static partial class TestSuite
             violations.Count == 0,
             "Storage must return facts/state; localized presentation wording belongs above storage:" +
             Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static void TestLauncherRoutingIsSingleSourced()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        // 1. ClickraLauncher: Single L0 entry point routing to Fluent or AOT fallback
+        string launcherPath = Path.Combine(root, "src", "ClickraLauncher", "Program.cs");
+        Assert.True(File.Exists(launcherPath), "ClickraLauncher Program.cs must exist.");
+        string launcherSource = File.ReadAllText(launcherPath);
+        Assert.True(launcherSource.Contains("RoutedEnvironmentVariable = \"CLICKRA_LAUNCHER_ROUTED\"", StringComparison.Ordinal),
+            "ClickraLauncher must define the CLICKRA_LAUNCHER_ROUTED environment variable.");
+        Assert.True(launcherSource.Contains("psi.Environment[RoutedEnvironmentVariable] = \"1\"", StringComparison.Ordinal),
+            "ClickraLauncher must tag fallback invocations to Clickra.exe with CLICKRA_LAUNCHER_ROUTED=1.");
+        Assert.True(launcherSource.Contains("TryActivateFluent", StringComparison.Ordinal),
+            "ClickraLauncher must own packaged Fluent activation via COM.");
+        Assert.True(launcherSource.Contains("TryLaunchUnpackagedFluent", StringComparison.Ordinal),
+            "ClickraLauncher must own unpackaged Fluent activation for local development.");
+
+        // 2. ClickraShell: Must delegate to ClickraLauncher without bypassing to Clickra.Fluent.exe
+        string shellPath = Path.Combine(root, "src", "ClickraShell", "ComMethods.cs");
+        Assert.True(File.Exists(shellPath), "ClickraShell ComMethods.cs must exist.");
+        string shellSource = File.ReadAllText(shellPath);
+        Assert.True(shellSource.Contains("ClickraLauncher.exe", StringComparison.Ordinal),
+            "ClickraShell must prioritize delegating to ClickraLauncher.exe.");
+        Assert.False(shellSource.Contains("Clickra.Fluent.exe", StringComparison.Ordinal),
+            "ClickraShell must not bypass ClickraLauncher to directly invoke Clickra.Fluent.exe.");
+
+        // 3. ClickraStartup: Must not duplicate Fluent runtime detection or launch logic
+        string startupPath = Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraStartup.cs");
+        Assert.True(File.Exists(startupPath), "ClickraStartup.cs must exist.");
+        string startupSource = File.ReadAllText(startupPath);
+        Assert.True(startupSource.Contains("TryDelegateToLauncher", StringComparison.Ordinal),
+            "ClickraStartup must delegate unrouted UI requests to ClickraLauncher.exe.");
+        Assert.True(startupSource.Contains("CLICKRA_LAUNCHER_ROUTED", StringComparison.Ordinal),
+            "ClickraStartup must respect the CLICKRA_LAUNCHER_ROUTED environment variable.");
+
+        foreach (string prohibited in new[]
+                 {
+                     "TryLaunchFluent",
+                     "HasDotNetDesktopRuntime",
+                     "HasWindowsAppRuntime",
+                     "LoadLibraryExW",
+                     "Microsoft.Win32"
+                 })
+        {
+            Assert.False(startupSource.Contains(prohibited, StringComparison.Ordinal),
+                $"ClickraStartup must not duplicate launcher runtime inspection or direct Fluent launching: {prohibited}");
+        }
     }
 
     private static void TestPresentationAndPlatformHelpersHaveExplicitOwnership()
