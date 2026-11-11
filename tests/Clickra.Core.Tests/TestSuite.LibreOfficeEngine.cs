@@ -181,7 +181,15 @@ static partial class TestSuite
             }
             finally
             {
-                try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, recursive: true); } catch { }
+                try
+                {
+                    if (Directory.Exists(tempDir))
+                        Directory.Delete(tempDir, recursive: true);
+                }
+                catch (IOException)
+                {
+                    // Best-effort cleanup of temporary test directory
+                }
             }
         });
 
