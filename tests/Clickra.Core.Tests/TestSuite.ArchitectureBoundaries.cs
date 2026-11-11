@@ -127,6 +127,9 @@ static partial class TestSuite
             "Architecture boundaries: presentation does not depend on raw ClickraStorage",
             TestPresentationDoesNotDependOnRawStorage);
         runner.RunGuard(
+            "Architecture boundaries: presentation does not depend on raw PdfPageThumbnailRenderer",
+            TestPresentationDoesNotDependOnRawPdfPageThumbnailRenderer);
+        runner.RunGuard(
             "Architecture boundaries: Core bounded contexts declare owned namespaces",
             TestCoreBoundedContextsDeclareOwnedNamespaces);
         runner.RunGuard(
@@ -1705,6 +1708,40 @@ static partial class TestSuite
             violations.Count == 0,
             "CLI and Fluent presentation must use narrow application owners instead of ClickraStorage calls, " +
             "nested storage models, or global Storage imports:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static readonly Regex RawPdfPageThumbnailRendererAccess =
+        new(@"\bPdfPageThumbnailRenderer\b", RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    private static void TestPresentationDoesNotDependOnRawPdfPageThumbnailRenderer()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        var violations = new List<string>();
+        foreach (string directory in new[]
+                 {
+                     Path.Combine(root, "src", ArchitectureCliProjectDirectory),
+                     Path.Combine(root, "src", ArchitectureFluentProjectDirectory),
+                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitecturePresentationDirectory)
+                 })
+        {
+            if (!Directory.Exists(directory)) continue;
+            foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
+            {
+                string source = File.ReadAllText(file);
+                if (RawPdfPageThumbnailRendererAccess.IsMatch(source))
+                {
+                    violations.Add(NormalizeRepoPath(root, file));
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "Presentation and UI layers must use application or presentation query models (such as VisualSplitModel or PdfPrintPreviewQuery) " +
+            "instead of direct PdfPageThumbnailRenderer calls:" +
             Environment.NewLine + string.Join(Environment.NewLine, violations));
     }
 
