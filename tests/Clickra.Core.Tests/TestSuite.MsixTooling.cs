@@ -49,6 +49,10 @@ static partial class TestSuite
 
             Assert.True(source.Contains("QuoteArgument", StringComparison.Ordinal),
                 "ClickraLauncher must quote activation arguments to protect paths and tokens containing spaces.");
+            Assert.True(source.Contains("backslashes * 2", StringComparison.Ordinal),
+                "ClickraLauncher must escape trailing backslashes before closing quotes.");
+            Assert.True(source.Contains("psi.ArgumentList.Add(arg)", StringComparison.Ordinal),
+                "ClickraLauncher must pass arguments via ArgumentList for native process launches.");
         });
 
         runner.RunGuard("MSIX manifest does not hijack default file associations", () =>
