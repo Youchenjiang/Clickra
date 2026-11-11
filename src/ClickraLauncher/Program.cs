@@ -35,14 +35,25 @@ internal static class Program
 
         if (launchedFluent)
         {
-            Thread.Sleep(FluentTimeoutMs);
             try
             {
                 var proc = Process.GetProcessById((int)pid);
+                const int pollIntervalMs = 100;
+                int elapsedMs = 0;
+                while (elapsedMs < FluentTimeoutMs)
+                {
+                    if (proc.HasExited)
+                    {
+                        // Fluent exited or crashed early — immediately break to native fallback.
+                        break;
+                    }
+                    Thread.Sleep(pollIntervalMs);
+                    elapsedMs += pollIntervalMs;
+                }
                 if (!proc.HasExited)
                     return 0;
             }
-            catch (ArgumentException) { /* Process already exited or invalid PID — safe to ignore. */ }
+            catch (ArgumentException) { /* Process already exited or invalid PID — safe to fall back. */ }
         }
 
         // Fallback: NativeAOT Dashboard
@@ -69,12 +80,10 @@ internal static class Program
         {
             var psi = new ProcessStartInfo(fluentExe)
             {
-                UseShellExecute = true,
+                UseShellExecute = false,
             };
-            if (args.Length > 0)
-            {
-                psi.Arguments = string.Join(" ", args.Select(QuoteArgument));
-            }
+            foreach (string arg in args)
+                psi.ArgumentList.Add(arg);
             using var proc = Process.Start(psi);
             if (proc is null) return false;
             processId = (uint)proc.Id;
@@ -166,9 +175,40 @@ internal static class Program
     internal static string QuoteArgument(string arg)
     {
         if (string.IsNullOrEmpty(arg)) return "\"\"";
-        if (!arg.Contains(' ') && !arg.Contains('\t')) return arg;
-        if (arg.StartsWith('"') && arg.EndsWith('"')) return arg;
-        return $"\"{arg}\"";
+        if (!arg.Contains(' ') && !arg.Contains('\t') && !arg.Contains('"')) return arg;
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append('"');
+        int backslashes = 0;
+        for (int i = 0; i < arg.Length; i++)
+        {
+            char c = arg[i];
+            if (c == '\\')
+            {
+                backslashes++;
+            }
+            else if (c == '"')
+            {
+                sb.Append('\\', backslashes * 2 + 1);
+                sb.Append('"');
+                backslashes = 0;
+            }
+            else
+            {
+                if (backslashes > 0)
+                {
+                    sb.Append('\\', backslashes);
+                    backslashes = 0;
+                }
+                sb.Append(c);
+            }
+        }
+        if (backslashes > 0)
+        {
+            sb.Append('\\', backslashes * 2);
+        }
+        sb.Append('"');
+        return sb.ToString();
     }
 
     // skipcq: CS-R1138
