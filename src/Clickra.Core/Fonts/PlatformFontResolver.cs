@@ -106,7 +106,12 @@ public static class PlatformFontResolver
             return Directory.EnumerateFiles(dir, fontFileName, SearchOption.AllDirectories)
                 .FirstOrDefault(File.Exists);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (IOException)
+        {
+            // Ignore inaccessible subdirectories during enumeration
+            return null;
+        }
+        catch (UnauthorizedAccessException)
         {
             // Ignore inaccessible subdirectories during enumeration
             return null;
