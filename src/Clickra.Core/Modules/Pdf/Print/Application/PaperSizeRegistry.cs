@@ -1,6 +1,6 @@
-﻿using System;
+using System;
 
-namespace Clickra.Core.Modules.Pdf.Print.Processing;
+namespace Clickra.Core.Modules.Pdf.Print.Application;
 
 /// <summary>
 /// Physical dimensions of a paper format in points (1/72 inch) and millimeters.

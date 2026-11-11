@@ -1,9 +1,10 @@
-using Clickra.Core.Rendering;
+using Clickra.Core;
 
 namespace Clickra.UI
 {
     internal static class LocalizedUiFontSelector
     {
-        public static string GetTextFontName(string language) => PdfPageThumbnailRenderer.GetTextFontName(language);
+        public static string GetTextFontName(string language) =>
+            Clickra.Core.LocalizedUiFontSelector.GetTextFontName(language);
     }
 }

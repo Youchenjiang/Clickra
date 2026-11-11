@@ -13,7 +13,6 @@ using Clickra.Core;
 using Clickra.Core.Application;
 using Clickra.Core.Modules.File.BatchRename.Application;
 using Clickra.Core.Modules.File.BatchRename.Domain;
-using Clickra.Core.Modules.File.BatchRename.Processing;
 using Clickra.UI.Layout;
 
 using static Clickra.UI.Native.Win32;
@@ -160,7 +159,7 @@ public partial class ProgressWindow
     private void UpdateBatchRenamePlan()
     {
         var options = BuildBatchRenameOptions();
-        _brCurrentPlan = BatchRenameEngine.GeneratePlan(_brFiles, options);
+        _brCurrentPlan = BatchRenameUseCase.Plan(_brFiles, options);
     }
 
     internal void HandleBatchRenameSize(IntPtr hwnd, int pxW, int pxH)

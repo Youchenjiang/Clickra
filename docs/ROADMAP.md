@@ -121,6 +121,7 @@
     - [x] 兩層領域分類重構與對稱子模組標準化（Doc, File, Img, Pdf, Sys 二級領域與 Shared 封裝；Phase 5 完成）。
     - [x] 儲存層單向解耦與資料契約純化（抽取 TaskRecords，消除 E7 循環相依債務；Phase 6 完成）。
     - [x] L0 入口單一啟動路由器（ClickraLauncher 統一派送與環境標記，消除 B2 啟動重複判斷債務；Phase 7 完成）。
+    - [x] PDF 縮圖與預覽契約純化（抽象 PdfPageThumbnailQuery 與 PdfPrintPreviewQuery，結清 E3、C2、E9 債務；Phase 8 完成）。
 
     - 解耦 Windows 專屬依賴（GDI+、Imazen.WebP、Windows.Data.Pdf 轉跨平台 SkiaSharp / PDFium 方案）。
 
