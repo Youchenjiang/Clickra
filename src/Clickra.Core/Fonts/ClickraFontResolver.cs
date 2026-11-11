@@ -154,61 +154,55 @@ namespace Clickra.Core.Fonts;
                 }
             }
 
-            // Fallback for CJK faces if the file is missing
+            return ResolveFallbackFontBytes(baseFace, style);
+        }
+
+        private byte[]? ResolveFallbackFontBytes(string baseFace, string style)
+        {
             if (baseFace == NotoSansTcFace)
             {
-                string? malgunPath = PlatformFontResolver.ResolveFontFilePath("malgun.ttf");
-                if (malgunPath is not null && File.Exists(malgunPath))
-                {
-                    try { return File.ReadAllBytes(malgunPath); }
-                    catch
-                    {
-                        // Continue through the remaining CJK fallback chain.
-                    }
-                }
+                byte[]? malgun = TryReadFontFile(PlatformFontResolver.ResolveFontFilePath("malgun.ttf"));
+                if (malgun is not null)
+                    return malgun;
             }
 
-            if (baseFace == NotoSansTcFace || baseFace == "kaiu" || baseFace == "msjh" || baseFace == "msgothic" ||
-                baseFace == "msyh" || baseFace == "malgun")
+            if (IsCjkFace(baseFace))
             {
-                string? kaiuPath = PlatformFontResolver.ResolveFontFilePath("kaiu.ttf");
-                if (kaiuPath is not null && File.Exists(kaiuPath))
-                {
-                    try { return File.ReadAllBytes(kaiuPath); }
-                    catch
-                    {
-                        // Continue through the remaining CJK fallback chain.
-                    }
-                }
-                string? simsunbPath = PlatformFontResolver.ResolveFontFilePath("simsunb.ttf");
-                if (simsunbPath is not null && File.Exists(simsunbPath))
-                {
-                    try { return File.ReadAllBytes(simsunbPath); }
-                    catch
-                    {
-                        // Continue through the remaining CJK fallback chain.
-                    }
-                }
+                byte[]? kaiu = TryReadFontFile(PlatformFontResolver.ResolveFontFilePath("kaiu.ttf"));
+                if (kaiu is not null)
+                    return kaiu;
+
+                byte[]? simsunb = TryReadFontFile(PlatformFontResolver.ResolveFontFilePath("simsunb.ttf"));
+                if (simsunb is not null)
+                    return simsunb;
             }
 
-            // Style fallback
             if (!string.IsNullOrEmpty(style))
             {
-                string regularPath = GetFontPath(baseFace, "");
-                if (File.Exists(regularPath))
-                {
-                    try { return File.ReadAllBytes(regularPath); } catch { }
-                }
+                byte[]? regular = TryReadFontFile(GetFontPath(baseFace, ""));
+                if (regular is not null)
+                    return regular;
             }
 
-            // Cross-platform font fallback (e.g. Arial, LiberationSans, DejaVuSans)
-            string? fallbackPath = PlatformFontResolver.ResolveFallbackFontPath();
-            if (fallbackPath is not null && File.Exists(fallbackPath))
+            return TryReadFontFile(PlatformFontResolver.ResolveFallbackFontPath());
+        }
+
+        private static bool IsCjkFace(string baseFace) =>
+            baseFace is NotoSansTcFace or "kaiu" or "msjh" or "msgothic" or "msyh" or "malgun";
+
+        private static byte[]? TryReadFontFile(string? path)
+        {
+            if (path is null || !File.Exists(path))
+                return null;
+
+            try
             {
-                try { return File.ReadAllBytes(fallbackPath); } catch { }
+                return File.ReadAllBytes(path);
             }
-
-            return null;
+            catch
+            {
+                return null;
+            }
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3776", Justification = "Explicit family/style mapping mirrors Windows font filenames and keeps fallback behavior auditable.")]

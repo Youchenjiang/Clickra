@@ -113,11 +113,7 @@ public static class PlatformFontResolver
     /// </summary>
     public static string? ResolveFallbackFontPath()
     {
-        string[] candidates = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-            ? new[] { "arial.ttf", "segoeui.ttf", "calibri.ttf" }
-            : RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
-                ? new[] { "Arial.ttf", "Helvetica.ttc", "Times New Roman.ttf" }
-                : new[] { "LiberationSans-Regular.ttf", "DejaVuSans.ttf", "FreeSans.ttf", "arial.ttf" };
+        string[] candidates = GetFallbackFontCandidates();
 
         foreach (string candidate in candidates)
         {
@@ -127,5 +123,20 @@ public static class PlatformFontResolver
         }
 
         return null;
+    }
+
+    private static string[] GetFallbackFontCandidates()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return new[] { "arial.ttf", "segoeui.ttf", "calibri.ttf" };
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            return new[] { "Arial.ttf", "Helvetica.ttc", "Times New Roman.ttf" };
+        }
+
+        return new[] { "LiberationSans-Regular.ttf", "DejaVuSans.ttf", "FreeSans.ttf", "arial.ttf" };
     }
 }
