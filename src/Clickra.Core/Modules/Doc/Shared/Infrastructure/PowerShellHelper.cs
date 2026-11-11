@@ -117,7 +117,7 @@ public static class PowerShellHelper
     internal static bool IsMicrosoftOfficeReady(string appType) =>
         OfficeEngineDetector.IsMicrosoftOfficeReady(appType);
 
-    private static void ExportMicrosoftOfficeToPdf(
+    internal static void ExportMicrosoftOfficeToPdf(
         OfficeConversionRequest request,
         string language,
         Action<int, int, string>? onProgress,
