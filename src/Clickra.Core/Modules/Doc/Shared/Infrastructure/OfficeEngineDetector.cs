@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
 namespace Clickra.Core.Modules.Doc.Shared.Infrastructure;
@@ -24,6 +25,9 @@ public static class OfficeEngineDetector
 
     public static bool IsMicrosoftOfficeReady(string appType)
     {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return false;
+
         string? progId = GetMicrosoftOfficeProgId(appType);
         if (progId is null) return false;
 

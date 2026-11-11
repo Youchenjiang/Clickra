@@ -10,7 +10,6 @@ namespace Clickra.Core.Fonts;
     {
         private const string NotoSansTcFace = "notosanstc";
         private const string PMingLiUFace = "pmingliu";
-        private const string FontsDirectoryName = "Fonts";
 
         /// <summary>Default fallback font family.</summary>
         public string DefaultFontName => "Arial";
@@ -158,10 +157,8 @@ namespace Clickra.Core.Fonts;
             // Fallback for CJK faces if the file is missing
             if (baseFace == NotoSansTcFace)
             {
-                string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
-                string winFonts = Path.Combine(systemDir, "..", FontsDirectoryName);
-                string malgunPath = Path.Combine(winFonts, "malgun.ttf");
-                if (File.Exists(malgunPath))
+                string? malgunPath = PlatformFontResolver.ResolveFontFilePath("malgun.ttf");
+                if (malgunPath is not null && File.Exists(malgunPath))
                 {
                     try { return File.ReadAllBytes(malgunPath); }
                     catch
@@ -174,10 +171,8 @@ namespace Clickra.Core.Fonts;
             if (baseFace == NotoSansTcFace || baseFace == "kaiu" || baseFace == "msjh" || baseFace == "msgothic" ||
                 baseFace == "msyh" || baseFace == "malgun")
             {
-                string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
-                string winFonts = Path.Combine(systemDir, "..", FontsDirectoryName);
-                string kaiuPath = Path.Combine(winFonts, "kaiu.ttf");
-                if (File.Exists(kaiuPath))
+                string? kaiuPath = PlatformFontResolver.ResolveFontFilePath("kaiu.ttf");
+                if (kaiuPath is not null && File.Exists(kaiuPath))
                 {
                     try { return File.ReadAllBytes(kaiuPath); }
                     catch
@@ -185,8 +180,8 @@ namespace Clickra.Core.Fonts;
                         // Continue through the remaining CJK fallback chain.
                     }
                 }
-                string simsunbPath = Path.Combine(winFonts, "simsunb.ttf");
-                if (File.Exists(simsunbPath))
+                string? simsunbPath = PlatformFontResolver.ResolveFontFilePath("simsunb.ttf");
+                if (simsunbPath is not null && File.Exists(simsunbPath))
                 {
                     try { return File.ReadAllBytes(simsunbPath); }
                     catch
@@ -206,10 +201,9 @@ namespace Clickra.Core.Fonts;
                 }
             }
 
-            // Arial fallback
-            string systemDir2 = Environment.GetFolderPath(Environment.SpecialFolder.System);
-            string fallbackPath = Path.Combine(systemDir2, "..", FontsDirectoryName, "arial.ttf");
-            if (File.Exists(fallbackPath))
+            // Cross-platform font fallback (e.g. Arial, LiberationSans, DejaVuSans)
+            string? fallbackPath = PlatformFontResolver.ResolveFallbackFontPath();
+            if (fallbackPath is not null && File.Exists(fallbackPath))
             {
                 try { return File.ReadAllBytes(fallbackPath); } catch { }
             }
@@ -221,8 +215,6 @@ namespace Clickra.Core.Fonts;
         // skipcq: CS-R1140 — the explicit family/style mapping mirrors installed Windows font filenames.
         private string GetFontPath(string baseFace, string style)
         {
-            string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
-            string winFonts = Path.Combine(systemDir, "..", FontsDirectoryName);
             string file = baseFace switch
             {
                 "kaiu" => "kaiu.ttf",
@@ -299,7 +291,7 @@ namespace Clickra.Core.Fonts;
                 }
             };
 
-            return Path.Combine(winFonts, file);
+            return PlatformFontResolver.ResolveFontFilePath(file) ?? file;
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3776", Justification = "TTC parsing validates each binary table boundary explicitly before reconstructing a standalone font.")]

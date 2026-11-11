@@ -13,7 +13,6 @@ namespace Clickra.Core.Modules.Doc.Shared.Infrastructure;
 
 public static class LibreOfficeHelper
 {
-    private const string LibreOfficeExecutableName = "soffice.exe";
     private const string LibreOfficeProgramDirectoryName = "program";
     private const uint SemFailCriticalErrors = 0x0001;
     private const uint SemNoGpFaultErrorBox = 0x0002;
@@ -29,6 +28,18 @@ public static class LibreOfficeHelper
 
     [DllImport("kernel32.dll")]
     private static extern uint SetErrorMode(uint uMode);
+
+    private static uint SafeSetErrorMode(uint uMode)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            try { return SetErrorMode(uMode); } catch { }
+        }
+        return 0;
+    }
+
+    public static string DefaultLibreOfficeExecutableName =>
+        RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "soffice.exe" : "soffice";
 
     public static bool CanConvert(string appType) =>
         appType.Equals("Word", StringComparison.OrdinalIgnoreCase) ||
@@ -97,7 +108,7 @@ public static class LibreOfficeHelper
             startInfo.ArgumentList.Add("--headless");
             startInfo.ArgumentList.Add("--version");
 
-            uint previousErrorMode = SetErrorMode(SemFailCriticalErrors | SemNoGpFaultErrorBox | SemNoOpenFileErrorBox);
+            uint previousErrorMode = SafeSetErrorMode(SemFailCriticalErrors | SemNoGpFaultErrorBox | SemNoOpenFileErrorBox);
             using var process = StartProcessAndRestoreErrorMode(startInfo, previousErrorMode);
             if (process == null)
                 return false;
@@ -199,7 +210,7 @@ public static class LibreOfficeHelper
         lock (ConversionLaunchLock)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            uint previousErrorMode = SetErrorMode(SemFailCriticalErrors | SemNoGpFaultErrorBox | SemNoOpenFileErrorBox);
+            uint previousErrorMode = SafeSetErrorMode(SemFailCriticalErrors | SemNoGpFaultErrorBox | SemNoOpenFileErrorBox);
             launched = StartProcessAndRestoreErrorMode(startInfo, previousErrorMode);
             process = launched ?? throw new InvalidOperationException(Localization.T("error_libreoffice_start", language));
         }
@@ -341,7 +352,7 @@ public static class LibreOfficeHelper
         }
         finally
         {
-            SetErrorMode(previousErrorMode);
+            SafeSetErrorMode(previousErrorMode);
         }
     }
 
@@ -351,7 +362,9 @@ public static class LibreOfficeHelper
             return false;
 
         string fileName = Path.GetFileName(executablePath);
-        if (!fileName.Equals(LibreOfficeExecutableName, StringComparison.OrdinalIgnoreCase) &&
+        if (!fileName.Equals(DefaultLibreOfficeExecutableName, StringComparison.OrdinalIgnoreCase) &&
+            !fileName.Equals("soffice", StringComparison.OrdinalIgnoreCase) &&
+            !fileName.Equals("soffice.exe", StringComparison.OrdinalIgnoreCase) &&
             !fileName.Equals("soffice.com", StringComparison.OrdinalIgnoreCase))
             return false;
 
@@ -359,8 +372,10 @@ public static class LibreOfficeHelper
         if (string.IsNullOrWhiteSpace(programDir))
             return false;
 
-        string[] requiredFiles =
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
+            string[] requiredFiles =
+            {
                 "soffice.bin",
                 "mergedlo.dll",
                 "sal3.dll",
@@ -368,19 +383,20 @@ public static class LibreOfficeHelper
                 "cppuhelper3MSC.dll"
             };
 
-        foreach (string requiredFile in requiredFiles)
-        {
-            string path = Path.Combine(programDir, requiredFile);
-            if (!System.IO.File.Exists(path))
-                return false;
-            try
+            foreach (string requiredFile in requiredFiles)
             {
-                if (new FileInfo(path).Length <= 0)
+                string path = Path.Combine(programDir, requiredFile);
+                if (!System.IO.File.Exists(path))
                     return false;
-            }
-            catch
-            {
-                return false;
+                try
+                {
+                    if (new FileInfo(path).Length <= 0)
+                        return false;
+                }
+                catch
+                {
+                    return false;
+                }
             }
         }
 
@@ -394,7 +410,7 @@ public static class LibreOfficeHelper
             string? programDir = Path.GetDirectoryName(executablePath);
             if (!string.IsNullOrWhiteSpace(programDir))
             {
-                string windowedLauncher = Path.Combine(programDir, LibreOfficeExecutableName);
+                string windowedLauncher = Path.Combine(programDir, DefaultLibreOfficeExecutableName);
                 if (System.IO.File.Exists(windowedLauncher))
                     return windowedLauncher;
             }
@@ -405,12 +421,13 @@ public static class LibreOfficeHelper
 
     private static IEnumerable<string> EnumerateExecutableCandidates(string? configuredPath)
     {
+        string exeName = DefaultLibreOfficeExecutableName;
         if (!string.IsNullOrWhiteSpace(configuredPath))
         {
             if (Directory.Exists(configuredPath))
             {
-                yield return Path.Combine(configuredPath, LibreOfficeProgramDirectoryName, LibreOfficeExecutableName);
-                yield return Path.Combine(configuredPath, LibreOfficeExecutableName);
+                yield return Path.Combine(configuredPath, LibreOfficeProgramDirectoryName, exeName);
+                yield return Path.Combine(configuredPath, exeName);
             }
             else
             {
@@ -423,8 +440,8 @@ public static class LibreOfficeHelper
         {
             if (Directory.Exists(envPath))
             {
-                yield return Path.Combine(envPath, LibreOfficeProgramDirectoryName, LibreOfficeExecutableName);
-                yield return Path.Combine(envPath, LibreOfficeExecutableName);
+                yield return Path.Combine(envPath, LibreOfficeProgramDirectoryName, exeName);
+                yield return Path.Combine(envPath, exeName);
             }
             else
             {
@@ -432,19 +449,34 @@ public static class LibreOfficeHelper
             }
         }
 
-        string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-        string programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-        if (!string.IsNullOrEmpty(programFiles))
-            yield return Path.Combine(programFiles, "LibreOffice", LibreOfficeProgramDirectoryName, LibreOfficeExecutableName);
-        if (!string.IsNullOrEmpty(programFilesX86))
-            yield return Path.Combine(programFilesX86, "LibreOffice", LibreOfficeProgramDirectoryName, LibreOfficeExecutableName);
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            string programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+            if (!string.IsNullOrEmpty(programFiles))
+                yield return Path.Combine(programFiles, "LibreOffice", LibreOfficeProgramDirectoryName, exeName);
+            if (!string.IsNullOrEmpty(programFilesX86))
+                yield return Path.Combine(programFilesX86, "LibreOffice", LibreOfficeProgramDirectoryName, exeName);
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            yield return "/usr/bin/soffice";
+            yield return "/usr/local/bin/soffice";
+            yield return "/snap/bin/soffice";
+            yield return "/opt/libreoffice/program/soffice";
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            yield return "/Applications/LibreOffice.app/Contents/MacOS/soffice";
+            yield return "/usr/local/bin/soffice";
+        }
 
         string pathValue = Environment.GetEnvironmentVariable("PATH") ?? "";
         foreach (string pathDir in pathValue.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
         {
             string trimmed = pathDir.Trim('"');
             if (trimmed.Length > 0)
-                yield return Path.Combine(trimmed, LibreOfficeExecutableName);
+                yield return Path.Combine(trimmed, exeName);
         }
     }
 }
