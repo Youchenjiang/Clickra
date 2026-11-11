@@ -1,5 +1,11 @@
 # Changelog
 
+## [v3.19.9.0] - 2026-11-12
+
+- **Office 轉檔引擎策略模式解耦 (Office Conversion Strategy Abstraction)**：落實跨平台新世代第一階段（Core 解耦）。抽取 `IOfficeConversionStrategy` 契約介面，將 Office 轉檔能力劃分為 `LibreOfficeConversionStrategy`（跨平台無頭 CLI）與 `MicrosoftOfficeConversionStrategy`（Windows COM 自動化），解除歷史上各處理器對 Windows PowerShell COM 的直接綁定。
+- **策略解析與平滑回退調度器 (Office Conversion Strategy Resolver & Smooth Fallback)**：引入 `OfficeConversionStrategyResolver` 統一調度轉檔策略。在非 Windows 系統或無 Office 環境自動採用 LibreOffice 無頭轉檔；在 Windows 系統發生 COM 可恢復崩潰時自動平滑回退至 LibreOffice，保障批次轉檔穩定性。
+- **處理器層解耦與可靠性測試套件 (Processor Decoupling & Reliability Test Suite)**：重構 `WordToPdfProcessor`、`ExcelToPdfProcessor` 與 `PptToPdfProcessor` 統一經由策略調度器執行；於測試套件新增 `FakeOfficeStrategy` 驗證路由與自動回退邏輯，達成 100% 綠燈與零破壞性回歸。
+
 ## [v3.19.8.0] - 2026-11-11
 
 - **跨平台字型探測與回退抽象 (Cross-Platform Font Discovery & Fallback Abstraction)**：落實跨平台新世代第一階段（Core 解耦）。新增 `PlatformFontResolver`，將硬編碼之 `C:\Windows\Fonts` 依賴解耦為支援 Windows、Linux（`/usr/share/fonts`、`~/.local/share/fonts`）與 macOS（`/Library/Fonts`、`~/Library/Fonts`）之多路徑探測機制，並支援 `CLICKRA_FONTS_DIR` 容器與無頭環境字型注入。

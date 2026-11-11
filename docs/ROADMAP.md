@@ -123,6 +123,7 @@
     - [x] L0 入口單一啟動路由器（ClickraLauncher 統一派送與環境標記，消除 B2 啟動重複判斷債務；Phase 7 完成）。
     - [x] PDF 縮圖與預覽契約純化（抽象 PdfPageThumbnailQuery 與 PdfPrintPreviewQuery，結清 E3、C2、E9 債務；Phase 8 完成）。
     - [x] 跨平台字型與 Office 適配器抽象（導入 PlatformFontResolver 與跨平台 LibreOffice 探測，結清硬編碼路徑依賴；v3.19.8.0 完成）。
+    - [x] Office 轉檔策略解耦（抽取 IOfficeConversionStrategy、OfficeConversionStrategyResolver 與平滑回退，結清 COM 綁定債務；v3.19.9.0 完成）。
     - 解耦 Windows 專屬依賴（GDI+、Imazen.WebP、Windows.Data.Pdf 轉跨平台 SkiaSharp / PDFium 方案）。
 
     - 規範詳見：[module_architecture_unification_manifesto.md](architecture/spec/module_architecture_unification_manifesto.md)、[architecture_backlog.md](architecture/spec/architecture_backlog.md) 與 [v4_cross_platform_unification.md](specs/v4_cross_platform_unification.md)。
