@@ -13,7 +13,7 @@ public class WordToPdfProcessor : SingleFileProcessorBase
 
     protected override void ProcessSingleFile(string fullPath, string targetOutputPath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
     {
-        PowerShellHelper.ExportOfficeToPdf(
+        OfficeConversionStrategyResolver.Default.ExecuteConversion(
             new OfficeConversionRequest("Word", fullPath, targetOutputPath, fileIndex, totalFiles),
             OfficeConversionOptions.Read(options),
             onProgress,
