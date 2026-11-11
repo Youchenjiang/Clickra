@@ -148,13 +148,13 @@ namespace Clickra.UI
         private string PromptVisualSplitPages(IntPtr hwnd, string filePath)
         {
             string? password = null;
-            if (Clickra.Core.Modules.Pdf.Split.Processing.PdfSplitProcessor.IsPasswordProtected(filePath))
+            if (Clickra.Core.Modules.Pdf.Split.Application.PdfPageCountQuery.IsPasswordProtected(filePath))
             {
                 bool isRetry = false;
                 while (true)
                 {
                     password = ResolveDecryptPassword(hwnd, filePath, isRetry);
-                    if (Clickra.Core.Modules.Pdf.Split.Processing.PdfSplitProcessor.GetPageCount(filePath, password) > 0)
+                    if (Clickra.Core.Modules.Pdf.Split.Application.PdfPageCountQuery.Get(filePath, password) > 0)
                     {
                         _lastResolvedPassword = password;
                         break;

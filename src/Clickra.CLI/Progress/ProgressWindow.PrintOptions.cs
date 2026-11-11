@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Modules.Pdf.Print.Application;
 using Clickra.Core.Modules.Pdf.Print.Ports;
-using Clickra.Core.Modules.Pdf.Print.Processing;
 using Clickra.Core.Processors;
 using Clickra.Core.Rendering;
 using Clickra.UI.Layout;
@@ -201,7 +200,7 @@ public partial class ProgressWindow
 
         if (_files.Count == 0 || !File.Exists(_files[0])) return;
         string filePath = _files[0];
-        string fontName = PdfPageThumbnailRenderer.GetTextFontName(SettingsPresentationController.Shared.Language);
+        string fontName = LocalizedUiFontSelector.GetTextFontName(SettingsPresentationController.Shared.Language);
 
         // skipcq: CS-P1022
         Task.Run(() => RenderThumbnailBackground(filePath, page, fontName), _cts.Token);
@@ -214,11 +213,7 @@ public partial class ProgressWindow
         try
         {
             ReadPdfPageDimensions(filePath, page);
-            bmp = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, page, 456, fontName);
-            if (bmp != null && _printDarken)
-            {
-                PdfContrastEnhancer.Enhance(bmp, 2.2);
-            }
+            bmp = PdfPrintPreviewQuery.RenderPageFromFile(filePath, page, 456, fontName, _printDarken);
         }
         // skipcq: CS-R1008
         catch

@@ -507,7 +507,7 @@ public sealed partial class MainPage : Page
                 SplitPrompt: async (index, inputPath, token) =>
                 {
                     string? password = null;
-                    if (Clickra.Core.Modules.Pdf.Split.Processing.PdfSplitProcessor.IsPasswordProtected(inputPath))
+                    if (Clickra.Core.Modules.Pdf.Split.Application.PdfPageCountQuery.IsPasswordProtected(inputPath))
                     {
                         password = await DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L));
                         if (password is null) return null;

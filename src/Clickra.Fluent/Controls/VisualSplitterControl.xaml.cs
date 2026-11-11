@@ -1,7 +1,5 @@
 using Clickra.Core;
 using Clickra.Core.Modules.Pdf.Split.Presentation;
-using Clickra.Core.Processors;
-using Clickra.Core.Rendering;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -354,9 +352,9 @@ public sealed partial class VisualSplitterControl : UserControl
         else
         {
             // Windows PDF renderer unavailable (e.g. encrypted file): fall back to the
-            // shared Core word-overlay renderer.
-            string fontName = PdfPageThumbnailRenderer.GetTextFontName(SettingsPresentationController.Shared.Language);
-            var bmp = await Task.Run(() => PdfPageThumbnailRenderer.RenderPageFromFile(_pdfPath, page, RenderWidth, fontName, _password));
+            // shared Core word-overlay renderer via the presentation model.
+            string fontName = LocalizedUiFontSelector.GetTextFontName(SettingsPresentationController.Shared.Language);
+            var bmp = await Task.Run(() => VisualSplitModel.RenderPage(_pdfPath, page, RenderWidth, fontName, _password));
             source = bmp == null ? null : await ToBitmapImageAsync(bmp);
             bmp?.Dispose();
         }

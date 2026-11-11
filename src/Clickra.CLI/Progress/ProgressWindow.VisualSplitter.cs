@@ -11,7 +11,6 @@ using Clickra.Core;
 using Clickra.Core.Application;
 using Clickra.Core.Modules.Pdf.Split.Presentation;
 using Clickra.Core.Processors;
-using Clickra.Core.Rendering;
 
 using static Clickra.UI.Native.Win32;
 
@@ -136,7 +135,7 @@ public partial class ProgressWindow
             {
                 try
                 {
-                    var pageBmp = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, p, 660, fontName, password);
+                    var pageBmp = VisualSplitModel.RenderPage(filePath, p, 660, fontName, password);
                     if (pageBmp != null)
                         _visualSplitPageThumbnails[p] = pageBmp;
                 }
@@ -179,7 +178,7 @@ public partial class ProgressWindow
             lock (_stateLock)
                 if (!IsVisualSplitThumbnailCurrent(generation)) return;
 
-            bitmap = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, page, 660, GetThumbnailFontName(), _visualSplitPassword);
+            bitmap = VisualSplitModel.RenderPage(filePath, page, 660, GetThumbnailFontName(), _visualSplitPassword);
             if (!TryCacheVisualSplitThumbnail(page, generation, bitmap)) return;
             bitmap = null; // Ownership has moved into the cache.
             if (_hwnd != IntPtr.Zero)
@@ -270,7 +269,7 @@ public partial class ProgressWindow
             try
             {
                 if (pageNum < 1) return;
-                var bmp = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, pageNum, targetW, fontName, _visualSplitPassword);
+                var bmp = VisualSplitModel.RenderPage(filePath, pageNum, targetW, fontName, _visualSplitPassword);
                 if (bmp == null) return;
 
                 lock (_stateLock)
