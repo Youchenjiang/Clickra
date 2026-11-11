@@ -135,6 +135,22 @@ def _check_details(checks, required):
     return details
 
 
+def _sonar_quality_problems(quality):
+    problems = []
+    if quality is None:
+        return problems
+    if quality.get("quality_gate", {}).get("status") != "OK":
+        problems.append("SonarQube quality gate not passed")
+    dup = quality.get("metrics", {}).get("new_duplicated_lines_density")
+    if dup is not None:
+        try:
+            if float(dup) > 0.0:
+                problems.append(f"SonarQube new code duplication is {dup}% (must be 0.0%)")
+        except (ValueError, TypeError):
+            pass
+    return problems
+
+
 def summarize(pr, report, *, remote_sha):
     """An absent or incomplete check is not a pass. Skip is reported separately."""
     head = pr.get("headRefOid")
@@ -146,18 +162,10 @@ def summarize(pr, report, *, remote_sha):
     count = report["counts"]["unresolved"]
     sonar_count = report["sonar"]["total"]
     pr_body = pr.get("body") or ""
-    problems = _pr_problems(pr, remote_sha) + _finding_problems(report, groups, required, pr_body)
     quality = report.get("sonar_quality")
-    if quality is not None:
-        if quality.get("quality_gate", {}).get("status") != "OK":
-            problems.append("SonarQube quality gate not passed")
-        dup = quality.get("metrics", {}).get("new_duplicated_lines_density")
-        if dup is not None:
-            try:
-                if float(dup) > 0.0:
-                    problems.append(f"SonarQube new code duplication is {dup}% (must be 0.0%)")
-            except (ValueError, TypeError):
-                pass
+    problems = (_pr_problems(pr, remote_sha) +
+                _finding_problems(report, groups, required, pr_body) +
+                _sonar_quality_problems(quality))
     unresolved_details = [
         {"id": t["id"], "path": t["path"], "line": t["line"], "outdated": t["outdated"]}
         for t in report.get("threads", []) if not t.get("resolved")
