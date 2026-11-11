@@ -10,7 +10,6 @@ namespace Clickra.Core.Fonts;
     {
         private const string NotoSansTcFace = "notosanstc";
         private const string PMingLiUFace = "pmingliu";
-        private const string FontsDirectoryName = "Fonts";
 
         /// <summary>Default fallback font family.</summary>
         public string DefaultFontName => "Arial";
@@ -155,74 +154,61 @@ namespace Clickra.Core.Fonts;
                 }
             }
 
-            // Fallback for CJK faces if the file is missing
+            return ResolveFallbackFontBytes(baseFace, style);
+        }
+
+        private byte[]? ResolveFallbackFontBytes(string baseFace, string style)
+        {
             if (baseFace == NotoSansTcFace)
             {
-                string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
-                string winFonts = Path.Combine(systemDir, "..", FontsDirectoryName);
-                string malgunPath = Path.Combine(winFonts, "malgun.ttf");
-                if (File.Exists(malgunPath))
-                {
-                    try { return File.ReadAllBytes(malgunPath); }
-                    catch
-                    {
-                        // Continue through the remaining CJK fallback chain.
-                    }
-                }
+                byte[]? malgun = TryReadFontFile(PlatformFontResolver.ResolveFontFilePath("malgun.ttf"));
+                if (malgun is not null)
+                    return malgun;
             }
 
-            if (baseFace == NotoSansTcFace || baseFace == "kaiu" || baseFace == "msjh" || baseFace == "msgothic" ||
-                baseFace == "msyh" || baseFace == "malgun")
+            if (IsCjkFace(baseFace))
             {
-                string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
-                string winFonts = Path.Combine(systemDir, "..", FontsDirectoryName);
-                string kaiuPath = Path.Combine(winFonts, "kaiu.ttf");
-                if (File.Exists(kaiuPath))
-                {
-                    try { return File.ReadAllBytes(kaiuPath); }
-                    catch
-                    {
-                        // Continue through the remaining CJK fallback chain.
-                    }
-                }
-                string simsunbPath = Path.Combine(winFonts, "simsunb.ttf");
-                if (File.Exists(simsunbPath))
-                {
-                    try { return File.ReadAllBytes(simsunbPath); }
-                    catch
-                    {
-                        // Continue through the remaining CJK fallback chain.
-                    }
-                }
+                byte[]? kaiu = TryReadFontFile(PlatformFontResolver.ResolveFontFilePath("kaiu.ttf"));
+                if (kaiu is not null)
+                    return kaiu;
+
+                byte[]? simsunb = TryReadFontFile(PlatformFontResolver.ResolveFontFilePath("simsunb.ttf"));
+                if (simsunb is not null)
+                    return simsunb;
             }
 
-            // Style fallback
             if (!string.IsNullOrEmpty(style))
             {
-                string regularPath = GetFontPath(baseFace, "");
-                if (File.Exists(regularPath))
-                {
-                    try { return File.ReadAllBytes(regularPath); } catch { }
-                }
+                byte[]? regular = TryReadFontFile(GetFontPath(baseFace, ""));
+                if (regular is not null)
+                    return regular;
             }
 
-            // Arial fallback
-            string systemDir2 = Environment.GetFolderPath(Environment.SpecialFolder.System);
-            string fallbackPath = Path.Combine(systemDir2, "..", FontsDirectoryName, "arial.ttf");
-            if (File.Exists(fallbackPath))
+            return TryReadFontFile(PlatformFontResolver.ResolveFallbackFontPath());
+        }
+
+        private static bool IsCjkFace(string baseFace) =>
+            baseFace is NotoSansTcFace or "kaiu" or "msjh" or "msgothic" or "msyh" or "malgun";
+
+        private static byte[]? TryReadFontFile(string? path)
+        {
+            if (path is null || !File.Exists(path))
+                return null;
+
+            try
             {
-                try { return File.ReadAllBytes(fallbackPath); } catch { }
+                return File.ReadAllBytes(path);
             }
-
-            return null;
+            catch
+            {
+                return null;
+            }
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3776", Justification = "Explicit family/style mapping mirrors Windows font filenames and keeps fallback behavior auditable.")]
         // skipcq: CS-R1140 — the explicit family/style mapping mirrors installed Windows font filenames.
         private string GetFontPath(string baseFace, string style)
         {
-            string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
-            string winFonts = Path.Combine(systemDir, "..", FontsDirectoryName);
             string file = baseFace switch
             {
                 "kaiu" => "kaiu.ttf",
@@ -299,7 +285,7 @@ namespace Clickra.Core.Fonts;
                 }
             };
 
-            return Path.Combine(winFonts, file);
+            return PlatformFontResolver.ResolveFontFilePath(file) ?? file;
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3776", Justification = "TTC parsing validates each binary table boundary explicitly before reconstructing a standalone font.")]

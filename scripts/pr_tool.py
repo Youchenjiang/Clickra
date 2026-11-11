@@ -303,6 +303,14 @@ def _print_sonar_diagnostics(repo, number):
     except Exception as exc:
         print(f"SonarQube Quality Gate: unavailable ({safe_terminal(exc)})")
 
+    try:
+        data = sonar_inventory(project, number, base_url=base_url, token=token)
+        if data.get("total", 0) > 0:
+            print(f"\nSonarQube Cloud: {data['total']} open/confirmed issue(s)")
+            _print_sonar_issues(data.get("issues") or [])
+    except Exception as exc:
+        print(f"SonarQube issues: unavailable ({safe_terminal(exc)})")
+
 
 def _print_open_threads(result):
     linked = {}

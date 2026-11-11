@@ -1,5 +1,11 @@
 # Changelog
 
+## [v3.19.8.0] - 2026-11-11
+
+- **跨平台字型探測與回退抽象 (Cross-Platform Font Discovery & Fallback Abstraction)**：落實跨平台新世代第一階段（Core 解耦）。新增 `PlatformFontResolver`，將硬編碼之 `C:\Windows\Fonts` 依賴解耦為支援 Windows、Linux（`/usr/share/fonts`、`~/.local/share/fonts`）與 macOS（`/Library/Fonts`、`~/Library/Fonts`）之多路徑探測機制，並支援 `CLICKRA_FONTS_DIR` 容器與無頭環境字型注入。
+- **Office 轉檔引擎跨平台調用與環境自適應 (Cross-Platform LibreOffice Invocation & Engine Safety)**：重構 `LibreOfficeHelper` 與 `OfficeEngineDetector`，自動適配各平台可執行檔名稱（Windows `soffice.exe` / Unix `soffice`）與 Unix 安裝路徑（`/usr/bin/soffice`、`/Applications/LibreOffice.app`），安全隔離 Windows 專有 Win32 Registry 與 kernel32 `SetErrorMode`，確保非 Windows 平台平滑自適應。
+- **跨平台路徑與字型偵測單元測試 (Cross-Platform Discovery Unit Tests)**：新增跨平台字型目錄探測、回退字型解析、以及無 COM 環境下 Office 引擎自適應測試，保證全平台安全回退與零破壞性回歸。
+
 ## [v3.19.7.0] - 2026-11-11
 
 - **PDF 縮圖與預覽契約純化 (PDF Thumbnail & Preview Query Contracts)**：落實核心解耦與架構債務清理（根治 E3、C2、E9 技術債）。建立 `PdfPageThumbnailQuery` 與 `PdfPrintPreviewQuery` 應用層查詢邊界，並由 `VisualSplitModel.RenderPage` 統一提供畫面預覽點，徹底終結 Win32 與 WinUI 畫面端直接穿透呼叫底層繪圖類別 `PdfPageThumbnailRenderer` 之架構違規。

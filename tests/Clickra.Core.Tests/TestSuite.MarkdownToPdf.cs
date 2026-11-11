@@ -294,6 +294,19 @@ static partial class TestSuite
                 Assert.True(resolver.GetFont("constantia") is { Length: > 0 }, "Constantia must resolve to real font bytes for PDF output.");
             }));
 
+        runner.Run("PlatformFontResolver discovers font directories and resolves font fallback", () =>
+        {
+            var directories = new List<string>(PlatformFontResolver.GetFontDirectories());
+            Assert.True(directories.Count > 0, "PlatformFontResolver must return at least one candidate font directory.");
+
+            string? fallbackPath = PlatformFontResolver.ResolveFallbackFontPath();
+            if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+            {
+                Assert.True(fallbackPath is not null && File.Exists(fallbackPath),
+                    $"Expected fallback font to resolve on Windows, but got: {fallbackPath}");
+            }
+        });
+
         runner.Run("Markdown to PDF: custom template changes rendered page geometry", () =>
             RunWithTempDirectory(tempDir =>
             {

@@ -162,6 +162,54 @@ static partial class TestSuite
             }
         });
 
+        runner.Run("LibreOffice helper provides cross-platform executable naming and path resolution", () =>
+        {
+            string defaultName = LibreOfficeHelper.DefaultLibreOfficeExecutableName;
+            Assert.True(!string.IsNullOrWhiteSpace(defaultName), "Expected non-empty default executable name.");
+            Assert.True(defaultName == "soffice.exe" || defaultName == "soffice", "Expected soffice.exe or soffice.");
+
+            string tempDir = Path.Combine(Path.GetTempPath(), $"clickra-lo-xplat-{Guid.NewGuid():N}");
+            string customSoffice = Path.Combine(tempDir, defaultName);
+            try
+            {
+                Directory.CreateDirectory(tempDir);
+                File.WriteAllText(customSoffice, "mock-soffice");
+
+                Assert.True(LibreOfficeHelper.TryResolveExecutable(customSoffice, out string resolved),
+                    "Expected custom executable path to resolve across platforms.");
+                Assert.Equal(customSoffice, resolved);
+            }
+            finally
+            {
+                try
+                {
+                    if (Directory.Exists(tempDir))
+                        Directory.Delete(tempDir, recursive: true);
+                }
+                catch (IOException)
+                {
+                    // Best-effort cleanup of temporary test directory
+                }
+            }
+        });
+
+        runner.Run("OfficeEngineDetector operates safely on current platform", () =>
+        {
+            Assert.Equal("Word", OfficeEngineDetector.GetOfficeAppForCommand("word2pdf") ?? "");
+            Assert.Equal("Excel", OfficeEngineDetector.GetOfficeAppForCommand("excel2pdf") ?? "");
+            Assert.Equal("PowerPoint", OfficeEngineDetector.GetOfficeAppForCommand("ppt2pdf") ?? "");
+            Assert.True(OfficeEngineDetector.GetOfficeAppForCommand("pdf2img") is null, "Unknown command should return null.");
+
+            // Must not throw platform exceptions
+            bool wordReady = OfficeEngineDetector.IsMicrosoftOfficeReady("Word");
+            bool suiteReady = OfficeEngineDetector.IsMicrosoftSuiteReady();
+            if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+            {
+                Assert.False(wordReady, "Microsoft Office COM is not available on non-Windows platforms.");
+                Assert.False(suiteReady, "Microsoft Office Suite is not available on non-Windows platforms.");
+            }
+        });
+
         runner.Run("LibreOffice helper falls back to environment path", () =>
         {
             string? oldEnv = Environment.GetEnvironmentVariable("CLICKRA_LIBREOFFICE_PATH");

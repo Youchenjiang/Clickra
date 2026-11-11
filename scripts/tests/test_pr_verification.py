@@ -45,7 +45,8 @@ class VerificationTests(unittest.TestCase):
         pr = {"headRefOid": "a" * 40, "baseRefName": "main",
               "statusCheckRollup": [{"name": "CI", "status": "IN_PROGRESS"},
                                     {"name": "Sourcery", "conclusion": "SKIPPED"}]}
-        report = {"counts": {"unresolved": 1}, "sonar": {"total": 2},
+        report = {"counts": {"unresolved": 1},
+                  "sonar": {"total": 2, "issues": [{"key": "S1", "message": "msg", "component": "c.cs", "line": 1, "rule": "r1", "severity": "MAJOR"}]},
                   "threads": [{"id": "PRRT_1", "path": "file.cs", "line": 10, "resolved": False, "outdated": True}]}
         result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
         self.assertFalse(result["ready"])
@@ -53,6 +54,8 @@ class VerificationTests(unittest.TestCase):
         self.assertGreaterEqual(len(result["problems"]), 3)
         self.assertEqual([{"id": "PRRT_1", "path": "file.cs", "line": 10, "outdated": True}],
                          result["unresolved_thread_details"])
+        self.assertEqual([{"key": "S1", "message": "msg", "component": "c.cs", "line": 1, "rule": "r1", "severity": "MAJOR"}],
+                         result["sonar_issue_details"])
 
     def test_clean_snapshot_passes_with_explicit_skips(self):
         pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
