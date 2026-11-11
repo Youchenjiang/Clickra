@@ -90,22 +90,27 @@ public static class PlatformFontResolver
             // On Unix systems, fonts may be placed in subdirectories (e.g. /usr/share/fonts/truetype/...)
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                try
-                {
-                    foreach (string file in Directory.EnumerateFiles(dir, fontFileName, SearchOption.AllDirectories))
-                    {
-                        if (File.Exists(file))
-                            return file;
-                    }
-                }
-                catch
-                {
-                    // Ignore inaccessible subdirectories during enumeration
-                }
+                string? recursiveMatch = TryFindInSubdirectories(dir, fontFileName);
+                if (recursiveMatch is not null)
+                    return recursiveMatch;
             }
         }
 
         return null;
+    }
+
+    private static string? TryFindInSubdirectories(string dir, string fontFileName)
+    {
+        try
+        {
+            return Directory.EnumerateFiles(dir, fontFileName, SearchOption.AllDirectories)
+                .FirstOrDefault(File.Exists);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Ignore inaccessible subdirectories during enumeration
+            return null;
+        }
     }
 
     /// <summary>
