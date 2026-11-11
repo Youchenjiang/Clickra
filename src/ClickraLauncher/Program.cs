@@ -33,30 +33,42 @@ internal static class Program
             launchedFluent = TryLaunchUnpackagedFluent(exeDir, args, out pid);
         }
 
-        if (launchedFluent)
+        if (launchedFluent && IsFluentRunning(pid))
         {
-            try
-            {
-                var proc = Process.GetProcessById((int)pid);
-                const int pollIntervalMs = 100;
-                int elapsedMs = 0;
-                while (elapsedMs < FluentTimeoutMs)
-                {
-                    if (proc.HasExited)
-                    {
-                        // Fluent exited or crashed early — immediately break to native fallback.
-                        break;
-                    }
-                    Thread.Sleep(pollIntervalMs);
-                    elapsedMs += pollIntervalMs;
-                }
-                if (!proc.HasExited)
-                    return 0;
-            }
-            catch (ArgumentException) { /* Process already exited or invalid PID — safe to fall back. */ }
+            return 0;
         }
 
-        // Fallback: NativeAOT Dashboard
+        return LaunchNativeFallback(exeDir, args);
+    }
+
+    private static bool IsFluentRunning(uint pid)
+    {
+        try
+        {
+            var proc = Process.GetProcessById((int)pid);
+            const int pollIntervalMs = 100;
+            int elapsedMs = 0;
+            while (elapsedMs < FluentTimeoutMs)
+            {
+                if (proc.HasExited)
+                {
+                    // Fluent exited or crashed early — immediately break to native fallback.
+                    return false;
+                }
+                Thread.Sleep(pollIntervalMs);
+                elapsedMs += pollIntervalMs;
+            }
+            return !proc.HasExited;
+        }
+        catch (ArgumentException)
+        {
+            // Process already exited or invalid PID — safe to fall back.
+            return false;
+        }
+    }
+
+    private static int LaunchNativeFallback(string? exeDir, string[] args)
+    {
         if (exeDir == null) return 1;
         string? aotPath = FindExe(exeDir, AotExe);
         if (aotPath == null) return 1;
