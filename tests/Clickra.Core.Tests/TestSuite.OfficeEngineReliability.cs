@@ -276,9 +276,25 @@ static partial class TestSuite
             }
             Assert.True(caughtNonRecoverable, "Non-recoverable exception should bubble up.");
             Assert.Equal(3, loFake.ConvertedCount);
+
+            // 6. Injected LibreOffice strategy capability is honored during fallback
+            var customLo = new FakeOfficeStrategy("libreoffice", canConvert: false, isReady: true);
+            var customResolver = new OfficeConversionStrategyResolver(msFake, customLo);
+            msFake.ExceptionToThrow = new InvalidOperationException("COM server crashed");
+            bool caughtFallbackBypass = false;
+            try
+            {
+                customResolver.ExecuteConversion(request, autoSettings, null, CancellationToken.None);
+            }
+            catch (InvalidOperationException ex) when (ex.Message == "COM server crashed")
+            {
+                caughtFallbackBypass = true;
+            }
+            Assert.True(caughtFallbackBypass, "When custom LibreOffice strategy cannot convert appType, Microsoft failure must bubble up.");
         });
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S1172", Justification = "Test fake implementation of IOfficeConversionStrategy interface.")]
     private sealed class FakeOfficeStrategy : IOfficeConversionStrategy
     {
         public FakeOfficeStrategy(string engineName, bool canConvert = true, bool isReady = true)
@@ -294,8 +310,18 @@ static partial class TestSuite
         public int ConvertedCount { get; private set; }
         public Exception? ExceptionToThrow { get; set; }
 
-        public bool CanConvert(string appType) => CanConvertResult;
-        public bool IsReady(string appType, OfficeConversionSettings settings) => IsReadyResult;
+        public bool CanConvert(string appType)
+        {
+            _ = appType;
+            return CanConvertResult;
+        }
+
+        public bool IsReady(string appType, OfficeConversionSettings settings)
+        {
+            _ = appType;
+            _ = settings;
+            return IsReadyResult;
+        }
 
         public void ConvertToPdf(
             OfficeConversionRequest request,
@@ -303,6 +329,10 @@ static partial class TestSuite
             Action<int, int, string>? onProgress,
             CancellationToken cancellationToken)
         {
+            _ = request;
+            _ = settings;
+            _ = onProgress;
+            _ = cancellationToken;
             if (ExceptionToThrow is not null)
                 throw ExceptionToThrow;
             ConvertedCount++;
