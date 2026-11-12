@@ -1,5 +1,6 @@
 using Clickra.Core.Application;
 using Clickra.Core.Modules.Sys.Settings.Application;
+using Clickra.Core.Modules.Sys.Settings.Presentation;
 using System;
 using System.IO;
 using System.Linq;
@@ -212,6 +213,7 @@ internal static partial class ClickraStartup
         Console.WriteLine("Usage: Clickra <command> [options] <file...>");
         Console.WriteLine("Options: --headless / --quiet / --no-ui  (Run in background without GUI)");
         Console.WriteLine("         --show-ui          (Force show progress window)");
+        Console.WriteLine("         --info / --diagnostics (Print system environment and engine diagnostics)");
         Console.WriteLine("         --out-dir <dir> / -o <dir> / --out <dir>  (Write outputs to directory)");
         Console.WriteLine("         --level <small|balanced|high>  (PDF compression level)");
         Console.WriteLine("         --pages <range> / -p <range>  (Page range for print/split)");
@@ -238,6 +240,15 @@ internal static partial class ClickraStartup
                 arg.Equals("help", StringComparison.OrdinalIgnoreCase)))
         {
             PrintUsage();
+            return true;
+        }
+
+        if (args.Any(arg =>
+                arg.Equals("--info", StringComparison.OrdinalIgnoreCase) ||
+                arg.Equals("--diagnostics", StringComparison.OrdinalIgnoreCase) ||
+                arg.Equals("-i", StringComparison.OrdinalIgnoreCase)))
+        {
+            PrintPlatformDiagnostics();
             return true;
         }
 
@@ -302,6 +313,35 @@ internal static partial class ClickraStartup
             }
         }
         return true;
+    }
+
+    /// <summary>Prints host platform, runtime environment, and detected conversion engines.</summary>
+    private static void PrintPlatformDiagnostics()
+    {
+        var version = typeof(ClickraCli).Assembly.GetName().Version?.ToString(3) ?? "Unknown";
+        Console.WriteLine($"Clickra v{version} (Universal Cross-Platform Edition)");
+        Console.WriteLine($"OS: {RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})");
+        Console.WriteLine($"Framework: {RuntimeInformation.FrameworkDescription}");
+        Console.WriteLine($"Process Architecture: {RuntimeInformation.ProcessArchitecture}");
+        Console.WriteLine($"Platform: {(OperatingSystem.IsWindows() ? "Windows" : OperatingSystem.IsLinux() ? "Linux" : OperatingSystem.IsMacOS() ? "macOS" : "Other")}");
+
+        var office = SettingsPresentationController.Shared.GetOfficeReadiness();
+        var lo = SettingsPresentationController.Shared.GetLibreOfficeState();
+
+        Console.WriteLine();
+        Console.WriteLine("Engines:");
+        Console.WriteLine($"  - Microsoft Office: {(office.MicrosoftReady ? "Ready (COM)" : "Not Available")}");
+        string loDetails = lo.IsReady
+            ? (string.IsNullOrWhiteSpace(lo.InstalledVersion) ? $"Ready at {lo.ResolvedPath}" : $"Ready ({lo.InstalledVersion}) at {lo.ResolvedPath}")
+            : "Not Found";
+        Console.WriteLine($"  - LibreOffice: {loDetails}");
+        Console.WriteLine($"  - Preferred Engine: {office.PreferredReadyEngine}");
+
+        Console.WriteLine();
+        Console.WriteLine("Capabilities:");
+        Console.WriteLine("  - Headless CLI: Available");
+        Console.WriteLine($"  - Native Win32 UI: {(OperatingSystem.IsWindows() ? "Available" : "Not Available")}");
+        Console.WriteLine($"  - Console Interactive: {(!Console.IsOutputRedirected ? "Yes" : "No (Redirected)")}");
     }
 
     // ------------------------------------------------------------------
