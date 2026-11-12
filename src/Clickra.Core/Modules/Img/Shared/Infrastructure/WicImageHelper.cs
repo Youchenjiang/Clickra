@@ -209,6 +209,7 @@ public static class WicImageHelper
 
         return bitmap;
 #else
+        _ = filePath;
         throw new PlatformNotSupportedException("WIC/HEIF decoding is only supported on Windows.");
 #endif
     }

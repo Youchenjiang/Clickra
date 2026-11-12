@@ -301,6 +301,10 @@ public class PdfToImageProcessor : SingleFileProcessorBase
             return null;
         }
 #else
+        _ = filePath;
+        _ = pageNumber1Based;
+        _ = dpi;
+        _ = password;
         return null;
 #endif
     }

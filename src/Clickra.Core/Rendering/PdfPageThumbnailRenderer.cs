@@ -104,6 +104,11 @@ public static class PdfPageThumbnailRenderer
             return new Bitmap(temp);
         }
         catch { /* Ignored: falls back to the overlay renderer. */ }
+#else
+        _ = filePath;
+        _ = pageNumber;
+        _ = targetWidth;
+        _ = password;
 #endif
         return null;
     }
