@@ -267,6 +267,7 @@ public class PdfToImageProcessor : SingleFileProcessorBase
 
     private static Bitmap? TryRenderWithWindowsPdf(string filePath, int pageNumber1Based, int dpi, string? password = null)
     {
+#if WINDOWS
         try
         {
             var file = Windows.Storage.StorageFile.GetFileFromPathAsync(filePath).AsTask().GetAwaiter().GetResult();
@@ -299,6 +300,9 @@ public class PdfToImageProcessor : SingleFileProcessorBase
             // Fall back to alternative renderer when Windows.Data.Pdf cannot process the file
             return null;
         }
+#else
+        return null;
+#endif
     }
 
     /// <summary>Stitches multiple page bitmaps vertically into a single bitmap.</summary>
