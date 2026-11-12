@@ -11,6 +11,7 @@ namespace Clickra
     partial class ClickraCli
     {
         private static int _lastProgressLineLength;
+        private static int _lastReportedPercent = -1;
 
         [DllImport("kernel32.dll", SetLastError = true)]
         static extern bool AttachConsole(int dwProcessId);
@@ -75,32 +76,57 @@ namespace Clickra
             catch { }
         }
 
-        /// <summary>Writes an inline progress line to the console.</summary>
+        /// <summary>Writes an inline progress line to the console with ANSI colors and Unicode bar when supported.</summary>
         static void WriteConsoleProgress(int current, int total, string message)
         {
             total = Math.Max(1, total);
             current = Math.Clamp(current, 0, total);
 
             int percent = (int)Math.Round(current * 100.0 / total);
+
+            if (Console.IsOutputRedirected)
+            {
+                if (percent != _lastReportedPercent && (percent % 25 == 0 || percent == 100))
+                {
+                    Console.WriteLine($"[Progress] {percent,3}% {message}");
+                    _lastReportedPercent = percent;
+                }
+                return;
+            }
+
             const int width = 28;
             int filled = Math.Clamp((int)Math.Round(width * percent / 100.0), 0, width);
-            string bar = new string('#', filled) + new string('-', width - filled);
-            string line = $"[Progress] [{bar}] {percent,3}% {message}";
+            bool useUnicode = Console.OutputEncoding.CodePage == 65001 || !OperatingSystem.IsWindows();
+            char filledChar = useUnicode ? '█' : '#';
+            char emptyChar = useUnicode ? '░' : '-';
+            string bar = new string(filledChar, filled) + new string(emptyChar, width - filled);
+
+            bool useAnsi = Environment.GetEnvironmentVariable("NO_COLOR") is null;
+            string tag = useAnsi ? "\x1b[36m[Progress]\x1b[0m" : "[Progress]";
+            string coloredBar = useAnsi
+                ? $"\x1b[32m{new string(filledChar, filled)}\x1b[0m\x1b[90m{new string(emptyChar, width - filled)}\x1b[0m"
+                : bar;
+            string percentText = useAnsi ? $"\x1b[1m{percent,3}%\x1b[0m" : $"{percent,3}%";
+            string line = $"{tag} [{coloredBar}] {percentText} {message}";
+            string plainLine = $"[Progress] [{bar}] {percent,3}% {message}";
 
             try
             {
                 int consoleWidth = Console.WindowWidth;
-                if (consoleWidth > 0 && line.Length >= consoleWidth)
+                if (consoleWidth > 0 && plainLine.Length >= consoleWidth)
                 {
-                    line = line[..Math.Max(0, consoleWidth - 1)];
+                    int maxMsg = Math.Max(0, consoleWidth - width - 20);
+                    string truncatedMsg = message.Length > maxMsg ? message[..maxMsg] : message;
+                    line = $"{tag} [{coloredBar}] {percentText} {truncatedMsg}";
+                    plainLine = $"[Progress] [{bar}] {percent,3}% {truncatedMsg}";
                 }
             }
             catch { }
 
-            int padLength = Math.Max(_lastProgressLineLength, line.Length);
-            Console.Write("\r" + line.PadRight(padLength));
+            int padLength = Math.Max(_lastProgressLineLength, plainLine.Length);
+            Console.Write("\r" + line + new string(' ', Math.Max(0, padLength - plainLine.Length)));
             Console.Out.Flush();
-            _lastProgressLineLength = line.Length;
+            _lastProgressLineLength = plainLine.Length;
         }
 
         static void FinishConsoleProgressLine()
@@ -110,6 +136,7 @@ namespace Clickra
                 Console.WriteLine();
                 _lastProgressLineLength = 0;
             }
+            _lastReportedPercent = -1;
         }
 
         internal static string? ExtractOptionValue(List<string> args, params string[] optionNames)

@@ -462,20 +462,32 @@ partial class ClickraCli
         {
             IProgress<ConversionProgress>? progress = reportProgress
                 ? new SynchronousProgress<ConversionProgress>(state =>
-                    Console.WriteLine($"[Progress] {state.Message}"))
+                    WriteConsoleProgress(state.Current, state.Total, state.Message))
                 : null;
 
-            ConversionResult result = ExecuteUseCase(
-                command,
-                files,
-                options,
-                outputDir,
-                progress,
-                interaction,
-                observer);
+            try
+            {
+                ConversionResult result = ExecuteUseCase(
+                    command,
+                    files,
+                    options,
+                    outputDir,
+                    progress,
+                    interaction,
+                    observer);
 
-            if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc(ErrorProcessingFailedKey));
+                if (reportProgress)
+                    FinishConsoleProgressLine();
+
+                if (result.Status != ConversionResultStatus.Succeeded)
+                    throw new InvalidOperationException(result.Error ?? Loc(ErrorProcessingFailedKey));
+            }
+            catch
+            {
+                if (reportProgress)
+                    FinishConsoleProgressLine();
+                throw;
+            }
         }
 
         private static ConversionResult ExecuteUseCase(
