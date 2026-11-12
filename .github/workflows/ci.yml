@@ -34,6 +34,9 @@ jobs:
           - name: Build Clickra.Fluent
             kind: build
             project: src/Clickra.Fluent/Clickra.Fluent.csproj
+          - name: Build Clickra.Desktop
+            kind: build
+            project: src/Clickra.Desktop/Clickra.Desktop.csproj
           - name: Publish CLI (NativeAOT)
             kind: publish
             project: src/Clickra.CLI/Clickra.csproj
