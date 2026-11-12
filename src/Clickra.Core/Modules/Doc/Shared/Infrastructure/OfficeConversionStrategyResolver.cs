@@ -65,11 +65,19 @@ internal sealed class OfficeConversionStrategyResolver
         }
         catch (Exception ex) when (
             IsRecoverableMicrosoftOfficeFailure(ex) &&
-            ShouldFallBackToLibreOffice(engine, appType, cancellationToken))
+            CanFallBackToLibreOffice(engine, appType, cancellationToken))
         {
             ExecuteLibreOfficeFallback(ex, request, settings, onProgress, cancellationToken);
         }
     }
+
+    private bool CanFallBackToLibreOffice(
+        string engine,
+        string appType,
+        CancellationToken cancellationToken) =>
+        !cancellationToken.IsCancellationRequested &&
+        !engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase) &&
+        _libreOfficeStrategy.CanConvert(appType);
 
     private void ExecuteLibreOfficeFallback(
         Exception originalException,
@@ -99,9 +107,7 @@ internal sealed class OfficeConversionStrategyResolver
         string engine,
         string appType,
         CancellationToken cancellationToken) =>
-        !cancellationToken.IsCancellationRequested &&
-        !engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase) &&
-        LibreOfficeHelper.CanConvert(appType);
+        Default.CanFallBackToLibreOffice(engine, appType, cancellationToken);
 
     public static bool IsRecoverableMicrosoftOfficeFailure(Exception exception) =>
         exception is InvalidOperationException
