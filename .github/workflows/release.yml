@@ -58,11 +58,102 @@ jobs:
           Add-VsInstallerToPath
           dotnet publish "${{ matrix.project }}" -c Release -r win-x64 --self-contained true -o "publish/${{ matrix.output }}" -warnaserror
 
+      - name: Package Windows CLI archive
+        if: matrix.name == 'CLI'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "publish/${{ matrix.output }}/Clickra.exe" -DestinationPath "publish/clickra-cli-win-x64.zip" -Force
+
       - name: Upload ${{ matrix.name }} artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact }}
           path: publish/${{ matrix.output }}
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Windows CLI archive artifact
+        if: matrix.name == 'CLI'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: clickra-cli-win-x64.zip
+          path: publish/clickra-cli-win-x64.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  cross-cli-publish:
+    name: Publish CLI (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x64
+            os: ubuntu-latest
+            rid: linux-x64
+            binary: Clickra
+            archive: clickra-cli-linux-x64.tar.gz
+          - name: macOS ARM64
+            os: macos-latest
+            rid: osx-arm64
+            binary: Clickra
+            archive: clickra-cli-osx-arm64.tar.gz
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish NativeAOT CLI
+        run: |
+          dotnet publish src/Clickra.CLI/Clickra.csproj -c Release -r ${{ matrix.rid }} --self-contained true -o publish/out -p:TargetFramework=net8.0 -warnaserror
+
+      - name: Package archive
+        shell: bash
+        run: |
+          cd publish/out
+          chmod +x ${{ matrix.binary }}
+          tar -czf ../../${{ matrix.archive }} ${{ matrix.binary }}
+          cd ../..
+
+      - name: Upload CLI archive artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.archive }}
+          path: ${{ matrix.archive }}
+          if-no-files-found: error
+          retention-days: 1
+
+  pack-tool:
+    name: Pack .NET Global Tool
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Pack .NET Tool
+        run: dotnet pack src/Clickra.CLI/Clickra.csproj -c Release -o publish/nupkg -warnaserror
+
+      - name: Upload .NET Tool package artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: clickra-nupkg
+          path: publish/nupkg/*.nupkg
           if-no-files-found: error
           retention-days: 1
 
@@ -160,16 +251,41 @@ jobs:
           retention-days: 7
 
   github-release:
-    needs: assemble-msix
+    needs: [assemble-msix, native-publish, cross-cli-publish, pack-tool]
     if: needs.assemble-msix.outputs.is_release == 'true'
     runs-on: windows-latest
     permissions:
       contents: write
+      packages: write
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.tag || github.ref }}
+
+      - name: Download Windows CLI archive
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: clickra-cli-win-x64.zip
+          path: .
+
+      - name: Download Linux CLI archive
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: clickra-cli-linux-x64.tar.gz
+          path: .
+
+      - name: Download macOS CLI archive
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: clickra-cli-osx-arm64.tar.gz
+          path: .
+
+      - name: Download .NET Tool package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: clickra-nupkg
+          path: publish/nupkg
 
       - name: Extract English Release Notes
         id: get_release_notes
@@ -219,14 +335,34 @@ jobs:
           ${{ steps.get_release_notes.outputs.release_notes }}
 
           ---
-          ### 📦 Installation
-          Microsoft Store remains the signed distribution channel for this release.
+          ### 📦 Installation & Distribution
+          - **Microsoft Store**: Official signed distribution channel for Windows.
+          - **GitHub Packages (.NET Global Tool)**:
+            ```bash
+            dotnet tool install -g Clickra --add-source https://nuget.pkg.github.com/Youchenjiang/index.json
+            ```
+          - **Standalone NativeAOT Binaries**: Download the archive for your OS from Release Assets (`clickra-cli-linux-x64.tar.gz`, `clickra-cli-osx-arm64.tar.gz`, `clickra-cli-win-x64.zip`).
 
           GitHub direct-download MSIX publication is disabled until a production code-signing provider is explicitly selected, integrated, and validated. No unsigned or untrusted MSIX asset is published here.
           EOF
           gh release create "$TAG_NAME" \
             --repo "$REPO" \
-            --title "$TAG_NAME" --notes-file release_notes.md
+            --title "$TAG_NAME" \
+            --notes-file release_notes.md \
+            clickra-cli-linux-x64.tar.gz \
+            clickra-cli-osx-arm64.tar.gz \
+            clickra-cli-win-x64.zip
+      - name: Publish to GitHub Packages (NuGet)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          dotnet nuget push "publish/nupkg/*.nupkg" \
+            --source "https://nuget.pkg.github.com/$OWNER/index.json" \
+            --api-key "$GH_TOKEN" \
+            --skip-duplicate
+
 
   store-publish:
     needs: assemble-msix
