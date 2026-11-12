@@ -207,6 +207,10 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      - name: Generate icon assets
+        shell: pwsh
+        run: dotnet run --project scripts/tools/IconGen/IconGen.csproj
+
       # The suite is an Exe with a self-built TestRunner, not a
       # Microsoft.NET.Test.Sdk project: `dotnet test` would only build it and
       # report success without running a single test. This is the invocation
