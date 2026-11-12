@@ -5,6 +5,8 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
+    private const string CoreProjectDir = "Clickra.Core";
+
     public static void RegisterUniversalPackageTests(TestRunner runner)
     {
         runner.RunGuard("Universal package: project contracts enforce multi-targeting and .NET tool specifications", () =>
@@ -13,7 +15,7 @@ static partial class TestSuite
             if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
             // 1. Verify Core project multi-targeting
-            string coreProjPath = Path.Combine(root, "src", "Clickra.Core", "Clickra.Core.csproj");
+            string coreProjPath = Path.Combine(root, "src", CoreProjectDir, "Clickra.Core.csproj");
             string coreProjText = File.ReadAllText(coreProjPath);
 
             Assert.True(coreProjText.Contains("<TargetFrameworks>net8.0;net8.0-windows10.0.19041.0</TargetFrameworks>", StringComparison.Ordinal),
@@ -88,19 +90,19 @@ static partial class TestSuite
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
-            string wicPath = Path.Combine(root, "src", "Clickra.Core", "Modules", "Img", "Shared", "Infrastructure", "WicImageHelper.cs");
+            string wicPath = Path.Combine(root, "src", CoreProjectDir, "Modules", "Img", "Shared", "Infrastructure", "WicImageHelper.cs");
             string wicText = File.ReadAllText(wicPath);
             Assert.True(wicText.Contains("#if WINDOWS", StringComparison.Ordinal) &&
                         wicText.Contains("Windows.Graphics.Imaging", StringComparison.Ordinal),
                 "WicImageHelper must enclose WinRT WIC namespaces and codecs in #if WINDOWS.");
 
-            string pdfThumbPath = Path.Combine(root, "src", "Clickra.Core", "Rendering", "PdfPageThumbnailRenderer.cs");
+            string pdfThumbPath = Path.Combine(root, "src", CoreProjectDir, "Rendering", "PdfPageThumbnailRenderer.cs");
             string pdfThumbText = File.ReadAllText(pdfThumbPath);
             Assert.True(pdfThumbText.Contains("#if WINDOWS", StringComparison.Ordinal) &&
                         pdfThumbText.Contains("Windows.Data.Pdf.PdfDocument", StringComparison.Ordinal),
                 "PdfPageThumbnailRenderer must enclose Windows.Data.Pdf in #if WINDOWS.");
 
-            string pdfToImgPath = Path.Combine(root, "src", "Clickra.Core", "Modules", "Pdf", "ToImage", "Processing", "PdfToImageProcessor.cs");
+            string pdfToImgPath = Path.Combine(root, "src", CoreProjectDir, "Modules", "Pdf", "ToImage", "Processing", "PdfToImageProcessor.cs");
             string pdfToImgText = File.ReadAllText(pdfToImgPath);
             Assert.True(pdfToImgText.Contains("#if WINDOWS", StringComparison.Ordinal) &&
                         pdfToImgText.Contains("TryRenderWithWindowsPdf", StringComparison.Ordinal),
