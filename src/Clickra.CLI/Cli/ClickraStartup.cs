@@ -32,26 +32,7 @@ internal static partial class ClickraStartup
         var argList = args.ToList();
         var cliOpts = ParseOptions(argList);
 
-        if (argList.Count > 0 &&
-            !ConvertCommandRegistry.IsKnownCommand(argList[0]) &&
-            (File.Exists(argList[0]) || Directory.Exists(argList[0])))
-        {
-            var targetFiles = argList.Where(f => File.Exists(f) || Directory.Exists(f)).ToList();
-            if (targetFiles.Count > 0)
-            {
-                if (TryDelegateToLauncher(args))
-                    return;
-                if (OperatingSystem.IsWindows())
-                {
-                    DashboardWindow.Show(targetFiles);
-                }
-                else
-                {
-                    Console.WriteLine("[Warning] Dashboard GUI is only supported on Windows.");
-                }
-                return;
-            }
-        }
+        if (TryHandleTargetFileDrop(args, argList)) return;
 
         if (argList.Count < 2)
         {
@@ -71,6 +52,38 @@ internal static partial class ClickraStartup
             Environment.ExitCode = 1;
             return;
         }
+
+        ExecuteConversionDispatch(command, files, cliOpts);
+    }
+
+    private static bool TryHandleTargetFileDrop(string[] args, List<string> argList)
+    {
+        if (argList.Count == 0 || ConvertCommandRegistry.IsKnownCommand(argList[0]))
+            return false;
+
+        if (!File.Exists(argList[0]) && !Directory.Exists(argList[0]))
+            return false;
+
+        var targetFiles = argList.Where(f => File.Exists(f) || Directory.Exists(f)).ToList();
+        if (targetFiles.Count == 0)
+            return false;
+
+        if (TryDelegateToLauncher(args))
+            return true;
+
+        if (OperatingSystem.IsWindows())
+        {
+            DashboardWindow.Show(targetFiles);
+        }
+        else
+        {
+            Console.WriteLine("[Warning] Dashboard GUI is only supported on Windows.");
+        }
+        return true;
+    }
+
+    private static void ExecuteConversionDispatch(string command, List<string> files, RawCliOptions cliOpts)
+    {
         string startTimeStr = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
         try
         {
@@ -233,7 +246,22 @@ internal static partial class ClickraStartup
     private static bool HandleVersionOrDeploy(string[] args)
     {
         if (TryHandleBatchRenameArgs(args)) return true;
+        if (TryHandleHelpArgs(args)) return true;
+        if (TryHandleDiagnosticsArgs(args)) return true;
+        if (TryHandleVersionOrDashboard(args)) return true;
+        if (TryHandleVisualSplitterArgs(args)) return true;
 
+        if (args.Length >= 2 && args[0].Equals("--deploy", StringComparison.OrdinalIgnoreCase))
+        {
+            ClickraCli.DeployAssets(args[1]);
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryHandleHelpArgs(string[] args)
+    {
         if (args.Any(arg =>
                 arg.Equals("--help", StringComparison.OrdinalIgnoreCase) ||
                 arg.Equals("-h", StringComparison.OrdinalIgnoreCase) ||
@@ -242,7 +270,11 @@ internal static partial class ClickraStartup
             PrintUsage();
             return true;
         }
+        return false;
+    }
 
+    private static bool TryHandleDiagnosticsArgs(string[] args)
+    {
         if (args.Any(arg =>
                 arg.Equals("--info", StringComparison.OrdinalIgnoreCase) ||
                 arg.Equals("--diagnostics", StringComparison.OrdinalIgnoreCase) ||
@@ -251,34 +283,30 @@ internal static partial class ClickraStartup
             PrintPlatformDiagnostics();
             return true;
         }
+        return false;
+    }
 
-        if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
+    private static bool TryHandleVersionOrDashboard(string[] args)
+    {
+        if (args.Length == 0)
         {
-            var version = typeof(ClickraCli).Assembly.GetName().Version?.ToString(3) ?? "Unknown";
-            if (args.Length == 0)
+            if (TryDelegateToLauncher(args))
+                return true;
+            if (OperatingSystem.IsWindows())
             {
-                if (TryDelegateToLauncher(args))
-                    return true;
-                if (OperatingSystem.IsWindows())
-                {
-                    DashboardWindow.Show();
-                    return true;
-                }
-                PrintUsage();
+                DashboardWindow.Show();
                 return true;
             }
-
-            Console.WriteLine($"Clickra v{version} (Modern Shell Edition)");
-            Console.WriteLine("Author: Youchen Jiang");
-            Console.WriteLine(CommandSummary);
+            PrintUsage();
             return true;
         }
 
-        if (TryHandleVisualSplitterArgs(args)) return true;
-
-        if (args[0].Equals("--deploy", StringComparison.OrdinalIgnoreCase) && args.Length >= 2)
+        if (args[0] == "-v" || args[0] == "--version")
         {
-            ClickraCli.DeployAssets(args[1]);
+            var version = typeof(ClickraCli).Assembly.GetName().Version?.ToString(3) ?? "Unknown";
+            Console.WriteLine($"Clickra v{version} (Modern Shell Edition)");
+            Console.WriteLine("Author: Youchen Jiang");
+            Console.WriteLine(CommandSummary);
             return true;
         }
 
@@ -323,7 +351,7 @@ internal static partial class ClickraStartup
         Console.WriteLine($"OS: {RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})");
         Console.WriteLine($"Framework: {RuntimeInformation.FrameworkDescription}");
         Console.WriteLine($"Process Architecture: {RuntimeInformation.ProcessArchitecture}");
-        Console.WriteLine($"Platform: {(OperatingSystem.IsWindows() ? "Windows" : OperatingSystem.IsLinux() ? "Linux" : OperatingSystem.IsMacOS() ? "macOS" : "Other")}");
+        Console.WriteLine($"Platform: {GetPlatformName()}");
 
         var office = SettingsPresentationController.Shared.GetOfficeReadiness();
         var lo = SettingsPresentationController.Shared.GetLibreOfficeState();
@@ -331,10 +359,7 @@ internal static partial class ClickraStartup
         Console.WriteLine();
         Console.WriteLine("Engines:");
         Console.WriteLine($"  - Microsoft Office: {(office.MicrosoftReady ? "Ready (COM)" : "Not Available")}");
-        string loDetails = lo.IsReady
-            ? (string.IsNullOrWhiteSpace(lo.InstalledVersion) ? $"Ready at {lo.ResolvedPath}" : $"Ready ({lo.InstalledVersion}) at {lo.ResolvedPath}")
-            : "Not Found";
-        Console.WriteLine($"  - LibreOffice: {loDetails}");
+        Console.WriteLine($"  - LibreOffice: {FormatLibreOfficeDetails(lo)}");
         Console.WriteLine($"  - Preferred Engine: {office.PreferredReadyEngine}");
 
         Console.WriteLine();
@@ -342,6 +367,27 @@ internal static partial class ClickraStartup
         Console.WriteLine("  - Headless CLI: Available");
         Console.WriteLine($"  - Native Win32 UI: {(OperatingSystem.IsWindows() ? "Available" : "Not Available")}");
         Console.WriteLine($"  - Console Interactive: {(!Console.IsOutputRedirected ? "Yes" : "No (Redirected)")}");
+    }
+
+    private static string GetPlatformName()
+    {
+        if (OperatingSystem.IsWindows()) return "Windows";
+        if (OperatingSystem.IsLinux()) return "Linux";
+        if (OperatingSystem.IsMacOS()) return "macOS";
+        return "Other";
+    }
+
+    private static string FormatLibreOfficeDetails(LibreOfficePresentationState lo)
+    {
+        if (!lo.IsReady)
+        {
+            return "Not Found";
+        }
+        if (string.IsNullOrWhiteSpace(lo.InstalledVersion))
+        {
+            return $"Ready at {lo.ResolvedPath}";
+        }
+        return $"Ready ({lo.InstalledVersion}) at {lo.ResolvedPath}";
     }
 
     // ------------------------------------------------------------------
