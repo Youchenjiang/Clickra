@@ -17,67 +17,8 @@ public static class PowerShellHelper
         OfficeConversionRequest request,
         OfficeConversionSettings settings,
         Action<int, int, string>? onProgress,
-        CancellationToken cancellationToken)
-    {
-        string appType = request.AppType;
-        string engine = settings.Engine;
-        if (engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase))
-        {
-            LibreOfficeHelper.ExportToPdf(request, settings, onProgress, cancellationToken);
-            return;
-        }
-
-        if (!engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase) &&
-            LibreOfficeHelper.CanConvert(appType) &&
-            !IsMicrosoftOfficeReady(appType))
-        {
-            if (string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath(
-                    settings.LibreOfficeRemovalPendingRestart,
-                    settings.LibreOfficePath)))
-                throw new InvalidOperationException(Localization.T("error_libreoffice_not_ready", settings.Language));
-
-            LibreOfficeHelper.ExportToPdf(request, settings, onProgress, cancellationToken);
-            return;
-        }
-
-        try
-        {
-            ExportMicrosoftOfficeToPdf(request, settings.Language, onProgress, cancellationToken);
-            return;
-        }
-        catch (Exception ex) when (
-            IsRecoverableMicrosoftOfficeFailure(ex) &&
-            ShouldFallBackToLibreOffice(engine, appType, cancellationToken))
-        {
-            ExportLibreOfficeFallback(ex, request, settings, onProgress, cancellationToken);
-        }
-    }
-
-    private static void ExportLibreOfficeFallback(
-        Exception originalException,
-        OfficeConversionRequest request,
-        OfficeConversionSettings settings,
-        Action<int, int, string>? onProgress,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath(
-                settings.LibreOfficeRemovalPendingRestart,
-                settings.LibreOfficePath)))
-        {
-            ExceptionDispatchInfo.Capture(originalException).Throw();
-        }
-
-        cancellationToken.ThrowIfCancellationRequested();
-        onProgress?.Invoke(
-            request.FileIndex * 100,
-            request.TotalFiles * 100,
-            string.Format(
-                Localization.T("status_office_fallback_to_libreoffice", settings.Language),
-                request.AppType,
-                Path.GetFileName(request.FullPath)));
-        cancellationToken.ThrowIfCancellationRequested();
-        LibreOfficeHelper.ExportToPdf(request, settings, onProgress, cancellationToken);
-    }
+        CancellationToken cancellationToken) =>
+        OfficeConversionStrategyResolver.Default.ExecuteConversion(request, settings, onProgress, cancellationToken);
 
     /// <summary>
     /// Whether a failed Microsoft Office conversion may recover through LibreOffice.
@@ -87,9 +28,7 @@ public static class PowerShellHelper
         string engine,
         string appType,
         CancellationToken cancellationToken) =>
-        !cancellationToken.IsCancellationRequested &&
-        !engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase) &&
-        LibreOfficeHelper.CanConvert(appType);
+        OfficeConversionStrategyResolver.ShouldFallBackToLibreOffice(engine, appType, cancellationToken);
 
     /// <summary>
     /// Failures that may be recovered by switching from Microsoft Office automation to LibreOffice.
@@ -103,13 +42,7 @@ public static class PowerShellHelper
     }
 
     internal static bool IsRecoverableMicrosoftOfficeFailure(Exception exception) =>
-        exception is InvalidOperationException
-            or NotSupportedException
-            or TimeoutException
-            or Win32Exception
-            or IOException
-            or UnauthorizedAccessException
-            or SecurityException;
+        OfficeConversionStrategyResolver.IsRecoverableMicrosoftOfficeFailure(exception);
 
     internal static string? GetMicrosoftOfficeProgId(string appType) =>
         OfficeEngineDetector.GetMicrosoftOfficeProgId(appType);
@@ -117,7 +50,7 @@ public static class PowerShellHelper
     internal static bool IsMicrosoftOfficeReady(string appType) =>
         OfficeEngineDetector.IsMicrosoftOfficeReady(appType);
 
-    private static void ExportMicrosoftOfficeToPdf(
+    internal static void ExportMicrosoftOfficeToPdf(
         OfficeConversionRequest request,
         string language,
         Action<int, int, string>? onProgress,
