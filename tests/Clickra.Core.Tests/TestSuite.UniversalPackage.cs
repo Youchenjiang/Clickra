@@ -18,6 +18,8 @@ static partial class TestSuite
 
             Assert.True(coreProjText.Contains("<TargetFrameworks>net8.0;net8.0-windows10.0.19041.0</TargetFrameworks>", StringComparison.Ordinal),
                 "Clickra.Core must multi-target net8.0 and net8.0-windows10.0.19041.0.");
+            Assert.True(coreProjText.Contains("<EnableWindowsTargeting>true</EnableWindowsTargeting>", StringComparison.Ordinal),
+                "Clickra.Core must enable Windows targeting for cross-platform restore.");
             Assert.True(coreProjText.Contains("<NoWarn>$(NoWarn);CA1416</NoWarn>", StringComparison.Ordinal),
                 "Clickra.Core must suppress CA1416 on net8.0 for guarded platform calls.");
 
