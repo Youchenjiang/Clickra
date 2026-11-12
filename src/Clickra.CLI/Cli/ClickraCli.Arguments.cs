@@ -64,7 +64,7 @@ namespace Clickra
         /// <summary>Attaches to the parent console when launched from a terminal.</summary>
         internal static void AttachParentConsoleForCli(string[] args)
         {
-            if (args.Length == 0) return;
+            if (!OperatingSystem.IsWindows() || args.Length == 0) return;
 
             try
             {

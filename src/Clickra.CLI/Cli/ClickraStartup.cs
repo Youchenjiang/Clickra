@@ -40,7 +40,14 @@ internal static partial class ClickraStartup
             {
                 if (TryDelegateToLauncher(args))
                     return;
-                DashboardWindow.Show(targetFiles);
+                if (OperatingSystem.IsWindows())
+                {
+                    DashboardWindow.Show(targetFiles);
+                }
+                else
+                {
+                    Console.WriteLine("[Warning] Dashboard GUI is only supported on Windows.");
+                }
                 return;
             }
         }
@@ -102,8 +109,11 @@ internal static partial class ClickraStartup
     {
         try { PdfSharp.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver(); }
         catch (Exception ex) { Debug.WriteLine($"Font resolver init failed: {ex.Message}"); }
-        try { SetProcessDpiAwarenessContext((IntPtr)(-4)); }
-        catch (Exception ex) { Debug.WriteLine($"DPI awareness init failed: {ex.Message}"); }
+        if (OperatingSystem.IsWindows())
+        {
+            try { SetProcessDpiAwarenessContext((IntPtr)(-4)); }
+            catch (Exception ex) { Debug.WriteLine($"DPI awareness init failed: {ex.Message}"); }
+        }
     }
 
     /// <summary>Reports a dispatch failure: records it in the history when running
@@ -147,11 +157,24 @@ internal static partial class ClickraStartup
     /// compression level, page range, printer, copies, duplex, and paper size) from the argument list.</summary>
     private static RawCliOptions ParseOptions(List<string> argList)
     {
-        bool quietByDefault = SettingsController.QuietMode;
+        bool quietByDefault = SettingsController.QuietMode || !OperatingSystem.IsWindows();
         bool quiet = quietByDefault;
         if (argList.Contains("--quiet")) { quiet = true; argList.Remove("--quiet"); }
         if (argList.Contains("--no-ui")) { quiet = true; argList.Remove("--no-ui"); }
-        if (argList.Contains("--show-ui")) { quiet = false; argList.Remove("--show-ui"); }
+        if (argList.Contains("--headless")) { quiet = true; argList.Remove("--headless"); }
+        if (argList.Contains("--show-ui"))
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                quiet = false;
+            }
+            else
+            {
+                Console.WriteLine("[Warning] GUI progress window is only supported on Windows. Running in headless mode.");
+                quiet = true;
+            }
+            argList.Remove("--show-ui");
+        }
 
         string? outputDirOverride = ClickraCli.ExtractOptionValue(argList, "--out-dir", "-o", "--out");
         bool hasCliLevel = argList.Contains("--level") || argList.Contains("--compression-level");
@@ -187,7 +210,7 @@ internal static partial class ClickraStartup
     private static void PrintUsage()
     {
         Console.WriteLine("Usage: Clickra <command> [options] <file...>");
-        Console.WriteLine("Options: --quiet / --no-ui  (Run in background without GUI)");
+        Console.WriteLine("Options: --headless / --quiet / --no-ui  (Run in background without GUI)");
         Console.WriteLine("         --show-ui          (Force show progress window)");
         Console.WriteLine("         --out-dir <dir> / -o <dir> / --out <dir>  (Write outputs to directory)");
         Console.WriteLine("         --level <small|balanced|high>  (PDF compression level)");
@@ -225,7 +248,12 @@ internal static partial class ClickraStartup
             {
                 if (TryDelegateToLauncher(args))
                     return true;
-                DashboardWindow.Show();
+                if (OperatingSystem.IsWindows())
+                {
+                    DashboardWindow.Show();
+                    return true;
+                }
+                PrintUsage();
                 return true;
             }
 
@@ -264,7 +292,14 @@ internal static partial class ClickraStartup
         }
         if (!string.IsNullOrEmpty(pdfPath))
         {
-            ProgressWindow.Show("split-pdf", new List<string> { pdfPath });
+            if (OperatingSystem.IsWindows())
+            {
+                ProgressWindow.Show("split-pdf", new List<string> { pdfPath });
+            }
+            else
+            {
+                Console.WriteLine("[Warning] Visual splitter GUI is only supported on Windows.");
+            }
         }
         return true;
     }
