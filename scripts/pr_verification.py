@@ -89,7 +89,8 @@ def extract_top_review_findings(reviews, pr_body=""):
         state = item.get("state")
         author = item.get("author") or (item.get("user") or {}).get("login") or "unknown"
         relation = item.get("head_relation") or item.get("relation") or "unscoped"
-        if state == "CHANGES_REQUESTED" or (bool(pattern.search(body)) and not bool(clean_pattern.search(body))):
+        stripped_body = clean_pattern.sub("", body)
+        if state == "CHANGES_REQUESTED" or bool(pattern.search(stripped_body)):
             addressed = (state != "CHANGES_REQUESTED" and
                          relation != "current" and
                          _is_finding_addressed(author, pr_body))

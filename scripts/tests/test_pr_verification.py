@@ -216,6 +216,24 @@ class VerificationTests(unittest.TestCase):
         self.assertTrue(result["ready"])
         self.assertEqual(0, len(result["top_level_findings"]))
 
+    def test_mixed_review_with_clean_phrase_and_action_required_is_detected(self):
+        pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
+              "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
+                                    for name in pr_verification.REQUIRED]}
+        report = {
+            "counts": {"unresolved": 0},
+            "sonar": {"total": 0},
+            "reviews": [{
+                "author": "llamapreview",
+                "state": "COMMENTED",
+                "body": "### LlamaPReview — No blocking issues found in module A\n\nAction required: please fix buffer handling."
+            }]
+        }
+        result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
+        self.assertFalse(result["ready"])
+        self.assertEqual(1, len(result["top_level_findings"]))
+        self.assertTrue(any("1 unaddressed top-level review finding(s)" in p for p in result["problems"]))
+
 
 if __name__ == "__main__":
     unittest.main()
