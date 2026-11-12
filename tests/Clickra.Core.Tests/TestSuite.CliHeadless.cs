@@ -42,6 +42,11 @@ static partial class TestSuite
                 "AttachParentConsoleForCli must guard console attachment with OperatingSystem.IsWindows().");
             Assert.True(cliArgsCode.Contains("[Progress]", StringComparison.Ordinal),
                 "WriteConsoleProgress must render a formatted progress indicator.");
+            Assert.True(cliArgsCode.Contains("FormatInteractiveProgress", StringComparison.Ordinal) &&
+                        cliArgsCode.Contains("BuildPlainBar", StringComparison.Ordinal),
+                "WriteConsoleProgress must delegate formatting to dedicated helpers to preserve low complexity.");
+            Assert.True(cliArgsCode.Contains("Math.Clamp(consoleWidth - 25", StringComparison.Ordinal),
+                "FormatInteractiveProgress must adapt progress bar width dynamically to prevent line wrapping at narrow console widths.");
         });
 
         runner.Run("CLI headless: platform and office engine readiness queries succeed without throwing", () =>
