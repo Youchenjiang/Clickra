@@ -128,15 +128,17 @@
 
     - 規範詳見：[module_architecture_unification_manifesto.md](architecture/spec/module_architecture_unification_manifesto.md)、[architecture_backlog.md](architecture/spec/architecture_backlog.md) 與 [v4_cross_platform_unification.md](specs/v4_cross_platform_unification.md)。
 
-- [ ] **[F1-16] v3.20.0 Universal Headless CLI (NativeAOT Cross-Platform)**：跨平台無頭終端工具。
+- [x] **[F1-16] v3.20.0 Universal Headless CLI (NativeAOT Cross-Platform)**：跨平台無頭終端工具。
 
     - [x] CLI 終端 ANSI 進度引擎與無頭調度支援（解耦 Win32 進度視窗、支援 `--headless`、`--info`、`--diagnostics` 與 ANSI 即時進度；v3.19.10.0 完成）。
 
-    - GitHub Actions 建立 Linux (x64/arm64) 與 macOS (Apple Silicon/Intel) 原生 NativeAOT CI。
+    - [x] 跨平台多目標架構與 WinRT 前置編譯器隔離（`Clickra.Core` 與 `Clickra.CLI` 支援 `net8.0;net8.0-windows10.0.19041.0`；v3.20.0.0 完成）。
 
-    - 發布 Homebrew、WinGet、Scoop 多套件管理器。
+    - [x] GitHub Actions 跨平台 NativeAOT 矩陣建置（Linux x64、macOS ARM64、Windows x64）與 Release Assets 自動歸檔發布（v3.20.0.0 完成）。
 
-    - Windows 保留 Win32 GDI+ 輕量視窗作為免安裝零依賴回退介面。
+    - [x] .NET Global Tool 通用套件封裝與 GitHub Packages (NuGet) 自動發布（`dotnet tool install -g Clickra`；v3.20.0.0 完成）。
+
+    - [x] 通用套件與多平台契約架構守衛（守衛增至 97 項，保證全平台契約不退化；v3.20.0.0 完成）。
 
 - [ ] **[F1-17] v4.0.0 Unified Cross-Platform Modern GUI**：統一跨平台現代 XAML 介面。
 

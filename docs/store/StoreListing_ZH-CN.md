@@ -1,6 +1,6 @@
 # Microsoft Store 清单 - 中文 (简体)
 
-以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.19.10.0。
+以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.20.0.0。
 
 ---
 
@@ -15,10 +15,10 @@ Clickra 是一款专为 Windows 资源管理器打造的原生右键扩展工具
 源代码：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 全新推出文件夹与文件批量重命名功能 [F2-21]，支持自定义序号、正则查找替换、时间戳与大小写转换
-- 支持安全更名防护与双阶段循环交换更名（A ⇄ B），防止文件覆盖丢失
-- 资源管理器右键菜单集成智能阈值，多选文件时可一键启动批量重命名
-- 仪表板转档区新增“文件整理”分类，支持卡片选取与文件拖拽即时重命名
+- 通用 CLI 与跨平台打包：Clickra CLI 现已正式支持 .NET 全局工具（dotnet tool install -g Clickra）以及 Windows、Linux、macOS 原生 NativeAOT 独立二进制文件。
+- 多目标架构解耦：Core 与 CLI 全面支持 net8.0 多目标编译与跨平台边界隔离。
+- 无头执行与 ANSI 彩色进度：支持无头后台执行（--headless）、平台与引擎诊断（--diagnostics）及终端实时彩色进度条。
+- 双轨发布渠道：提供 GitHub Release Assets 原生压缩包与 GitHub Packages NuGet 注册表发布。
 
 ## Product Features
 *(最多 20 个，以项目符号显示)*

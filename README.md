@@ -69,6 +69,16 @@ Clickra's production direct-download signing rules, maintainer roles, privacy re
 ### Recommended: Microsoft Store (auto-updates)
 [![Microsoft Store Badge](https://developer.microsoft.com/en-us/store/badges/images/English_get-it-from-MS.png)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 
+### Cross-Platform .NET Global Tool (Windows, macOS, Linux)
+Install Clickra directly from GitHub Packages with .NET 8+:
+```bash
+dotnet tool install -g Clickra --add-source https://nuget.pkg.github.com/Youchenjiang/index.json
+```
+Run `clickra --help` or `clickra --info` to get started.
+
+### Standalone CLI Binaries (NativeAOT)
+Self-contained, zero-dependency executable archives for Linux (`clickra-cli-linux-x64.tar.gz`), macOS (`clickra-cli-osx-arm64.tar.gz`), and Windows (`clickra-cli-win-x64.zip`) are available on [GitHub Releases](https://github.com/Youchenjiang/Clickra/releases).
+
 ### Manual: GitHub Release
 
 GitHub direct-download MSIX publication is temporarily unavailable while Clickra's production direct-signing integration is being established. Current GitHub Releases provide release notes/history only; use the Microsoft Store installation path above for signed end-user installation.
