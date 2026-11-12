@@ -69,6 +69,16 @@ Clickra 的正式環境直接下載簽章規範、維護者角色、隱私權規
 ### 推薦：Microsoft Store（自動更新）
 [![Microsoft Store Badge](https://developer.microsoft.com/en-us/store/badges/images/English_get-it-from-MS.png)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 
+### 跨平台 .NET Global Tool（Windows、macOS、Linux）
+透過 .NET 8+ 直接自 GitHub Packages 安裝 Clickra 全域工具：
+```bash
+dotnet tool install -g Clickra --add-source https://nuget.pkg.github.com/Youchenjiang/index.json
+```
+執行 `clickra --help` 或 `clickra --info` 即可立即開始使用。
+
+### 獨立 CLI 原生執行檔（NativeAOT）
+提供適用於 Linux (`clickra-cli-linux-x64.tar.gz`)、macOS (`clickra-cli-osx-arm64.tar.gz`) 與 Windows (`clickra-cli-win-x64.zip`) 的零依賴獨立執行檔壓縮包，可直接於 [GitHub Releases](https://github.com/Youchenjiang/Clickra/releases) 下載。
+
 ### 手動安裝：GitHub Release
 
 在 Clickra 正式生產環境直接簽章機制完成前，GitHub 直接下載 MSIX 封裝暫不提供安裝。目前的 GitHub Releases 僅提供版本發行紀錄與日誌；一般使用者請透過上方的 Microsoft Store 管道取得具備完整數位簽章之安裝版本。

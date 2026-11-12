@@ -3,9 +3,11 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
+#if WINDOWS
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Graphics.Imaging;
 using Windows.Storage.Streams;
+#endif
 using Imazen.WebP;
 
 namespace Clickra.Core.Modules.Img.Shared.Infrastructure;
@@ -22,6 +24,7 @@ public static class WicImageHelper
     /// </summary>
     public static bool IsHeicEncoderAvailable()
     {
+#if WINDOWS
         try
         {
             var encoders = BitmapEncoder.GetEncoderInformationEnumerator();
@@ -44,6 +47,9 @@ public static class WicImageHelper
         {
             return false;
         }
+#else
+        return false;
+#endif
     }
 
     /// <summary>
@@ -51,6 +57,7 @@ public static class WicImageHelper
     /// </summary>
     public static bool IsHeicDecoderAvailable()
     {
+#if WINDOWS
         try
         {
             var decoders = BitmapDecoder.GetDecoderInformationEnumerator();
@@ -64,6 +71,9 @@ public static class WicImageHelper
         {
             return false;
         }
+#else
+        return false;
+#endif
     }
 
     /// <summary>
@@ -169,6 +179,7 @@ public static class WicImageHelper
     /// </summary>
     private static Bitmap LoadViaWic(string filePath)
     {
+#if WINDOWS
         using var fileStream = System.IO.File.OpenRead(filePath);
         using var inRas = fileStream.AsRandomAccessStream();
 
@@ -197,8 +208,13 @@ public static class WicImageHelper
         }
 
         return bitmap;
+#else
+        _ = filePath;
+        throw new PlatformNotSupportedException("WIC/HEIF decoding is only supported on Windows.");
+#endif
     }
 
+#if WINDOWS
     /// <summary>
     /// Encodes raw BGRA8 pixels into a HEIC/HEIF file at the target output path.
     /// </summary>
@@ -234,12 +250,14 @@ public static class WicImageHelper
 
         encoder.FlushAsync().AsTask().GetAwaiter().GetResult();
     }
+#endif
 
     /// <summary>
     /// Converts an input image file directly to HEIC using WIC/WinRT BitmapEncoder.
     /// </summary>
     public static void ConvertFileToHeic(string inputPath, string outputPath, long quality = 90, string language = "")
     {
+#if WINDOWS
         if (!IsHeicEncoderAvailable())
         {
             throw new NotSupportedException(Localization.T("error_heic_codec_missing", language));
@@ -259,6 +277,9 @@ public static class WicImageHelper
 
         byte[] pixels = pixelData.DetachPixelData();
         EncodePixelsToHeic(pixels, decoder.OrientedPixelWidth, decoder.OrientedPixelHeight, decoder.DpiX, decoder.DpiY, outputPath, quality);
+#else
+        throw new PlatformNotSupportedException("HEIC encoding is only supported on Windows.");
+#endif
     }
 
     /// <summary>
@@ -266,6 +287,7 @@ public static class WicImageHelper
     /// </summary>
     public static void SaveAsHeic(System.Drawing.Image image, string outputPath, long quality = 90, string language = "")
     {
+#if WINDOWS
         if (!IsHeicEncoderAvailable())
         {
             throw new NotSupportedException(Localization.T("error_heic_codec_missing", language));
@@ -291,6 +313,9 @@ public static class WicImageHelper
         }
 
         EncodePixelsToHeic(pixels, (uint)width, (uint)height, image.HorizontalResolution, image.VerticalResolution, outputPath, quality);
+#else
+        throw new PlatformNotSupportedException("HEIC encoding is only supported on Windows.");
+#endif
     }
 
     /// <summary>Converts any image format Clickra can decode into WebP using the bundled

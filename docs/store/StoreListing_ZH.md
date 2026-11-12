@@ -1,6 +1,6 @@
 # Microsoft Store 清單 - 中文 (台灣)
 
-以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.19.10.0。
+以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.20.0.0。
 
 ---
 
@@ -15,10 +15,10 @@ Clickra 是一款專為 Windows 檔案總管打造的原生右鍵擴充工具。
 原始碼：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 全新推出資料夾與檔案批次命名功能 [F2-21]，支援自訂流水號、正則尋找取代、時間戳與大小寫轉換
-- 支援安全更名防護與雙階段循環交換更名（A ⇄ B），防止檔案覆寫遺失
-- 檔案總管右鍵選單整合智慧門檻，多選檔案時可一鍵啟動批次命名
-- 儀表板轉檔區新增「檔案整理」分類，支援卡片選取與檔案拖曳即時更名
+- 通用 CLI 與跨平台封裝：Clickra CLI 現已正式支援 .NET 全域工具（dotnet tool install -g Clickra）與 Windows、Linux、macOS 原生 NativeAOT 獨立執行檔。
+- 多目標架構解耦：Core 與 CLI 全面支援 net8.0 多目標編譯與跨平台邊界隔離。
+- 無頭執行與 ANSI 彩色進度：支援無頭背景執行（--headless）、平台與引擎診斷（--diagnostics）及終端即時彩色進度條。
+- 雙軌發布管道：提供 GitHub Release Assets 原生壓縮包與 GitHub Packages NuGet 註冊表發布。
 
 ## Product Features
 *(最多 20 個，以項目符號顯示)*

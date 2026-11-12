@@ -83,11 +83,67 @@ jobs:
           }
           Write-Host "Expected build output present: $expected"
 
+  cross-platform:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: CLI NativeAOT (Linux x64)
+            os: ubuntu-latest
+            kind: publish
+            rid: linux-x64
+            output: publish/ci/cli-linux
+            expected: publish/ci/cli-linux/Clickra
+          - name: CLI NativeAOT (macOS ARM64)
+            os: macos-latest
+            kind: publish
+            rid: osx-arm64
+            output: publish/ci/cli-osx
+            expected: publish/ci/cli-osx/Clickra
+          - name: Pack .NET Global Tool
+            os: ubuntu-latest
+            kind: pack
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish NativeAOT CLI
+        if: matrix.kind == 'publish'
+        run: |
+          dotnet publish src/Clickra.CLI/Clickra.csproj -c Release -r ${{ matrix.rid }} --self-contained true -o ${{ matrix.output }} -p:TargetFramework=net8.0 -warnaserror
+
+      - name: Verify expected NativeAOT output
+        if: matrix.kind == 'publish'
+        run: |
+          if [ ! -f "${{ matrix.expected }}" ]; then
+            echo "Missing expected binary: ${{ matrix.expected }}"
+            exit 1
+          fi
+          echo "Expected binary exists: ${{ matrix.expected }}"
+
+      - name: Pack .NET Tool
+        if: matrix.kind == 'pack'
+        run: |
+          dotnet pack src/Clickra.CLI/Clickra.csproj -c Release -o publish/nupkg -warnaserror
+          if ! compgen -G "publish/nupkg/Clickra.*.nupkg" > /dev/null; then
+            echo "No Clickra nupkg produced in publish/nupkg"
+            exit 1
+          fi
+          echo "Clickra .NET tool package verified successfully."
+
   build:
     # Keep the historical required-check name while making the expensive
     # component builds independent. This job fails closed if any matrix leg fails.
     name: Build Core / CLI / Shell / Setup
-    needs: build-components
+    needs: [build-components, cross-platform]
     if: always()
     runs-on: windows-latest
     timeout-minutes: 10
@@ -95,8 +151,8 @@ jobs:
       - name: Require every component build
         shell: pwsh
         run: |
-          if ("${{ needs.build-components.result }}" -ne "success") {
-            throw "One or more component builds failed: ${{ needs.build-components.result }}"
+          if ("${{ needs.build-components.result }}" -ne "success" -or "${{ needs.cross-platform.result }}" -ne "success") {
+            throw "One or more component builds failed: build-components=${{ needs.build-components.result }}, cross-platform=${{ needs.cross-platform.result }}"
           }
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -150,6 +206,10 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Generate icon assets
+        shell: pwsh
+        run: dotnet run --project scripts/tools/IconGen/IconGen.csproj
 
       # The suite is an Exe with a self-built TestRunner, not a
       # Microsoft.NET.Test.Sdk project: `dotnet test` would only build it and

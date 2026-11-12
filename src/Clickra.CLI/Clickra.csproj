@@ -1,10 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <OutputType Condition="'$(PackAsTool)' == 'true'">Exe</OutputType>
+    <OutputType Condition="'$(PackAsTool)' != 'true'">WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
     <RollForward>LatestMajor</RollForward>
-    <ApplicationIcon>../../obj/icons/app.ico</ApplicationIcon>
+    <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('windows'))">../../obj/icons/app.ico</ApplicationIcon>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Authors>Youchen Jiang</Authors>
@@ -14,7 +15,20 @@
     <OptimizationPreference>Size</OptimizationPreference>
     <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PackAsTool>true</PackAsTool>
+    <PackageId>Clickra</PackageId>
+    <ToolCommandName>clickra</ToolCommandName>
+    <PackageOutputPath>$(MSBuildThisFileDirectory)../../publish/nupkg</PackageOutputPath>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/Youchenjiang/Clickra</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Youchenjiang/Clickra</PackageProjectUrl>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="PdfSharp" Version="6.2.4" />
@@ -34,7 +48,7 @@
     <ProjectReference Include="..\Clickra.Core\Clickra.Core.csproj" />
   </ItemGroup>
 
-  <Target Name="IncludeGeneratedIcons" BeforeTargets="AssignTargetPaths;GetCopyToOutputDirectoryItems" DependsOnTargets="EnsureClickraIcons">
+  <Target Name="IncludeGeneratedIcons" BeforeTargets="AssignTargetPaths;GetCopyToOutputDirectoryItems" DependsOnTargets="EnsureClickraIcons" Condition="$([MSBuild]::IsOSPlatform('windows'))">
     <ItemGroup>
       <Content Include="..\..\obj\icons\menu-*.ico">
         <Link>%(Filename)%(Extension)</Link>

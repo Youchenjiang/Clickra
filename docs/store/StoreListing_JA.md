@@ -1,6 +1,6 @@
 # Microsoft Store リスト - 日本語
 
-以下は、Microsoft パートナー センター (Partner Center) に直接コピー＆ペーストできる完全な情報です（v3.19.10.0 対応）。
+以下は、Microsoft パートナー センター (Partner Center) に直接コピー＆ペーストできる完全な情報です（v3.20.0.0 対応）。
 
 ---
 
@@ -15,10 +15,10 @@ Clickra は、Windows のエクスプローラー向けに設計されたネイ�
 ソースコード：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- フォルダーおよびファイルのバッチ名前変更機能 [F2-21] を新搭載（連番付与、正規表現置換、タイムスタンプ、大文字小文字変換対応）
-- 循環依存（A ⇄ B）を安全に解決する 2 段階交換アルゴリズムでファイル上書き損失を防止
-- エクスプローラー右クリックメニューにスマート統合（複数ファイル選択時に一括リネームを即座に起動）
-- ダッシュボードの変換タブに「ファイル整理」グループを追加、ドラッグ＆ドロップ対応
+- ユニバーサル CLI とクロスプラットフォーム パッケージ：Clickra CLI が .NET グローバル ツール（dotnet tool install -g Clickra）および Windows、Linux、macOS 向け NativeAOT スタンドアロン バイナリとして利用可能になりました。
+- マルチターゲット アーキテクチャ：Core および CLI の net8.0 マルチターゲット コンパイルとプラットフォーム分離を完了。
+- ヘッドレス実行と ANSI プログレス：ヘッドレス モード（--headless）、プラットフォーム診断（--diagnostics）、リアルタイム ターミナル プログレス バーをサポート。
+- デュアル配布チャネル：GitHub Release Assets スタンドアロン アーカイブと GitHub Packages NuGet 配布を提供。
 
 ## Product Features
 *(最多 20 個，以項目符號顯示)*

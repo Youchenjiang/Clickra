@@ -1,5 +1,12 @@
 # Changelog
 
+## [v3.20.0.0] - 2026-11-12
+
+- **跨平台通用 CLI 與 .NET Global Tool 發布 (Universal CLI & .NET Tool Distribution)**：落實跨平台新世代第二階段（Universal CLI）。配置 `PackAsTool` 產出官方 `Clickra` .NET 全域工具，全平台開發者僅需一行 `dotnet tool install -g Clickra --add-source https://nuget.pkg.github.com/Youchenjiang/index.json` 即可直接在終端使用 `clickra`。
+- **Core 與 CLI 多目標架構支援 (Multi-Targeting net8.0 & Platform Preprocessor Guards)**：將 `Clickra.Core` 與 `Clickra.CLI` 升級為支援 `net8.0;net8.0-windows10.0.19041.0` 多目標編譯；在 `WicImageHelper`、`PdfToImageProcessor` 與 `PdfPageThumbnailRenderer` 中透過 `#if WINDOWS` 安全隔離 WinRT 與 WIC API，確保純 `net8.0` 環境下零編譯錯誤與警告。
+- **GitHub Actions 跨平台 NativeAOT 矩陣與發布自動化 (Cross-Platform Matrix & Release CI)**：在 `ci.yml` 新增 Linux (x64) 與 macOS (ARM64) NativeAOT 原生編譯與 .NET Tool 封裝驗證；在 `release.yml` 實現發布時自動打包 `clickra-cli-linux-x64.tar.gz`、`clickra-cli-osx-arm64.tar.gz`、`clickra-cli-win-x64.zip` 上傳至 GitHub Release Assets，並自動推送 NuGet 套件至 GitHub Packages。
+- **通用套件與多平台契約架構守衛 (Universal Package Architectural Guards)**：於測試套件新增 `TestSuite.UniversalPackage.cs`（守衛總數提升至 97 項），全面防護 Core/CLI 多目標定義、.NET Tool 指令命名與授權規範、CI/Release 跨平台工作流程一致性與 WinRT 前置編譯器防護。
+
 ## [v3.19.10.0] - 2026-11-12
 
 - **CLI 無頭終端模式解耦 (CLI Headless Execution Decoupling)**：落實跨平台新世代第二階段（Universal CLI）。新增 `--headless` 指令選項，在非 Windows 系統預設啟用靜默無頭模式；將 Win32 DPI 感知、父進程終端附加、ProgressWindow 視窗訊息循環等 Windows 專有 API 封裝並加上 `OperatingSystem.IsWindows()` 守護，非 Windows 平台安全平移至終端執行。

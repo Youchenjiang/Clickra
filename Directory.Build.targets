@@ -1,5 +1,5 @@
 <Project>
-  <Target Name="EnsureClickraIcons" BeforeTargets="BeforeBuild" Condition="'$(MSBuildProjectName)' != 'IconGen' and '$(ClickraSkipIconGen)' != 'true'">
+  <Target Name="EnsureClickraIcons" BeforeTargets="BeforeBuild" Condition="'$(MSBuildProjectName)' != 'IconGen' and '$(MSBuildProjectName)' != 'Clickra.Core' and '$(ClickraSkipIconGen)' != 'true' and $([MSBuild]::IsOSPlatform('windows')) and !Exists('$(MSBuildThisFileDirectory)obj\icons\app.ico')">
     <Exec Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)scripts\tools\IconGen\IconGen.csproj&quot;"
           StandardOutputImportance="Low" />
   </Target>

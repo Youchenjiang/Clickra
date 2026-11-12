@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.19.10.0.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.20.0.0.
 
 ---
 
@@ -15,10 +15,10 @@ Core document operations run completely offline on your local PC to keep your da
 Source Code: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- Introduced Folder & File Batch Renaming [F2-21] with sequential numbering, regex search & replace, timestamps, and case transforms
-- Two-phase cyclic dependency swap safety (A ⇄ B) to prevent collision and data loss
-- Smart File Explorer context menu integration: multi-select files to launch batch renaming instantly
-- Dashboard Convert Workspace integration with new "File Organization" group and drag-and-drop support
+- Universal CLI & Cross-Platform Packaging: Clickra CLI is now available as a universal .NET Global Tool (dotnet tool install -g Clickra) and standalone NativeAOT binaries for Windows, Linux, and macOS.
+- Multi-Target Architecture: Full net8.0 multi-targeting and platform decoupling across Core and CLI with preprocessor guards.
+- Headless Execution & ANSI Progress: Headless mode (--headless), platform and engine diagnostics (--diagnostics), and interactive ANSI terminal progress.
+- Dual-Channel Distribution: Standalone NativeAOT release assets and official GitHub Packages NuGet registry distribution.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*

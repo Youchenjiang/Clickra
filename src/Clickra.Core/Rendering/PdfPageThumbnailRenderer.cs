@@ -85,6 +85,7 @@ public static class PdfPageThumbnailRenderer
     /// given target width, or null when the engine cannot open or render the page.</summary>
     private static Bitmap? TryRenderWithWindowsPdf(string filePath, int pageNumber, int targetWidth, string? password = null)
     {
+#if WINDOWS
         try
         {
             var file = Windows.Storage.StorageFile.GetFileFromPathAsync(filePath).AsTask().GetAwaiter().GetResult();
@@ -103,6 +104,12 @@ public static class PdfPageThumbnailRenderer
             return new Bitmap(temp);
         }
         catch { /* Ignored: falls back to the overlay renderer. */ }
+#else
+        _ = filePath;
+        _ = pageNumber;
+        _ = targetWidth;
+        _ = password;
+#endif
         return null;
     }
 

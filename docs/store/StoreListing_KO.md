@@ -1,6 +1,6 @@
 # Microsoft Store 목록 - 한국어
 
-다음은 Microsoft 파트너 센터 (Partner Center)에 직접 복사하여 붙여넣을 수 있는 전체 정보입니다 (v3.19.10.0 기준).
+다음은 Microsoft 파트너 센터 (Partner Center)에 직접 복사하여 붙여넣을 수 있는 전체 정보입니다 (v3.20.0.0 기준).
 
 ---
 
@@ -15,10 +15,10 @@ Clickra는 Windows 파일 탐색기를 위한 네이티브 우클릭 확장 프�
 소스 코드: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 폴더 및 파일 일괄 이름 바꾸기 기능 [F2-21] 추가 (일련번호, 정규식 찾기/바꾸기, 타임스탬프, 대소문자 변환 지원)
-- 순환 종속성(A ⇄ B)을 안전하게 교환하는 2단계 알고리즘으로 파일 덮어쓰기 손실 방지
-- 파일 탐색기 우클릭 메뉴 스마트 통합 (여러 파일 선택 시 일괄 이름 바꾸기 즉시 실행)
-- 대시보드 변환 탭에 "파일 정리" 그룹 추가 및 드래그 앤 드롭 지원
+- 유니버설 CLI 및 크로스 플랫폼 패키징: Clickra CLI가 이제 .NET 전역 도구(dotnet tool install -g Clickra) 및 Windows, Linux, macOS용 NativeAOT 독립 바이너리로 제공됩니다.
+- 멀티 타겟 아키텍처: Core 및 CLI의 net8.0 멀티 타겟 컴파일 및 플랫폼 분리 완료.
+- 헤드리스 실행 및 ANSI 진행 표시줄: 헤드리스 모드(--headless), 플랫폼 진단(--diagnostics) 및 실시간 터미널 진행 표시줄 지원.
+- 이중 배포 채널: GitHub Release Assets 독립 아카이브 및 GitHub Packages NuGet 레ジ스트리 배포 제공.
 
 ## Product Features
 *(최대 20개, 글머리 기호로 표시)*
