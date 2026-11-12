@@ -45,8 +45,12 @@ internal static partial class ClickraStartup
 
         if (parsed.ForceGui || (!parsed.Quiet && !parsed.HasRuleFlags))
         {
-            Clickra.UI.ProgressWindow.Show(BatchRenameUseCase.CommandName, parsed.Files);
-            return true;
+            if (OperatingSystem.IsWindows())
+            {
+                Clickra.UI.ProgressWindow.Show(BatchRenameUseCase.CommandName, parsed.Files);
+                return true;
+            }
+            Console.WriteLine("[Warning] GUI progress window is only supported on Windows. Running in headless mode.");
         }
 
         if (parsed.Files.Count == 0)

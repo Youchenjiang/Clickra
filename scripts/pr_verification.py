@@ -80,12 +80,17 @@ def extract_top_review_findings(reviews, pr_body=""):
         r"(?:blocking issues|finding details|### finding|\bissues found\b|\baction required\b)",
         re.IGNORECASE,
     )
+    clean_pattern = re.compile(
+        r"\b(?:no\s+(?:blocking\s+)?issues\s+found|0\s+issues\s+found|no\s+findings)\b",
+        re.IGNORECASE,
+    )
     for item in reviews:
         body = item.get("body") or ""
         state = item.get("state")
         author = item.get("author") or (item.get("user") or {}).get("login") or "unknown"
         relation = item.get("head_relation") or item.get("relation") or "unscoped"
-        if state == "CHANGES_REQUESTED" or bool(pattern.search(body)):
+        stripped_body = clean_pattern.sub("", body)
+        if state == "CHANGES_REQUESTED" or bool(pattern.search(stripped_body)):
             addressed = (state != "CHANGES_REQUESTED" and
                          relation != "current" and
                          _is_finding_addressed(author, pr_body))

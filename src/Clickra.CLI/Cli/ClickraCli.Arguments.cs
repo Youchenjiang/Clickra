@@ -11,6 +11,7 @@ namespace Clickra
     partial class ClickraCli
     {
         private static int _lastProgressLineLength;
+        private static int _lastReportedPercent = -1;
 
         [DllImport("kernel32.dll", SetLastError = true)]
         static extern bool AttachConsole(int dwProcessId);
@@ -64,7 +65,7 @@ namespace Clickra
         /// <summary>Attaches to the parent console when launched from a terminal.</summary>
         internal static void AttachParentConsoleForCli(string[] args)
         {
-            if (args.Length == 0) return;
+            if (!OperatingSystem.IsWindows() || args.Length == 0) return;
 
             try
             {
@@ -75,32 +76,107 @@ namespace Clickra
             catch { }
         }
 
-        /// <summary>Writes an inline progress line to the console.</summary>
+        /// <summary>Writes an inline progress line to the console with ANSI colors and Unicode bar when supported.</summary>
         static void WriteConsoleProgress(int current, int total, string message)
         {
             total = Math.Max(1, total);
             current = Math.Clamp(current, 0, total);
-
             int percent = (int)Math.Round(current * 100.0 / total);
-            const int width = 28;
-            int filled = Math.Clamp((int)Math.Round(width * percent / 100.0), 0, width);
-            string bar = new string('#', filled) + new string('-', width - filled);
-            string line = $"[Progress] [{bar}] {percent,3}% {message}";
 
+            if (Console.IsOutputRedirected)
+            {
+                WriteRedirectedProgress(percent, message);
+                return;
+            }
+
+            int consoleWidth = GetConsoleWidth();
+            (string line, int plainLength) = FormatInteractiveProgress(percent, message, consoleWidth);
+
+            int padLength = Math.Max(_lastProgressLineLength, plainLength);
+            Console.Write("\r" + line + new string(' ', Math.Max(0, padLength - plainLength)));
+            Console.Out.Flush();
+            _lastProgressLineLength = plainLength;
+        }
+
+        static int GetConsoleWidth()
+        {
             try
             {
-                int consoleWidth = Console.WindowWidth;
-                if (consoleWidth > 0 && line.Length >= consoleWidth)
+                return Console.WindowWidth;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        static void WriteRedirectedProgress(int percent, string message)
+        {
+            if (percent != _lastReportedPercent && (percent % 25 == 0 || percent == 100))
+            {
+                Console.WriteLine($"[Progress] {percent,3}% {message}");
+                _lastReportedPercent = percent;
+            }
+        }
+
+        static (string line, int plainLength) FormatInteractiveProgress(int percent, string message, int consoleWidth)
+        {
+            bool useAnsi = Environment.GetEnvironmentVariable("NO_COLOR") is null;
+            bool useUnicode = Console.OutputEncoding.CodePage == 65001 || !OperatingSystem.IsWindows();
+
+            int maxLen = consoleWidth > 0 ? Math.Max(10, consoleWidth - 1) : 0;
+            int barWidth = consoleWidth > 0 ? Math.Clamp(consoleWidth - 25, 0, 28) : 28;
+
+            string bar = barWidth >= 6 ? BuildBar(percent, barWidth, useUnicode, useAnsi) : "";
+            string plainBar = barWidth >= 6 ? BuildPlainBar(percent, barWidth, useUnicode) : "";
+
+            string tag = useAnsi ? "\x1b[36m[Progress]\x1b[0m" : "[Progress]";
+            string percentText = useAnsi ? $"\x1b[1m{percent,3}%\x1b[0m" : $"{percent,3}%";
+
+            string barPrefix = string.IsNullOrEmpty(bar) ? "" : $"[{bar}] ";
+            string plainBarPrefix = string.IsNullOrEmpty(plainBar) ? "" : $"[{plainBar}] ";
+
+            string prefix = $"{tag} {barPrefix}{percentText}";
+            string plainPrefix = $"[Progress] {plainBarPrefix}{percent,3}%";
+
+            string displayMessage = message;
+            if (maxLen > 0)
+            {
+                int availableForMsg = maxLen - plainPrefix.Length - 1;
+                if (availableForMsg <= 0)
                 {
-                    line = line[..Math.Max(0, consoleWidth - 1)];
+                    displayMessage = "";
+                }
+                else if (displayMessage.Length > availableForMsg)
+                {
+                    displayMessage = displayMessage[..availableForMsg];
                 }
             }
-            catch { }
 
-            int padLength = Math.Max(_lastProgressLineLength, line.Length);
-            Console.Write("\r" + line.PadRight(padLength));
-            Console.Out.Flush();
-            _lastProgressLineLength = line.Length;
+            string line = string.IsNullOrEmpty(displayMessage) ? prefix : $"{prefix} {displayMessage}";
+            string plain = string.IsNullOrEmpty(displayMessage) ? plainPrefix : $"{plainPrefix} {displayMessage}";
+
+            return (line, plain.Length);
+        }
+
+        static string BuildPlainBar(int percent, int width, bool useUnicode)
+        {
+            char filledChar = useUnicode ? '█' : '#';
+            char emptyChar = useUnicode ? '░' : '-';
+            int filled = Math.Clamp((int)Math.Round(width * percent / 100.0), 0, width);
+            return new string(filledChar, filled) + new string(emptyChar, width - filled);
+        }
+
+        static string BuildBar(int percent, int width, bool useUnicode, bool useAnsi)
+        {
+            char filledChar = useUnicode ? '█' : '#';
+            char emptyChar = useUnicode ? '░' : '-';
+            int filled = Math.Clamp((int)Math.Round(width * percent / 100.0), 0, width);
+            if (!useAnsi)
+            {
+                return new string(filledChar, filled) + new string(emptyChar, width - filled);
+            }
+            return $"\x1b[32m{new string(filledChar, filled)}\x1b[0m\x1b[90m{new string(emptyChar, width - filled)}\x1b[0m";
         }
 
         static void FinishConsoleProgressLine()
@@ -110,6 +186,7 @@ namespace Clickra
                 Console.WriteLine();
                 _lastProgressLineLength = 0;
             }
+            _lastReportedPercent = -1;
         }
 
         internal static string? ExtractOptionValue(List<string> args, params string[] optionNames)

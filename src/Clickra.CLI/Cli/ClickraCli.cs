@@ -49,6 +49,22 @@ partial class ClickraCli
         static void ShowWarning(string msg, string title) =>
             NativeDialogs.Warning(IntPtr.Zero, title, msg, 1.0f, SettingsPresentationController.Shared.Language);
 
+        private static void ShowProgressWindow(string command, List<string> files, string? outputDirOverride = null)
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                if (string.IsNullOrWhiteSpace(outputDirOverride))
+                    ProgressWindow.Show(command, files);
+                else
+                    ProgressWindow.Show(command, files, outputDirOverride);
+            }
+            else
+            {
+                Console.WriteLine("[Warning] GUI progress window is only supported on Windows. Running in headless mode.");
+                RunQuietUseCase(command, files, null, outputDirOverride);
+            }
+        }
+
         /// <summary>CLI entry point: delegates the whole startup pipeline (console
         /// attachment, dashboard launch, argument parsing and dispatch) to
         /// <see cref="ClickraStartup"/>.</summary>
@@ -162,7 +178,7 @@ partial class ClickraCli
             }
             else
             {
-                ProgressWindow.Show(command, files, outputDirOverride);
+                ShowProgressWindow(command, files, outputDirOverride);
             }
             return true;
         }
@@ -186,17 +202,17 @@ partial class ClickraCli
                 case "ppt2pdf":
                     ValidateExtensions(files, command, quiet, ".pptx", ".ppt");
                     if (quiet) HandleOfficeToPdfQuiet(command, files);
-                    else ProgressWindow.Show(command, files);
+                    else ShowProgressWindow(command, files);
                     return true;
                 case "word2pdf":
                     ValidateExtensions(files, command, quiet, ".docx", ".doc");
                     if (quiet) HandleOfficeToPdfQuiet(command, files);
-                    else ProgressWindow.Show(command, files);
+                    else ShowProgressWindow(command, files);
                     return true;
                 case "excel2pdf":
                     ValidateExtensions(files, command, quiet, ".xlsx", ".xls");
                     if (quiet) HandleOfficeToPdfQuiet(command, files);
-                    else ProgressWindow.Show(command, files);
+                    else ShowProgressWindow(command, files);
                     return true;
                 default:
                     return false;
@@ -247,7 +263,7 @@ partial class ClickraCli
             ValidateExtensions(files, command, quiet, ".pdf");
             RequireMinFiles(files, command, minFiles, quiet);
             if (quiet) quietAction();
-            else ProgressWindow.Show(command, files);
+            else ShowProgressWindow(command, files);
             return true;
         }
 
@@ -335,25 +351,25 @@ partial class ClickraCli
                     ValidateExtensions(files, command, quiet, allowed);
                     RequireMinFiles(files, command, 1, quiet);
                     if (quiet) HandleImg2PdfQuiet(files, outputDir);
-                    else ProgressWindow.Show(command, files);
+                    else ShowProgressWindow(command, files);
                     return true;
                 case "img-merge":
                     ValidateExtensions(files, command, quiet, allowed);
                     RequireMinFiles(files, command, 2, quiet);
                     if (quiet) HandleImgMergeQuiet(files, outputDir);
-                    else ProgressWindow.Show(command, files);
+                    else ShowProgressWindow(command, files);
                     return true;
                 case "img-stitch":
                     ValidateExtensions(files, command, quiet, allowed);
                     RequireMinFiles(files, command, 2, quiet);
                     if (quiet) HandleImgStitchQuiet(files, outputDir);
-                    else ProgressWindow.Show(command, files);
+                    else ShowProgressWindow(command, files);
                     return true;
                 case "img-compress":
                     ValidateExtensions(files, command, quiet, allowed);
                     RequireMinFiles(files, command, ConvertCommandRegistry.GetMinFiles(command), quiet);
                     if (quiet) HandleImgCompressQuiet(files, outputDirOverride ?? outputDir);
-                    else ProgressWindow.Show(command, files, outputDirOverride);
+                    else ShowProgressWindow(command, files, outputDirOverride);
                     return true;
                 case "img-to-png":
                 case "img-to-jpg":
@@ -379,7 +395,7 @@ partial class ClickraCli
             }
             else
             {
-                ProgressWindow.Show(command, files, outputDirOverride);
+                ShowProgressWindow(command, files, outputDirOverride);
             }
 
             return true;
@@ -446,20 +462,32 @@ partial class ClickraCli
         {
             IProgress<ConversionProgress>? progress = reportProgress
                 ? new SynchronousProgress<ConversionProgress>(state =>
-                    Console.WriteLine($"[Progress] {state.Message}"))
+                    WriteConsoleProgress(state.Current, state.Total, state.Message))
                 : null;
 
-            ConversionResult result = ExecuteUseCase(
-                command,
-                files,
-                options,
-                outputDir,
-                progress,
-                interaction,
-                observer);
+            try
+            {
+                ConversionResult result = ExecuteUseCase(
+                    command,
+                    files,
+                    options,
+                    outputDir,
+                    progress,
+                    interaction,
+                    observer);
 
-            if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc(ErrorProcessingFailedKey));
+                if (reportProgress)
+                    FinishConsoleProgressLine();
+
+                if (result.Status != ConversionResultStatus.Succeeded)
+                    throw new InvalidOperationException(result.Error ?? Loc(ErrorProcessingFailedKey));
+            }
+            catch
+            {
+                if (reportProgress)
+                    FinishConsoleProgressLine();
+                throw;
+            }
         }
 
         private static ConversionResult ExecuteUseCase(

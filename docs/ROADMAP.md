@@ -130,7 +130,7 @@
 
 - [ ] **[F1-16] v3.20.0 Universal Headless CLI (NativeAOT Cross-Platform)**：跨平台無頭終端工具。
 
-    - CLI 終端 ANSI 進度引擎與無頭調度支援。
+    - [x] CLI 終端 ANSI 進度引擎與無頭調度支援（解耦 Win32 進度視窗、支援 `--headless`、`--info`、`--diagnostics` 與 ANSI 即時進度；v3.19.10.0 完成）。
 
     - GitHub Actions 建立 Linux (x64/arm64) 與 macOS (Apple Silicon/Intel) 原生 NativeAOT CI。
 

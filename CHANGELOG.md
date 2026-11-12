@@ -1,5 +1,12 @@
 # Changelog
 
+## [v3.19.10.0] - 2026-11-12
+
+- **CLI 無頭終端模式解耦 (CLI Headless Execution Decoupling)**：落實跨平台新世代第二階段（Universal CLI）。新增 `--headless` 指令選項，在非 Windows 系統預設啟用靜默無頭模式；將 Win32 DPI 感知、父進程終端附加、ProgressWindow 視窗訊息循環等 Windows 專有 API 封裝並加上 `OperatingSystem.IsWindows()` 守護，非 Windows 平台安全平移至終端執行。
+- **跨平台 ANSI 彩色終端進度條 (Cross-Platform Rich ANSI Terminal Progress)**：升級 `WriteConsoleProgress`，在互動式終端下提供 ANSI 彩色標籤、Unicode 平滑進度方塊（`█`/`░`）與即時百分比反饋；在管道重導向或 CI 環境中平滑切換至單行里程碑輸出，並全面連通 `RunQuietUseCase` 轉檔進度。
+- **平台環境與轉檔引擎診斷 (Platform & Engine Diagnostics)**：新增 `--info` 與 `--diagnostics` 命令，完整輸出作業系統、CPU 架構、.NET 執行時期版本，並經由 Presentation 邊界安全查詢 Microsoft Office COM 與 LibreOffice 轉檔引擎之就緒狀態與安裝路徑。
+- **PR 審查驗證工具鏈強化 (PR Verification Tooling Hardening)**：在 `scripts/pr_verification.py` 中導入正面審查樣式比對 (`clean_pattern`)，根治審查機器人（如 LlamaPReview）留下「No blocking issues found」時被誤判為存在未處理問題之誤報問題。
+
 ## [v3.19.9.0] - 2026-11-12
 
 - **Office 轉檔引擎策略模式解耦 (Office Conversion Strategy Abstraction)**：落實跨平台新世代第一階段（Core 解耦）。抽取 `IOfficeConversionStrategy` 契約介面，將 Office 轉檔能力劃分為 `LibreOfficeConversionStrategy`（跨平台無頭 CLI）與 `MicrosoftOfficeConversionStrategy`（Windows COM 自動化），解除歷史上各處理器對 Windows PowerShell COM 的直接綁定。
