@@ -1,0 +1,17 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Clickra.Desktop.App"
+             RequestedThemeVariant="Default">
+    <Application.Styles>
+        <FluentTheme />
+    </Application.Styles>
+
+    <Application.Resources>
+        <SolidColorBrush x:Key="WordBrandBrush" Color="#0078D4" />
+        <SolidColorBrush x:Key="ExcelBrandBrush" Color="#107C41" />
+        <SolidColorBrush x:Key="PptBrandBrush" Color="#D83B01" />
+        <SolidColorBrush x:Key="MarkdownBrandBrush" Color="#6048A4" />
+        <SolidColorBrush x:Key="ImageBrandBrush" Color="#00828C" />
+        <SolidColorBrush x:Key="PdfBrandBrush" Color="#475569" />
+    </Application.Resources>
+</Application>

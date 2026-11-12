@@ -1,0 +1,221 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Clickra.Desktop.ViewModels"
+        x:Class="Clickra.Desktop.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Clickra"
+        Width="960" Height="680"
+        MinWidth="720" MinHeight="520"
+        WindowStartupLocation="CenterScreen"
+        TransparencyLevelHint="Mica,AcrylicBlur"
+        Background="Transparent">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- Top Title Bar -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource SystemChromeMediumColor}"
+                Padding="16,12"
+                BorderBrush="{DynamicResource SystemAccentColor}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <!-- App Logo & Title -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <Border Width="28" Height="28" CornerRadius="6" Background="{DynamicResource WordBrandBrush}">
+                        <TextBlock Text="C" Foreground="White" FontWeight="Bold" FontSize="16"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="Clickra" FontWeight="SemiBold" FontSize="16" VerticalAlignment="Center"/>
+                    <Border Background="#200078D4" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                        <TextBlock Text="4.0 Universal" FontSize="11" Foreground="{DynamicResource WordBrandBrush}" FontWeight="SemiBold"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Window Actions / Theme Toggle -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Name="ThemeToggleBtn"
+                            Padding="12,6"
+                            CornerRadius="6"
+                            Click="OnThemeToggleClicked">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="🌓" FontSize="13"/>
+                            <TextBlock Text="{Binding CurrentThemeName, StringFormat='主題: {0}'}" FontSize="12"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Workspace (Navigation + Content) -->
+        <Grid Grid.Row="1" ColumnDefinitions="200,*">
+            <!-- Sidebar Navigation -->
+            <Border Grid.Column="0"
+                    Background="{DynamicResource SystemChromeLowColor}"
+                    BorderBrush="{DynamicResource SystemBaseLowColor}"
+                    BorderThickness="0,0,1,0"
+                    Padding="10,16">
+                <StackPanel Spacing="6">
+                    <Button Classes="NavBtn"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Padding="12,10"
+                            CornerRadius="6"
+                            Background="{Binding IsConvertSelected, Converter={x:Null}}"
+                            Click="OnNavConvertClicked">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="⚡" FontSize="14"/>
+                            <TextBlock Text="轉檔工作區" FontWeight="Medium"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Classes="NavBtn"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Padding="12,10"
+                            CornerRadius="6"
+                            Click="OnNavHistoryClicked">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="📜" FontSize="14"/>
+                            <TextBlock Text="歷史紀錄" FontWeight="Medium"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Classes="NavBtn"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Padding="12,10"
+                            CornerRadius="6"
+                            Click="OnNavSettingsClicked">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="⚙️" FontSize="14"/>
+                            <TextBlock Text="系統設定" FontWeight="Medium"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- Content Area -->
+            <Grid Grid.Column="1" Margin="24">
+                <!-- Page 0: Convert Workspace -->
+                <ScrollViewer IsVisible="{Binding IsConvertSelected}">
+                    <StackPanel Spacing="20">
+                        <TextBlock Text="跨平台通用轉檔" FontSize="22" FontWeight="SemiBold"/>
+                        <TextBlock Text="拖放檔案至此處，或選擇下方轉檔工具快速處理" Foreground="{DynamicResource SystemBaseMediumColor}" FontSize="13"/>
+
+                        <!-- Drag and Drop Box -->
+                        <Border Height="140"
+                                CornerRadius="10"
+                                BorderBrush="{DynamicResource SystemBaseMediumLowColor}"
+                                BorderThickness="2"
+                                Background="{DynamicResource SystemChromeLowColor}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                                <TextBlock Text="📂" FontSize="36" HorizontalAlignment="Center"/>
+                                <TextBlock Text="拖曳檔案到此處立即轉換" FontWeight="Medium" FontSize="14"/>
+                                <TextBlock Text="支援 PDF、Word、Excel、PowerPoint、Markdown 與各類圖檔"
+                                           Foreground="{DynamicResource SystemBaseMediumColor}" FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Capability Domain Cards (100% Source Color Governance) -->
+                        <TextBlock Text="轉檔工具箱" FontSize="16" FontWeight="SemiBold" Margin="0,10,0,0"/>
+
+                        <WrapPanel Orientation="Horizontal">
+                            <!-- Word Card -->
+                            <Border Width="210" Margin="0,0,12,12" Padding="14" CornerRadius="8"
+                                    Background="{DynamicResource SystemChromeMediumColor}"
+                                    BorderBrush="{DynamicResource WordBrandBrush}" BorderThickness="0,0,0,3">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Word 轉檔" FontWeight="SemiBold" Foreground="{DynamicResource WordBrandBrush}"/>
+                                    <TextBlock Text=".doc, .docx → PDF" FontSize="12" Foreground="{DynamicResource SystemBaseMediumColor}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Excel Card -->
+                            <Border Width="210" Margin="0,0,12,12" Padding="14" CornerRadius="8"
+                                    Background="{DynamicResource SystemChromeMediumColor}"
+                                    BorderBrush="{DynamicResource ExcelBrandBrush}" BorderThickness="0,0,0,3">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Excel 轉檔" FontWeight="SemiBold" Foreground="{DynamicResource ExcelBrandBrush}"/>
+                                    <TextBlock Text=".xls, .xlsx → PDF" FontSize="12" Foreground="{DynamicResource SystemBaseMediumColor}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- PPT Card -->
+                            <Border Width="210" Margin="0,0,12,12" Padding="14" CornerRadius="8"
+                                    Background="{DynamicResource SystemChromeMediumColor}"
+                                    BorderBrush="{DynamicResource PptBrandBrush}" BorderThickness="0,0,0,3">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="PowerPoint 轉檔" FontWeight="SemiBold" Foreground="{DynamicResource PptBrandBrush}"/>
+                                    <TextBlock Text=".ppt, .pptx → PDF" FontSize="12" Foreground="{DynamicResource SystemBaseMediumColor}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Markdown Card -->
+                            <Border Width="210" Margin="0,0,12,12" Padding="14" CornerRadius="8"
+                                    Background="{DynamicResource SystemChromeMediumColor}"
+                                    BorderBrush="{DynamicResource MarkdownBrandBrush}" BorderThickness="0,0,0,3">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Markdown 轉檔" FontWeight="SemiBold" Foreground="{DynamicResource MarkdownBrandBrush}"/>
+                                    <TextBlock Text=".md → PDF / Word" FontSize="12" Foreground="{DynamicResource SystemBaseMediumColor}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Image Card -->
+                            <Border Width="210" Margin="0,0,12,12" Padding="14" CornerRadius="8"
+                                    Background="{DynamicResource SystemChromeMediumColor}"
+                                    BorderBrush="{DynamicResource ImageBrandBrush}" BorderThickness="0,0,0,3">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="圖片轉檔與處理" FontWeight="SemiBold" Foreground="{DynamicResource ImageBrandBrush}"/>
+                                    <TextBlock Text="JPG / PNG / WebP / HEIC" FontSize="12" Foreground="{DynamicResource SystemBaseMediumColor}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- PDF Card -->
+                            <Border Width="210" Margin="0,0,12,12" Padding="14" CornerRadius="8"
+                                    Background="{DynamicResource SystemChromeMediumColor}"
+                                    BorderBrush="{DynamicResource PdfBrandBrush}" BorderThickness="0,0,0,3">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="PDF 工具箱" FontWeight="SemiBold" Foreground="{DynamicResource PdfBrandBrush}"/>
+                                    <TextBlock Text="壓縮、分割、合併、翻譯、解密" FontSize="12" Foreground="{DynamicResource SystemBaseMediumColor}"/>
+                                </StackPanel>
+                            </Border>
+                        </WrapPanel>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Page 1: History -->
+                <StackPanel IsVisible="{Binding IsHistorySelected}" Spacing="16">
+                    <TextBlock Text="歷史紀錄與暫存任務" FontSize="22" FontWeight="SemiBold"/>
+                    <TextBlock Text="在此檢視過去的轉檔任務與結果記錄" Foreground="{DynamicResource SystemBaseMediumColor}" FontSize="13"/>
+                    <Border Background="{DynamicResource SystemChromeLowColor}" CornerRadius="8" Padding="20">
+                        <TextBlock Text="暫無轉檔歷史紀錄" HorizontalAlignment="Center" Foreground="{DynamicResource SystemBaseMediumColor}"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Page 2: Settings -->
+                <StackPanel IsVisible="{Binding IsSettingsSelected}" Spacing="16">
+                    <TextBlock Text="系統與引擎設定" FontSize="22" FontWeight="SemiBold"/>
+                    <Border Background="{DynamicResource SystemChromeLowColor}" CornerRadius="8" Padding="16">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="執行環境資訊" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding PlatformBanner, StringFormat='平台：{0}'}" FontSize="12"/>
+                            <TextBlock Text="{Binding VersionInfo, StringFormat='核心版本：{0}'}" FontSize="12"/>
+                            <TextBlock Text="架構：Avalonia 11 Fluent 跨平台統一架構" FontSize="12"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Grid>
+
+        <!-- Bottom Status Bar -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource SystemChromeLowColor}"
+                Padding="16,8"
+                BorderBrush="{DynamicResource SystemBaseLowColor}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding PlatformBanner}" FontSize="11" Foreground="{DynamicResource SystemBaseMediumColor}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="2" Text="{Binding VersionInfo}" FontSize="11" FontWeight="Medium" Foreground="{DynamicResource WordBrandBrush}" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
