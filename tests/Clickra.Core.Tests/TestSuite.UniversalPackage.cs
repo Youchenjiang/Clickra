@@ -25,8 +25,8 @@ static partial class TestSuite
             string cliProjPath = Path.Combine(root, "src", CliProjectDirectory, "Clickra.csproj");
             string cliProjText = File.ReadAllText(cliProjPath);
 
-            Assert.True(cliProjText.Contains("net8.0;net8.0-windows10.0.19041.0", StringComparison.Ordinal),
-                "Clickra.CLI must multi-target net8.0 and net8.0-windows.");
+            Assert.True(cliProjText.Contains("<TargetFramework>net8.0</TargetFramework>", StringComparison.Ordinal),
+                "Clickra.CLI must target universal net8.0 for tool packaging and standalone NativeAOT compilation.");
             Assert.True(cliProjText.Contains("<PackAsTool>true</PackAsTool>", StringComparison.Ordinal),
                 "Clickra.CLI must configure PackAsTool for net8.0 tool creation.");
             Assert.True(cliProjText.Contains("<ToolCommandName>clickra</ToolCommandName>", StringComparison.Ordinal),
