@@ -199,5 +199,23 @@ class VerificationTests(unittest.TestCase):
         self.assertTrue(result["top_level_findings"][0]["addressed"])
 
 
+    def test_clean_review_notice_is_not_treated_as_finding(self):
+        pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
+              "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
+                                    for name in pr_verification.REQUIRED]}
+        report = {
+            "counts": {"unresolved": 0},
+            "sonar": {"total": 0},
+            "reviews": [{
+                "author": "llamapreview",
+                "state": "COMMENTED",
+                "body": "### LlamaPReview — No blocking issues found\n\nThe strategy resolver preserves Windows conversion."
+            }]
+        }
+        result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
+        self.assertTrue(result["ready"])
+        self.assertEqual(0, len(result["top_level_findings"]))
+
+
 if __name__ == "__main__":
     unittest.main()
