@@ -14,6 +14,24 @@
     <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <!-- NativeAOT trimming. build_desktop.ps1 publishes with -warnaserror, so any trim or AOT
+         warning fails the publish; list each warning separately instead of one per assembly. -->
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <StripSymbols>true</StripSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- PdfPig (used by Clickra.Core) resolves types through reflection. Keep the same roots as
+         the CLI (src/Clickra.CLI/Clickra.csproj) so Core features survive trimming once wired. -->
+    <TrimmerRootAssembly Include="UglyToad.PdfPig" />
+    <TrimmerRootAssembly Include="UglyToad.PdfPig.Core" />
+    <TrimmerRootAssembly Include="UglyToad.PdfPig.Fonts" />
+    <TrimmerRootAssembly Include="UglyToad.PdfPig.Package" />
+    <TrimmerRootAssembly Include="UglyToad.PdfPig.Tokenization" />
+    <TrimmerRootAssembly Include="UglyToad.PdfPig.Tokens" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.2.8" />
     <PackageReference Include="Avalonia.Desktop" Version="11.2.8" />
