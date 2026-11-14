@@ -1,38 +1,81 @@
-<!-- Convert page, state A (no files yet): drop zone on top, recent work below (spec 4.1).
-     The file strip, action directory and action pages arrive in step 2. -->
+<!-- Convert page, state A for a first-time user (spec 4.1 / 4.7): drop zone on top; below it, a hint
+     that Clickra also works from the file manager's right-click menu. Once history exists (branch 7,
+     with Core wiring) the lower block shows 最近處理 instead. -->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Clickra.Desktop.Views.Pages.ConvertPage">
-    <Grid RowDefinitions="Auto,12,*" Margin="0,0,0,24">
+    <UserControl.Styles>
+        <Style Selector="Border.menuItem">
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="CornerRadius" Value="5" />
+        </Style>
+        <Style Selector="Border.menuItem > TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource Clk.TextSecondary}" />
+        </Style>
+    </UserControl.Styles>
 
-        <!-- Drop zone: 356 high at the default size, never shorter than 240 (section 5.2). -->
-        <Border Grid.Row="0" Classes="section" Height="356" MinHeight="240">
+    <Grid Margin="0,0,0,24">
+        <!-- Drop zone takes most of the height up to 356 (never below 240); the lower block gets the rest (section 5.2). -->
+        <Grid.RowDefinitions>
+            <RowDefinition Height="5*" MinHeight="240" MaxHeight="356" />
+            <RowDefinition Height="12" />
+            <RowDefinition Height="3*" MinHeight="96" />
+        </Grid.RowDefinitions>
+
+        <!-- Drop zone: card colour with a dashed outline, so it reads as "drop here". -->
+        <Panel Grid.Row="0">
+            <Border Background="{DynamicResource Clk.Card}" CornerRadius="16" />
+            <Rectangle Stroke="{DynamicResource Clk.ControlBorder}" StrokeThickness="1"
+                       StrokeDashArray="4,3" RadiusX="16" RadiusY="16" />
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
-                <Border Width="56" Height="56" CornerRadius="28" HorizontalAlignment="Center"
-                        Background="{DynamicResource Clk.Card}">
+                <Border Width="60" Height="60" CornerRadius="30" HorizontalAlignment="Center"
+                        Background="{DynamicResource Clk.Surface}">
                     <Path Data="M12,4 V15 M7,10 L12,15 L17,10 M5,20 H19"
                           Stroke="{DynamicResource Clk.Accent}" StrokeThickness="1.7"
                           StrokeLineCap="Round" StrokeJoin="Round"
                           Width="26" Height="26" Stretch="Uniform"
                           HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
-                <TextBlock Classes="h1" Text="要處理什麼檔案？" HorizontalAlignment="Center" />
-                <TextBlock Classes="secondary" Text="把檔案拖到這裡，Clickra 會告訴你可以做什麼。"
+                <TextBlock Classes="h1" FontSize="28" Text="要處理什麼檔案？" HorizontalAlignment="Center" />
+                <TextBlock Classes="secondary" FontSize="15" Text="把檔案拖到這裡，Clickra 會告訴你可以做什麼。"
                            HorizontalAlignment="Center" />
-                <Button Classes="primary" Content="選擇檔案" HorizontalAlignment="Center" Margin="0,6,0,0" />
+                <Button Classes="primary" Content="選擇檔案" HorizontalAlignment="Center" Margin="0,8,0,0" />
             </StackPanel>
-        </Border>
+        </Panel>
 
-        <!-- Recent work: the only area that grows with the window height. -->
-        <Border Grid.Row="2" Classes="section" Padding="20,16,20,20">
-            <Grid RowDefinitions="Auto,*">
-                <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Classes="h2" Text="最近處理" VerticalAlignment="Center" />
-                    <Button Grid.Column="1" Classes="link" Content="全部歷史" Name="AllHistoryLink" />
-                </Grid>
-                <TextBlock Grid.Row="1" Classes="caption" Text="還沒有處理過檔案"
-                           VerticalAlignment="Center" HorizontalAlignment="Center" />
-            </Grid>
+        <!-- First run: right-click menu hint. -->
+        <Border Grid.Row="2" Classes="section">
+            <StackPanel Orientation="Horizontal" Spacing="22"
+                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                <!-- A small picture of the file manager menu with the Clickra entry highlighted. -->
+                <Border Width="132" Padding="6" CornerRadius="8" VerticalAlignment="Center"
+                        Background="{DynamicResource Clk.Card}"
+                        BorderBrush="{DynamicResource Clk.ControlBorder}" BorderThickness="1">
+                    <StackPanel Spacing="2">
+                        <Border Classes="menuItem"><TextBlock Text="開啟" /></Border>
+                        <Border Classes="menuItem"><TextBlock Text="複製" /></Border>
+                        <Border Classes="menuItem" Background="{DynamicResource Clk.SegmentSelected}">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Image Source="avares://Clickra.Desktop/Assets/clickra-64.png" Width="14" Height="14"
+                                       VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <TextBlock Grid.Column="1" Text="Clickra" FontSize="13" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" Text="›" FontSize="13" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <Border Classes="menuItem"><TextBlock Text="內容" /></Border>
+                    </StackPanel>
+                </Border>
+                <StackPanel VerticalAlignment="Center" Spacing="4" MaxWidth="420">
+                    <TextBlock Text="也可以在檔案總管直接使用" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock Classes="secondary" FontSize="14" TextWrapping="Wrap"
+                               Text="對檔案按右鍵，選 Clickra，就能不開這個視窗直接處理" />
+                    <Button Classes="link" Name="MenuSettingsLink" Content="選擇右鍵選單要顯示的功能"
+                            HorizontalAlignment="Left" FontSize="14" />
+                </StackPanel>
+            </StackPanel>
         </Border>
     </Grid>
 </UserControl>

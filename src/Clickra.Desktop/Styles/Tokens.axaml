@@ -6,6 +6,8 @@
 
     <ResourceDictionary x:Key="Light">
       <SolidColorBrush x:Key="Clk.Bg" Color="#F3F3F3" />
+      <!-- Used over an acrylic (blurred) backdrop, e.g. macOS vibrancy. -->
+      <SolidColorBrush x:Key="Clk.BgTranslucent" Color="#D9F3F3F3" />
       <SolidColorBrush x:Key="Clk.Surface" Color="#FFFFFF" />
       <SolidColorBrush x:Key="Clk.SurfaceBorder" Color="#E5E5E5" />
       <SolidColorBrush x:Key="Clk.Card" Color="#F5F5F5" />
@@ -22,8 +24,10 @@
       <SolidColorBrush x:Key="Clk.ControlFill" Color="#FFFFFF" />
       <SolidColorBrush x:Key="Clk.HoverFill" Color="#0A000000" />
       <SolidColorBrush x:Key="Clk.Divider" Color="#EBEBEB" />
+      <SolidColorBrush x:Key="Clk.DividerStrong" Color="#DADADA" />
       <SolidColorBrush x:Key="Clk.SegmentTrack" Color="#F0F0F0" />
       <SolidColorBrush x:Key="Clk.SegmentSelected" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Clk.ChipOn" Color="#E5F0FA" />
       <SolidColorBrush x:Key="Clk.IconPlate" Color="#FFFFFF" />
       <SolidColorBrush x:Key="Clk.IconPlateBorder" Color="#E5E5E5" />
       <SolidColorBrush x:Key="Clk.TrackBg" Color="#D1D1D1" />
@@ -36,6 +40,7 @@
 
     <ResourceDictionary x:Key="Dark">
       <SolidColorBrush x:Key="Clk.Bg" Color="#202020" />
+      <SolidColorBrush x:Key="Clk.BgTranslucent" Color="#D9202020" />
       <SolidColorBrush x:Key="Clk.Surface" Color="#181818" />
       <SolidColorBrush x:Key="Clk.SurfaceBorder" Color="#181818" />
       <SolidColorBrush x:Key="Clk.Card" Color="#262626" />
@@ -51,9 +56,11 @@
       <SolidColorBrush x:Key="Clk.ControlBorder" Color="#4A4A4A" />
       <SolidColorBrush x:Key="Clk.ControlFill" Color="#262626" />
       <SolidColorBrush x:Key="Clk.HoverFill" Color="#14FFFFFF" />
-      <SolidColorBrush x:Key="Clk.Divider" Color="#2A2A2A" />
+      <SolidColorBrush x:Key="Clk.Divider" Color="#262626" />
+      <SolidColorBrush x:Key="Clk.DividerStrong" Color="#333333" />
       <SolidColorBrush x:Key="Clk.SegmentTrack" Color="#181818" />
       <SolidColorBrush x:Key="Clk.SegmentSelected" Color="#404040" />
+      <SolidColorBrush x:Key="Clk.ChipOn" Color="#1D3644" />
       <SolidColorBrush x:Key="Clk.IconPlate" Color="#E6EAF0" />
       <SolidColorBrush x:Key="Clk.IconPlateBorder" Color="#E6EAF0" />
       <SolidColorBrush x:Key="Clk.TrackBg" Color="#3D3D3D" />

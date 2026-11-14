@@ -114,3 +114,13 @@ constitute direct or contributory patent infringement, or inducement of
 patent infringement, then any patent rights granted to you under this License
 for these implementations of WebM shall terminate as of the date such
 litigation is filed.
+
+
+Noto Sans TC (subset: Regular, SemiBold)
+Source: https://github.com/notofonts/noto-cjk
+License: SIL Open Font License 1.1
+
+Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+Clickra.Desktop bundles a subset (common Traditional Chinese, Latin and UI
+characters) of the Regular and SemiBold weights. The full license text is
+distributed at src/Clickra.Desktop/Assets/Fonts/OFL.txt.

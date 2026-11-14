@@ -46,6 +46,8 @@
   <ItemGroup>
     <!-- App icon shown in the window and the top bar; source of truth is assets/primary. -->
     <AvaloniaResource Include="..\..\assets\primary\clickra-icon-primary-64.png" Link="Assets\clickra-64.png" />
+    <!-- Bundled UI font (Noto Sans TC subset, OFL 1.1) so text looks the same on every platform. -->
+    <AvaloniaResource Include="Assets\Fonts\*.ttf" />
   </ItemGroup>
 
 </Project>

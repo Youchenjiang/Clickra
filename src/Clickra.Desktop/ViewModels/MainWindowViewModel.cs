@@ -1,3 +1,4 @@
+using System;
 using Clickra.Core;
 
 namespace Clickra.Desktop.ViewModels;
@@ -8,6 +9,12 @@ public enum MainPage
     Convert,
     History,
     Settings,
+}
+
+/// <summary>Places on the Settings page that other pages can link to.</summary>
+public enum SettingsSection
+{
+    ContextMenu,
 }
 
 /// <summary>Window-level state: which tab is shown and the tab labels.</summary>
@@ -29,6 +36,16 @@ public sealed class MainWindowViewModel : ViewModelBase
             OnPropertyChanged(nameof(IsHistoryPage));
             OnPropertyChanged(nameof(IsSettingsPage));
         }
+    }
+
+    /// <summary>Raised when a page asks to show a specific place on the Settings page.</summary>
+    public event EventHandler<SettingsSection>? SettingsSectionRequested;
+
+    /// <summary>Switches to Settings and asks it to scroll to and highlight <paramref name="section"/>.</summary>
+    public void OpenSettings(SettingsSection section)
+    {
+        CurrentPage = MainPage.Settings;
+        SettingsSectionRequested?.Invoke(this, section);
     }
 
     public bool IsConvertPage

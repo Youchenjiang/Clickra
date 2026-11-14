@@ -111,6 +111,37 @@
     <Setter Property="Foreground" Value="{DynamicResource Clk.TextSecondary}" />
   </Style>
 
+  <!-- Icon-only button. Allowed only where the decision log permits it (e.g. the 關於 row);
+       always give it ToolTip.Tip and AutomationProperties.Name with the action's name. -->
+  <Style Selector="Button.icon">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Clk.Text}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Clk.ControlBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Width" Value="38" />
+    <Setter Property="Height" Value="38" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.icon:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Clk.HoverFill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Clk.ControlBorder}" />
+    <Setter Property="Foreground" Value="{DynamicResource Clk.Text}" />
+  </Style>
+  <!-- Icons are drawn on a shared 24 x 24 grid and scaled as a whole (Viewbox), so every icon keeps
+       the same size, stroke weight and baseline. Never stretch a single Path to fit. -->
+  <Style Selector="Button.icon Viewbox">
+    <Setter Property="Width" Value="20" />
+    <Setter Property="Height" Value="20" />
+  </Style>
+  <Style Selector="Button.icon Path">
+    <Setter Property="StrokeThickness" Value="1.6" />
+    <Setter Property="StrokeLineCap" Value="Round" />
+    <Setter Property="StrokeJoin" Value="Round" />
+    <Setter Property="Stroke" Value="{Binding $parent[Button].Foreground}" />
+  </Style>
+
   <!-- Subtle: no border, used for low-emphasis actions such as 重新選. -->
   <Style Selector="Button.subtle">
     <Setter Property="Background" Value="Transparent" />
@@ -232,9 +263,115 @@
     <Setter Property="BorderThickness" Value="1" />
   </Style>
 
+  <!-- ===== Toggle chip: turns one of many items on or off (right-click menu items).
+       On / off differ by shape (check vs plus), not only by colour. ===== -->
+  <Style Selector="ToggleButton.chip">
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Padding" Value="10,0,14,0" />
+    <Setter Property="CornerRadius" Value="18" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Clk.TextSecondary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Clk.ControlBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="ToggleButton.chip:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Clk.HoverFill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Clk.ControlBorder}" />
+    <Setter Property="Foreground" Value="{DynamicResource Clk.Text}" />
+  </Style>
+  <Style Selector="ToggleButton.chip:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Clk.ChipOn}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Clk.Accent}" />
+    <Setter Property="BorderThickness" Value="1.5" />
+    <Setter Property="Foreground" Value="{DynamicResource Clk.Text}" />
+  </Style>
+  <Style Selector="ToggleButton.chip Path">
+    <Setter Property="Width" Value="12" />
+    <Setter Property="Height" Value="12" />
+    <Setter Property="Stretch" Value="Uniform" />
+    <Setter Property="StrokeThickness" Value="2.2" />
+    <Setter Property="StrokeLineCap" Value="Round" />
+    <Setter Property="StrokeJoin" Value="Round" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Stroke" Value="{Binding $parent[ToggleButton].Foreground}" />
+  </Style>
+  <Style Selector="ToggleButton.chip Path.checkMark">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="ToggleButton.chip:checked Path.checkMark">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="ToggleButton.chip:checked Path.plusMark">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+
   <!-- ===== Scroll region inside a section: thin bar, content never pushes the page ===== -->
   <Style Selector="ScrollViewer.sectionScroll">
     <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
     <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+  </Style>
+  <!-- ===== Motion: short color transitions so hover / press feel smooth (about 0.1 s) ===== -->
+  <Style Selector="Button.primary /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.1" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.1" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.1" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.secondary /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.1" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.1" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.1" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.subtle /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.1" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.1" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.1" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.actionCard /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.1" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.1" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.1" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ListBox.segmented ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.1" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.1" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.1" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ToggleButton.chip /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="RadioButton.tab /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Foreground" Duration="0:0:0.1" />
+      </Transitions>
+    </Setter>
   </Style>
 </Styles>

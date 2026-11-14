@@ -85,7 +85,7 @@ public partial class StepSlider : UserControl
         if (Steps is null) return;
         foreach (string step in Steps)
         {
-            PART_Labels.Children.Add(new TextBlock { Text = step, FontSize = 12 });
+            PART_Labels.Children.Add(new TextBlock { Text = step, FontSize = 13 });
         }
 
         UpdateLabelEmphasis();
