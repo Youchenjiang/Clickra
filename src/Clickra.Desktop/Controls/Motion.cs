@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Animation;
@@ -35,7 +36,7 @@ internal static class Motion
         // Start state, applied without transitions so it takes effect at once.
         target.Transitions = null;
         target.Opacity = 0;
-        target.RenderTransform = TransformOperations.Parse(FormattableString.Invariant($"translate({offsetX}px, {offsetY}px)"));
+        target.RenderTransform = TransformOperations.Parse(string.Create(CultureInfo.InvariantCulture, $"translate({offsetX}px, {offsetY}px)"));
 
         void Play(TimeSpan _)
         {
@@ -63,14 +64,26 @@ internal static class Motion
         if (Environment.GetEnvironmentVariable("CLICKRA_REDUCE_MOTION") == "1") return false;
         if (OperatingSystem.IsWindows())
         {
+            IntPtr ptr = Marshal.AllocHGlobal(sizeof(int));
             try
             {
                 // SPI_GETCLIENTAREAANIMATION: Settings > Accessibility > Visual effects > Animation effects.
-                if (SystemParametersInfoW(0x1042, 0, out int on, 0) != 0) return on != 0;
+                if (SystemParametersInfoW(0x1042, 0, ptr, 0) != 0)
+                {
+                    return Marshal.ReadInt32(ptr) != 0;
+                }
             }
-            catch (Exception)
+            catch (EntryPointNotFoundException)
             {
                 // Fall through: keep motion on if the setting can't be read.
+            }
+            catch (DllNotFoundException)
+            {
+                // Fall through: keep motion on if user32.dll isn't available.
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(ptr);
             }
         }
         // macOS (accessibilityDisplayShouldReduceMotion) and Linux (gtk-enable-animations) are read in a later branch.
@@ -78,5 +91,5 @@ internal static class Motion
     }
 
     [DllImport("user32.dll", EntryPoint = "SystemParametersInfoW")]
-    private static extern int SystemParametersInfoW(uint action, uint param, out int value, uint winIni);
+    private static extern int SystemParametersInfoW(uint action, uint param, IntPtr value, uint winIni);
 }
