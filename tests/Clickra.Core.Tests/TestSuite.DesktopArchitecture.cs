@@ -31,6 +31,21 @@ static partial class TestSuite
                 "Clickra.Desktop must not reference Windows-specific Clickra.Fluent.");
             Assert.False(projText.Contains("ClickraShell", StringComparison.Ordinal),
                 "Clickra.Desktop must not reference Windows-specific ClickraShell.");
+
+            // 2. Verify specifications consistently reference Clickra.Desktop instead of legacy Clickra.App
+            string roadmapPath = Path.Combine(root, "docs", "ROADMAP.md");
+            if (File.Exists(roadmapPath))
+            {
+                Assert.False(File.ReadAllText(roadmapPath).Contains("Clickra.App", StringComparison.Ordinal),
+                    "docs/ROADMAP.md must reference Clickra.Desktop instead of legacy Clickra.App.");
+            }
+
+            string specPath = Path.Combine(root, "docs", "specs", "v4_cross_platform_unification.md");
+            if (File.Exists(specPath))
+            {
+                Assert.False(File.ReadAllText(specPath).Contains("Clickra.App", StringComparison.Ordinal),
+                    "v4_cross_platform_unification.md must reference Clickra.Desktop instead of legacy Clickra.App.");
+            }
         });
 
         runner.RunGuard("Universal desktop: build script and manifest enforce standalone execution contracts", () =>
