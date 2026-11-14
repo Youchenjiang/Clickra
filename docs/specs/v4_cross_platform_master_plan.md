@@ -1,0 +1,213 @@
+# Clickra 跨平台新世代（Cross-Platform Era）完整工程計畫書
+
+> **目標版本演進**：`v3.19.0` (Core 解耦) $\to$ `v3.20.0` (跨平台 Universal CLI) $\to$ `v4.0.0` (Avalonia 跨平台桌面介面)  
+> **發行架構**：.NET 8+ / NativeAOT 零依賴單檔發布（Windows x64 / Linux x64 & ARM64 / macOS x64 & Apple Silicon）  
+> **發布日期**：2026 年 11 月
+
+---
+
+## 1. 架構願景與核心思維 (Architecture Vision)
+
+Clickra 目前在 Windows 上已建立完整的轉檔引擎（Word、Excel、PPT、Markdown、PDF 縮減/分割/合併/翻譯/轉圖/解密、批次命名）。然而，現行 `Clickra.Core` 深度綁定 `net8.0-windows10.0.19041.0`、Windows GDI+ 與 COM API。
+
+跨平台計畫的核心目標是：**「將業務與運算邏輯徹底純化，桌面 UI 與系統選單依平台特性無縫適配，發布出零外部環境依賴的超高速單檔工具」**。
+
+```mermaid
+flowchart TD
+    subgraph UI_Layer["UI / Shell 表現層"]
+        CLI["Clickra CLI<br/>(跨平台 Rich Terminal)"]
+        Avalonia["Clickra Desktop<br/>(Avalonia Fluent Win/Mac/Linux)"]
+        WinShell["Windows Shell<br/>(ClickraShell.dll COM)"]
+        MacQuickAction["macOS Finder<br/>(Quick Action / Services)"]
+        LinuxDesktop["Linux Desktop<br/>(Nautilus / Dolphin Actions)"]
+    end
+
+    subgraph Abstraction_Layer["平台適配與抽象層 (Clickra.Core.Platform)"]
+        FontAdapter["字型解析器 (FontResolver)<br/>Windows / Linux / macOS"]
+        OfficeAdapter["Office 引擎<br/>Windows COM ⇄ Headless LibreOffice"]
+        PdfRenderAdapter["PDF 渲染抽象<br/>Direct2D ⇄ PDFium / SkiaSharp"]
+    end
+
+    subgraph Core_Layer["跨平台純粹核心 (Clickra.Core - net8.0)"]
+        BatchRename["批次命名引擎<br/>(Regex / Sequence / Timestamp)"]
+        MarkdownConv["Markdown 轉檔<br/>(Markdig / PDF / DOCX)"]
+        PdfOps["PDF 結構處理<br/>(Split / Merge / Decrypt / Compress)"]
+        StructuredData["結構化數據互轉<br/>(JSON / YAML / CSV / XML)"]
+        Translation["論文與文字翻譯<br/>(Math Preservation / Google / DeepL)"]
+    end
+
+    CLI --> Core_Layer
+    Avalonia --> Core_Layer
+    WinShell --> CLI
+    MacQuickAction --> CLI
+    LinuxDesktop --> CLI
+
+    Core_Layer -.-> Abstraction_Layer
+```
+
+---
+
+## 2. 三大階段實施藍圖與版本節奏
+
+```mermaid
+flowchart LR
+    subgraph Phase1["階段一：v3.19.0"]
+        direction TB
+        P1_A["Core 跨平台純化<br/>(net8.0 抽象)"]
+        P1_B["Office / 字型抽象"]
+        P1_C["Windows 零破壞回歸"]
+    end
+
+    subgraph Phase2["階段二：v3.20.0"]
+        direction TB
+        P2_A["跨平台 CLI 終端<br/>(Spectre.Console)"]
+        P2_B["NativeAOT 矩陣 CI<br/>(Linux / macOS)"]
+        P2_C["Homebrew / WinGet 發布"]
+    end
+
+    subgraph Phase3["階段三：v4.0.0"]
+        direction TB
+        P3_A["Avalonia UI 核心架構"]
+        P3_B["XAML 介面平移<br/>(Fluent Design)"]
+        P3_C["全平台整合發布"]
+    end
+
+    Phase1 --> Phase2 --> Phase3
+```
+
+---
+
+## 3. 分支規劃與原子提交矩陣 (Branch & Atomic Commit Strategy)
+
+依據 Clickra 分支治理規範：
+- 分支前綴必須為 `refactor/` 或 `feat/`。
+- 分支後綴嚴格限制為 **2 至 3 個英文單字**，總長度 **$\le 25$ 字元**。
+- 嚴格遵守領域隔離（Core / CLI / UI / CI）與原子提交規範（Commit 標題 $\le 72$ 字元，Body 必須為英文編號清單）。
+
+### 階段一：Core 引擎跨平台解耦 (`v3.19.0`)
+
+> **目標**：將 `src/Clickra.Core` 升級為純 `net8.0`（兼顧 Windows 回退），將 Windows 專屬 API 抽至適配介面，確保既有 Windows 測試 100% 通過。
+
+#### 分支 1：`refactor/core-decouple` (13 字元)
+* **脈絡與目的**：解耦 `Clickra.Core.csproj`，抽離 Windows-only 參照。
+* **預期原子提交**：
+  1. `refactor(core): decouple core csproj to multi-target net8.0`
+     - 目的：啟用 `<TargetFrameworks>net8.0;net8.0-windows10.0.19041.0</TargetFrameworks>`，建立跨平台編譯基準。
+  2. `refactor(core): abstract platform font resolution provider`
+     - 目的：將原本直接讀取 `C:\Windows\Fonts` 的邏輯抽象為 `IFontProvider`，實作 Windows、Linux (`/usr/share/fonts`) 與 macOS (`/Library/Fonts`) 搜尋路徑。
+  3. `refactor(core): isolate gdi dependencies in rendering pipeline`
+     - 目的：將 PDF 翻譯與圖片管線中的 `System.Drawing.Common` 封裝於 Windows 適配區塊，提供跨平台抽象介面。
+  4. `test(core): add cross-platform path and font discovery tests`
+     - 目的：驗證非 Windows 虛擬路徑與字型比對不會拋出平台無效例外。
+
+#### 分支 2：`refactor/office-engine` (13 字元)
+* **脈絡與目的**：將 Office 轉檔能力由 Windows COM 優先改為支援跨平台無頭 LibreOffice。
+* **預期原子提交**：
+  1. `refactor(core): abstract office conversion execution strategy`
+     - 目的：提煉 `IOfficeConvertStrategy`，明確劃分 `ComOfficeStrategy` 與 `LibreOfficeCliStrategy`。
+  2. `feat(core): support unix soffice detection and headless invocation`
+     - 目的：在 Linux (`/usr/bin/soffice`) 與 macOS (`/Applications/LibreOffice.app`) 偵測並無頭調用轉檔。
+  3. `test(core): add office conversion strategy fallback test suite`
+     - 目的：驗證無 COM 環境下自動流暢回退至 LibreOffice。
+
+#### 分支 3：`chore/bump-v3-19` (10 字元)
+* **脈絡與目的**：版本推進與文件更新。
+* **預期原子提交**：
+  1. `docs(core): document cross-platform architecture abstractions`
+  2. `chore(deps): bump version to 3.19.0.0 for core decoupling`
+
+---
+
+### 階段二：跨平台 Universal CLI (`v3.20.0`)
+
+> **目標**：讓 `Clickra.CLI` 可以在 Linux、macOS 與 Windows 獨立編譯為 NativeAOT 終端單檔，並在 GitHub Actions 建立三平台編譯產線，同時提供 **GitHub Releases（NativeAOT 獨立二進位壓縮包）** 與 **GitHub Packages（.NET Global Tool NuGet 套件）** 雙軌發布。
+> **PR 結構**：精簡收斂為 **2 個 PR**（不設置獨立且冗餘的 bump 分支，版本升級與文件同步依規範在功能 PR 內以原子提交完成）。
+
+#### 分支 4：`feat/cli-headless` (12 字元) —— **[已完成合併 ✅ / PR #240]**
+* **脈絡與目的**：CLI 終端機無頭模式重構、跨平台終端進度顯示與診斷旗標。
+* **交付內容**：
+  1. `refactor(cli): decouple headless execution from win32 progress window`
+     - 目的：當指令在終端機執行或在非 Windows 系統運作時，完全不初始化 Win32 視窗訊息循環。
+  2. `feat(cli): implement rich terminal progress bars for unix console`
+     - 目的：在 Linux / macOS / Windows Terminal 提供 ANSI 即時百分比進度條與狹窄終端動態長度調適。
+  3. `feat(cli): add platform detection banner and diagnostic output`
+     - 目的：輸出 OS、架構、.NET 執行環境與 Office/LibreOffice 轉檔引擎偵測資訊（`--info`, `--diagnostics`）。
+  4. `test(cli): add headless execution and platform diagnostics tests`
+  5. `chore(msix): bump version to 3.19.10.0`
+  6. `docs: update changelog, roadmap, and store listings for v3.19.10.0`
+
+#### 分支 5：`feat/universal-package` (17 字元) —— **[已完成合併 ✅ / PR #241]**
+* **脈絡與目的**：多平台編譯適配、GitHub Actions 三平台 NativeAOT 矩陣產線、GitHub Releases 獨立發布包、GitHub Packages (.NET Global Tool) 套件發布，以及升級至 `v3.20.0.0`。
+* **交付內容**：
+  1. `refactor(core): multi-target core and guard wic winrt dependencies`
+  2. `feat(cli): configure net8.0 tool packaging and cross-platform build`
+  3. `chore(ci): add cross-platform nativeaot builds and tool packaging`
+  4. `test(core): add universal package and tool metadata guards`
+  5. `chore(msix): bump version to 3.20.0.0 and update docs`
+  6. `chore(ci): exclude core and tests from icongen build target`
+  7. `refactor(core): enable windows targeting for cross-platform restore`
+  8. `test(core): guard windows targeting property in core project`
+  9. `chore(ci): generate icon assets in test job and guard core targets`
+  10. `refactor(core): discard unused fallback parameters in platform stubs`
+  11. `test(core): extract project name constant in universal package guard`
+
+---
+
+### 階段三：Avalonia 跨平台桌面介面 (`v4.0.0`)
+
+> **目標**：引進 Avalonia UI 11+，將 Fluent Dashboard、Settings、History 與進度視窗轉為跨平台 XAML 實現，以 NativeAOT 發布 Windows/Mac/Linux 桌面套件。
+> **PR 結構**：精簡收斂為 **2 個聚焦 PR**（不設置獨立且違規的 release 分支，版本升級與文件同步依規範在功能 PR 內以原子提交完成）。
+> **介面版面**：所有畫面依 [v4_desktop_ui_layout.md](v4_desktop_ui_layout.md)（含第 10 節決策紀錄）實作；本節與該規格衝突時以該規格為準。
+
+#### 分支 6：`feat/avalonia-shell` (14 字元) —— **[進行中 🚀]**
+* **脈絡與目的**：建立 `src/Clickra.Desktop` 專案結構並實作 Avalonia 11 Fluent 現代主視窗、頂部三分頁導航、深淺色主題（預設淺色）與 NativeAOT 獨立打包支援。**本 PR 只做介面外框，不串接 Core 的轉檔、歷史與設定功能**（分頁文字讀取 Core 語系檔除外）。
+* **預期原子提交**：
+  1. `feat(shell): initialize avalonia 11 desktop project with fluent theme` —— **[已完成 ✅]**
+     - 目的：建立引用 `Clickra.Core` 的 Avalonia 11 桌面專案並配置 Fluent 主題（初版的 Mica / Acrylic 背景已依介面規格改為實心底色）。
+  2. `feat(shell): implement top tab navigation shell and workspace frame`
+     - 目的：依介面規格建立頂部三分頁導航（轉檔、歷史、設定）、深淺色色票與共用元件（區塊、按鈕、分段按鈕、分段滑桿、動作卡片），以及三個頁面的外框；預設淺色，可在設定頁切換。
+  3. `chore(shell): configure nativeaot trimmer and standalone publish script`
+     - 目的：配置 Avalonia 核心與 SkiaSharp NativeAOT 剪裁保護與獨立打包腳本，產出免安裝執行檔供本地點擊驗收。
+  4. `test(core): add desktop project contracts and architecture guards` —— **[已完成 ✅]**
+     - 目的：架構守衛確保桌面專案依賴單向性與各項契約測試 100% 通過。
+
+#### 分支 7：`feat/avalonia-views` (14 字元)
+* **脈絡與目的**：依介面規格實作轉檔頁（放檔、動作目錄與動作頁）、歷史紀錄與進度狀態，**串接 Core**，調整 4.0 介面用語的語系字串，串接全平台 NativeAOT 發布產線，並升級至 `v4.0.0.0` 正式版。
+* **預期原子提交**：
+  1. `feat(shell): port convert workspace and action pages to avalonia xaml`
+     - 目的：實現檔案拖放、檔案窄列、只列出可用動作的動作目錄，以及每個動作一個動作頁（含滑入／滑回動畫與選項卡片），串接 `ConvertWorkspaceController`。
+  2. `feat(shell): port history feed and parked tasks panel to avalonia`
+     - 目的：直接重用 `Clickra.Core` 的 `HistoryFeedService` 與 `ParkedTaskController`。
+  3. `feat(shell): implement in-window progress and result states`
+     - 目的：處理中與完成狀態在同一個視窗內接續顯示（右鍵執行時用精簡小視窗），提供整體進度、取消、當場補救（如密碼）與白話失敗原因，完全對接 `ConversionExecutionService`。
+  - 另含 `refactor(core): ...` 原子提交：依介面規格 4.10 調整語系字串（改前改後須先經使用者確認）。
+  4. `ci: add cross-platform desktop nativeaot release matrix`
+     - 目的：在 CI/Release workflow 加入全平台桌面端 NativeAOT 打包。
+  5. `chore(msix): switch msix app entry to desktop and bump to 4.0.0.0`
+     - 目的：MSIX 主程式切換為跨平台桌面端，推進版本至 `4.0.0.0`，同步更新 CHANGELOG、ROADMAP 與商店文件。
+  6. `test(shell): add comprehensive view and viewmodel test suite`
+
+---
+
+## 4. 發布通路矩陣 (Distribution Matrix)
+
+| 平台 | 散布型態 | 發布機制 / 套件管理 | 使用者安裝指令 |
+| :--- | :--- | :--- | :--- |
+| **All Platforms** | .NET Global Tool | **GitHub Packages (NuGet)** | `dotnet tool install -g Clickra --add-source https://nuget.pkg.github.com/Youchenjiang/index.json` |
+| **Windows** | 完整桌面應用 | **Microsoft Store / WinGet** | `winget install Clickra` |
+| **Windows** | 免安裝 CLI | **GitHub Releases ZIP / Scoop** | `scoop install clickra` |
+| **macOS** | CLI + App Bundle | **Homebrew Tap / Releases DMG** | `brew install youchenjiang/tap/clickra` |
+| **Linux** | CLI + AppImage | **GitHub Tarball / Flathub / AUR** | `sudo tar -xzf clickra-*.tar.gz -C /usr/local/bin` |
+
+---
+
+## 5. 風險評估與回滾預案 (Risk & Contingency)
+
+1. **Windows 既有功能回歸風險**：
+   - **防護措施**：階段一的所有解耦改動必須通過本機 `tests/Clickra.Core.Tests`（506 項測試 + 87 項架構守衛）與真實 PDF 轉檔回歸。
+   - **回滾機制**：若多目標架構影響 Windows 原生 NativeAOT 體積，Windows 產線優先維持專屬編譯路徑。
+2. **Avalonia NativeAOT 二進位體積控制**：
+   - **目標**：單檔桌面應用限制在 35 MB 以內。
+   - **措施**：開啟 `<PublishTrimmed>true</PublishTrimmed>` 與 `<OptimizationPreference>Size</OptimizationPreference>`，並精確配置 `<TrimmerRootAssembly>`。
+3. **字型跨平台渲染保真度**：
+   - **措施**：Markdown 與 PDF 處理模組內建開源字型（KaiU / Noto Sans CJK）搜尋與備援回退機制，確保在沒有微軟字型的 Linux 機器上中文不缺字、不亂碼。
