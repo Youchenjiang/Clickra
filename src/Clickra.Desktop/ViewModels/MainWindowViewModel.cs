@@ -31,7 +31,9 @@ public sealed class MainWindowViewModel : ViewModelBase
         get => _currentPage;
         set
         {
-            if (!SetProperty(ref _currentPage, value)) return;
+            if (_currentPage == value) return;
+            _currentPage = value;
+            OnPropertyChanged();
             OnPropertyChanged(nameof(IsConvertPage));
             OnPropertyChanged(nameof(IsHistoryPage));
             OnPropertyChanged(nameof(IsSettingsPage));
