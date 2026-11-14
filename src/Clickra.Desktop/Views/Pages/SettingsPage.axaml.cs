@@ -122,7 +122,7 @@ public partial class SettingsPage : UserControl
         bool wasVisible = MenuChecklist.IsVisible;
         MenuChecklist.IsVisible = expanded && MenuEnabledBox.IsChecked == true;
         MenuChevron.RenderTransform = TransformOperations.Parse(MenuChecklist.IsVisible ? "rotate(180deg)" : "rotate(0deg)");
-        if (MenuChecklist.IsVisible && !wasVisible) Motion.Enter(MenuChecklist, -6, Motion.Fast);
+        if (MenuChecklist.IsVisible && !wasVisible) Motion.Enter(MenuChecklist, 0, -6, Motion.Fast);
     }
 
     private void OnMenuItemChanged()

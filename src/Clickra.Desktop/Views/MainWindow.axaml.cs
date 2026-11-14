@@ -30,12 +30,19 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
-        // Switching tabs: the new page fades in and slides up a few pixels (spec section 7).
-        foreach (Control page in new Control[] { ConvertView, HistoryView, SettingsView })
+        // Switching tabs: the new page fades in and slides 16 px sideways, from the side of the tab it came
+        // from (tab to the right -> enters from the right), matching the left-right tab row (spec section 7).
+        Control[] pages = [ConvertView, HistoryView, SettingsView];
+        int current = Array.FindIndex(pages, p => p.IsVisible);
+        for (int i = 0; i < pages.Length; i++)
         {
-            page.PropertyChanged += (_, e) =>
+            int index = i;
+            pages[i].PropertyChanged += (_, e) =>
             {
-                if (e.Property == IsVisibleProperty && e.NewValue is true) Motion.Enter(page);
+                if (e.Property != IsVisibleProperty || e.NewValue is not true) return;
+                double fromX = current < 0 || index == current ? 0 : index > current ? 16 : -16;
+                current = index;
+                Motion.Enter(pages[index], fromX, 0);
             };
         }
         ConfigureBackdrop();

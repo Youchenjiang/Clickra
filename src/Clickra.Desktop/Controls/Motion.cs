@@ -21,13 +21,13 @@ internal static class Motion
     public static readonly TimeSpan Fast = TimeSpan.FromMilliseconds(150);
     public static readonly TimeSpan Normal = TimeSpan.FromMilliseconds(180);
 
-    /// <summary>Fade in while sliding <paramref name="offsetY"/> px into place.</summary>
+    /// <summary>Fade in while sliding from (<paramref name="offsetX"/>, <paramref name="offsetY"/>) px into place.</summary>
     /// <remarks>
     /// Built on transitions toward the control's own final values (opacity 1, no offset), not on a keyframe
     /// animation: when a keyframe animation ends, its value is dropped and the local value shows for a frame,
     /// which made pages blink at the end of the effect.
     /// </remarks>
-    public static void Enter(Visual target, double offsetY = 8, TimeSpan? duration = null)
+    public static void Enter(Visual target, double offsetX, double offsetY, TimeSpan? duration = null)
     {
         if (!Enabled) return;
         TimeSpan time = duration ?? Normal;
@@ -35,7 +35,7 @@ internal static class Motion
         // Start state, applied without transitions so it takes effect at once.
         target.Transitions = null;
         target.Opacity = 0;
-        target.RenderTransform = TransformOperations.Parse(FormattableString.Invariant($"translateY({offsetY}px)"));
+        target.RenderTransform = TransformOperations.Parse(FormattableString.Invariant($"translate({offsetX}px, {offsetY}px)"));
 
         void Play(TimeSpan _)
         {
@@ -45,7 +45,7 @@ internal static class Motion
                 new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = time, Easing = new CubicEaseOut() },
             };
             target.Opacity = 1;
-            target.RenderTransform = TransformOperations.Parse("translateY(0px)");
+            target.RenderTransform = TransformOperations.Parse("translate(0px, 0px)");
         }
 
         // Next frame: the start state has been applied, so the transitions run from it.
