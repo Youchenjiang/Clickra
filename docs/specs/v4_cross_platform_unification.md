@@ -110,7 +110,7 @@ flowchart TD
     end
 
     subgraph Phase3["階段三：v4.0.0 (統一跨平台桌面介面)"]
-        P3_1["建置 Clickra.App (以 Avalonia 11 為候選框架)"]
+        P3_1["建置 Clickra.Desktop (以 Avalonia 11 為候選框架)"]
         P3_2["遷移 Dashboard / 工作區 / 歷史至 XAML"]
         P3_3["建立 Win / Mac / Linux 原生右鍵腳本與安裝包"]
         P3_4["全平台功能與零依賴驗收通過後，徹底刪除舊 Win32 GDI+ 與 WinUI 3 代碼"]
@@ -172,7 +172,7 @@ src/
 ### 4.0 目標目錄（清晰、單一、純粹）
 ```text
 src/
-├── Clickra.App/          # 【唯一 GUI】Avalonia 11 Fluent 桌面端（Win/Mac/Linux）
+├── Clickra.Desktop/      # 【唯一 GUI】Avalonia 11 Fluent 桌面端（Win/Mac/Linux）
 ├── Clickra.CLI/          # 【唯一 CLI】跨平台無頭終端可執行檔（NativeAOT）
 ├── Clickra.Core/         # 【唯一 Core】純 net8.0 跨平台運算核心
 ├── ClickraShell/         # Windows Explorer 現代快顯選單 COM 代理

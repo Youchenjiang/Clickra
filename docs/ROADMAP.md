@@ -142,7 +142,7 @@
 
 - [ ] **[F1-17] v4.0.0 Unified Cross-Platform Modern GUI**：統一跨平台現代 XAML 介面。
 
-    - 建置 Clickra.App 統一桌面端（以 Avalonia 11+ 為評估首選候選框架）。
+    - 建置 Clickra.Desktop 統一桌面端（以 Avalonia 11+ 為評估首選候選框架）。
 
     - 實踐自適應平台融合：Windows Fluent (Mica/Acrylic)、macOS HIG Vibrancy、Linux 桌面主題（Adwaita/Breeze），並遵循 100% 來源檔案驅動調色盤。
 

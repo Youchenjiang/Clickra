@@ -163,7 +163,7 @@ flowchart LR
 * **脈絡與目的**：建立 `src/Clickra.Desktop` 專案結構並實作 Avalonia 11 Fluent 現代主視窗、頂部三分頁導航、深淺色主題（預設淺色）與 NativeAOT 獨立打包支援。**本 PR 只做介面外框，不串接 Core 的轉檔、歷史與設定功能**（分頁文字讀取 Core 語系檔除外）。
 * **預期原子提交**：
   1. `feat(shell): initialize avalonia 11 desktop project with fluent theme` —— **[已完成 ✅]**
-     - 目的：建立引用 `Clickra.Core` 的 Avalonia 11 桌面專案並配置 Fluent 主題（初版的 Mica / Acrylic 背景已依介面規格改為實心底色）。
+     - 目的：建立引用 `Clickra.Core` 的 Avalonia 11 桌面專案並配置 Fluent 主題（視窗底層：Windows 11 用 Mica、macOS 用半透明模糊，不支援時退回實心底色，內容區塊維持實心；見介面規格第 7 節）。
   2. `feat(shell): implement top tab navigation shell and workspace frame`
      - 目的：依介面規格建立頂部三分頁導航（轉檔、歷史、設定）、深淺色色票與共用元件（區塊、按鈕、分段按鈕、分段滑桿、動作卡片），以及三個頁面的外框；預設淺色，可在設定頁切換。
   3. `chore(shell): configure nativeaot trimmer and standalone publish script`
@@ -181,6 +181,12 @@ flowchart LR
   3. `feat(shell): implement in-window progress and result states`
      - 目的：處理中與完成狀態在同一個視窗內接續顯示（右鍵執行時用精簡小視窗），提供整體進度、取消、當場補救（如密碼）與白話失敗原因，完全對接 `ConversionExecutionService`。
   - 另含 `refactor(core): ...` 原子提交：依介面規格 4.10 調整語系字串（改前改後須先經使用者確認）。
+  - **本 PR（分支 6）留下、需在分支 7 接上 Core 的介面項目**（介面已完成，只差功能）：
+    - 轉檔頁：有歷史紀錄時，下方區塊由「也可以在檔案總管直接使用」改為「最近處理」清單；「選擇檔案」與拖放。
+    - 設定頁：所有設定值讀寫 `SettingsController`（目前只有「外觀」會生效）；記住視窗大小與位置；「檢視日誌」「寄送問題回報」接上現有日誌資料夾與診斷郵件功能（`Localization.BuildDiagnosticsEmail`）；右鍵選單的總開關與勾選清單（介面與摘要文字已完成，只差寫入設定並實際註冊／取消右鍵選單）。
+    - 歷史頁：接上歷史清單與篩選。
+    - 平台相關文字：「檔案總管」在 macOS 為 Finder、Linux 為檔案管理員。
+    - 系統「減少動態效果」設定的偵測（Avalonia 11 尚無 API），開啟時取消介面動畫。
   4. `ci: add cross-platform desktop nativeaot release matrix`
      - 目的：在 CI/Release workflow 加入全平台桌面端 NativeAOT 打包。
   5. `chore(msix): switch msix app entry to desktop and bump to 4.0.0.0`
@@ -207,7 +213,70 @@ flowchart LR
    - **防護措施**：階段一的所有解耦改動必須通過本機 `tests/Clickra.Core.Tests`（506 項測試 + 87 項架構守衛）與真實 PDF 轉檔回歸。
    - **回滾機制**：若多目標架構影響 Windows 原生 NativeAOT 體積，Windows 產線優先維持專屬編譯路徑。
 2. **Avalonia NativeAOT 二進位體積控制**：
-   - **目標**：單檔桌面應用限制在 35 MB 以內。
+   - **目標**：單檔桌面應用在未內嵌大字型時限制在 35 MB 以內；內嵌 Noto Sans TC 子集後整體控制在 40 MB 以內；最終 MSIX 下載體積控制在 25～28 MB 區間（詳見第 6 節詳細盤點）。
    - **措施**：開啟 `<PublishTrimmed>true</PublishTrimmed>` 與 `<OptimizationPreference>Size</OptimizationPreference>`，並精確配置 `<TrimmerRootAssembly>`。
 3. **字型跨平台渲染保真度**：
    - **措施**：Markdown 與 PDF 處理模組內建開源字型（KaiU / Noto Sans CJK）搜尋與備援回退機制，確保在沒有微軟字型的 Linux 機器上中文不缺字、不亂碼。
+
+---
+
+## 6. 二進位體積與套件依賴裁剪盤點 (Binary Footprint & Dependency Trimming)
+
+本節記錄 2026-11-15 針對 Clickra 從現行 3.x Win32 AOT 架構遷移至 4.0 Avalonia 桌面端時的實測二進位體積、MSIX 壓縮數據，以及向兄弟專案 **TapStrum** 借鏡的依賴裁剪架構實踐。
+
+### 6.1 現行 3.x Win32 AOT MSIX 實測基準
+
+現行 3.x Windows MSIX 採用 Win32 GDI+ 儀表板與 NativeAOT CLI，實測各元件與封裝數據如下：
+
+| 元件名稱 | 未壓縮大小 (磁碟佔用) | 說明 |
+| :--- | :--- | :--- |
+| `Clickra.exe` | 25.53 MB | Win32 GDI+ 儀表板 + CLI 轉檔核心 |
+| `ClickraShell.dll` | 6.40 MB | 檔案總管原生右鍵選單延伸模組 |
+| `ClickraLauncher.exe` | 1.82 MB | NativeAOT 啟動路由與參數解析器 |
+| `libwebp*.dll` 等執行檔 | 0.45 MB | WebP / 圖片處理 Native 動態程式庫 |
+| 圖示、PRI 語系、資訊清單 | 0.15 MB | 22 個選單圖示、5 國語系資源、清單 |
+| **安裝後總磁碟空間** | **約 34.35 MB** | 解壓縮部署於 WindowsApps 之實際空間 |
+| **最終下載體積 (`Clickra.msix`)** | **15.51 MB** | **Deflate 壓縮實測值** |
+
+### 6.2 4.0 Avalonia 桌面端二進位組成盤點
+
+4.0 遷移至跨平台 Avalonia 11 NativeAOT 後，各獨立元件之二進位盤點如下：
+
+| 檔案名稱 | 未壓縮大小 | 說明 |
+| :--- | :--- | :--- |
+| `Clickra.Desktop.exe` | 39.24 MB | Avalonia Fluent 主程式（含 4.4 MB Noto Sans TC 內嵌字型子集） |
+| `libSkiaSharp.dll` | 8.98 MB | 2D 向量繪圖引擎核心 |
+| `av_libglesv2.dll` | 4.23 MB | ANGLE OpenGL ES 轉 DirectX 轉譯層 |
+| `libHarfBuzzSharp.dll` | 1.53 MB | OpenType 高級文字塑形引擎 |
+| `ClickraShell.dll` | 6.40 MB | 檔案總管右鍵選單延伸模組（延續 Windows 專屬） |
+| `ClickraLauncher.exe` | 1.82 MB | 跨平台啟動路由 |
+| WebP 與其他資產 | 0.60 MB | 圖片 Native 組件、圖示與語系 |
+
+* 實測將 `publish/desktop` 執行階段全部檔案進行 MSIX 標準 Deflate 壓縮測試：**壓縮後體積為 23.6 MB**。
+
+### 6.3 依賴裁剪策略（對照 TapStrum 專案實踐）
+
+兄弟專案 **TapStrum** 在 WinUI 3（Windows App SDK）架構下，透過以下手法自帶動態瘦身：
+1. **黑名單暴力剔除**：在 `build_msix.ps1` 排除 `DirectML.dll`（~35MB）、`onnxruntime.dll`（~20MB）、`NPUDetect.dll` 等無關 AI 庫，單刀砍除 ~70 MB。
+2. **依賴模式切換**：改用 `-p:WindowsAppSDKSelfContained=false`，將 Windows App Runtime 改為系統框架依賴。
+
+**Clickra 4.0 的裁剪機制與進一步手動瘦身方向**：
+
+* **現行已落實之 NativeAOT 編譯期修剪**：
+  - `<PublishAot>true</PublishAot>` 全程式靜態分析修剪，剔除未引用之 .NET 類別庫。
+  - `<OptimizationPreference>Size</OptimizationPreference>` 優先壓制機器碼體積。
+  - `<StripSymbols>true</StripSymbols>` 發行時自動剝離 153 MB PDB 除錯符號。
+* **下一階段主動依賴瘦身計畫**：
+  1. **移除 Inter 字型依賴（預估省 ~1.2 MB）**：目前已內嵌 Noto Sans TC 與 Windows 系統 Segoe UI，可解除 `Avalonia.Fonts.Inter` 依賴。
+  2. **Noto Sans TC 字型子集蒸餾（預估省 ~2～3 MB）**：目前 4.4 MB 字型包含完整繁中字表，後續透過 pyftsubset 萃取介面專用常用字表，目標壓至 1.0～1.5 MB。
+  3. **評估 ANGLE 轉譯層 (`av_libglesv2.dll` 4.23 MB)**：Windows 11 上評估直通 D3D11 / Software 渲染的可行性，若不依賴 ANGLE 可在打包時過濾。
+  4. **單一二進位整合（最重要的 MSIX 瘦身，預估省 18～25 MB）**：在 4.0 MSIX 打包時，徹底移除 3.x 舊版 25.5 MB 的 `Clickra.exe`，由 `ClickraLauncher` 統一路由無介面模式與 Avalonia 桌面端，避免重複夾帶兩套執行期。
+
+### 6.4 MSIX 封裝體積演進與目標
+
+| 版本 / 方案 | 磁碟安裝空間 | MSIX 下載體積 | 備註 |
+| :--- | :--- | :--- | :--- |
+| **3.x 現行版** | 34.35 MB | **15.51 MB** | Win32 GDI+ Dashboard |
+| **4.0 雙軌並存過渡期** | 約 80.8 MB | **約 34～36 MB** | 若同時保留舊版 CLI + 新版 Desktop |
+| **4.0 統一整合版 (情境 A)** | 約 62.8 MB | **約 27～28 MB** | 移除舊版 Dashboard，Launcher 統一路由 |
+| **4.0 極限裁剪版 (目標)** | 約 52.0 MB | **約 22～25 MB** | 蒸餾字型、移除 Inter、單一入口 |
