@@ -95,7 +95,7 @@ public partial class SettingsPage : UserControl
             // Decided from the chips, not the box's own toggle (which would send a partial box to "off").
             groupBox.Click += (_, _) =>
             {
-                bool on = !toggles.All(c => c.IsChecked == true);
+                bool on = !toggles.All(c => c.IsChecked is true);
                 _menuSyncing = true;
                 foreach (ToggleButton chip in toggles) chip.IsChecked = on;
                 _menuSyncing = false;
@@ -112,17 +112,17 @@ public partial class SettingsPage : UserControl
 
         MenuChevron.RenderTransform = TransformOperations.Parse("rotate(0deg)");
         MenuChevron.Transitions = Motion.TransformTransitions();
-        MenuExpandButton.Click += (_, _) => SetMenuExpanded(!MenuChecklist.IsVisible);
+        MenuExpandButton.Click += (_, _) => SetMenuExpanded(MenuChecklist, MenuEnabledBox.IsChecked is true, MenuChevron, !MenuChecklist.IsVisible);
         MenuEnabledBox.IsCheckedChanged += (_, _) => UpdateMenuState();
         UpdateMenuState();
     }
 
-    private void SetMenuExpanded(bool expanded)
+    private static void SetMenuExpanded(Control checklist, bool isEnabled, Control chevron, bool expanded)
     {
-        bool wasVisible = MenuChecklist.IsVisible;
-        MenuChecklist.IsVisible = expanded && MenuEnabledBox.IsChecked == true;
-        MenuChevron.RenderTransform = TransformOperations.Parse(MenuChecklist.IsVisible ? "rotate(180deg)" : "rotate(0deg)");
-        if (MenuChecklist.IsVisible && !wasVisible) Motion.Enter(MenuChecklist, 0, -6, Motion.Fast);
+        bool wasVisible = checklist.IsVisible;
+        checklist.IsVisible = expanded && isEnabled;
+        chevron.RenderTransform = TransformOperations.Parse(checklist.IsVisible ? "rotate(180deg)" : "rotate(0deg)");
+        if (checklist.IsVisible && !wasVisible) Motion.Enter(checklist, 0, -6, Motion.Fast);
     }
 
     private void OnMenuItemChanged()
@@ -134,23 +134,39 @@ public partial class SettingsPage : UserControl
     private void UpdateMenuState()
     {
         int total = _menuGroups.Sum(g => g.Items.Count);
-        int shown = _menuGroups.Sum(g => g.Items.Count(b => b.IsChecked == true));
+        int shown = _menuGroups.Sum(g => g.Items.Count(b => b.IsChecked is true));
 
         _menuSyncing = true;
         foreach (var (groupBox, items) in _menuGroups)
         {
-            int on = items.Count(b => b.IsChecked == true);
-            groupBox.IsChecked = on == items.Count ? true : on == 0 ? false : null;
+            int on = items.Count(b => b.IsChecked is true);
+            if (on == items.Count)
+            {
+                groupBox.IsChecked = true;
+            }
+            else if (on == 0)
+            {
+                groupBox.IsChecked = false;
+            }
+            else
+            {
+                groupBox.IsChecked = null;
+            }
         }
         _menuSyncing = false;
 
-        bool enabled = MenuEnabledBox.IsChecked == true;
+        bool enabled = MenuEnabledBox.IsChecked is true;
         MenuExpandButton.IsVisible = enabled;
-        if (!enabled) SetMenuExpanded(false);
-        MenuSummary.Text = !enabled ? "已關閉"
-            : shown == total ? $"{total} 項全部顯示（預設）"
-            : shown == 0 ? "沒有勾選任何功能，右鍵選單不會出現 Clickra"
-            : $"顯示 {shown} 項，已隱藏 {total - shown} 項";
+        if (!enabled) SetMenuExpanded(MenuChecklist, false, MenuChevron, false);
+        MenuSummary.Text = FormatMenuSummary(enabled, shown, total);
+    }
+
+    private static string FormatMenuSummary(bool enabled, int shown, int total)
+    {
+        if (!enabled) return "已關閉";
+        if (shown == total) return $"{total} 項全部顯示（預設）";
+        if (shown == 0) return "沒有勾選任何功能，右鍵選單不會出現 Clickra";
+        return $"顯示 {shown} 項，已隱藏 {total - shown} 項";
     }
 
     // Order matches the spec: 淺色 (default), 深色, 跟隨系統.
