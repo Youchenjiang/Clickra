@@ -70,5 +70,25 @@ static partial class TestSuite
             Assert.True(manifestText.Contains("PerMonitorV2", StringComparison.Ordinal),
                 "Desktop app.manifest must declare PerMonitorV2 DPI awareness.");
         });
+
+        runner.RunGuard("Universal desktop: launcher preserves packaged fluent priority and isolates desktop preview contracts", () =>
+        {
+            string? root = FindRepoRoot();
+            if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+            string launcherPath = Path.Combine(root, "src", "ClickraLauncher", "Program.cs");
+            Assert.True(File.Exists(launcherPath), "ClickraLauncher Program.cs must exist.");
+
+            string launcherSource = File.ReadAllText(launcherPath);
+            int fluentIdx = launcherSource.IndexOf("TryActivateFluent", StringComparison.Ordinal);
+            int desktopIdx = launcherSource.IndexOf("Fallback to Clickra.Desktop", StringComparison.Ordinal);
+            Assert.True(fluentIdx >= 0 && desktopIdx >= 0 && fluentIdx < desktopIdx,
+                "ClickraLauncher must prioritize packaged Fluent activation over Desktop fallback during preview phase.");
+            Assert.True(launcherSource.Contains("CLICKRA_DESKTOP", StringComparison.Ordinal) ||
+                        launcherSource.Contains("--desktop", StringComparison.Ordinal),
+                "ClickraLauncher must support explicit opt-in preview for Clickra.Desktop.");
+            Assert.True(launcherSource.Contains("cleanArgs.Length > 0", StringComparison.Ordinal),
+                "ClickraLauncher must isolate argument-bearing conversion invocations to Clickra.exe.");
+        });
     }
 }
