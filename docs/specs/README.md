@@ -9,6 +9,7 @@ Welcome to the technical design specifications and RFC directory. This folder co
 | Specification | Target Scope | Status | Description |
 | :--- | :--- | :--- | :--- |
 | **[v4_cross_platform_unification.md](v4_cross_platform_unification.md)** | `v3.19.0` → `v4.0.0` | Approved Proposal | Three-phase roadmap toward pure `net8.0` Core, cross-platform universal CLI, and unified modern GUI. |
+| **[v4_desktop_ui_layout.md](v4_desktop_ui_layout.md)** | `v4.0.0` Desktop GUI | Draft | Window size, page layouts, overflow/scroll rules, and visual tokens for the unified Avalonia desktop UI. |
 | **[translation_rules.md](translation_rules.md)** | `[F2-16]` PDF Translation | Implemented & Maintained | Comprehensive layout analysis, math formula protection, bypass rules, and repair pipelines. |
 | **[libreoffice_engine_plan.md](libreoffice_engine_plan.md)** | `[F2-5]` LibreOffice Engine | Implemented & Maintained | Local LibreOffice headless document conversion engine and installer automation. |
 | **[markdown_document_templates.md](markdown_document_templates.md)** | `[F2-31]` Markdown to PDF/DOCX | Implemented & Maintained | Template architecture, typographic CSS models, and DOCX template import schema. |
