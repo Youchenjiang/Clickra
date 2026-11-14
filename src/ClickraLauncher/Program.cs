@@ -24,16 +24,18 @@ internal static class Program
         if (string.IsNullOrEmpty(exeDir))
             exeDir = Path.GetDirectoryName(Environment.ProcessPath);
 
-        // 1. Try launching Clickra.Desktop if present (Avalonia 11 cross-platform desktop UI)
-        if (exeDir != null && TryLaunchDesktop(exeDir, args, out uint desktopPid) && IsFluentRunning(desktopPid))
+        // Explicit opt-in preview or non-packaged fallback for Clickra.Desktop
+        bool forceDesktop = Environment.GetEnvironmentVariable("CLICKRA_DESKTOP") == "1" ||
+                            args.Contains("--desktop", StringComparer.OrdinalIgnoreCase);
+        if (forceDesktop && exeDir != null && TryLaunchDesktop(exeDir, args, out uint forcePid) && IsFluentRunning(forcePid))
         {
             return 0;
         }
 
-        // 2. Try COM activation for packaged Fluent optional package
+        // 1. Try COM activation for packaged Fluent optional package (default functional UI)
         bool launchedFluent = TryActivateFluent(args, out uint pid);
 
-        // 3. Fallback to direct activation for unpackaged Fluent development
+        // 2. Fallback to direct activation for unpackaged Fluent development
         if (!launchedFluent && exeDir != null)
         {
             launchedFluent = TryLaunchUnpackagedFluent(exeDir, args, out pid);
@@ -44,13 +46,20 @@ internal static class Program
             return 0;
         }
 
+        // 3. Fallback to Clickra.Desktop if present (when Fluent is not available)
+        if (exeDir != null && TryLaunchDesktop(exeDir, args, out uint desktopPid) && IsFluentRunning(desktopPid))
+        {
+            return 0;
+        }
+
         return LaunchNativeFallback(exeDir, args);
     }
 
     private static bool TryLaunchDesktop(string exeDir, string[] args, out uint processId)
     {
         processId = 0;
-        if (args.Length > 0)
+        string[] cleanArgs = args.Where(a => !string.Equals(a, "--desktop", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (cleanArgs.Length > 0)
             return false; // CLI commands and shell context menu conversions continue via Clickra.exe
 
         string desktopExe = Path.Combine(exeDir, "Clickra.Desktop.exe");
