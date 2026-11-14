@@ -25,12 +25,9 @@ internal static class Program
             exeDir = Path.GetDirectoryName(Environment.ProcessPath);
 
         // 1. Try launching Clickra.Desktop if present (Avalonia 11 cross-platform desktop UI)
-        if (exeDir != null && TryLaunchDesktop(exeDir, args, out uint desktopPid))
+        if (exeDir != null && TryLaunchDesktop(exeDir, args, out uint desktopPid) && IsFluentRunning(desktopPid))
         {
-            if (IsFluentRunning(desktopPid))
-            {
-                return 0;
-            }
+            return 0;
         }
 
         // 2. Try COM activation for packaged Fluent optional package
