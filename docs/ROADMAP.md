@@ -142,6 +142,8 @@
 
 - [ ] **[F1-17] v4.0.0 Unified Cross-Platform Modern GUI**：統一跨平台現代 XAML 介面。
 
+    - 規範詳見：[4.0 跨平台總計畫 (v4_cross_platform_master_plan.md)](specs/v4_cross_platform_master_plan.md) 與 [4.0 桌面端版面規格 (v4_desktop_ui_layout.md)](specs/v4_desktop_ui_layout.md)。
+
     - 建置 Clickra.Desktop 統一桌面端（以 Avalonia 11+ 為評估首選候選框架）。
 
     - 實踐自適應平台融合：Windows Fluent (Mica/Acrylic)、macOS HIG Vibrancy、Linux 桌面主題（Adwaita/Breeze），並遵循 100% 來源檔案驅動調色盤。
