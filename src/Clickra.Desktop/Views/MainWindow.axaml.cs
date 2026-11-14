@@ -40,13 +40,19 @@ public partial class MainWindow : Window
             pages[i].PropertyChanged += (_, e) =>
             {
                 if (e.Property != IsVisibleProperty || e.NewValue is not true) return;
-                double fromX = current < 0 || index == current ? 0 : index > current ? 16 : -16;
+                double fromX = ComputeSlideOffset(current, index);
                 current = index;
                 Motion.Enter(pages[index], fromX, 0);
             };
         }
         ConfigureBackdrop();
         ConfigureTitleBar();
+    }
+
+    private static double ComputeSlideOffset(int current, int index)
+    {
+        if (current < 0 || index == current) return 0;
+        return index > current ? 16 : -16;
     }
 
     protected override void OnOpened(EventArgs e)
@@ -120,18 +126,18 @@ public partial class MainWindow : Window
         ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.PreferSystemChrome;
         ExtendClientAreaTitleBarHeightHint = 48;
 
-        this.GetObservable(IsExtendedIntoWindowDecorationsProperty).Subscribe(new Observer<bool>(ApplyTitleBarInsets));
+        this.GetObservable(IsExtendedIntoWindowDecorationsProperty).Subscribe(new Observer<bool>(extended => ApplyTitleBarInsets(TopBar, extended)));
     }
 
-    private void ApplyTitleBarInsets(bool extended)
+    private static void ApplyTitleBarInsets(Control topBar, bool extended)
     {
         if (!extended)
         {
-            TopBar.Margin = default;
+            topBar.Margin = default;
             return;
         }
 
-        TopBar.Margin = OperatingSystem.IsMacOS()
+        topBar.Margin = OperatingSystem.IsMacOS()
             ? new Thickness(MacTrafficLightsWidth - 16, 0, 0, 0)
             : new Thickness(0, 0, WindowsCaptionButtonsWidth, 0);
     }
