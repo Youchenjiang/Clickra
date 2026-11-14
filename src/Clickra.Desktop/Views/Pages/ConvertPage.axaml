@@ -1,0 +1,38 @@
+<!-- Convert page, state A (no files yet): drop zone on top, recent work below (spec 4.1).
+     The file strip, action directory and action pages arrive in step 2. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Clickra.Desktop.Views.Pages.ConvertPage">
+    <Grid RowDefinitions="Auto,12,*" Margin="0,0,0,24">
+
+        <!-- Drop zone: 356 high at the default size, never shorter than 240 (section 5.2). -->
+        <Border Grid.Row="0" Classes="section" Height="356" MinHeight="240">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+                <Border Width="56" Height="56" CornerRadius="28" HorizontalAlignment="Center"
+                        Background="{DynamicResource Clk.Card}">
+                    <Path Data="M12,4 V15 M7,10 L12,15 L17,10 M5,20 H19"
+                          Stroke="{DynamicResource Clk.Accent}" StrokeThickness="1.7"
+                          StrokeLineCap="Round" StrokeJoin="Round"
+                          Width="26" Height="26" Stretch="Uniform"
+                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <TextBlock Classes="h1" Text="要處理什麼檔案？" HorizontalAlignment="Center" />
+                <TextBlock Classes="secondary" Text="把檔案拖到這裡，Clickra 會告訴你可以做什麼。"
+                           HorizontalAlignment="Center" />
+                <Button Classes="primary" Content="選擇檔案" HorizontalAlignment="Center" Margin="0,6,0,0" />
+            </StackPanel>
+        </Border>
+
+        <!-- Recent work: the only area that grows with the window height. -->
+        <Border Grid.Row="2" Classes="section" Padding="20,16,20,20">
+            <Grid RowDefinitions="Auto,*">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Classes="h2" Text="最近處理" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Classes="link" Content="全部歷史" Name="AllHistoryLink" />
+                </Grid>
+                <TextBlock Grid.Row="1" Classes="caption" Text="還沒有處理過檔案"
+                           VerticalAlignment="Center" HorizontalAlignment="Center" />
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,74 @@
+<!-- Clickra 4.0 color tokens. Values follow docs/specs/v4_desktop_ui_layout.md section 7 / 7.1.
+     Every view reads colors from these keys only; never hard-code a color in a view. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.ThemeDictionaries>
+
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="Clk.Bg" Color="#F3F3F3" />
+      <SolidColorBrush x:Key="Clk.Surface" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Clk.SurfaceBorder" Color="#E5E5E5" />
+      <SolidColorBrush x:Key="Clk.Card" Color="#F5F5F5" />
+      <SolidColorBrush x:Key="Clk.CardBorder" Color="#E5E5E5" />
+      <SolidColorBrush x:Key="Clk.CardHover" Color="#EDEDED" />
+      <SolidColorBrush x:Key="Clk.Text" Color="#1A1A1A" />
+      <SolidColorBrush x:Key="Clk.TextSecondary" Color="#5C5C5C" />
+      <SolidColorBrush x:Key="Clk.TextTertiary" Color="#8A8A8A" />
+      <SolidColorBrush x:Key="Clk.Accent" Color="#005FB8" />
+      <SolidColorBrush x:Key="Clk.AccentHover" Color="#196EBF" />
+      <SolidColorBrush x:Key="Clk.AccentPressed" Color="#3381C7" />
+      <SolidColorBrush x:Key="Clk.OnAccent" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Clk.ControlBorder" Color="#D1D1D1" />
+      <SolidColorBrush x:Key="Clk.ControlFill" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Clk.HoverFill" Color="#0A000000" />
+      <SolidColorBrush x:Key="Clk.Divider" Color="#EBEBEB" />
+      <SolidColorBrush x:Key="Clk.SegmentTrack" Color="#F0F0F0" />
+      <SolidColorBrush x:Key="Clk.SegmentSelected" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Clk.IconPlate" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Clk.IconPlateBorder" Color="#E5E5E5" />
+      <SolidColorBrush x:Key="Clk.TrackBg" Color="#D1D1D1" />
+      <SolidColorBrush x:Key="Clk.DisabledBg" Color="#E0E0E0" />
+      <SolidColorBrush x:Key="Clk.DisabledText" Color="#8A8A8A" />
+      <SolidColorBrush x:Key="Clk.Success" Color="#0F7B0F" />
+      <SolidColorBrush x:Key="Clk.Danger" Color="#C42B1C" />
+      <SolidColorBrush x:Key="Clk.Warning" Color="#9D5D00" />
+    </ResourceDictionary>
+
+    <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="Clk.Bg" Color="#202020" />
+      <SolidColorBrush x:Key="Clk.Surface" Color="#181818" />
+      <SolidColorBrush x:Key="Clk.SurfaceBorder" Color="#181818" />
+      <SolidColorBrush x:Key="Clk.Card" Color="#262626" />
+      <SolidColorBrush x:Key="Clk.CardBorder" Color="#262626" />
+      <SolidColorBrush x:Key="Clk.CardHover" Color="#2E2E2E" />
+      <SolidColorBrush x:Key="Clk.Text" Color="#F3F3F3" />
+      <SolidColorBrush x:Key="Clk.TextSecondary" Color="#C8C8C8" />
+      <SolidColorBrush x:Key="Clk.TextTertiary" Color="#8A8A8A" />
+      <SolidColorBrush x:Key="Clk.Accent" Color="#60CDFF" />
+      <SolidColorBrush x:Key="Clk.AccentHover" Color="#5AB9E6" />
+      <SolidColorBrush x:Key="Clk.AccentPressed" Color="#52A6CF" />
+      <SolidColorBrush x:Key="Clk.OnAccent" Color="#101010" />
+      <SolidColorBrush x:Key="Clk.ControlBorder" Color="#4A4A4A" />
+      <SolidColorBrush x:Key="Clk.ControlFill" Color="#262626" />
+      <SolidColorBrush x:Key="Clk.HoverFill" Color="#14FFFFFF" />
+      <SolidColorBrush x:Key="Clk.Divider" Color="#2A2A2A" />
+      <SolidColorBrush x:Key="Clk.SegmentTrack" Color="#181818" />
+      <SolidColorBrush x:Key="Clk.SegmentSelected" Color="#404040" />
+      <SolidColorBrush x:Key="Clk.IconPlate" Color="#E6EAF0" />
+      <SolidColorBrush x:Key="Clk.IconPlateBorder" Color="#E6EAF0" />
+      <SolidColorBrush x:Key="Clk.TrackBg" Color="#3D3D3D" />
+      <SolidColorBrush x:Key="Clk.DisabledBg" Color="#3A3A3A" />
+      <SolidColorBrush x:Key="Clk.DisabledText" Color="#C8C8C8" />
+      <SolidColorBrush x:Key="Clk.Success" Color="#6CCB5F" />
+      <SolidColorBrush x:Key="Clk.Danger" Color="#FF99A4" />
+      <SolidColorBrush x:Key="Clk.Warning" Color="#FFD479" />
+    </ResourceDictionary>
+
+  </ResourceDictionary.ThemeDictionaries>
+
+  <!-- Spacing and shape constants shared by every page (section 7). -->
+  <CornerRadius x:Key="Clk.RadiusSection">16</CornerRadius>
+  <CornerRadius x:Key="Clk.RadiusCard">12</CornerRadius>
+  <CornerRadius x:Key="Clk.RadiusButton">8</CornerRadius>
+  <x:Double x:Key="Clk.ContentMaxWidth">860</x:Double>
+</ResourceDictionary>

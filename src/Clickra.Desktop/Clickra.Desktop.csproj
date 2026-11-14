@@ -25,4 +25,9 @@
     <ProjectReference Include="..\Clickra.Core\Clickra.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- App icon shown in the window and the top bar; source of truth is assets/primary. -->
+    <AvaloniaResource Include="..\..\assets\primary\clickra-icon-primary-64.png" Link="Assets\clickra-64.png" />
+  </ItemGroup>
+
 </Project>

@@ -1,38 +1,57 @@
+using System;
+using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Interactivity;
-using Clickra.Desktop.ViewModels;
+using Avalonia.Platform;
 
 namespace Clickra.Desktop.Views;
 
 public partial class MainWindow : Window
 {
+    // Width reserved on the right for the Windows caption buttons when the top row
+    // is drawn inside the title bar.
+    private const double WindowsCaptionButtonsWidth = 138;
+
+    // Width reserved on the left for the macOS traffic-light buttons.
+    private const double MacTrafficLightsWidth = 78;
+
     public MainWindow()
     {
         InitializeComponent();
+        ConfigureTitleBar();
     }
 
-    private MainWindowViewModel? ViewModel => DataContext as MainWindowViewModel;
-
-    private void OnNavConvertClicked(object? sender, RoutedEventArgs e)
+    /// <summary>
+    /// Section 3.1: on Windows and macOS the tabs share the title bar row; on Linux the
+    /// system title bar stays and the tabs sit right under it.
+    /// </summary>
+    private void ConfigureTitleBar()
     {
-        ViewModel?.SelectNavigation(0);
+        if (OperatingSystem.IsLinux()) return;
+
+        ExtendClientAreaToDecorationsHint = true;
+        ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.PreferSystemChrome;
+        ExtendClientAreaTitleBarHeightHint = 48;
+
+        this.GetObservable(IsExtendedIntoWindowDecorationsProperty).Subscribe(new TitleBarObserver(this));
     }
 
-    private void OnNavHistoryClicked(object? sender, RoutedEventArgs e)
+    private void ApplyTitleBarInsets(bool extended)
     {
-        ViewModel?.SelectNavigation(1);
-    }
-
-    private void OnNavSettingsClicked(object? sender, RoutedEventArgs e)
-    {
-        ViewModel?.SelectNavigation(2);
-    }
-
-    private void OnThemeToggleClicked(object? sender, RoutedEventArgs e)
-    {
-        if (Avalonia.Application.Current != null)
+        if (!extended)
         {
-            ViewModel?.ToggleTheme(Avalonia.Application.Current);
+            TopBar.Margin = default;
+            return;
         }
+
+        TopBar.Margin = OperatingSystem.IsMacOS()
+            ? new Thickness(MacTrafficLightsWidth - 16, 0, 0, 0)
+            : new Thickness(0, 0, WindowsCaptionButtonsWidth, 0);
+    }
+
+    private sealed class TitleBarObserver(MainWindow owner) : IObserver<bool>
+    {
+        public void OnCompleted() { }
+        public void OnError(Exception error) { }
+        public void OnNext(bool value) => owner.ApplyTitleBarInsets(value);
     }
 }

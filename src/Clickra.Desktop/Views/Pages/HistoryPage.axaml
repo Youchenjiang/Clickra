@@ -1,0 +1,15 @@
+<!-- History page shell (spec 4.2): fixed heading row, one section whose content scrolls inside it,
+     24 bottom margin. The list itself arrives in a later step. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Clickra.Desktop.Views.Pages.HistoryPage">
+    <Grid RowDefinitions="Auto,12,*" Margin="0,0,0,24">
+        <TextBlock Grid.Row="0" Classes="h1" Text="歷史" Margin="0,4,0,0" />
+        <Border Grid.Row="2" Classes="section">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                <TextBlock Classes="secondary" Text="還沒有處理過檔案" HorizontalAlignment="Center" />
+                <Button Classes="secondary large" Content="去轉檔" HorizontalAlignment="Center" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

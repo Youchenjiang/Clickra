@@ -1,70 +1,51 @@
-using System;
-using System.Runtime.InteropServices;
-using Avalonia.Styling;
+using Clickra.Core;
 
 namespace Clickra.Desktop.ViewModels;
 
+/// <summary>Top-level pages reachable from the three tabs.</summary>
+public enum MainPage
+{
+    Convert,
+    History,
+    Settings,
+}
+
+/// <summary>Window-level state: which tab is shown and the tab labels.</summary>
 public sealed class MainWindowViewModel : ViewModelBase
 {
-    private int _selectedNavigationIndex;
-    private string _currentThemeName = "System";
+    private MainPage _currentPage = MainPage.Convert;
 
-    public MainWindowViewModel()
+    public string ConvertTabLabel { get; } = Localization.T("tab_convert");
+    public string HistoryTabLabel { get; } = Localization.T("tab_history");
+    public string SettingsTabLabel { get; } = Localization.T("tab_settings");
+
+    public MainPage CurrentPage
     {
-        Title = "Clickra";
-        PlatformBanner = $"{RuntimeInformation.OSDescription} ({RuntimeInformation.ProcessArchitecture})";
-        VersionInfo = "v4.0.0-preview.1 (NativeAOT)";
-    }
-
-    public string Title { get; }
-    public string PlatformBanner { get; }
-    public string VersionInfo { get; }
-
-    public int SelectedNavigationIndex
-    {
-        get => _selectedNavigationIndex;
+        get => _currentPage;
         set
         {
-            if (SetProperty(ref _selectedNavigationIndex, value))
-            {
-                OnPropertyChanged(nameof(IsConvertSelected));
-                OnPropertyChanged(nameof(IsHistorySelected));
-                OnPropertyChanged(nameof(IsSettingsSelected));
-            }
+            if (!SetProperty(ref _currentPage, value)) return;
+            OnPropertyChanged(nameof(IsConvertPage));
+            OnPropertyChanged(nameof(IsHistoryPage));
+            OnPropertyChanged(nameof(IsSettingsPage));
         }
     }
 
-    public bool IsConvertSelected => SelectedNavigationIndex == 0;
-    public bool IsHistorySelected => SelectedNavigationIndex == 1;
-    public bool IsSettingsSelected => SelectedNavigationIndex == 2;
-
-    public string CurrentThemeName
+    public bool IsConvertPage
     {
-        get => _currentThemeName;
-        private set => SetProperty(ref _currentThemeName, value);
+        get => CurrentPage == MainPage.Convert;
+        set { if (value) CurrentPage = MainPage.Convert; }
     }
 
-    public void SelectNavigation(int index)
+    public bool IsHistoryPage
     {
-        SelectedNavigationIndex = index;
+        get => CurrentPage == MainPage.History;
+        set { if (value) CurrentPage = MainPage.History; }
     }
 
-    public void ToggleTheme(Avalonia.Application app)
+    public bool IsSettingsPage
     {
-        if (app.RequestedThemeVariant == ThemeVariant.Dark)
-        {
-            app.RequestedThemeVariant = ThemeVariant.Light;
-            CurrentThemeName = "Light";
-        }
-        else if (app.RequestedThemeVariant == ThemeVariant.Light)
-        {
-            app.RequestedThemeVariant = ThemeVariant.Default;
-            CurrentThemeName = "System";
-        }
-        else
-        {
-            app.RequestedThemeVariant = ThemeVariant.Dark;
-            CurrentThemeName = "Dark";
-        }
+        get => CurrentPage == MainPage.Settings;
+        set { if (value) CurrentPage = MainPage.Settings; }
     }
 }

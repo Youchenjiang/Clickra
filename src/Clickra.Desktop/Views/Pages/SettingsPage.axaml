@@ -1,0 +1,58 @@
+<!-- Settings page shell (spec 4.3): heading + 一般／功能預設值 switch, then one section that scrolls
+     inside itself. Rows are "name left, control right". Values are not wired to settings yet. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:Clickra.Desktop.Controls"
+             x:Class="Clickra.Desktop.Views.Pages.SettingsPage">
+    <UserControl.Styles>
+        <Style Selector="Grid.settingRow">
+            <Setter Property="MinHeight" Value="60" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,12,*" Margin="0,0,0,24">
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <TextBlock Classes="h1" Text="設定" VerticalAlignment="Center" />
+            <ListBox Grid.Column="1" Classes="segmented" SelectedIndex="0" Width="240">
+                <ListBoxItem Content="一般" />
+                <ListBoxItem Content="功能預設值" />
+            </ListBox>
+        </Grid>
+
+        <Border Grid.Row="2" Classes="section" Padding="0">
+            <ScrollViewer Classes="sectionScroll">
+                <StackPanel Margin="20,6,20,12">
+                    <TextBlock Classes="groupLabel" Text="一般" Margin="0,12,0,0" />
+
+                    <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                        <TextBlock Text="轉好的檔案存到" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" MinWidth="180" MinHeight="44" SelectedIndex="0" VerticalAlignment="Center">
+                            <ComboBoxItem Content="原本的資料夾" />
+                            <ComboBoxItem Content="桌面" />
+                            <ComboBoxItem Content="下載" />
+                            <ComboBoxItem Content="自訂…" />
+                        </ComboBox>
+                    </Grid>
+                    <Border Classes="divider" />
+                    <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                        <TextBlock Text="外觀" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" Name="AppearanceBox" MinWidth="180" MinHeight="44"
+                                  SelectedIndex="0" VerticalAlignment="Center">
+                            <ComboBoxItem Content="淺色" />
+                            <ComboBoxItem Content="深色" />
+                            <ComboBoxItem Content="跟隨系統" />
+                        </ComboBox>
+                    </Grid>
+
+                    <Border Classes="divider" Margin="0,12,0,0" />
+                    <TextBlock Classes="groupLabel" Text="壓縮 PDF" Margin="0,18,0,0" />
+                    <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                        <TextBlock Text="壓縮程度" VerticalAlignment="Center" />
+                        <controls:StepSlider Grid.Column="1" Name="PdfCompressSlider" Width="280"
+                                             VerticalAlignment="Center" SelectedIndex="1" />
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>
