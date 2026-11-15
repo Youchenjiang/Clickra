@@ -95,7 +95,7 @@ public partial class SettingsPage : UserControl
             // Decided from the chips, not the box's own toggle (which would send a partial box to "off").
             groupBox.Click += (_, _) =>
             {
-                bool on = !toggles.All(c => c.IsChecked is true);
+                bool on = !toggles.All(c => c.IsChecked.GetValueOrDefault());
                 _menuSyncing = true;
                 foreach (ToggleButton chip in toggles) chip.IsChecked = on;
                 _menuSyncing = false;
@@ -112,7 +112,7 @@ public partial class SettingsPage : UserControl
 
         MenuChevron.RenderTransform = TransformOperations.Parse("rotate(0deg)");
         MenuChevron.Transitions = Motion.TransformTransitions();
-        MenuExpandButton.Click += (_, _) => SetMenuExpanded(MenuChecklist, MenuEnabledBox.IsChecked is true, MenuChevron, !MenuChecklist.IsVisible);
+        MenuExpandButton.Click += (_, _) => SetMenuExpanded(MenuChecklist, MenuEnabledBox.IsChecked.GetValueOrDefault(), MenuChevron, !MenuChecklist.IsVisible);
         MenuEnabledBox.IsCheckedChanged += (_, _) => UpdateMenuState();
         UpdateMenuState();
     }
@@ -134,12 +134,12 @@ public partial class SettingsPage : UserControl
     private void UpdateMenuState()
     {
         int total = _menuGroups.Sum(g => g.Items.Count);
-        int shown = _menuGroups.Sum(g => g.Items.Count(b => b.IsChecked is true));
+        int shown = _menuGroups.Sum(g => g.Items.Count(b => b.IsChecked.GetValueOrDefault()));
 
         _menuSyncing = true;
         foreach (var (groupBox, items) in _menuGroups)
         {
-            int on = items.Count(b => b.IsChecked is true);
+            int on = items.Count(b => b.IsChecked.GetValueOrDefault());
             if (on == items.Count)
             {
                 groupBox.IsChecked = true;
@@ -155,7 +155,7 @@ public partial class SettingsPage : UserControl
         }
         _menuSyncing = false;
 
-        bool enabled = MenuEnabledBox.IsChecked is true;
+        bool enabled = MenuEnabledBox.IsChecked.GetValueOrDefault();
         MenuExpandButton.IsVisible = enabled;
         if (!enabled) SetMenuExpanded(MenuChecklist, false, MenuChevron, false);
         MenuSummary.Text = FormatMenuSummary(enabled, shown, total);
