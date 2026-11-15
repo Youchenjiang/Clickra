@@ -17,7 +17,7 @@ namespace Clickra.Desktop.Controls;
 internal static class Motion
 {
     /// <summary>False when the OS "animation effects" setting is off (or CLICKRA_REDUCE_MOTION=1).</summary>
-    public static bool Enabled { get; } = DetectEnabled();
+    public static bool Enabled => DetectEnabled();
 
     public static readonly TimeSpan Fast = TimeSpan.FromMilliseconds(150);
     public static readonly TimeSpan Normal = TimeSpan.FromMilliseconds(180);

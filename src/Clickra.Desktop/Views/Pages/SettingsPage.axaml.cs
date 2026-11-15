@@ -36,6 +36,63 @@ public partial class SettingsPage : UserControl
         BuildContextMenuChecklist();
     }
 
+    private MainWindowViewModel? _subscribedVm;
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        SubscribeToViewModel(DataContext as MainWindowViewModel);
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        SubscribeToViewModel(null);
+    }
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        SubscribeToViewModel(DataContext as MainWindowViewModel);
+    }
+
+    private void SubscribeToViewModel(MainWindowViewModel? vm)
+    {
+        if (ReferenceEquals(_subscribedVm, vm)) return;
+        if (_subscribedVm != null)
+        {
+            _subscribedVm.SettingsSectionRequested -= OnSettingsSectionRequested;
+        }
+        _subscribedVm = vm;
+        if (_subscribedVm != null)
+        {
+            _subscribedVm.SettingsSectionRequested += OnSettingsSectionRequested;
+        }
+    }
+
+    private void OnSettingsSectionRequested(object? sender, SettingsSection section)
+    {
+        if (section == SettingsSection.ContextMenu)
+        {
+            TabSwitch.SelectedIndex = 0;
+            Dispatcher.UIThread.Post(() =>
+            {
+                ContextMenuGroup.BringIntoView();
+                HighlightContextMenuGroup();
+            }, DispatcherPriority.Loaded);
+        }
+    }
+
+    private void HighlightContextMenuGroup()
+    {
+        if (!Motion.Enabled) return;
+        ContextMenuHighlight.Opacity = 0.25;
+        DispatcherTimer.RunOnce(() =>
+        {
+            ContextMenuHighlight.Opacity = 0;
+        }, TimeSpan.FromMilliseconds(500));
+    }
+
     // ---- Right-click menu checklist (spec 4.4). UI state only; saving to settings lands in branch 7. ----
 
     private static readonly (string Group, string[] Items)[] MenuItems =
@@ -121,6 +178,7 @@ public partial class SettingsPage : UserControl
     {
         bool wasVisible = checklist.IsVisible;
         checklist.IsVisible = expanded && isEnabled;
+        chevron.Transitions = Motion.TransformTransitions();
         chevron.RenderTransform = TransformOperations.Parse(checklist.IsVisible ? "rotate(180deg)" : "rotate(0deg)");
         if (checklist.IsVisible && !wasVisible) Motion.Enter(checklist, 0, -6, Motion.Fast);
     }
