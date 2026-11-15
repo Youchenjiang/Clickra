@@ -122,8 +122,10 @@ public partial class MainWindow : Window
     {
         if (OperatingSystem.IsLinux()) return;
 
+        // Avalonia 12 removed ExtendClientAreaChromeHints: WindowDecorations.Full (the default) keeps the
+        // system caption buttons, and ExtendClientAreaToDecorationsHint now works on Windows without margin fixes.
+        WindowDecorations = WindowDecorations.Full;
         ExtendClientAreaToDecorationsHint = true;
-        ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.PreferSystemChrome;
         ExtendClientAreaTitleBarHeightHint = 48;
 
         this.GetObservable(IsExtendedIntoWindowDecorationsProperty).Subscribe(new Observer<bool>(extended => ApplyTitleBarInsets(TopBar, extended)));
