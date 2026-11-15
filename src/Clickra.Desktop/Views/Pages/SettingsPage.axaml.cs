@@ -78,16 +78,16 @@ public partial class SettingsPage : UserControl
             Dispatcher.UIThread.Post(() =>
             {
                 ContextMenuGroup.BringIntoView();
-                HighlightContextMenuGroup();
+                HighlightContextMenuGroup(ContextMenuHighlight);
             }, DispatcherPriority.Loaded);
         }
     }
 
-    private void HighlightContextMenuGroup()
+    private static void HighlightContextMenuGroup(Control highlight)
     {
         if (!Motion.Enabled) return;
-        ContextMenuHighlight.Opacity = 0.25;
-        DispatcherTimer.RunOnce(() => ContextMenuHighlight.Opacity = 0, TimeSpan.FromMilliseconds(500));
+        highlight.Opacity = 0.25;
+        DispatcherTimer.RunOnce(() => highlight.Opacity = 0, TimeSpan.FromMilliseconds(500));
     }
 
     // ---- Right-click menu checklist (spec 4.4). UI state only; saving to settings lands in branch 7. ----
