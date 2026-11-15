@@ -9,7 +9,7 @@ static partial class TestSuite
 
     public static void RegisterDesktopArchitectureTests(TestRunner runner)
     {
-        runner.RunGuard("Universal desktop: project contracts enforce Avalonia 11 and NativeAOT specifications", GuardDesktopProjectContracts);
+        runner.RunGuard("Universal desktop: project contracts enforce Avalonia 12 and NativeAOT specifications", GuardDesktopProjectContracts);
         runner.RunGuard("Universal desktop: build script and manifest enforce standalone execution contracts", GuardDesktopBuildAndManifest);
         runner.RunGuard("Universal desktop: launcher preserves packaged fluent priority and isolates desktop preview contracts", GuardDesktopLauncherRouting);
         runner.RunGuard("Universal desktop: motion and shell navigation wire destination highlighting and dynamic motion preference contracts", GuardDesktopMotionAndNavigation);
@@ -33,8 +33,8 @@ static partial class TestSuite
             "Clickra.Desktop must declare the Windows TargetFramework override after the universal net8.0 target so MSBuild evaluates it correctly.");
         Assert.True(projText.Contains("<PublishAot>true</PublishAot>", StringComparison.Ordinal),
             "Clickra.Desktop must enable PublishAot for NativeAOT compilation.");
-        Assert.True(projText.Contains("Avalonia", StringComparison.Ordinal) && projText.Contains("11.", StringComparison.Ordinal),
-            "Clickra.Desktop must reference Avalonia 11 packages.");
+        Assert.True(projText.Contains("<PackageReference Include=\"Avalonia\" Version=\"12.", StringComparison.Ordinal),
+            "Clickra.Desktop must reference Avalonia 12 packages.");
         Assert.True(projText.Contains("Clickra.Core.csproj", StringComparison.Ordinal),
             "Clickra.Desktop must reference Clickra.Core.");
         Assert.False(projText.Contains("Clickra.Fluent", StringComparison.Ordinal),
