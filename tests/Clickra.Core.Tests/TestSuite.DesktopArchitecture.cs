@@ -90,5 +90,34 @@ static partial class TestSuite
             Assert.True(launcherSource.Contains("cleanArgs.Length > 0", StringComparison.Ordinal),
                 "ClickraLauncher must isolate argument-bearing conversion invocations to Clickra.exe.");
         });
+
+        runner.RunGuard("Universal desktop: motion and shell navigation wire destination highlighting and dynamic motion preference contracts", () =>
+        {
+            string? root = FindRepoRoot();
+            if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+            // 1. Motion.cs must dynamically evaluate motion preference without caching stale session values
+            string motionPath = Path.Combine(root, "src", DesktopProjectDir, "Controls", "Motion.cs");
+            Assert.True(File.Exists(motionPath), "Motion.cs must exist.");
+            string motionSource = File.ReadAllText(motionPath);
+            Assert.True(motionSource.Contains("public static bool Enabled => DetectEnabled();", StringComparison.Ordinal),
+                "Motion.Enabled must dynamically evaluate system motion preference.");
+
+            // 2. SettingsPage must subscribe to SettingsSectionRequested and bring destination into view
+            string settingsPagePath = Path.Combine(root, "src", DesktopProjectDir, "Views", "Pages", "SettingsPage.axaml.cs");
+            Assert.True(File.Exists(settingsPagePath), "SettingsPage.axaml.cs must exist.");
+            string settingsSource = File.ReadAllText(settingsPagePath);
+            Assert.True(settingsSource.Contains("SettingsSectionRequested", StringComparison.Ordinal),
+                "SettingsPage must subscribe to SettingsSectionRequested.");
+            Assert.True(settingsSource.Contains("ContextMenuGroup.BringIntoView()", StringComparison.Ordinal),
+                "SettingsPage must scroll destination section into view on request.");
+
+            // 3. THIRD-PARTY-NOTICES.txt must contain SIL Open Font License 1.1 full text
+            string noticesPath = Path.Combine(root, "THIRD-PARTY-NOTICES.txt");
+            Assert.True(File.Exists(noticesPath), "THIRD-PARTY-NOTICES.txt must exist.");
+            string noticesText = File.ReadAllText(noticesPath);
+            Assert.True(noticesText.Contains("SIL OPEN FONT LICENSE Version 1.1", StringComparison.Ordinal),
+                "THIRD-PARTY-NOTICES.txt must include full SIL OFL 1.1 text.");
+        });
     }
 }
