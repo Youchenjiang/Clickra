@@ -70,9 +70,10 @@ public partial class SettingsPage : UserControl
         }
     }
 
-    private void OnSettingsSectionRequested(object? sender, SettingsSection section)
+    private void OnSettingsSectionRequested(object? sender, SettingsSectionEventArgs e)
     {
-        if (section == SettingsSection.ContextMenu)
+        if (!ReferenceEquals(_subscribedVm, sender)) return;
+        if (e.Section == SettingsSection.ContextMenu)
         {
             TabSwitch.SelectedIndex = 0;
             Dispatcher.UIThread.Post(() =>

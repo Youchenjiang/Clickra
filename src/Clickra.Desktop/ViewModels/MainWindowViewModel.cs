@@ -17,6 +17,11 @@ public enum SettingsSection
     ContextMenu,
 }
 
+public sealed class SettingsSectionEventArgs(SettingsSection section) : EventArgs
+{
+    public SettingsSection Section { get; } = section;
+}
+
 /// <summary>Window-level state: which tab is shown and the tab labels.</summary>
 public sealed class MainWindowViewModel : ViewModelBase
 {
@@ -41,13 +46,13 @@ public sealed class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>Raised when a page asks to show a specific place on the Settings page.</summary>
-    public event EventHandler<SettingsSection>? SettingsSectionRequested;
+    public event EventHandler<SettingsSectionEventArgs>? SettingsSectionRequested;
 
     /// <summary>Switches to Settings and asks it to scroll to and highlight <paramref name="section"/>.</summary>
     public void OpenSettings(SettingsSection section)
     {
         CurrentPage = MainPage.Settings;
-        SettingsSectionRequested?.Invoke(this, section);
+        SettingsSectionRequested?.Invoke(this, new SettingsSectionEventArgs(section));
     }
 
     public bool IsConvertPage
