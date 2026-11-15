@@ -1,0 +1,285 @@
+<!-- Settings page shell (spec 4.3): heading + 一般／功能預設值 switch, then one section that scrolls
+     inside itself. Three columns: group name | setting name | control (decision log 2026-11-15).
+     Values are not wired to Core yet (branch 7); only 外觀 takes effect so the tokens can be checked. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:Clickra.Desktop.Controls"
+             x:Class="Clickra.Desktop.Views.Pages.SettingsPage">
+    <UserControl.Styles>
+        <!-- One group = left column with the group name, right column with its rows. -->
+        <Style Selector="Grid.group">
+            <Setter Property="Margin" Value="0,6" />
+        </Style>
+        <Style Selector="TextBlock.groupName">
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Margin" Value="0,19,12,0" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <!-- Accent wash shown for a moment around a group reached through a link. -->
+        <Style Selector="Border.linkHighlight">
+            <Setter Property="Background" Value="{DynamicResource Clk.Accent}" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Margin" Value="-10,0" />
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.6" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.groupLine">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource Clk.DividerStrong}" />
+        </Style>
+        <Style Selector="Border.rowLine">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource Clk.Divider}" />
+        </Style>
+        <Style Selector="Grid.settingRow">
+            <Setter Property="MinHeight" Value="62" />
+        </Style>
+        <Style Selector="Grid.settingRow > TextBlock">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,0,12,0" />
+        </Style>
+        <Style Selector="Grid.settingRow ComboBox">
+            <Setter Property="MinWidth" Value="170" />
+            <Setter Property="MinHeight" Value="42" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Grid.settingRow CheckBox">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="MinWidth" Value="0" />
+        </Style>
+        <Style Selector="Grid.settingRow controls|StepSlider">
+            <Setter Property="Width" Value="280" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,12,*" Margin="0,0,0,24">
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <TextBlock Classes="h1" Text="設定" VerticalAlignment="Center" />
+            <ListBox Grid.Column="1" Name="TabSwitch" Classes="segmented" SelectedIndex="0" Width="260">
+                <ListBoxItem Content="一般" FontSize="15" />
+                <ListBoxItem Content="功能預設值" FontSize="15" />
+            </ListBox>
+        </Grid>
+
+        <Border Grid.Row="2" Classes="section" Padding="0">
+            <ScrollViewer Classes="sectionScroll">
+                <Panel Margin="20,8,20,12">
+
+                    <!-- ===== 一般 ===== -->
+                    <StackPanel Name="GeneralPanel">
+                        <Grid Classes="group" ColumnDefinitions="170,*">
+                            <TextBlock Classes="groupName" Text="一般" />
+                            <StackPanel Grid.Column="1">
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="轉好的檔案存到" />
+                                    <ComboBox Grid.Column="1" SelectedIndex="0">
+                                        <ComboBoxItem Content="原本的資料夾" />
+                                        <ComboBoxItem Content="桌面" />
+                                        <ComboBoxItem Content="下載" />
+                                        <ComboBoxItem Content="自訂…" />
+                                    </ComboBox>
+                                </Grid>
+                                <Border Classes="rowLine" />
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="介面語言" />
+                                    <ComboBox Grid.Column="1" SelectedIndex="0">
+                                        <ComboBoxItem Content="繁體中文" />
+                                        <ComboBoxItem Content="简体中文" />
+                                        <ComboBoxItem Content="English" />
+                                        <ComboBoxItem Content="日本語" />
+                                        <ComboBoxItem Content="한국어" />
+                                    </ComboBox>
+                                </Grid>
+                                <Border Classes="rowLine" />
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="外觀" />
+                                    <ComboBox Grid.Column="1" Name="AppearanceBox" SelectedIndex="0">
+                                        <ComboBoxItem Content="淺色" />
+                                        <ComboBoxItem Content="深色" />
+                                        <ComboBoxItem Content="跟隨系統" />
+                                    </ComboBox>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+
+                        <Border Classes="groupLine" />
+                        <Grid Classes="group" ColumnDefinitions="170,*">
+                            <TextBlock Classes="groupName" Text="行為" />
+                            <StackPanel Grid.Column="1">
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="從右鍵選單執行時不顯示視窗" />
+                                    <CheckBox Grid.Column="1" />
+                                </Grid>
+                                <Border Classes="rowLine" />
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="處理完成時通知我" />
+                                    <CheckBox Grid.Column="1" IsChecked="True" />
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+
+                        <Border Classes="groupLine" />
+                        <!-- Linked from the convert page; briefly highlighted when opened from there. -->
+                        <Panel Name="ContextMenuGroup">
+                        <Border Name="ContextMenuHighlight" Classes="linkHighlight" />
+                        <Grid Classes="group" ColumnDefinitions="170,*">
+                            <TextBlock Classes="groupName" Text="右鍵選單" />
+                            <StackPanel Grid.Column="1">
+                                <!-- Spec 4.4: one row = name + live summary, master switch, then a chevron that
+                                     expands the checklist in place. Changes apply at once; no save step. -->
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto,Auto">
+                                    <StackPanel VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
+                                        <TextBlock Text="在檔案總管右鍵選單顯示 Clickra" FontSize="16" TextWrapping="Wrap" />
+                                        <TextBlock Classes="caption" Name="MenuSummary" Text="18 項全部顯示（預設）" />
+                                    </StackPanel>
+                                    <CheckBox Grid.Column="1" Name="MenuEnabledBox" IsChecked="True" />
+                                    <Button Grid.Column="2" Classes="subtle" Name="MenuExpandButton" Width="44" Height="44"
+                                            Padding="0" Margin="4,0,-12,0" HorizontalContentAlignment="Center"
+                                            ToolTip.Tip="選擇要顯示的功能" AutomationProperties.Name="選擇要顯示的功能">
+                                        <Path Name="MenuChevron" Data="M6,9 L12,15 L18,9" Width="14" Height="14" Stretch="Uniform"
+                                              Stroke="{DynamicResource Clk.TextSecondary}" StrokeThickness="2"
+                                              StrokeLineCap="Round" StrokeJoin="Round" RenderTransformOrigin="50%,50%" />
+                                    </Button>
+                                </Grid>
+                                <!-- Expanded in place: one row per category, each feature a toggle chip. The category
+                                     box selects all; when everything is on, clicking it again clears the category. -->
+                                <StackPanel Name="MenuChecklist" IsVisible="False" Margin="0,0,0,12">
+                                    <Border Classes="rowLine" Margin="0,0,0,6" />
+                                    <StackPanel Name="MenuGroups" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+
+                        </Panel>
+
+                        <Border Classes="groupLine" />
+                        <Grid Classes="group" ColumnDefinitions="170,*">
+                            <TextBlock Classes="groupName" Text="關於" />
+                            <!-- One row: version on the left, three icon buttons on the right (decision log 2026-11-15). -->
+                            <Grid Grid.Column="1" Classes="settingRow" ColumnDefinitions="Auto,*,Auto" MinHeight="72">
+                                <Image Source="avares://Clickra.Desktop/Assets/clickra-64.png" Width="36" Height="36"
+                                       VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="Clickra 4.0.0-preview.1" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Classes="caption" Text="所有處理都在這台電腦上完成" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <!-- Generic code icon, not the GitHub logo. -->
+                                    <Button Classes="icon" ToolTip.Tip="GitHub 專案頁" AutomationProperties.Name="GitHub 專案頁">
+                                        <Viewbox><Canvas Width="24" Height="24"><Path Data="M8.5,7 L3.5,12 L8.5,17 M15.5,7 L20.5,12 L15.5,17 M13.5,4.5 L10.5,19.5" /></Canvas></Viewbox>
+                                    </Button>
+                                    <Button Classes="icon" ToolTip.Tip="檢視日誌" AutomationProperties.Name="檢視日誌">
+                                        <Viewbox><Canvas Width="24" Height="24"><Path Data="M6.5,3.5 H14 L18.5,8 V20.5 H6.5 Z M14,3.5 V8 H18.5 M9.5,13 H15.5 M9.5,16.5 H13.5" /></Canvas></Viewbox>
+                                    </Button>
+                                    <Button Classes="icon" ToolTip.Tip="寄送問題回報" AutomationProperties.Name="寄送問題回報">
+                                        <Viewbox><Canvas Width="24" Height="24"><Path Data="M5.5,6 H18.5 A1.5,1.5 0 0 1 20,7.5 V16.5 A1.5,1.5 0 0 1 18.5,18 H5.5 A1.5,1.5 0 0 1 4,16.5 V7.5 A1.5,1.5 0 0 1 5.5,6 Z M4.5,7 L12,12.5 L19.5,7" /></Canvas></Viewbox>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- ===== 功能預設值：以功能名稱分組，選項名稱與控制項和動作頁相同（spec 4.10） ===== -->
+                    <StackPanel Name="DefaultsPanel" IsVisible="False">
+                        <Grid Classes="group" ColumnDefinitions="170,*">
+                            <TextBlock Classes="groupName" Text="壓縮 PDF" />
+                            <StackPanel Grid.Column="1">
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" MinHeight="68">
+                                    <TextBlock Text="壓縮程度" />
+                                    <controls:StepSlider Grid.Column="1" Name="PdfCompressSlider" SelectedIndex="1" />
+                                </Grid>
+                                <Border Classes="rowLine" />
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="精簡內容串流" />
+                                    <CheckBox Grid.Column="1" IsChecked="True" />
+                                </Grid>
+                                <Border Classes="rowLine" />
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="移除內嵌字型" />
+                                    <CheckBox Grid.Column="1" />
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+
+                        <Border Classes="groupLine" />
+                        <Grid Classes="group" ColumnDefinitions="170,*">
+                            <TextBlock Classes="groupName" Text="翻譯 PDF" />
+                            <Grid Grid.Column="1" Classes="settingRow" ColumnDefinitions="*,Auto">
+                                <TextBlock Text="翻譯成" />
+                                <ComboBox Grid.Column="1" SelectedIndex="0">
+                                    <ComboBoxItem Content="繁體中文" />
+                                    <ComboBoxItem Content="简体中文" />
+                                    <ComboBoxItem Content="English" />
+                                    <ComboBoxItem Content="日本語" />
+                                    <ComboBoxItem Content="한국어" />
+                                </ComboBox>
+                            </Grid>
+                        </Grid>
+
+                        <Border Classes="groupLine" />
+                        <Grid Classes="group" ColumnDefinitions="170,*">
+                            <TextBlock Classes="groupName" Text="PDF → 圖片" />
+                            <Grid Grid.Column="1" Classes="settingRow" ColumnDefinitions="*,Auto">
+                                <TextBlock Text="格式" />
+                                <ComboBox Grid.Column="1" SelectedIndex="0">
+                                    <ComboBoxItem Content="PNG" />
+                                    <ComboBoxItem Content="JPG" />
+                                    <ComboBoxItem Content="WebP" />
+                                </ComboBox>
+                            </Grid>
+                        </Grid>
+
+                        <Border Classes="groupLine" />
+                        <Grid Classes="group" ColumnDefinitions="170,*">
+                            <TextBlock Classes="groupName" Text="壓縮圖片" />
+                            <Grid Grid.Column="1" Classes="settingRow" ColumnDefinitions="*,Auto" MinHeight="68">
+                                <TextBlock Text="壓縮程度" />
+                                <controls:StepSlider Grid.Column="1" Name="ImageCompressSlider" SelectedIndex="2" />
+                            </Grid>
+                        </Grid>
+
+                        <Border Classes="groupLine" />
+                        <Grid Classes="group" ColumnDefinitions="170,*">
+                            <TextBlock Classes="groupName" Text="Markdown" />
+                            <StackPanel Grid.Column="1">
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="文件範本" />
+                                    <ComboBox Grid.Column="1" SelectedIndex="0">
+                                        <ComboBoxItem Content="預設" />
+                                        <ComboBoxItem Content="極簡" />
+                                        <ComboBoxItem Content="學術" />
+                                        <ComboBoxItem Content="選擇 Word 範本…" />
+                                    </ComboBox>
+                                </Grid>
+                                <Border Classes="rowLine" />
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="紙張" />
+                                    <ComboBox Grid.Column="1" SelectedIndex="0">
+                                        <ComboBoxItem Content="A4" />
+                                        <ComboBoxItem Content="Letter" />
+                                    </ComboBox>
+                                </Grid>
+                                <Border Classes="rowLine" />
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" MinHeight="68">
+                                    <TextBlock Text="文字縮放" />
+                                    <controls:StepSlider Grid.Column="1" Name="TextScaleSlider" SelectedIndex="1" />
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Panel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>

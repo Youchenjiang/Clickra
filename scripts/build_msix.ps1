@@ -19,6 +19,7 @@ Clear-BuildArtifacts -Root $root
 Invoke-NativePublish "src/Clickra.CLI/Clickra.csproj" "$publishDir/cli"
 Invoke-NativePublish "src/ClickraShell/ClickraShell.csproj" "$publishDir/shell"
 Invoke-LauncherPublish -OutputDir "$publishDir/launcher"
+& "$PSScriptRoot/build_desktop.ps1"
 
 # 3. Assemble Layout
 Write-Host "[Build] Assembling Layout..." -ForegroundColor Gray

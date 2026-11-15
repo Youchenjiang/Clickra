@@ -27,7 +27,7 @@ $MsixPath = (Resolve-Path $MsixPath).Path
 
 # 1. Stop related processes (default; skipped with -NoStop)
 if (-not $NoStop) {
-    Get-Process -Name "Clickra.Fluent", "ClickraLauncher", "Clickra" -ErrorAction SilentlyContinue |
+    Get-Process -Name "Clickra.Fluent", "ClickraLauncher", "Clickra", "Clickra.Desktop" -ErrorAction SilentlyContinue |
         Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Milliseconds 500
 }
@@ -58,7 +58,7 @@ if ($Launch) {
     $aumid = $pkg.PackageFamilyName + "!App"
     Start-Process ("shell:AppsFolder\" + $aumid)
     Start-Sleep -Seconds 6
-    $proc = Get-Process -Name "Clickra.Fluent", "Clickra" -ErrorAction SilentlyContinue
+    $proc = Get-Process -Name "Clickra.Fluent", "Clickra", "Clickra.Desktop" -ErrorAction SilentlyContinue
     if ($proc) {
         Write-Host "[Launch] running: $($proc.Name -join ', ') (PID $($proc.Id -join ', '))" -ForegroundColor Green
     } else {

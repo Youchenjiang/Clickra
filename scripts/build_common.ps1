@@ -1,4 +1,4 @@
-# Shared helpers for Clickra MSIX build scripts.
+﻿# Shared helpers for Clickra MSIX build scripts.
 # Dot-sourced by build_msix.ps1 and build_store.ps1
 # so all build tracks keep a single copy of environment setup, build steps, and signing.
 $ErrorActionPreference = "Stop"
@@ -117,6 +117,16 @@ function Copy-AssemblyLayout {
     }
     Copy-Item "$PublishDir/launcher/ClickraLauncher.exe" "$LayoutDir/"
     Copy-Item "$PublishDir/shell/ClickraShell.dll" "$LayoutDir/"
+    if (Test-Path "$PublishDir/desktop/Clickra.Desktop.exe") {
+        Copy-Item "$PublishDir/desktop/Clickra.Desktop.exe" "$LayoutDir/"
+        Get-ChildItem "$PublishDir/desktop" -Filter "*.dll" | ForEach-Object {
+            Copy-Item $_.FullName "$LayoutDir/"
+        }
+        if (Test-Path "$Root/src/Clickra.Desktop/Assets/Fonts/OFL.txt") {
+            New-Item -ItemType Directory -Force -Path "$LayoutDir/Assets/Fonts" | Out-Null
+            Copy-Item "$Root/src/Clickra.Desktop/Assets/Fonts/OFL.txt" "$LayoutDir/Assets/Fonts/OFL.txt"
+        }
+    }
     Copy-Item "$Root/$($script:ThirdPartyNoticesFile)" "$LayoutDir/"
     foreach ($bin in $ExtraBinaries) {
         Copy-Item "$PublishDir/$bin" "$LayoutDir/"

@@ -24,7 +24,15 @@ internal static class Program
         if (string.IsNullOrEmpty(exeDir))
             exeDir = Path.GetDirectoryName(Environment.ProcessPath);
 
-        // 1. Try COM activation for packaged Fluent optional package
+        // Explicit opt-in preview or non-packaged fallback for Clickra.Desktop
+        bool forceDesktop = Environment.GetEnvironmentVariable("CLICKRA_DESKTOP") == "1" ||
+                            args.Contains("--desktop", StringComparer.OrdinalIgnoreCase);
+        if (forceDesktop && exeDir != null && TryLaunchDesktop(exeDir, args, out uint forcePid) && IsFluentRunning(forcePid))
+        {
+            return 0;
+        }
+
+        // 1. Try COM activation for packaged Fluent optional package (default functional UI)
         bool launchedFluent = TryActivateFluent(args, out uint pid);
 
         // 2. Fallback to direct activation for unpackaged Fluent development
@@ -38,7 +46,42 @@ internal static class Program
             return 0;
         }
 
+        // 3. Fallback to Clickra.Desktop if present (when Fluent is not available)
+        if (exeDir != null && TryLaunchDesktop(exeDir, args, out uint desktopPid) && IsFluentRunning(desktopPid))
+        {
+            return 0;
+        }
+
         return LaunchNativeFallback(exeDir, args);
+    }
+
+    private static bool TryLaunchDesktop(string exeDir, string[] args, out uint processId)
+    {
+        processId = 0;
+        string[] cleanArgs = args.Where(a => !string.Equals(a, "--desktop", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (cleanArgs.Length > 0)
+            return false; // CLI commands and shell context menu conversions continue via Clickra.exe
+
+        string desktopExe = Path.Combine(exeDir, "Clickra.Desktop.exe");
+        if (!File.Exists(desktopExe))
+            return false;
+
+        try
+        {
+            var psi = new ProcessStartInfo(desktopExe)
+            {
+                UseShellExecute = false,
+            };
+            psi.Environment[RoutedEnvironmentVariable] = "1";
+            using var proc = Process.Start(psi);
+            if (proc is null) return false;
+            processId = (uint)proc.Id;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static bool IsFluentRunning(uint pid)

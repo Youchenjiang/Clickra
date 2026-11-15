@@ -1,0 +1,24 @@
+<!-- History page shell (spec 4.2): fixed heading row, one section whose list scrolls inside it,
+     24 bottom margin. Shown here in its empty state; the list arrives with Core wiring (branch 7). -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Clickra.Desktop.Views.Pages.HistoryPage">
+    <Grid RowDefinitions="Auto,12,*" Margin="0,0,0,24">
+        <TextBlock Grid.Row="0" Classes="h1" Text="歷史" Margin="0,4,0,0" />
+        <Border Grid.Row="2" Classes="section">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                <Border Width="48" Height="48" CornerRadius="24" HorizontalAlignment="Center"
+                        Background="{DynamicResource Clk.Card}">
+                    <Path Data="M12,3 A9,9 0 1 1 11.99,3 Z M12,7 V12 L15,14"
+                          Stroke="{DynamicResource Clk.TextSecondary}" StrokeThickness="1.8"
+                          StrokeLineCap="Round" StrokeJoin="Round"
+                          Width="22" Height="22" Stretch="Uniform"
+                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <TextBlock Text="還沒有處理過檔案" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                <Button Classes="primary" Name="GoConvertButton" Content="去轉檔"
+                        HorizontalAlignment="Center" MinHeight="40" Padding="20,0" FontSize="14" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

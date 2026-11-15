@@ -1,5 +1,13 @@
 # Changelog
 
+## [v3.20.1.0] - 2026-11-15
+
+- **Avalonia 11 跨平台桌面應用專案架構 (Avalonia 11 Fluent Desktop Shell)**：落實跨平台新世代第三階段（Avalonia Desktop 介面外框）。建立全新 `src/Clickra.Desktop` 專案，採用 Avalonia 11.2.8 與 NativeAOT 單檔編譯，打造現代頂部三分頁導航（轉檔、歷史、設定）與深淺色自適應介面。
+- **動態系統材質與思源黑體向量字型 (Dynamic Mica Backdrop & Embedded Noto Sans TC)**：引進 Windows 11 Mica 雲母微透材質與 macOS AcrylicBlur 模糊材質，於實體區塊維持實心底色以保障對比度；內嵌 Google Noto Sans TC（Regular 與 SemiBold，OFL 1.1）字型子集，徹底杜絕跨平台 CJK 缺字與渲染歧異。
+- **流暢微動效與平滑進入動畫 (Smooth Micro-Interactions & Reduced-Motion Detection)**：全面配置 0.1 秒按鈕與清單微動效；於 `Motion.cs` 實踐方向性左右滑入分頁切換與箭頭旋轉，並主動監聽系統「減少動態效果」設定以滿足無障礙與效能體驗。
+- **單一啟動路由器桌面支援與 MSIX 打包整合 (Packaged Desktop Routing & MSIX Layout Integration)**：於 `ClickraLauncher.exe` 擴充 `TryLaunchDesktop` 原生路由，確保 Windows MSIX 套件與開始功能表原生啟動新版桌面主程式；同步將 Avalonia 桌面與執行時期相依整合至 `build_msix.ps1` 與 `reinstall_msix.ps1` 本地驗證產線。
+- **跨平台桌面架構防線與規格命名防護 (Universal Desktop Architecture & Contract Guards)**：於測試套件新增 `TestSuite.DesktopArchitecture.cs`（守衛總數增至 99 項），全面防護 Avalonia 11、NativeAOT、專案依賴單向性，以及禁止過時 `Clickra.App` 歷史命名回流。
+
 ## [v3.20.0.0] - 2026-11-12
 
 - **跨平台通用 CLI 與 .NET Global Tool 發布 (Universal CLI & .NET Tool Distribution)**：落實跨平台新世代第二階段（Universal CLI）。配置 `PackAsTool` 產出官方 `Clickra` .NET 全域工具，全平台開發者僅需一行 `dotnet tool install -g Clickra --add-source https://nuget.pkg.github.com/Youchenjiang/index.json` 即可直接在終端使用 `clickra`。

@@ -1,0 +1,19 @@
+<!-- Stepped slider for options that have a clear "more / less" direction (section 4.9),
+     e.g. compression level. It only stops on the defined steps; the name of each step is
+     written under its stop and the current one is emphasized. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:Clickra.Desktop.Controls"
+             x:Class="Clickra.Desktop.Controls.StepSlider">
+  <StackPanel Spacing="0">
+    <Slider Name="PART_Slider"
+            Minimum="0"
+            Maximum="1"
+            TickFrequency="1"
+            IsSnapToTickEnabled="True"
+            SmallChange="1"
+            LargeChange="1"
+            Margin="0" />
+    <controls:StopLabelPanel Name="PART_Labels" TrackInset="10" Margin="0,-4,0,0" />
+  </StackPanel>
+</UserControl>
