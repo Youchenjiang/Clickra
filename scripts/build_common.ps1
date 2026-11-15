@@ -122,6 +122,10 @@ function Copy-AssemblyLayout {
         Get-ChildItem "$PublishDir/desktop" -Filter "*.dll" | ForEach-Object {
             Copy-Item $_.FullName "$LayoutDir/"
         }
+        if (Test-Path "$Root/src/Clickra.Desktop/Assets/Fonts/OFL.txt") {
+            New-Item -ItemType Directory -Force -Path "$LayoutDir/Assets/Fonts" | Out-Null
+            Copy-Item "$Root/src/Clickra.Desktop/Assets/Fonts/OFL.txt" "$LayoutDir/Assets/Fonts/OFL.txt"
+        }
     }
     Copy-Item "$Root/$($script:ThirdPartyNoticesFile)" "$LayoutDir/"
     foreach ($bin in $ExtraBinaries) {
