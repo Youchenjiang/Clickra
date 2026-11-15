@@ -1,24 +1,102 @@
-<!-- History page shell (spec 4.2): fixed heading row, one section whose list scrolls inside it,
-     24 bottom margin. Shown here in its empty state; the list arrives with Core wiring (branch 7). -->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="Clickra.Desktop.Views.Pages.HistoryPage">
+             xmlns:vm="using:Clickra.Desktop.ViewModels"
+             x:Class="Clickra.Desktop.Views.Pages.HistoryPage"
+             x:DataType="vm:HistoryViewModel">
+
     <Grid RowDefinitions="Auto,12,*" Margin="0,0,0,24">
-        <TextBlock Grid.Row="0" Classes="h1" Text="歷史" Margin="0,4,0,0" />
-        <Border Grid.Row="2" Classes="section">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
-                <Border Width="48" Height="48" CornerRadius="24" HorizontalAlignment="Center"
-                        Background="{DynamicResource Clk.Card}">
-                    <Path Data="M12,3 A9,9 0 1 1 11.99,3 Z M12,7 V12 L15,14"
-                          Stroke="{DynamicResource Clk.TextSecondary}" StrokeThickness="1.8"
-                          StrokeLineCap="Round" StrokeJoin="Round"
-                          Width="22" Height="22" Stretch="Uniform"
-                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Border>
-                <TextBlock Text="還沒有處理過檔案" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                <Button Classes="primary" Name="GoConvertButton" Content="去轉檔"
-                        HorizontalAlignment="Center" MinHeight="40" Padding="20,0" FontSize="14" />
+        <!-- Top Row: Title, Filters (All/Success/Failed), and Clear History -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,4,0,0">
+            <TextBlock Grid.Column="0" Classes="h1" Text="歷史" VerticalAlignment="Center" />
+
+            <!-- Filters -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <Button Classes="secondary" Name="FilterAllButton" Content="全部" />
+                <Button Classes="secondary" Name="FilterSuccessButton" Content="成功" />
+                <Button Classes="secondary" Name="FilterFailedButton" Content="失敗" />
             </StackPanel>
+
+            <Button Grid.Column="3" Classes="subtle" Name="ClearHistoryButton" Content="清除歷史"
+                    Margin="12,0,0,0" VerticalAlignment="Center" />
+        </Grid>
+
+        <!-- Main Section -->
+        <Border Grid.Row="2" Classes="section">
+            <Panel>
+                <!-- Empty State -->
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12"
+                            IsVisible="{Binding IsEmpty}">
+                    <Border Width="48" Height="48" CornerRadius="24" HorizontalAlignment="Center"
+                            Background="{DynamicResource Clk.Card}">
+                        <Path Data="M12,3 A9,9 0 1 1 11.99,3 Z M12,7 V12 L15,14"
+                              Stroke="{DynamicResource Clk.TextSecondary}" StrokeThickness="1.8"
+                              StrokeLineCap="Round" StrokeJoin="Round"
+                              Width="22" Height="22" Stretch="Uniform"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="還沒有處理過檔案" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                    <Button Classes="primary" Name="GoConvertButton" Content="去轉檔"
+                            HorizontalAlignment="Center" MinHeight="40" Padding="20,0" FontSize="14" />
+                </StackPanel>
+
+                <!-- History List -->
+                <ScrollViewer IsVisible="{Binding !IsEmpty}">
+                    <ItemsControl ItemsSource="{Binding DisplayedItems}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Classes="card" Margin="0,0,0,8" Padding="16,12" Cursor="Hand">
+                                    <StackPanel Spacing="10">
+                                        <!-- Header Row: Icon + Filename + Time -->
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <Panel Grid.Column="0" Width="20" Height="20" Margin="0,0,12,0" VerticalAlignment="Center">
+                                                <Path Data="M4,10 L8,14 L16,6" Stroke="{DynamicResource Clk.Success}"
+                                                      StrokeThickness="2" Fill="Transparent" Stretch="Uniform"
+                                                      IsVisible="{Binding IsSuccess}" />
+                                                <Path Data="M6,6 L14,14 M6,14 L14,6" Stroke="{DynamicResource Clk.Danger}"
+                                                      StrokeThickness="2" Fill="Transparent" Stretch="Uniform"
+                                                      IsVisible="{Binding IsFailed}" />
+                                                <Path Data="M6,10 H14" Stroke="{DynamicResource Clk.TextSecondary}"
+                                                      StrokeThickness="2" Fill="Transparent" Stretch="Uniform"
+                                                      IsVisible="{Binding IsCanceled}" />
+                                            </Panel>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                                <TextBlock Text="{Binding FirstFileName}" FontSize="15" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding Subtitle}" Classes="secondary" FontSize="13" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="2" Text="{Binding Time}" Classes="secondary" FontSize="13" VerticalAlignment="Center" />
+                                        </Grid>
+
+                                        <!-- Expanded Details -->
+                                        <Border Classes="card" Background="{DynamicResource Clk.Surface}"
+                                                Padding="12,10" CornerRadius="8" IsVisible="{Binding IsExpanded}">
+                                            <StackPanel Spacing="8">
+                                                <StackPanel Spacing="2" IsVisible="{Binding HasOutput}">
+                                                    <TextBlock Text="輸出位置" FontSize="12" FontWeight="SemiBold" Classes="secondary" />
+                                                    <TextBlock Text="{Binding OutputPath}" FontSize="13" TextWrapping="Wrap" />
+                                                </StackPanel>
+                                                <StackPanel Spacing="2" IsVisible="{Binding HasError}">
+                                                    <TextBlock Text="錯誤訊息" FontSize="12" FontWeight="SemiBold" Classes="secondary" />
+                                                    <TextBlock Text="{Binding ErrorMessage}" FontSize="13" Foreground="{DynamicResource Clk.Danger}" TextWrapping="Wrap" />
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+                                                    <Button Classes="secondary" Content="開啟資料夾"
+                                                            Command="{Binding $parent[UserControl].((vm:HistoryViewModel)DataContext).OpenFolder}"
+                                                            CommandParameter="{Binding OutputPath}"
+                                                            IsVisible="{Binding HasOutput}" />
+                                                    <Button Classes="secondary" Content="開啟檔案"
+                                                            Command="{Binding $parent[UserControl].((vm:HistoryViewModel)DataContext).OpenFile}"
+                                                            CommandParameter="{Binding OutputPath}"
+                                                            IsVisible="{Binding HasOutput}" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Panel>
         </Border>
     </Grid>
 </UserControl>

@@ -32,7 +32,31 @@ public partial class SettingsPage : UserControl
             GeneralPanel.IsVisible = !defaults;
             DefaultsPanel.IsVisible = defaults;
         };
-        AppearanceBox.SelectionChanged += (_, _) => ApplyAppearance(AppearanceBox.SelectedIndex);
+        PdfCompressSlider.ValueChanged += (_, _) =>
+        {
+            if (DataContext is SettingsViewModel vm)
+            {
+                vm.PdfCompressionLevel = PdfCompressSlider.SelectedIndex;
+            }
+        };
+        ImageCompressSlider.ValueChanged += (_, _) =>
+        {
+            if (DataContext is SettingsViewModel vm)
+            {
+                vm.ImageCompressionLevel = ImageCompressSlider.SelectedIndex;
+            }
+        };
+        AppearanceBox.SelectionChanged += (_, _) =>
+        {
+            ApplyAppearance(AppearanceBox.SelectedIndex);
+            if (DataContext is SettingsViewModel vm)
+            {
+                vm.ThemeIndex = AppearanceBox.SelectedIndex;
+            }
+        };
+        ViewLogsButton.Click += (_, _) => (DataContext as SettingsViewModel)?.OpenLogsFolder();
+        SendReportButton.Click += (_, _) => (DataContext as SettingsViewModel)?.SendDiagnosticsEmail();
+        GitHubButton.Click += (_, _) => OpenExternalUri("https://github.com/Youchenjiang/Clickra");
         BuildContextMenuChecklist();
     }
 
@@ -41,7 +65,7 @@ public partial class SettingsPage : UserControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        SubscribeToViewModel(DataContext as MainWindowViewModel);
+        SubscribeToViewModel((VisualRoot as Window)?.DataContext as MainWindowViewModel ?? DataContext as MainWindowViewModel);
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -53,7 +77,30 @@ public partial class SettingsPage : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
-        SubscribeToViewModel(DataContext as MainWindowViewModel);
+        SubscribeToViewModel((VisualRoot as Window)?.DataContext as MainWindowViewModel ?? DataContext as MainWindowViewModel);
+    }
+
+    private static void OpenExternalUri(string uri)
+    {
+        try
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = uri, UseShellExecute = true })?.Dispose();
+            }
+            else if (OperatingSystem.IsMacOS())
+            {
+                System.Diagnostics.Process.Start("open", $"\"{uri}\"")?.Dispose();
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                System.Diagnostics.Process.Start("xdg-open", $"\"{uri}\"")?.Dispose();
+            }
+        }
+        catch
+        {
+            // Best effort
+        }
     }
 
     private void SubscribeToViewModel(MainWindowViewModel? vm)

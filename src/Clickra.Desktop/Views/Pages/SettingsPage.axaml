@@ -176,13 +176,13 @@
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                     <!-- Generic code icon, not the GitHub logo. -->
-                                    <Button Classes="icon" ToolTip.Tip="GitHub 專案頁" AutomationProperties.Name="GitHub 專案頁">
+                                    <Button Classes="icon" Name="GitHubButton" ToolTip.Tip="GitHub 專案頁" AutomationProperties.Name="GitHub 專案頁">
                                         <Viewbox><Canvas Width="24" Height="24"><Path Data="M8.5,7 L3.5,12 L8.5,17 M15.5,7 L20.5,12 L15.5,17 M13.5,4.5 L10.5,19.5" /></Canvas></Viewbox>
                                     </Button>
-                                    <Button Classes="icon" ToolTip.Tip="檢視日誌" AutomationProperties.Name="檢視日誌">
+                                    <Button Classes="icon" Name="ViewLogsButton" ToolTip.Tip="檢視日誌" AutomationProperties.Name="檢視日誌">
                                         <Viewbox><Canvas Width="24" Height="24"><Path Data="M6.5,3.5 H14 L18.5,8 V20.5 H6.5 Z M14,3.5 V8 H18.5 M9.5,13 H15.5 M9.5,16.5 H13.5" /></Canvas></Viewbox>
                                     </Button>
-                                    <Button Classes="icon" ToolTip.Tip="寄送問題回報" AutomationProperties.Name="寄送問題回報">
+                                    <Button Classes="icon" Name="SendReportButton" ToolTip.Tip="寄送問題回報" AutomationProperties.Name="寄送問題回報">
                                         <Viewbox><Canvas Width="24" Height="24"><Path Data="M5.5,6 H18.5 A1.5,1.5 0 0 1 20,7.5 V16.5 A1.5,1.5 0 0 1 18.5,18 H5.5 A1.5,1.5 0 0 1 4,16.5 V7.5 A1.5,1.5 0 0 1 5.5,6 Z M4.5,7 L12,12.5 L19.5,7" /></Canvas></Viewbox>
                                     </Button>
                                 </StackPanel>

@@ -27,6 +27,10 @@ public sealed class MainWindowViewModel : ViewModelBase
 {
     private MainPage _currentPage = MainPage.Convert;
 
+    public ConvertViewModel Convert { get; } = new();
+    public HistoryViewModel History { get; } = new();
+    public SettingsViewModel Settings { get; } = new();
+
     public string ConvertTabLabel { get; } = Localization.T("tab_convert");
     public string HistoryTabLabel { get; } = Localization.T("tab_history");
     public string SettingsTabLabel { get; } = Localization.T("tab_settings");

@@ -1,9 +1,9 @@
-<!-- Convert page, state A for a first-time user (spec 4.1 / 4.7): drop zone on top; below it, a hint
-     that Clickra also works from the file manager's right-click menu. Once history exists (branch 7,
-     with Core wiring) the lower block shows 最近處理 instead. -->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="Clickra.Desktop.Views.Pages.ConvertPage">
+             xmlns:vm="using:Clickra.Desktop.ViewModels"
+             x:Class="Clickra.Desktop.Views.Pages.ConvertPage"
+             x:DataType="vm:ConvertViewModel">
+
     <UserControl.Styles>
         <Style Selector="Border.menuItem">
             <Setter Property="Padding" Value="10,0" />
@@ -15,18 +15,52 @@
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Foreground" Value="{DynamicResource Clk.TextSecondary}" />
         </Style>
+        <Style Selector="Border.fileNarrowRow">
+            <Setter Property="Background" Value="{DynamicResource Clk.Card}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Clk.CardBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="MinHeight" Value="72" />
+            <Setter Property="Padding" Value="16,10" />
+        </Style>
+        <Style Selector="Border.catalogPlate">
+            <Setter Property="Width" Value="64" />
+            <Setter Property="Height" Value="64" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Background" Value="{DynamicResource Clk.IconPlate}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Clk.IconPlateBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Button.catalogCard">
+            <Setter Property="Background" Value="{DynamicResource Clk.Card}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Clk.CardBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="12,16" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="MinHeight" Value="130" />
+        </Style>
+        <Style Selector="Button.catalogCard:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Clk.CardHover}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Clk.CardBorder}" />
+        </Style>
     </UserControl.Styles>
 
     <Grid Margin="0,0,0,24">
-        <!-- Drop zone takes most of the height up to 356 (never below 240); the lower block gets the rest (section 5.2). -->
         <Grid.RowDefinitions>
-            <RowDefinition Height="5*" MinHeight="240" MaxHeight="356" />
+            <!-- Top Area: Drop Zone (State A) or File Narrow Row (State B-F) -->
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="12" />
-            <RowDefinition Height="3*" MinHeight="96" />
+            <!-- Bottom Area: Section containing catalog, action page, progress, or results -->
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Drop zone: card colour with a dashed outline, so it reads as "drop here". -->
-        <Panel Grid.Row="0">
+        <!-- ==================== TOP AREA ==================== -->
+        <!-- State A: Drop zone -->
+        <Panel Grid.Row="0" IsVisible="{Binding IsDropZone}" MinHeight="260" MaxHeight="356" DragDrop.AllowDrop="True">
             <Border Background="{DynamicResource Clk.Card}" CornerRadius="16" />
             <Rectangle Stroke="{DynamicResource Clk.ControlBorder}" StrokeThickness="1"
                        StrokeDashArray="4,3" RadiusX="16" RadiusY="16" />
@@ -39,43 +73,260 @@
                           Width="26" Height="26" Stretch="Uniform"
                           HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
-                <TextBlock Classes="h1" FontSize="28" Text="要處理什麼檔案？" HorizontalAlignment="Center" />
+                <TextBlock Classes="h1" FontSize="26" Text="要處理什麼檔案？" HorizontalAlignment="Center" />
                 <TextBlock Classes="secondary" FontSize="15" Text="把檔案拖到這裡，Clickra 會告訴你可以做什麼。"
                            HorizontalAlignment="Center" />
-                <Button Classes="primary" Content="選擇檔案" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                <Button Classes="primary" Name="PickFilesButton" Content="選擇檔案" HorizontalAlignment="Center" Margin="0,8,0,0" />
             </StackPanel>
         </Panel>
 
-        <!-- First run: right-click menu hint. -->
-        <Border Grid.Row="2" Classes="section">
-            <StackPanel Orientation="Horizontal" Spacing="22"
-                        HorizontalAlignment="Center" VerticalAlignment="Center">
-                <!-- A small picture of the file manager menu with the Clickra entry highlighted. -->
-                <Border Width="132" Padding="6" CornerRadius="8" VerticalAlignment="Center"
-                        Background="{DynamicResource Clk.Card}"
-                        BorderBrush="{DynamicResource Clk.ControlBorder}" BorderThickness="1">
-                    <StackPanel Spacing="2">
-                        <Border Classes="menuItem"><TextBlock Text="開啟" /></Border>
-                        <Border Classes="menuItem"><TextBlock Text="複製" /></Border>
-                        <Border Classes="menuItem" Background="{DynamicResource Clk.SegmentSelected}">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <Image Source="avares://Clickra.Desktop/Assets/clickra-64.png" Width="14" Height="14"
-                                       VerticalAlignment="Center" Margin="0,0,6,0" />
-                                <TextBlock Grid.Column="1" Text="Clickra" FontSize="13" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="2" Text="›" FontSize="13" VerticalAlignment="Center" />
-                            </Grid>
-                        </Border>
-                        <Border Classes="menuItem"><TextBlock Text="內容" /></Border>
-                    </StackPanel>
+        <!-- State B-F: File summary narrow row (Height 72 DIP) -->
+        <Border Grid.Row="0" Classes="fileNarrowRow" IsVisible="{Binding HasFiles}">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <!-- File domain icon plate -->
+                <Border Grid.Column="0" Width="44" Height="44" CornerRadius="10"
+                        Background="{Binding PrimaryDomainColor}" Margin="0,0,14,0"
+                        VerticalAlignment="Center">
+                    <Path Data="M6,2 H14 L18,6 V22 H6 Z M14,2 V6 H18"
+                          Stroke="#FFFFFF" StrokeThickness="1.6"
+                          Fill="Transparent" Width="20" Height="20" Stretch="Uniform"
+                          HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
-                <StackPanel VerticalAlignment="Center" Spacing="4" MaxWidth="420">
-                    <TextBlock Text="也可以在檔案總管直接使用" FontSize="16" FontWeight="SemiBold" />
-                    <TextBlock Classes="secondary" FontSize="14" TextWrapping="Wrap"
-                               Text="對檔案按右鍵，選 Clickra，就能不開這個視窗直接處理" />
-                    <Button Classes="link" Name="MenuSettingsLink" Content="選擇右鍵選單要顯示的功能"
-                            HorizontalAlignment="Left" FontSize="14" />
+
+                <!-- File Summary Texts -->
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                    <TextBlock Text="{Binding FileSummaryHeader}" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding FileSummarySubtext}" Classes="secondary" FontSize="13" TextTrimming="CharacterEllipsis" MaxWidth="500" />
                 </StackPanel>
-            </StackPanel>
+
+                <!-- Actions: Manage Files and Re-pick -->
+                <Button Grid.Column="2" Classes="secondary" Name="ManageFilesButton"
+                        Content="管理檔案" Margin="0,0,8,0" VerticalAlignment="Center"
+                        IsEnabled="{Binding !IsExecuting}" />
+                <Button Grid.Column="3" Classes="subtle" Name="RePickFilesButton"
+                        Content="重新選" VerticalAlignment="Center"
+                        IsEnabled="{Binding !IsExecuting}" />
+            </Grid>
+        </Border>
+
+        <!-- ==================== BOTTOM AREA ==================== -->
+        <Border Grid.Row="2" Classes="section">
+            <Panel>
+
+                <!-- STATE A: No files yet -->
+                <Panel IsVisible="{Binding IsDropZone}">
+                    <!-- A1: If recent history exists, show recent list -->
+                    <StackPanel IsVisible="{Binding HasRecentHistory}" Spacing="10">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Text="最近處理" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Classes="link" Name="ViewAllHistoryButton" Content="全部歷史 ›" FontSize="13" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding RecentItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Classes="card" Margin="0,0,0,8" Padding="14,10">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <Path Grid.Column="0" Data="M12,4 V15 M7,10 L12,15 L17,10"
+                                                  Stroke="{DynamicResource Clk.TextSecondary}" StrokeThickness="1.5"
+                                                  Width="14" Height="14" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="{Binding Subtitle}" Classes="secondary" FontSize="13" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- A2: First-time hint if no history -->
+                    <StackPanel IsVisible="{Binding !HasRecentHistory}" Orientation="Horizontal" Spacing="22"
+                                HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Border Width="132" Padding="6" CornerRadius="8" VerticalAlignment="Center"
+                                Background="{DynamicResource Clk.Card}"
+                                BorderBrush="{DynamicResource Clk.ControlBorder}" BorderThickness="1">
+                            <StackPanel Spacing="2">
+                                <Border Classes="menuItem"><TextBlock Text="開啟" /></Border>
+                                <Border Classes="menuItem"><TextBlock Text="複製" /></Border>
+                                <Border Classes="menuItem" Background="{DynamicResource Clk.SegmentSelected}">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <Image Source="avares://Clickra.Desktop/Assets/clickra-64.png" Width="14" Height="14"
+                                               VerticalAlignment="Center" Margin="0,0,6,0" />
+                                        <TextBlock Grid.Column="1" Text="Clickra" FontSize="13" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2" Text="›" FontSize="13" VerticalAlignment="Center" />
+                                    </Grid>
+                                </Border>
+                                <Border Classes="menuItem"><TextBlock Text="內容" /></Border>
+                            </StackPanel>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center" Spacing="4" MaxWidth="420">
+                            <TextBlock Text="也可以在檔案總管直接使用" FontSize="16" FontWeight="SemiBold" />
+                            <TextBlock Classes="secondary" FontSize="14" TextWrapping="Wrap"
+                                       Text="對檔案按右鍵，選 Clickra，就能不開這個視窗直接處理" />
+                            <Button Classes="link" Name="MenuSettingsLink" Content="選擇右鍵選單要顯示的功能"
+                                    HorizontalAlignment="Left" FontSize="14" />
+                        </StackPanel>
+                    </StackPanel>
+                </Panel>
+
+                <!-- STATE B1: Action Catalog (Grid of available actions) -->
+                <Grid RowDefinitions="Auto,*" IsVisible="{Binding IsActionCatalog}">
+                    <TextBlock Grid.Row="0" Text="要對這些檔案做什麼？" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,16" />
+                    <ScrollViewer Grid.Row="1">
+                        <ItemsControl ItemsSource="{Binding AvailableActions}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="4" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Classes="catalogCard" Margin="6" Tag="{Binding}"
+                                            ToolTip.Tip="{Binding ToolTip}"
+                                            Command="{Binding $parent[UserControl].((vm:ConvertViewModel)DataContext).SelectAction}"
+                                            CommandParameter="{Binding}">
+                                        <StackPanel Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Border Classes="catalogPlate" HorizontalAlignment="Center">
+                                                <Path Data="{Binding IconGeometry}"
+                                                      Stroke="{Binding ColorHex}" StrokeThickness="2"
+                                                      Fill="Transparent" Width="28" Height="28" Stretch="Uniform"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- STATE B2: Action Page (Options and Start) -->
+                <Grid RowDefinitions="Auto,*,Auto" IsVisible="{Binding IsActionPage}">
+                    <!-- Title Row: Back button + Icon + Name -->
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*" Margin="0,0,0,16">
+                        <Button Grid.Column="0" Classes="link" Name="BackToCatalogButton"
+                                Content="‹ 所有動作" FontSize="15" Margin="0,0,16,0" VerticalAlignment="Center" />
+                        <Border Grid.Column="1" Width="32" Height="32" CornerRadius="8"
+                                Background="{Binding SelectedAction.ColorHex}" Margin="0,0,10,0" VerticalAlignment="Center">
+                            <Path Data="{Binding SelectedAction.IconGeometry}"
+                                  Stroke="#FFFFFF" StrokeThickness="1.5"
+                                  Fill="Transparent" Width="16" Height="16" Stretch="Uniform"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Grid.Column="2" Text="{Binding SelectedAction.FullFeatureName}"
+                                   FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </Grid>
+
+                    <!-- Options Card Area -->
+                    <ScrollViewer Grid.Row="1">
+                        <StackPanel Spacing="12">
+                            <Border Classes="card">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="選項設定" FontSize="15" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding SelectedAction.ToolTip}" Classes="secondary" FontSize="14" />
+                                    <!-- Options Hint -->
+                                    <TextBlock Text="這個動作已備妥最佳預設值，確認存檔位置後即可開始。"
+                                               Classes="secondary" FontSize="13" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Bottom Bar: Output Path + Start Button -->
+                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,16,0,0" VerticalAlignment="Bottom">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Path Data="M3,4 H9 L11,6 H21 V18 H3 Z" Stroke="{DynamicResource Clk.TextSecondary}"
+                                  StrokeThickness="1.5" Fill="Transparent" Width="16" Height="16" Stretch="Uniform"
+                                  VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding OutputSummaryText}" Classes="secondary" FontSize="14" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="primary" Name="StartConversionButton"
+                                Content="{Binding StartButtonText}" MinHeight="44" Padding="32,0"
+                                IsEnabled="{Binding CanStart}" />
+                    </Grid>
+                </Grid>
+
+                <!-- STATE C: Managing Files Modal List -->
+                <Grid RowDefinitions="*,Auto" IsVisible="{Binding IsManagingFiles}">
+                    <ScrollViewer Grid.Row="0">
+                        <ItemsControl ItemsSource="{Binding SelectedFiles}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Classes="card" Margin="0,0,0,6" Padding="12,8">
+                                        <Grid ColumnDefinitions="*,Auto,Auto">
+                                            <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="14" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="1" Text="{Binding FileSizeText}" Classes="secondary" FontSize="13" Margin="12,0" VerticalAlignment="Center" />
+                                            <Button Grid.Column="2" Classes="subtle" Content="✕"
+                                                    Command="{Binding $parent[UserControl].((vm:ConvertViewModel)DataContext).RemoveFile}"
+                                                    CommandParameter="{Binding Path}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <Button Grid.Row="1" Classes="primary" Name="DoneManageFilesButton" Content="完成"
+                            HorizontalAlignment="Right" Margin="0,12,0,0" MinHeight="36" Padding="20,0" />
+                </Grid>
+
+                <!-- STATE E: Executing Progress -->
+                <Grid RowDefinitions="Auto,Auto,*,Auto" IsVisible="{Binding IsExecuting}">
+                    <TextBlock Grid.Row="0" Text="{Binding ProgressMessage}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12" />
+                    <ProgressBar Grid.Row="1" Height="8" Minimum="0" Maximum="100"
+                                 Value="{Binding ProgressPercent}" Margin="0,0,0,24" />
+                    <ScrollViewer Grid.Row="2">
+                        <ItemsControl ItemsSource="{Binding SelectedFiles}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Classes="card" Margin="0,0,0,6" Padding="12,8">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="14" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" Text="處理中..." Classes="secondary" FontSize="13" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <Button Grid.Row="3" Classes="secondary" Name="CancelConversionButton" Content="取消"
+                            HorizontalAlignment="Right" Margin="0,12,0,0" MinHeight="38" Padding="24,0" />
+                </Grid>
+
+                <!-- STATE F: Completed / Results -->
+                <Grid RowDefinitions="Auto,*,Auto" IsVisible="{Binding IsCompleted}">
+                    <TextBlock Grid.Row="0" Text="{Binding ResultSummary}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,16" />
+                    <ScrollViewer Grid.Row="1">
+                        <ItemsControl ItemsSource="{Binding ResultItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Classes="card" Margin="0,0,0,8" Padding="14,10">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <!-- Status Icon -->
+                                            <Panel Grid.Column="0" Width="20" Height="20" Margin="0,0,12,0" VerticalAlignment="Center">
+                                                <Path Data="M4,10 L8,14 L16,6" Stroke="{DynamicResource Clk.Success}"
+                                                      StrokeThickness="2" Fill="Transparent" Stretch="Uniform"
+                                                      IsVisible="{Binding Succeeded}" />
+                                                <Path Data="M6,6 L14,14 M6,14 L14,6" Stroke="{DynamicResource Clk.Danger}"
+                                                      StrokeThickness="2" Fill="Transparent" Stretch="Uniform"
+                                                      IsVisible="{Binding !Succeeded}" />
+                                            </Panel>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                                <TextBlock Text="{Binding FileName}" FontSize="14" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding DetailText}" Classes="secondary" FontSize="13" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" Margin="0,16,0,0">
+                        <Button Grid.Column="0" Classes="secondary" Name="ProcessOtherFilesButton" Content="處理其他檔案" MinHeight="40" Padding="18,0" />
+                        <Button Grid.Column="2" Classes="primary" Name="OpenOutputFolderButton" Content="開啟所在資料夾" MinHeight="40" Padding="24,0" />
+                    </Grid>
+                </Grid>
+
+            </Panel>
         </Border>
     </Grid>
 </UserControl>

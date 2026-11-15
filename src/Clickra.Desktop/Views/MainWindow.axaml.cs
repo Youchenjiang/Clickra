@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Clickra.Desktop.Controls;
+using Clickra.Desktop.ViewModels;
 
 namespace Clickra.Desktop.Views;
 
@@ -43,6 +44,10 @@ public partial class MainWindow : Window
                 double fromX = ComputeSlideOffset(current, index);
                 current = index;
                 Motion.Enter(pages[index], fromX, 0);
+                if (index == 1 && DataContext is MainWindowViewModel vm)
+                {
+                    vm.History.Refresh();
+                }
             };
         }
         ConfigureBackdrop();
