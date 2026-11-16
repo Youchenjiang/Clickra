@@ -15,6 +15,9 @@ Welcome to the technical design specifications and RFC directory. This folder co
 | **[libreoffice_engine_plan.md](libreoffice_engine_plan.md)** | `[F2-5]` LibreOffice Engine | Implemented & Maintained | Local LibreOffice headless document conversion engine and installer automation. |
 | **[markdown_document_templates.md](markdown_document_templates.md)** | `[F2-31]` Markdown to PDF/DOCX | Implemented & Maintained | Template architecture, typographic CSS models, and DOCX template import schema. |
 | **[pdf_compression_future_roadmap.md](pdf_compression_future_roadmap.md)** | `[F2-9]` Extreme Compression | Planning / Phased | Four-phase compression strategy: DFS GC orphan cleanup, Object Streams (ObjStm), JBIG2, and font subset merging. |
+| **[office_com_direct_plan.md](office_com_direct_plan.md)** | Office → PDF (Core) | Planned | Call Word/Excel/PowerPoint through NativeAOT-compatible COM instead of a hidden PowerShell `-EncodedCommand` script that security software flags. Scheduled after `feat/avalonia-views`. |
+| **[feature_icon_recognition_plan.md](feature_icon_recognition_plan.md)** | Feature icons (context menu + Desktop) | Planned | Make the 22 feature icons distinguishable at 16 px and on dark backgrounds: one main symbol per action, one shared structure for format conversions, no text in icons. Scheduled after `feat/avalonia-views`. |
+| **[pdf_password_unlock_plan.md](pdf_password_unlock_plan.md)** | Password-protected PDFs (Core) | Planned | Compress, merge, translate and print ask for the password and unlock in place instead of rejecting the whole batch; add a real per-file skip. Scheduled after `feat/avalonia-views`. |
 
 ---
 
