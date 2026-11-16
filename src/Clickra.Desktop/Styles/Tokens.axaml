@@ -35,6 +35,10 @@
       <SolidColorBrush x:Key="Clk.DisabledText" Color="#8A8A8A" />
       <SolidColorBrush x:Key="Clk.Success" Color="#0F7B0F" />
       <SolidColorBrush x:Key="Clk.Danger" Color="#C42B1C" />
+      <!-- Choice tiles inside a card (template cards) and the paper drawn on them. -->
+      <SolidColorBrush x:Key="Clk.TileFill" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Clk.TileBorder" Color="#E0E0E0" />
+      <SolidColorBrush x:Key="Clk.Paper" Color="#F0F0F0" />
       <SolidColorBrush x:Key="Clk.Warning" Color="#9D5D00" />
     </ResourceDictionary>
 
@@ -68,6 +72,9 @@
       <SolidColorBrush x:Key="Clk.DisabledText" Color="#C8C8C8" />
       <SolidColorBrush x:Key="Clk.Success" Color="#6CCB5F" />
       <SolidColorBrush x:Key="Clk.Danger" Color="#FF99A4" />
+      <SolidColorBrush x:Key="Clk.TileFill" Color="#1E1E1E" />
+      <SolidColorBrush x:Key="Clk.TileBorder" Color="#3A3A3A" />
+      <SolidColorBrush x:Key="Clk.Paper" Color="#ECECEC" />
       <SolidColorBrush x:Key="Clk.Warning" Color="#FFD479" />
     </ResourceDictionary>
 
