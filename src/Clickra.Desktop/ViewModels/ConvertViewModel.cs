@@ -236,6 +236,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             _selectedAction = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(StartButtonText));
+            OnPropertyChanged(nameof(IsRenameAction));
             OnPropertyChanged(nameof(ShowsOutputLocation));
             OnPropertyChanged(nameof(CanStart));
         }
@@ -254,6 +255,8 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
                             (!IsRenameAction || Rename.CanRename) && (!IsOrderAction || Order.HasOutputName) && (!IsSplitAction || Split.IsReady) && Options.IsReady;
 
     /// <summary>批次重新命名 has its own workspace instead of an options card (spec 4.6).</summary>
+    public RenameWorkspaceViewModel Rename { get; } = new();
+    public bool IsRenameAction => string.Equals(SelectedAction?.Command, ConvertWorkspaceController.BatchRenameCommand, StringComparison.OrdinalIgnoreCase);
     public bool IsOptionsAction => SelectedAction is not null && !IsRenameAction && !IsOrderAction && !IsSplitAction;
 
     /// <summary>PDF 分割: page thumbnails and cut points (spec 4.6).</summary>
@@ -419,6 +422,8 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     public void SelectAction(ActionItemViewModel action)
     {
         if (!_workspace.TrySelectCommand(action.Command)) return;
+        if (string.Equals(action.Command, ConvertWorkspaceController.BatchRenameCommand, StringComparison.OrdinalIgnoreCase))
+            Rename.SetFiles(SelectedFiles.Select(f => f.Path));
         SelectedAction = action;
         State = ConvertWorkflowState.ActionPage;
     }

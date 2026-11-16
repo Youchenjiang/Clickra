@@ -257,8 +257,125 @@
                                    FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
                     </Grid>
 
+                    <!-- 批次重新命名: full workspace, rules left and live preview right (spec 4.6). -->
+                    <Grid Grid.Row="1" IsVisible="{Binding IsRenameAction}" ColumnDefinitions="300,16,*">
+                        <ScrollViewer Grid.Column="0">
+                            <StackPanel Spacing="8" Margin="0,0,8,0">
+                                <CheckBox Content="取代文字" IsChecked="{Binding Rename.UseReplace}" />
+                                <Grid IsVisible="{Binding Rename.UseReplace}" ColumnDefinitions="56,*" RowDefinitions="Auto,Auto,Auto"
+                                      RowSpacing="6" Margin="28,0,0,6">
+                                    <TextBlock Text="尋找" VerticalAlignment="Center" Classes="secondary" />
+                                    <TextBox Grid.Column="1" Text="{Binding Rename.FindText}" />
+                                    <TextBlock Grid.Row="1" Text="改成" VerticalAlignment="Center" Classes="secondary" />
+                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Rename.ReplaceWith}" />
+                                    <StackPanel Grid.Row="2" Grid.Column="1">
+                                        <CheckBox Content="區分大小寫" IsChecked="{Binding Rename.MatchCase}" />
+                                        <CheckBox Content="使用正規表示式" IsChecked="{Binding Rename.UseRegex}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <CheckBox Content="加上編號" IsChecked="{Binding Rename.UseNumbering}" />
+                                <Grid IsVisible="{Binding Rename.UseNumbering}" ColumnDefinitions="56,*" RowDefinitions="Auto,Auto"
+                                      RowSpacing="6" Margin="28,0,0,6">
+                                    <TextBlock Text="起始" VerticalAlignment="Center" Classes="secondary" />
+                                    <TextBox Grid.Column="1" Text="{Binding Rename.StartNumber}" Width="80" HorizontalAlignment="Left"
+                                             ToolTip.Tip="寫 01 就是兩位數，寫 001 就是三位數" />
+                                    <TextBlock Grid.Row="1" Text="位置" VerticalAlignment="Center" Classes="secondary" />
+                                    <ComboBox Grid.Row="1" Grid.Column="1" SelectedIndex="{Binding Rename.NumberPosition, Mode=TwoWay}">
+                                        <ComboBoxItem Content="檔名前面" />
+                                        <ComboBoxItem Content="檔名後面" />
+                                    </ComboBox>
+                                </Grid>
+
+                                <CheckBox Content="加上日期" IsChecked="{Binding Rename.UseDate}" />
+                                <Grid IsVisible="{Binding Rename.UseDate}" ColumnDefinitions="56,*" RowDefinitions="Auto,Auto"
+                                      RowSpacing="6" Margin="28,0,0,6">
+                                    <TextBlock Text="日期" VerticalAlignment="Center" Classes="secondary" />
+                                    <ComboBox Grid.Column="1" SelectedIndex="{Binding Rename.DateSource, Mode=TwoWay}">
+                                        <ComboBoxItem Content="修改日期" />
+                                        <ComboBoxItem Content="建立日期" />
+                                    </ComboBox>
+                                    <TextBlock Grid.Row="1" Text="位置" VerticalAlignment="Center" Classes="secondary" />
+                                    <ComboBox Grid.Row="1" Grid.Column="1" SelectedIndex="{Binding Rename.DatePosition, Mode=TwoWay}">
+                                        <ComboBoxItem Content="檔名前面" />
+                                        <ComboBoxItem Content="檔名後面" />
+                                    </ComboBox>
+                                </Grid>
+
+                                <CheckBox Content="加上前後文字" IsChecked="{Binding Rename.UseAffix}" />
+                                <Grid IsVisible="{Binding Rename.UseAffix}" ColumnDefinitions="56,*" RowDefinitions="Auto,Auto"
+                                      RowSpacing="6" Margin="28,0,0,6">
+                                    <TextBlock Text="前面" VerticalAlignment="Center" Classes="secondary" />
+                                    <TextBox Grid.Column="1" Text="{Binding Rename.Prefix}" />
+                                    <TextBlock Grid.Row="1" Text="後面" VerticalAlignment="Center" Classes="secondary" />
+                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Rename.Suffix}" />
+                                </Grid>
+
+                                <!-- Case and extension apply to every name, so they are always shown (D2: no 進階選項). -->
+                                <Border Classes="divider" Margin="0,4" />
+                                <Grid ColumnDefinitions="56,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
+                                    <TextBlock Text="大小寫" VerticalAlignment="Center" Classes="secondary" />
+                                    <ComboBox Grid.Column="1" SelectedIndex="{Binding Rename.CaseIndex, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                                        <ComboBoxItem Content="不變" />
+                                        <ComboBoxItem Content="全部小寫" />
+                                        <ComboBoxItem Content="全部大寫" />
+                                        <ComboBoxItem Content="每個字首大寫" />
+                                    </ComboBox>
+                                    <TextBlock Grid.Row="1" Text="副檔名" VerticalAlignment="Center" Classes="secondary" />
+                                    <ComboBox Grid.Row="1" Grid.Column="1" SelectedIndex="{Binding Rename.ExtensionIndex, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                                        <ComboBoxItem Content="保持原樣" />
+                                        <ComboBoxItem Content="小寫" />
+                                        <ComboBoxItem Content="大寫" />
+                                        <ComboBoxItem Content="改成…" />
+                                    </ComboBox>
+                                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Rename.CustomExtension}"
+                                             IsVisible="{Binding Rename.IsCustomExtension}" PlaceholderText="例如 jpg" />
+                                </Grid>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <Border Grid.Column="2" Classes="card" Padding="0">
+                            <Grid RowDefinitions="Auto,*">
+                                <Grid ColumnDefinitions="*,Auto" Margin="14,10">
+                                    <TextBlock Text="預覽" FontSize="14" FontWeight="SemiBold" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Rename.PreviewSummary}" FontSize="13"
+                                               Classes="secondary" IsVisible="{Binding !Rename.HasProblems}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Rename.PreviewSummary}" FontSize="13"
+                                               Foreground="{DynamicResource Clk.Danger}" IsVisible="{Binding Rename.HasProblems}" />
+                                </Grid>
+                                <!-- The only part that scrolls (spec 4.6). -->
+                                <ScrollViewer Grid.Row="1">
+                                    <ItemsControl ItemsSource="{Binding Rename.Preview}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:RenamePreviewRow">
+                                                <Border BorderBrush="{DynamicResource Clk.Divider}" BorderThickness="0,1,0,0" Padding="14,7">
+                                                    <StackPanel Spacing="2">
+                                                        <Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="8">
+                                                            <TextBlock Text="{Binding OldName}" FontSize="13" Classes="secondary"
+                                                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                                            <TextBlock Grid.Column="1" Text="→" FontSize="13" Classes="secondary" VerticalAlignment="Center" />
+                                                            <TextBlock Grid.Column="2" Text="{Binding NewName}" FontSize="13"
+                                                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                                                       IsVisible="{Binding !IsUnchanged}" />
+                                                            <TextBlock Grid.Column="2" Text="不變" FontSize="13" Classes="secondary"
+                                                                       VerticalAlignment="Center" IsVisible="{Binding IsUnchanged}" />
+                                                        </Grid>
+                                                        <TextBlock Text="{Binding Problem}" FontSize="12" IsVisible="{Binding IsProblem}"
+                                                                   Foreground="{DynamicResource Clk.Danger}" />
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
                     <!-- Bottom Bar: Output Path + Start Button -->
                     <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,16,0,0" VerticalAlignment="Bottom">
+                        <TextBlock Grid.Column="0" Text="會直接改掉原本的檔名" Classes="secondary" FontSize="14"
+                                   VerticalAlignment="Center" IsVisible="{Binding IsRenameAction}" />
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                     IsVisible="{Binding ShowsOutputLocation}">
                             <Viewbox Classes="ic" Width="16" Height="16" VerticalAlignment="Center">
