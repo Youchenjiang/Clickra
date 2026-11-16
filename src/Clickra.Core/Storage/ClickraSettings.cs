@@ -48,6 +48,11 @@ public static class ClickraSettings
     // ─── 任務佇列 ──────────────────────────────────────────────────────────
     public const string ParkedTaskRetention = "ParkedTaskRetention";
 
+    // ─── 檔案總管右鍵選單 ──────────────────────────────────────────────────
+    // 右鍵選單擴充（ClickraShell.dll）不能參照 Core，鍵值定義在相依性為零的 Shared 檔案，這裡引用同一個常數。
+    public const string ContextMenuEnabled = Clickra.Shared.ContextMenuVisibility.EnabledKey;
+    public const string ContextMenuHidden = Clickra.Shared.ContextMenuVisibility.HiddenKey;
+
     // ─── 預設值常數（讀取端需要以程式比較時引用這些，不要重寫字串）──────────
     public const string DefaultEmpty = "";
     public const string ValueTrue = "true";
@@ -106,6 +111,8 @@ public static class ClickraSettings
         new ClickraSetting(ImageCompressLevel, DefaultImageCompressLevel, "圖片壓縮品質等級 0-3"),
         new ClickraSetting(ImageCompressMaxDimension, DefaultImageCompressMaxDimension, "圖片壓縮最大長邊（0 = 保持原尺寸）"),
         new ClickraSetting(ParkedTaskRetention, DefaultParkedTaskRetention, "已暫存任務保留天數（0 = 無限期）"),
+        new ClickraSetting(ContextMenuEnabled, ValueTrue, "在檔案總管右鍵選單顯示 Clickra"),
+        new ClickraSetting(ContextMenuHidden, DefaultEmpty, "右鍵選單中隱藏的功能（指令名稱，以逗號分隔；空 = 全部顯示）"),
     };
 
     private static readonly Dictionary<string, ClickraSetting> ByKey =
