@@ -434,7 +434,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
 
     public void AddFiles(IEnumerable<string> paths)
     {
-        var validPaths = paths.Where(File.Exists).ToList();
+        var validPaths = ExpandFolders(paths).ToList();
         if (validPaths.Count == 0) return;
 
         _workspace.AddFiles(validPaths);
@@ -806,6 +806,37 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         }
         OnPropertyChanged(nameof(OnlyRename));
         OnPropertyChanged(nameof(OnlyRenameText));
+    }
+
+    /// <summary>
+    /// A dropped folder adds the files directly inside it (not its subfolders), sorted by name; hidden and
+    /// system files are left out (spec 4.1, decision 2026-11-17). Converting a whole folder as one item comes later.
+    /// </summary>
+    public static IEnumerable<string> ExpandFolders(IEnumerable<string> paths)
+    {
+        foreach (string path in paths)
+        {
+            if (File.Exists(path))
+            {
+                yield return path;
+            }
+            else if (Directory.Exists(path))
+            {
+                IEnumerable<string> inside;
+                try
+                {
+                    inside = Directory.GetFiles(path, "*", SearchOption.TopDirectoryOnly)
+                        .Where(f => (File.GetAttributes(f) & (FileAttributes.Hidden | FileAttributes.System)) == 0)
+                        .OrderBy(f => Path.GetFileName(f), StringComparer.CurrentCultureIgnoreCase)
+                        .ToList();
+                }
+                catch
+                {
+                    continue; // no permission: skip the folder
+                }
+                foreach (string file in inside) yield return file;
+            }
+        }
     }
 
     // ----- 檔案沒有想要的功能時 (spec 4.1) -----

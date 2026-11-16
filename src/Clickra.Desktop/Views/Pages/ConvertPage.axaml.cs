@@ -408,20 +408,27 @@ public partial class ConvertPage : UserControl
     /// </summary>
     private void ShowDragOverlay(ConvertViewModel vm, List<string> paths)
     {
-        List<string> files = paths.Where(System.IO.File.Exists).ToList();
+        List<string> folders = paths.Where(System.IO.Directory.Exists).ToList();
+        List<string> files = ConvertViewModel.ExpandFolders(paths).ToList();
         string sub = "";
         bool nothing = files.Count == 0;
         if (nothing)
         {
-            DragOverlayText.Text = "沒有檔案";
+            DragOverlayText.Text = folders.Count == 1 ? $"「{System.IO.Path.GetFileName(folders[0].TrimEnd('\\', '/'))}」裡沒有檔案" : "這些資料夾裡沒有檔案";
+            sub = "只會加入資料夾這一層的檔案，不含子資料夾";
         }
         else
         {
-            DragOverlayText.Text = vm.IsDropZone ? "放開以開始" : $"放開以加入 {files.Count} 個檔案";
+            if (folders.Count == 1 && paths.Count == 1)
+                DragOverlayText.Text = $"放開以加入「{System.IO.Path.GetFileName(folders[0].TrimEnd('\\', '/'))}」裡的 {files.Count} 個檔案";
+            else
+                DragOverlayText.Text = vm.IsDropZone && folders.Count == 0 ? "放開以開始" : $"放開以加入 {files.Count} 個檔案";
             List<string> extensions = files.Select(f => System.IO.Path.GetExtension(f).ToLowerInvariant()).Distinct().ToList();
             List<string> unknown = extensions.Where(x => !ConvertViewModel.HasConversions(x)).ToList();
             if (unknown.Count > 0 && unknown.Count == extensions.Count)
                 sub = $"Clickra 還沒有處理{ConvertViewModel.KindName(unknown)}的功能，放開後只能重新命名";
+            else if (folders.Count > 0)
+                sub = "只加入資料夾這一層的檔案，不含子資料夾";
         }
         DragOverlaySub.Text = sub;
         DragOverlaySub.IsVisible = sub.Length > 0;
@@ -446,8 +453,10 @@ public partial class ConvertPage : UserControl
     private void OnDrop(object? sender, DragEventArgs e)
     {
         List<string> paths = e.DataTransfer.TryGetFiles()?.Select(f => f.Path.LocalPath).ToList() ?? [];
-        if (paths.Count == 0)
+        if (paths.Count > 0 && !ConvertViewModel.ExpandFolders(paths).Any())
         {
+            // Nothing to add (empty folders): keep the explanation up for a moment instead of silently doing nothing.
+            DispatcherTimer.RunOnce(() => DragOverlay.IsVisible = false, TimeSpan.FromSeconds(2.5));
             return;
         }
         DragOverlay.IsVisible = false;
