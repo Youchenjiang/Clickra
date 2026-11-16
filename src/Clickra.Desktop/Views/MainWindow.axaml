@@ -11,6 +11,7 @@
         Width="960" Height="660"
         MinWidth="760" MinHeight="520"
         WindowStartupLocation="CenterScreen"
+        WindowDecorationsTheme="{StaticResource Clk.WindowDecorationsTheme}"
         FontFamily="avares://Clickra.Desktop/Assets/Fonts#Noto Sans TC, Microsoft JhengHei UI, PingFang TC, Noto Sans CJK TC, $Default"
         FontSize="14">
 
