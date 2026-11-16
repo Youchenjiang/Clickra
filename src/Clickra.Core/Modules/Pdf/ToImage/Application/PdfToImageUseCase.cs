@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Clickra.Core.Application;
+using Clickra.Core.Modules.Sys.Settings.Application;
 using Clickra.Core.Modules.Pdf.Decrypt.Application;
 using Clickra.Core.Modules.Pdf.ToImage.Processing;
 using PdfSharp.Pdf.IO;
@@ -33,6 +34,11 @@ public sealed class PdfToImageUseCase : PerFileConversionUseCaseBase
                 normalized[kvp.Key] = kvp.Value;
             }
         }
+
+        // Whatever the caller leaves out comes from 設定 › 功能預設值 (right-click runs pass nothing).
+        normalized.TryAdd(PdfToImageOptions.FormatOptionKey, SettingsController.PdfToImageFormat);
+        normalized.TryAdd(PdfToImageOptions.DpiOptionKey, SettingsController.PdfToImageDpi);
+        normalized.TryAdd(PdfToImageOptions.StitchOptionKey, SettingsController.PdfToImageStitch);
 
         string format = PdfToImageOptions.NormalizeFormat(
             normalized.TryGetValue(PdfToImageOptions.FormatOptionKey, out var f) ? f as string : null);

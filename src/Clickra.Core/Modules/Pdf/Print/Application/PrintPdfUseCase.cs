@@ -1,4 +1,5 @@
 using Clickra.Core.Application;
+using Clickra.Core.Modules.Sys.Settings.Application;
 using Clickra.Core.Modules.Pdf.Decrypt.Application;
 using Clickra.Core.Modules.Pdf.Print.Ports;
 using Clickra.Core.Modules.Pdf.Print.Processing;
@@ -67,7 +68,25 @@ public sealed class PrintPdfUseCase : PerFileConversionUseCaseBase
 
     protected override IReadOnlyDictionary<string, object> NormalizeOptions(ConversionRequest request)
     {
-        var options = PrintPdfOptions.FromDictionary(request.Options);
+        // Whatever the caller leaves out comes from 設定 › 功能預設值 (right-click runs pass nothing).
+        var source = request.Options is null
+            ? new Dictionary<string, object>(StringComparer.Ordinal)
+            : new Dictionary<string, object>(request.Options, StringComparer.Ordinal);
+        if (!source.ContainsKey(PrintPdfOptions.PrinterNameKey) && !string.IsNullOrWhiteSpace(SettingsController.PrintPrinter))
+        {
+            source[PrintPdfOptions.PrinterNameKey] = SettingsController.PrintPrinter;
+        }
+        source.TryAdd(PrintPdfOptions.CopiesKey, SettingsController.PrintCopies);
+        source.TryAdd(PrintPdfOptions.DuplexKey, SettingsController.PrintDuplex);
+        source.TryAdd(PrintPdfOptions.OrientationKey, SettingsController.PrintOrientation);
+        source.TryAdd(PrintPdfOptions.FitToPageKey, SettingsController.PrintFitToPage);
+        source.TryAdd(PrintPdfOptions.DarkenTextKey, SettingsController.PrintDarkenText);
+        if (!source.ContainsKey(PrintPdfOptions.PaperSizeKey) && !string.IsNullOrWhiteSpace(SettingsController.PrintPaper))
+        {
+            source[PrintPdfOptions.PaperSizeKey] = SettingsController.PrintPaper;
+        }
+
+        var options = PrintPdfOptions.FromDictionary(source);
         if (string.IsNullOrWhiteSpace(options.PrinterName))
         {
             string? defaultPrinter = _printerDiscovery.GetDefaultPrinter();

@@ -1,5 +1,6 @@
 using Clickra.Core.Modules.Sys.Settings.Application;
 using Clickra.Core.Application;
+using Clickra.Core.Storage;
 using Clickra.Core.Modules.Doc.Shared.Processing;
 using Clickra.Core.Processors;
 
@@ -33,12 +34,33 @@ public abstract class MarkdownConversionUseCaseBase : PerFileConversionUseCaseBa
 
     protected override IReadOnlyDictionary<string, object> NormalizeOptions(ConversionRequest request)
     {
+        // Whatever the caller leaves out comes from 設定 › 功能預設值 (right-click runs pass nothing).
+        var source = request.Options is null
+            ? new Dictionary<string, object>(StringComparer.Ordinal)
+            : new Dictionary<string, object>(request.Options, StringComparer.Ordinal);
+        if (!source.ContainsKey(MarkdownPdfOptions.ThemeKey) && !source.ContainsKey(MarkdownPdfOptions.TemplatePathKey))
+        {
+            string savedTheme = SettingsController.MarkdownTheme;
+            if (savedTheme == ClickraSettings.MarkdownThemeWordTemplate)
+            {
+                string path = SettingsController.MarkdownTemplatePath;
+                if (!string.IsNullOrWhiteSpace(path)) source[MarkdownPdfOptions.TemplatePathKey] = path;
+            }
+            else
+            {
+                source[MarkdownPdfOptions.ThemeKey] = savedTheme;
+            }
+        }
+        source.TryAdd(MarkdownPdfOptions.PaperKey, SettingsController.MarkdownPaper);
+        source.TryAdd(MarkdownPdfOptions.TextSizeKey, SettingsController.MarkdownTextSize);
+        source.TryAdd(MarkdownPdfOptions.CodeThemeKey, SettingsController.MarkdownCodeTheme);
+
         Dictionary<string, object> options = MarkdownPdfOptions.Create(
-            MarkdownPdfOptions.GetTheme(request.Options),
-            MarkdownPdfOptions.GetPaper(request.Options),
-            MarkdownPdfOptions.GetTextSize(request.Options),
-            MarkdownPdfOptions.GetCodeTheme(request.Options),
-            MarkdownPdfOptions.GetTemplatePath(request.Options));
+            MarkdownPdfOptions.GetTheme(source),
+            MarkdownPdfOptions.GetPaper(source),
+            MarkdownPdfOptions.GetTextSize(source),
+            MarkdownPdfOptions.GetCodeTheme(source),
+            MarkdownPdfOptions.GetTemplatePath(source));
         string language = request.Options?.TryGetValue(ExecutionLocalizationOptions.LanguageKey, out object? lang) == true && lang is not null
             ? lang.ToString()!
             : SettingsController.Language;
