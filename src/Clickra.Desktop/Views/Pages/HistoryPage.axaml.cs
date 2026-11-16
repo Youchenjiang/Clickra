@@ -1,4 +1,6 @@
+using System;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Clickra.Desktop.ViewModels;
 
 namespace Clickra.Desktop.Views.Pages;
@@ -11,23 +13,26 @@ public partial class HistoryPage : UserControl
 
         GoConvertButton.Click += (_, _) =>
         {
-            if (VisualRoot is Window { DataContext: MainWindowViewModel mainVm })
+            if (TopLevel.GetTopLevel(this) is Window { DataContext: MainWindowViewModel mainVm })
             {
                 mainVm.CurrentPage = MainPage.Convert;
             }
         };
 
-        FilterAllButton.Click += (_, _) => GetViewModel()?.Refresh();
-        FilterSuccessButton.Click += (_, _) =>
-        {
-            if (GetViewModel() is { } vm) vm.Filter = HistoryFilter.Success;
-        };
-        FilterFailedButton.Click += (_, _) =>
-        {
-            if (GetViewModel() is { } vm) vm.Filter = HistoryFilter.Failed;
-        };
+        // ⋯ menu: 清除歷史… (confirmed in a dialog).
+        var clear = new MenuItem { Header = "清除歷史…" };
+        clear.Click += (_, _) => GetViewModel()?.ClearHistory();
+        MoreButton.Flyout = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight, Items = { clear } };
+    }
 
-        ClearHistoryButton.Click += (_, _) => GetViewModel()?.ClearHistory();
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        if (GetViewModel() is { } vm)
+        {
+            vm.Confirm = async (title, body, confirm, danger) =>
+                TopLevel.GetTopLevel(this) is Window owner && await Dialogs.ConfirmAsync(owner, title, body, confirm, danger);
+        }
     }
 
     private HistoryViewModel? GetViewModel() => DataContext as HistoryViewModel;
