@@ -88,6 +88,8 @@ public partial class ConvertPage : UserControl
 
         AddHandler(DragDrop.DropEvent, OnDrop);
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
+        AddHandler(DragDrop.DragEnterEvent, OnDragEnter);
+        AddHandler(DragDrop.DragLeaveEvent, OnDragLeave);
 
         PickFilesButton.Click += async (_, _) => await PickFilesAsync();
         ManageFilesButton.Click += (_, _) => GetViewModel()?.ToggleManageFiles();
@@ -385,4 +387,73 @@ public partial class ConvertPage : UserControl
         }
     }
 
+    // ===== State D: files dragged over the window (spec 4.1) =====
+
+    private void OnDragEnter(object? sender, DragEventArgs e)
+    {
+        if (GetViewModel() is not { IsExecuting: false } vm) return;
+        List<string> paths = e.DataTransfer.TryGetFiles()?.Select(f => f.Path.LocalPath).ToList() ?? [];
+        if (paths.Count == 0) return;
+        ShowDragOverlay(vm, paths);
+        if (!DragOverlay.IsVisible)
+        {
+            DragOverlay.IsVisible = true;
+            Motion.Enter(DragOverlay, 0, 0, Motion.Fast);
+        }
+    }
+
+    /// <summary>
+    /// What will happen on release (spec 4.1 state D): a folder adds the files directly inside it, and files
+    /// Clickra cannot convert can only be renamed. Said before the user lets go, so nothing silently disappears.
+    /// </summary>
+    private void ShowDragOverlay(ConvertViewModel vm, List<string> paths)
+    {
+        List<string> files = paths.Where(System.IO.File.Exists).ToList();
+        string sub = "";
+        bool nothing = files.Count == 0;
+        if (nothing)
+        {
+            DragOverlayText.Text = "沒有檔案";
+        }
+        else
+        {
+            DragOverlayText.Text = vm.IsDropZone ? "放開以開始" : $"放開以加入 {files.Count} 個檔案";
+            List<string> extensions = files.Select(f => System.IO.Path.GetExtension(f).ToLowerInvariant()).Distinct().ToList();
+            List<string> unknown = extensions.Where(x => !ConvertViewModel.HasConversions(x)).ToList();
+            if (unknown.Count > 0 && unknown.Count == extensions.Count)
+                sub = $"Clickra 還沒有處理{ConvertViewModel.KindName(unknown)}的功能，放開後只能重新命名";
+        }
+        DragOverlaySub.Text = sub;
+        DragOverlaySub.IsVisible = sub.Length > 0;
+        DragOverlayFrame.Stroke = nothing
+            ? (Avalonia.Media.IBrush?)this.FindResource("Clk.ControlBorder")
+            : (Avalonia.Media.IBrush?)this.FindResource("Clk.Accent");
+    }
+
+    private void OnDragLeave(object? sender, DragEventArgs e)
+    {
+        // Moving between child elements also raises DragLeave; only hide when the pointer left the page.
+        if (new Rect(Bounds.Size).Contains(e.GetPosition(this))) return;
+        DragOverlay.IsVisible = false;
+    }
+
+    private void OnDragOver(object? sender, DragEventArgs e)
+    {
+        e.DragEffects = GetViewModel() is { IsExecuting: false } ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void OnDrop(object? sender, DragEventArgs e)
+    {
+        List<string> paths = e.DataTransfer.TryGetFiles()?.Select(f => f.Path.LocalPath).ToList() ?? [];
+        if (paths.Count == 0)
+        {
+            return;
+        }
+        DragOverlay.IsVisible = false;
+        if (paths.Count > 0)
+        {
+            GetViewModel()?.AddFiles(paths);
+        }
+    }
 }

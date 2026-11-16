@@ -271,6 +271,19 @@
                 <!-- STATE B1: Action Catalog (Grid of available actions) -->
                 <Grid Name="CatalogPanel" RowDefinitions="Auto,Auto,*,Auto" IsVisible="{Binding IsActionCatalog}">
                     <TextBlock Grid.Row="0" Text="要對這些檔案做什麼？" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,16" />
+                    <!-- Only 重新命名 is left (spec 4.1): say why in one sentence and offer 建議新功能. -->
+                    <Border Grid.Row="1" Classes="card" Padding="16,10" Margin="6,0,6,10" IsVisible="{Binding OnlyRename}">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <Viewbox Classes="ic" Width="18" Height="18" VerticalAlignment="Center">
+                                <Canvas Width="24" Height="24">
+                                    <Ellipse Canvas.Left="3" Canvas.Top="3" Width="18" Height="18" StrokeThickness="2" Stroke="{DynamicResource Clk.TextSecondary}" />
+                                    <Path Data="M12,11 V16 M12,8 V8.01" Stroke="{DynamicResource Clk.TextSecondary}" />
+                                </Canvas>
+                            </Viewbox>
+                            <TextBlock Grid.Column="1" Text="{Binding OnlyRenameText}" FontSize="14" TextWrapping="Wrap" VerticalAlignment="Center" />
+                            <Button Grid.Column="2" Classes="secondary" Content="建議新功能" Command="{Binding SuggestFeature}" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
                     <ScrollViewer Grid.Row="2" Name="CatalogScroll">
                         <!-- Top-aligned: cards keep their own height instead of being stretched to fill the viewport,
                              which made the content exactly as tall as the view and showed a scroll bar from rounding. -->
@@ -299,6 +312,11 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </ScrollViewer>
+                    <!-- The action may simply not exist yet: a quiet line under the cards (spec 4.1). -->
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="12" Margin="6,8,6,0" IsVisible="{Binding !OnlyRename}">
+                        <TextBlock Text="沒有你要的？" Classes="secondary" FontSize="13" VerticalAlignment="Center" />
+                        <Button Classes="secondary" Content="建議新功能" Command="{Binding SuggestFeature}" />
+                    </StackPanel>
                 </Grid>
 
                 <!-- STATE B2: Action Page (Options and Start) -->
@@ -936,5 +954,26 @@
 
             </Panel>
         </Border>
+        <!-- State D (spec 4.1): files dragged over the window. Covers the whole page; not part of the layout rows. -->
+        <Panel Grid.Row="0" Grid.RowSpan="3" Name="DragOverlay" IsVisible="False">
+            <Border Background="{DynamicResource Clk.BgTranslucent}" CornerRadius="16" />
+            <Rectangle Name="DragOverlayFrame" Stroke="{DynamicResource Clk.Accent}" StrokeThickness="2"
+                       StrokeDashArray="5,4" RadiusX="16" RadiusY="16" />
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+                <Border Width="60" Height="60" CornerRadius="30" HorizontalAlignment="Center"
+                        Background="{DynamicResource Clk.Surface}">
+                    <Viewbox Classes="ic" Width="26" Height="26" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Canvas Width="24" Height="24">
+                            <Path Data="M12,4 V15 M7,10 L12,15 L17,10 M5,20 H19"
+                                  Stroke="{DynamicResource Clk.Accent}"
+                                  Fill="Transparent" />
+                        </Canvas>
+                    </Viewbox>
+                </Border>
+                <TextBlock Name="DragOverlayText" Classes="h1" FontSize="24" HorizontalAlignment="Center" />
+                <TextBlock Name="DragOverlaySub" Classes="secondary" FontSize="14" HorizontalAlignment="Center"
+                           TextAlignment="Center" TextWrapping="Wrap" MaxWidth="520" IsVisible="False" />
+            </StackPanel>
+        </Panel>
     </Grid>
 </UserControl>

@@ -808,6 +808,62 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         OnPropertyChanged(nameof(OnlyRenameText));
     }
 
+    // ----- 檔案沒有想要的功能時 (spec 4.1) -----
+
+    /// <summary>Renaming works on every file, so this is the case where nothing else can be done with them.</summary>
+    public bool OnlyRename => AvailableActions.Count == 1 && AvailableActions[0].Command == ConvertWorkspaceController.BatchRenameCommand;
+
+    /// <summary>One plain sentence above the lone 重新命名 card, naming the kind of file rather than its extension.</summary>
+    public string OnlyRenameText
+    {
+        get
+        {
+            if (!OnlyRename) return "";
+            List<string> unknown = SelectedFiles.Select(f => f.Extension).Where(e => DomainOf(e) == "file").Distinct().ToList();
+            if (unknown.Count == 0)
+                return "這些檔案的種類不同，沒有能一起做的轉換，所以只能一起重新命名。";
+            string kind = KindName(unknown);
+            bool mixed = unknown.Count < SelectedFiles.Select(f => f.Extension).Distinct().Count();
+            return mixed
+                ? $"這些檔案裡有{kind}，Clickra 還沒有處理{kind}的功能，所以只能一起重新命名。"
+                : $"Clickra 還沒有處理{kind}的功能，目前只能重新命名。";
+        }
+    }
+
+    /// <summary>影片／音訊／壓縮檔 when all unknown extensions are one such kind; otherwise 「這種檔案（.xyz）」.</summary>
+    public static string KindName(IReadOnlyCollection<string> extensions)
+    {
+        var kinds = extensions.Select(KindOf).Distinct().ToList();
+        if (kinds.Count == 1 && kinds[0] is not null) return kinds[0]!;
+        return extensions.Count == 1 ? $"這種檔案（{extensions.First()}）" : $"這幾種檔案（{string.Join("、", extensions)}）";
+    }
+
+    private static string? KindOf(string ext) => ext.ToLowerInvariant() switch
+    {
+        ".mp4" or ".mov" or ".avi" or ".mkv" or ".wmv" or ".m4v" or ".webm" or ".flv" => "影片",
+        ".mp3" or ".wav" or ".m4a" or ".flac" or ".aac" or ".ogg" or ".wma" => "音訊",
+        ".zip" or ".rar" or ".7z" or ".tar" or ".gz" => "壓縮檔",
+        _ => null,
+    };
+
+    /// <summary>True when Clickra has conversions for this extension (everything else can only be renamed).</summary>
+    public static bool HasConversions(string extension) => DomainOf(extension.ToLowerInvariant()) != "file";
+
+    /// <summary>
+    /// 建議新功能: a mail with the file types and the version filled in. Only extensions go along, never file
+    /// names, which may be personal and say nothing about the feature.
+    /// </summary>
+    public void SuggestFeature()
+    {
+        var groups = SelectedFiles.GroupBy(f => f.Extension.Length > 0 ? f.Extension : "（沒有副檔名）")
+            .Select(g => $"{g.Key}（{g.Count()} 個）").ToList();
+        string types = groups.Count > 0 ? string.Join("、", groups) : "（還沒放檔案）";
+        string subjectTypes = SelectedFiles.Count > 0 ? string.Join("、", SelectedFiles.Select(f => f.Extension).Where(e => e.Length > 0).Distinct()) : "";
+        string subject = subjectTypes.Length > 0 ? $"Clickra 功能建議：{subjectTypes}" : "Clickra 功能建議";
+        string body = $"我想做的是：\n\n\n──\n檔案類型：{types}\nClickra 版本：{ExternalOpen.AppVersion}\n（不會附上檔名或檔案）";
+        ExternalOpen.Mail(subject, body);
+    }
+
     private bool IsActionCompatible(string command) => _workspace.IsCommandCompatible(command);
 
     private void RefreshRecentHistory()
