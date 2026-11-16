@@ -18,6 +18,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://Clickra.Desktop/Styles/Tokens.axaml" />
                 <ResourceInclude Source="avares://Clickra.Desktop/Styles/WindowDecorations.axaml" />
+                <ResourceInclude Source="avares://Clickra.Desktop/Assets/FeatureIcons.axaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>
