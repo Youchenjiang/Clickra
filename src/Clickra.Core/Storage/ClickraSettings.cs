@@ -48,21 +48,31 @@ public static class ClickraSettings
     // ─── 任務佇列 ──────────────────────────────────────────────────────────
     public const string ParkedTaskRetention = "ParkedTaskRetention";
 
-    // ─── 檔案總管右鍵選單 ──────────────────────────────────────────────────
-    // 右鍵選單擴充（ClickraShell.dll）不能參照 Core，鍵值定義在相依性為零的 Shared 檔案，這裡引用同一個常數。
-    public const string ContextMenuEnabled = Clickra.Shared.ContextMenuVisibility.EnabledKey;
-    public const string ContextMenuHidden = Clickra.Shared.ContextMenuVisibility.HiddenKey;
-
     // ─── 功能預設值（4.0 桌面端設定頁 › 功能預設值）──────────────────────
     public const string PdfToImageFormat = "PdfToImageFormat";
     public const string MarkdownTheme = "MarkdownTheme";
     public const string MarkdownPaper = "MarkdownPaper";
     public const string MarkdownTextSize = "MarkdownTextSize";
     public const string MarkdownTemplatePath = "MarkdownTemplatePath";
+    public const string MarkdownCodeTheme = "MarkdownCodeTheme";
+    public const string PdfToImageDpi = "PdfToImageDpi";
+    public const string PdfToImageStitch = "PdfToImageStitch";
+    public const string PrintPrinter = "PrintPrinter";
+    public const string PrintCopies = "PrintCopies";
+    public const string PrintDuplex = "PrintDuplex";
+    public const string PrintPaper = "PrintPaper";
+    public const string PrintOrientation = "PrintOrientation";
+    public const string PrintFitToPage = "PrintFitToPage";
+    public const string PrintDarkenText = "PrintDarkenText";
 
     // ─── 4.0 桌面端外觀與視窗 ─────────────────────────────────────────────
     public const string DesktopTheme = "DesktopTheme";
     public const string DesktopWindowBounds = "DesktopWindowBounds";
+
+    // ─── 檔案總管右鍵選單 ──────────────────────────────────────────────────
+    // 右鍵選單擴充（ClickraShell.dll）不能參照 Core，鍵值定義在相依性為零的 Shared 檔案，這裡引用同一個常數。
+    public const string ContextMenuEnabled = Clickra.Shared.ContextMenuVisibility.EnabledKey;
+    public const string ContextMenuHidden = Clickra.Shared.ContextMenuVisibility.HiddenKey;
 
     // ─── 預設值常數（讀取端需要以程式比較時引用這些，不要重寫字串）──────────
     public const string DefaultEmpty = "";
@@ -84,6 +94,11 @@ public static class ClickraSettings
     public const string DefaultMarkdownPaper = "a4";
     public const string DefaultMarkdownTextSize = "standard";
     public const string MarkdownThemeWordTemplate = "template";
+    public const string DefaultMarkdownCodeTheme = "dark";
+    public const string DefaultPdfToImageDpi = "150";
+    public const string DefaultPrintCopies = "1";
+    public const string DefaultPrintDuplex = "Simplex";
+    public const string DefaultPrintOrientation = "Auto";
     public const string DesktopThemeLight = "light";
     public const string DesktopThemeDark = "dark";
     public const string DesktopThemeSystem = "system";
@@ -130,15 +145,25 @@ public static class ClickraSettings
         new ClickraSetting(ImageCompressLevel, DefaultImageCompressLevel, "圖片壓縮品質等級 0-3"),
         new ClickraSetting(ImageCompressMaxDimension, DefaultImageCompressMaxDimension, "圖片壓縮最大長邊（0 = 保持原尺寸）"),
         new ClickraSetting(ParkedTaskRetention, DefaultParkedTaskRetention, "已暫存任務保留天數（0 = 無限期）"),
-        new ClickraSetting(ContextMenuEnabled, ValueTrue, "在檔案總管右鍵選單顯示 Clickra"),
-        new ClickraSetting(ContextMenuHidden, DefaultEmpty, "右鍵選單中隱藏的功能（指令名稱，以逗號分隔；空 = 全部顯示）"),
         new ClickraSetting(PdfToImageFormat, DefaultPdfToImageFormat, "PDF 轉成圖片的預設格式：png / jpg / webp"),
         new ClickraSetting(MarkdownTheme, DefaultMarkdownTheme, "Markdown 轉換的預設文件範本：default / minimal / academic"),
         new ClickraSetting(MarkdownPaper, DefaultMarkdownPaper, "Markdown 轉成 PDF 的預設紙張：a4 / letter"),
         new ClickraSetting(MarkdownTextSize, DefaultMarkdownTextSize, "Markdown 轉換的預設文字大小：small / standard / large"),
         new ClickraSetting(MarkdownTemplatePath, DefaultEmpty, $"Markdown 預設 Word 範本的路徑（MarkdownTheme 為 {MarkdownThemeWordTemplate} 時使用）"),
+        new ClickraSetting(MarkdownCodeTheme, DefaultMarkdownCodeTheme, "Markdown 轉換的預設程式碼區塊配色：dark / light"),
+        new ClickraSetting(PdfToImageDpi, DefaultPdfToImageDpi, "PDF 轉成圖片的預設解析度（DPI）"),
+        new ClickraSetting(PdfToImageStitch, ValueFalse, "PDF 轉成圖片時預設把所有頁面接成一張長圖"),
+        new ClickraSetting(PrintPrinter, DefaultEmpty, "列印的預設印表機名稱（空 = 系統預設印表機）"),
+        new ClickraSetting(PrintCopies, DefaultPrintCopies, "列印的預設份數"),
+        new ClickraSetting(PrintDuplex, DefaultPrintDuplex, "列印的預設雙面：Simplex / DuplexLongEdge / DuplexShortEdge"),
+        new ClickraSetting(PrintPaper, DefaultEmpty, "列印的預設紙張名稱（空 = 跟隨印表機）"),
+        new ClickraSetting(PrintOrientation, DefaultPrintOrientation, "列印的預設方向：Auto / Portrait / Landscape"),
+        new ClickraSetting(PrintFitToPage, ValueTrue, "列印時預設縮放至紙張大小"),
+        new ClickraSetting(PrintDarkenText, ValueFalse, "列印時預設加深淺色文字"),
         new ClickraSetting(DesktopTheme, DesktopThemeLight, $"4.0 桌面端外觀：{DesktopThemeLight} / {DesktopThemeDark} / {DesktopThemeSystem}"),
         new ClickraSetting(DesktopWindowBounds, DefaultEmpty, "4.0 桌面端上次的視窗位置與大小（x,y,寬,高,是否最大化；空 = 預設）"),
+        new ClickraSetting(ContextMenuEnabled, ValueTrue, "在檔案總管右鍵選單顯示 Clickra"),
+        new ClickraSetting(ContextMenuHidden, DefaultEmpty, "右鍵選單中隱藏的功能（指令名稱，以逗號分隔；空 = 全部顯示）"),
     };
 
     private static readonly Dictionary<string, ClickraSetting> ByKey =

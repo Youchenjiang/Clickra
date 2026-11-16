@@ -59,6 +59,66 @@ public static class SettingsController
         set => WriteText(ClickraSettings.MarkdownPaper, value);
     }
 
+    public static string MarkdownCodeTheme
+    {
+        get => ReadText(ClickraSettings.MarkdownCodeTheme);
+        set => WriteText(ClickraSettings.MarkdownCodeTheme, value);
+    }
+
+    public static int PdfToImageDpi
+    {
+        get => int.TryParse(ReadText(ClickraSettings.PdfToImageDpi), out int dpi) && dpi > 0 ? dpi : int.Parse(ClickraSettings.DefaultPdfToImageDpi);
+        set => WriteText(ClickraSettings.PdfToImageDpi, Math.Max(1, value).ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    public static bool PdfToImageStitch
+    {
+        get => ReadBool(ClickraSettings.PdfToImageStitch);
+        set => WriteBool(ClickraSettings.PdfToImageStitch, value);
+    }
+
+    public static string PrintPrinter
+    {
+        get => ReadText(ClickraSettings.PrintPrinter);
+        set => WriteText(ClickraSettings.PrintPrinter, value ?? "");
+    }
+
+    public static int PrintCopies
+    {
+        get => int.TryParse(ReadText(ClickraSettings.PrintCopies), out int copies) ? Math.Clamp(copies, 1, 99) : 1;
+        set => WriteText(ClickraSettings.PrintCopies, Math.Clamp(value, 1, 99).ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    public static string PrintDuplex
+    {
+        get => ReadText(ClickraSettings.PrintDuplex);
+        set => WriteText(ClickraSettings.PrintDuplex, value);
+    }
+
+    public static string PrintPaper
+    {
+        get => ReadText(ClickraSettings.PrintPaper);
+        set => WriteText(ClickraSettings.PrintPaper, value ?? "");
+    }
+
+    public static string PrintOrientation
+    {
+        get => ReadText(ClickraSettings.PrintOrientation);
+        set => WriteText(ClickraSettings.PrintOrientation, value);
+    }
+
+    public static bool PrintFitToPage
+    {
+        get => ReadBool(ClickraSettings.PrintFitToPage);
+        set => WriteBool(ClickraSettings.PrintFitToPage, value);
+    }
+
+    public static bool PrintDarkenText
+    {
+        get => ReadBool(ClickraSettings.PrintDarkenText);
+        set => WriteBool(ClickraSettings.PrintDarkenText, value);
+    }
+
     public static string MarkdownTextSize
     {
         get => ReadText(ClickraSettings.MarkdownTextSize);
