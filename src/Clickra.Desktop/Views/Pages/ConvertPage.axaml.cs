@@ -130,6 +130,20 @@ public partial class ConvertPage : UserControl
     private bool _startRows = true;
 
     /// <summary>選擇 Word 範本: a .docx picker; cancelling keeps the previous template (spec 4.9).</summary>
+    private async void OnTemplatePickRequested(object? sender, EventArgs e)
+    {
+        if (sender is not ActionOptionsViewModel options || TopLevel.GetTopLevel(this) is not { } top) return;
+        var files = await top.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "選擇 Word 範本",
+            AllowMultiple = false,
+            FileTypeFilter = [new FilePickerFileType("Word 文件") { Patterns = ["*.docx"] }],
+        });
+        string? path = files.Count > 0 ? files[0].Path.LocalPath : null;
+        if (string.IsNullOrWhiteSpace(path)) options.CancelTemplatePick();
+        else options.SetTemplate(path);
+    }
+
     // ---- Dragging rows of the merge/stitch order list by their handle (spec 4.6). ----
     private OrderItemViewModel? _dragItem;
 
