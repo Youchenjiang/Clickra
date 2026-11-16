@@ -5,6 +5,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <!-- Windows publishes (-r win-*) compile Core's Windows paths in: the built-in PDF engine and WIC. -->
     <TargetFramework Condition="$(RuntimeIdentifier.StartsWith('win'))">net8.0-windows10.0.19041.0</TargetFramework>
+    <RollForward>LatestMajor</RollForward>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
