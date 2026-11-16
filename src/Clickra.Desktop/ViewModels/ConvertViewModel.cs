@@ -359,16 +359,22 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         get
         {
             if (SelectedFiles.Count == 0) return "file";
-            string firstExt = SelectedFiles[0].Extension;
-            if (firstExt == ".pdf") return "pdf";
-            if (firstExt is ".doc" or ".docx") return "word";
-            if (firstExt is ".xls" or ".xlsx") return "excel";
-            if (firstExt is ".ppt" or ".pptx") return "ppt";
-            if (firstExt is ".md" or ".markdown") return "markdown";
-            if (firstExt is ".png" or ".jpg" or ".jpeg" or ".webp" or ".gif" or ".heic" or ".bmp") return "image";
-            return "file";
+            // Mixed types (PDF + 圖片) are just 「N 個檔案」, not named after the first file.
+            var domains = SelectedFiles.Select(f => DomainOf(f.Extension)).Distinct().ToList();
+            return domains.Count == 1 ? domains[0] : "file";
         }
     }
+
+    private static string DomainOf(string ext) => ext switch
+    {
+        ".pdf" => "pdf",
+        ".doc" or ".docx" => "word",
+        ".xls" or ".xlsx" => "excel",
+        ".ppt" or ".pptx" => "ppt",
+        ".md" or ".markdown" => "markdown",
+        ".png" or ".jpg" or ".jpeg" or ".webp" or ".gif" or ".heic" or ".bmp" => "image",
+        _ => "file",
+    };
 
     public string PrimaryDomainColor => PrimaryDomain switch
     {
@@ -472,7 +478,12 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
 
     public void SelectAction(ActionItemViewModel action)
     {
-        if (!_workspace.TrySelectCommand(action.Command)) return;
+        // 轉換格式 is one card for the five img-to-* commands: select one that fits these files (a PNG
+        // cannot be converted to PNG); the options card picks the real target.
+        string selectCommand = action.Command.StartsWith("img-to-", StringComparison.OrdinalIgnoreCase)
+            ? Clickra.Shared.ContextMenuVisibility.ImageFormatCommands.FirstOrDefault(_workspace.IsCommandCompatible) ?? action.Command
+            : action.Command;
+        if (!_workspace.TrySelectCommand(selectCommand)) return;
         if (string.Equals(action.Command, ConvertWorkspaceController.BatchRenameCommand, StringComparison.OrdinalIgnoreCase))
             Rename.SetFiles(SelectedFiles.Select(f => f.Path));
         Options.Reset(action.Command);
@@ -895,7 +906,10 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         ExternalOpen.Mail(subject, body);
     }
 
-    private bool IsActionCompatible(string command) => _workspace.IsCommandCompatible(command);
+    private bool IsActionCompatible(string command) =>
+        command.StartsWith("img-to-", StringComparison.OrdinalIgnoreCase)
+            ? Clickra.Shared.ContextMenuVisibility.ImageFormatCommands.Any(_workspace.IsCommandCompatible)
+            : _workspace.IsCommandCompatible(command);
 
     private void RefreshRecentHistory()
     {
