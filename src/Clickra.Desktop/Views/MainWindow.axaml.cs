@@ -1,6 +1,10 @@
 using System;
+using System.Linq;
 using Avalonia;
+using System.Collections.Generic;
 using Avalonia.Controls;
+using Avalonia.Data;
+using Avalonia.Threading;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Clickra.Desktop.Controls;
@@ -40,13 +44,14 @@ public partial class MainWindow : Window
             int index = i;
             pages[i].PropertyChanged += (_, e) =>
             {
-                if (e.Property != IsVisibleProperty || e.NewValue is not true) return;
+                if (_prewarming || e.Property != IsVisibleProperty || e.NewValue is not true) return;
                 double fromX = ComputeSlideOffset(current, index);
                 current = index;
                 Motion.Enter(pages[index], fromX, 0);
                 if (index == 1 && DataContext is MainWindowViewModel vm)
                 {
-                    vm.History.Refresh();
+                    // Off the UI thread, applied after the slide-in, so the transition stays smooth.
+                    vm.History.RefreshInBackground(Motion.Normal);
                 }
             };
         }
@@ -63,7 +68,96 @@ public partial class MainWindow : Window
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
-        FitToScreen();
+        if (!RestoreBounds()) FitToScreen();
+        TrackNormalBounds();
+        PositionChanged += (_, _) => TrackNormalBounds();
+        SizeChanged += (_, _) => TrackNormalBounds();
+        Dispatcher.UIThread.Post(PrewarmHiddenPages, DispatcherPriority.Background);
+    }
+
+    private bool _prewarming;
+
+    /// <summary>
+    /// A page's first layout (templates, text shaping) took about 0.25 s for Settings, so the first switch to a
+    /// tab stalled the slide-in. Right after start-up, lay out the hidden pages once while they stay invisible
+    /// (opacity 0, not hit-testable), then hide them again; later switches only re-arrange.
+    /// </summary>
+    private void PrewarmHiddenPages()
+    {
+        var overrides = new List<IDisposable?>();
+        _prewarming = true;
+        try
+        {
+            foreach (Control page in new Control[] { ConvertView, HistoryView, SettingsView })
+            {
+                if (page.IsVisible) continue;
+                overrides.Add(page.SetValue(OpacityProperty, 0d, BindingPriority.Animation));
+                overrides.Add(page.SetValue(IsHitTestVisibleProperty, false, BindingPriority.Animation));
+                overrides.Add(page.SetValue(IsVisibleProperty, true, BindingPriority.Animation));
+            }
+            UpdateLayout();
+        }
+        finally
+        {
+            // Reverse order: IsVisible first, so the page is hidden again before it could become opaque.
+            for (int i = overrides.Count - 1; i >= 0; i--) overrides[i]?.Dispose();
+            _prewarming = false;
+        }
+    }
+
+    /// <summary>
+    /// Reopens where the window was last closed (spec branch 7: 記住視窗大小與位置), but only when that place
+    /// is still mostly on a connected screen; otherwise the default size and centre are used.
+    /// </summary>
+    private bool RestoreBounds()
+    {
+        string saved;
+        try { saved = Clickra.Core.Modules.Sys.Settings.Application.SettingsController.DesktopWindowBounds; }
+        catch { return false; }
+        string[] parts = saved.Split(',');
+        if (parts.Length < 4 ||
+            !int.TryParse(parts[0], out int x) || !int.TryParse(parts[1], out int y) ||
+            !double.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double w) ||
+            !double.TryParse(parts[3], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double h))
+            return false;
+
+        Screen? screen = Screens.All.FirstOrDefault(sc => sc.WorkingArea.Contains(new PixelPoint(x + 80, y + 20)));
+        if (screen is null) return false;
+        double scale = screen.Scaling;
+        PixelRect area = screen.WorkingArea;
+        w = Math.Clamp(w, MinWidth, area.Width / scale);
+        h = Math.Clamp(h, MinHeight, area.Height / scale);
+        Width = w;
+        Height = h;
+        Position = new PixelPoint(
+            Math.Clamp(x, area.X, Math.Max(area.X, area.Right - (int)(w * scale))),
+            Math.Clamp(y, area.Y, Math.Max(area.Y, area.Bottom - (int)(h * scale))));
+        if (parts.Length > 4 && parts[4] == "1") WindowState = WindowState.Maximized;
+        return true;
+    }
+
+    private void SaveBounds()
+    {
+        try
+        {
+            // Maximized: keep the last normal size so un-maximizing next time returns to it.
+            bool maximized = WindowState == WindowState.Maximized;
+            string value = maximized && _normalBounds is { } nb
+                ? $"{nb.X},{nb.Y},{nb.W.ToString(System.Globalization.CultureInfo.InvariantCulture)},{nb.H.ToString(System.Globalization.CultureInfo.InvariantCulture)},1"
+                : $"{Position.X},{Position.Y},{Width.ToString(System.Globalization.CultureInfo.InvariantCulture)},{Height.ToString(System.Globalization.CultureInfo.InvariantCulture)},{(maximized ? 1 : 0)}";
+            Clickra.Core.Modules.Sys.Settings.Application.SettingsController.DesktopWindowBounds = value;
+        }
+        catch
+        {
+            // best effort
+        }
+    }
+
+    private (int X, int Y, double W, double H)? _normalBounds;
+
+    private void TrackNormalBounds()
+    {
+        if (WindowState == WindowState.Normal) _normalBounds = (Position.X, Position.Y, Width, Height);
     }
 
     private void FitToScreen()
@@ -127,8 +221,9 @@ public partial class MainWindow : Window
     {
         if (OperatingSystem.IsLinux()) return;
 
-        // Avalonia 12 removed ExtendClientAreaChromeHints: WindowDecorations.Full (the default) keeps the
-        // system caption buttons, and ExtendClientAreaToDecorationsHint now works on Windows without margin fixes.
+        // Avalonia 12 removed ExtendClientAreaChromeHints. On Windows it now draws the title bar itself when the
+        // client area is extended; Styles/WindowDecorations.axaml (WindowDecorationsTheme) keeps only the caption
+        // buttons so the drawn title text no longer prints over our brand row.
         WindowDecorations = WindowDecorations.Full;
         ExtendClientAreaToDecorationsHint = true;
         ExtendClientAreaTitleBarHeightHint = 48;
@@ -147,6 +242,131 @@ public partial class MainWindow : Window
         topBar.Margin = OperatingSystem.IsMacOS()
             ? new Thickness(MacTrafficLightsWidth - 16, 0, 0, 0)
             : new Thickness(0, 0, WindowsCaptionButtonsWidth, 0);
+    }
+
+    // ===== Closing while files are being processed (spec 4.5) =====
+
+    private bool _closeConfirmed;
+    private bool _askingClose;
+    private TrayIcon? _tray;
+    private NativeMenuItem? _trayProgress;
+
+    protected override async void OnClosing(WindowClosingEventArgs e)
+    {
+        base.OnClosing(e);
+        if (_closeConfirmed || e.CloseReason == WindowCloseReason.OSShutdown) return;
+        if (DataContext is not MainWindowViewModel vm || !vm.Convert.IsExecuting) return;
+
+        e.Cancel = true;
+        if (_askingClose) return;
+
+        CloseWhileRunning action = CloseWhileRunningSetting.Value;
+        if (action == CloseWhileRunning.Ask)
+        {
+            _askingClose = true;
+            CloseChoice? choice;
+            try { choice = await Dialogs.AskCloseAsync(this, vm.Convert.RemainingCount); }
+            finally { _askingClose = false; }
+            if (choice is null) return; // ✕ or Esc: keep the window open
+            if (choice.Remember)
+            {
+                CloseWhileRunningSetting.Value = choice.Action;
+                vm.Settings.Reload();
+            }
+            action = choice.Action;
+        }
+
+        if (!vm.Convert.IsExecuting)
+        {
+            CloseForGood();
+            return;
+        }
+        if (action == CloseWhileRunning.Background) ContinueInBackground(vm.Convert);
+        else StopThenClose(vm.Convert);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        SaveBounds();
+        base.OnClosed(e);
+    }
+
+    private void CloseForGood()
+    {
+        RemoveTray();
+        _closeConfirmed = true;
+        Close();
+    }
+
+    /// <summary>Stops the run (remaining files are not processed) and closes once Core has recorded it.</summary>
+    private void StopThenClose(ConvertViewModel session)
+    {
+        void OnFinished(object? sender, EventArgs e)
+        {
+            session.Finished -= OnFinished;
+            CloseForGood();
+        }
+        session.Finished += OnFinished;
+        session.Stop();
+    }
+
+    /// <summary>
+    /// The window hides and a tray icon shows progress with 顯示視窗 and 停止. When the run ends the icon is
+    /// removed and Clickra exits; it does not stay resident.
+    /// </summary>
+    private void ContinueInBackground(ConvertViewModel session)
+    {
+        _trayProgress = new NativeMenuItem { IsEnabled = false };
+        var show = new NativeMenuItem("顯示視窗");
+        show.Click += (_, _) => RestoreFromTray();
+        var stop = new NativeMenuItem("停止");
+        stop.Click += (_, _) => session.Stop();
+        _tray = new TrayIcon
+        {
+            Icon = Icon,
+            Menu = new NativeMenu { _trayProgress, new NativeMenuItemSeparator(), show, stop },
+        };
+        _tray.Clicked += (_, _) => RestoreFromTray();
+        if (Application.Current is { } app) TrayIcon.SetIcons(app, new TrayIcons { _tray });
+
+        void OnChanged(object? sender, EventArgs e) => UpdateTray(session);
+        void OnFinished(object? sender, EventArgs e)
+        {
+            session.Changed -= OnChanged;
+            session.Finished -= OnFinished;
+            if (_tray is null) return; // restored meanwhile
+            CloseForGood();
+        }
+        session.Changed += OnChanged;
+        session.Finished += OnFinished;
+        UpdateTray(session);
+        Hide();
+    }
+
+    private void UpdateTray(ConvertViewModel session)
+    {
+        if (_tray is null || _trayProgress is null) return;
+        string text = session.FileCount > 1
+            ? $"處理中 {session.Percent:0}%（第 {Math.Min(session.FileIndex + 1, session.FileCount)}/{session.FileCount} 個）"
+            : $"處理中 {session.Percent:0}%";
+        _trayProgress.Header = text;
+        _tray.ToolTipText = "Clickra：" + text;
+    }
+
+    private void RestoreFromTray()
+    {
+        RemoveTray();
+        Show();
+        Activate();
+    }
+
+    private void RemoveTray()
+    {
+        if (_tray is null) return;
+        if (Application.Current is { } app) TrayIcon.SetIcons(app, new TrayIcons());
+        _tray.Dispose();
+        _tray = null;
+        _trayProgress = null;
     }
 
     private sealed class Observer<T>(Action<T> onNext) : IObserver<T>
