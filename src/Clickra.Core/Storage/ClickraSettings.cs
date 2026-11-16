@@ -53,6 +53,17 @@ public static class ClickraSettings
     public const string ContextMenuEnabled = Clickra.Shared.ContextMenuVisibility.EnabledKey;
     public const string ContextMenuHidden = Clickra.Shared.ContextMenuVisibility.HiddenKey;
 
+    // ─── 功能預設值（4.0 桌面端設定頁 › 功能預設值）──────────────────────
+    public const string PdfToImageFormat = "PdfToImageFormat";
+    public const string MarkdownTheme = "MarkdownTheme";
+    public const string MarkdownPaper = "MarkdownPaper";
+    public const string MarkdownTextSize = "MarkdownTextSize";
+    public const string MarkdownTemplatePath = "MarkdownTemplatePath";
+
+    // ─── 4.0 桌面端外觀與視窗 ─────────────────────────────────────────────
+    public const string DesktopTheme = "DesktopTheme";
+    public const string DesktopWindowBounds = "DesktopWindowBounds";
+
     // ─── 預設值常數（讀取端需要以程式比較時引用這些，不要重寫字串）──────────
     public const string DefaultEmpty = "";
     public const string ValueTrue = "true";
@@ -68,6 +79,14 @@ public static class ClickraSettings
     public const string DefaultImageCompressLevel = "1";
     public const string DefaultImageCompressMaxDimension = "0";
     public const string DefaultParkedTaskRetention = "7";
+    public const string DefaultPdfToImageFormat = "png";
+    public const string DefaultMarkdownTheme = "default";
+    public const string DefaultMarkdownPaper = "a4";
+    public const string DefaultMarkdownTextSize = "standard";
+    public const string MarkdownThemeWordTemplate = "template";
+    public const string DesktopThemeLight = "light";
+    public const string DesktopThemeDark = "dark";
+    public const string DesktopThemeSystem = "system";
     public const int MaxParkedTaskRetentionDays = 365;
     public const int MinParkedRetentionDays = 0;
     public const int MaxParkedRetentionDays = MaxParkedTaskRetentionDays;
@@ -113,6 +132,13 @@ public static class ClickraSettings
         new ClickraSetting(ParkedTaskRetention, DefaultParkedTaskRetention, "已暫存任務保留天數（0 = 無限期）"),
         new ClickraSetting(ContextMenuEnabled, ValueTrue, "在檔案總管右鍵選單顯示 Clickra"),
         new ClickraSetting(ContextMenuHidden, DefaultEmpty, "右鍵選單中隱藏的功能（指令名稱，以逗號分隔；空 = 全部顯示）"),
+        new ClickraSetting(PdfToImageFormat, DefaultPdfToImageFormat, "PDF 轉成圖片的預設格式：png / jpg / webp"),
+        new ClickraSetting(MarkdownTheme, DefaultMarkdownTheme, "Markdown 轉換的預設文件範本：default / minimal / academic"),
+        new ClickraSetting(MarkdownPaper, DefaultMarkdownPaper, "Markdown 轉成 PDF 的預設紙張：a4 / letter"),
+        new ClickraSetting(MarkdownTextSize, DefaultMarkdownTextSize, "Markdown 轉換的預設文字大小：small / standard / large"),
+        new ClickraSetting(MarkdownTemplatePath, DefaultEmpty, $"Markdown 預設 Word 範本的路徑（MarkdownTheme 為 {MarkdownThemeWordTemplate} 時使用）"),
+        new ClickraSetting(DesktopTheme, DesktopThemeLight, $"4.0 桌面端外觀：{DesktopThemeLight} / {DesktopThemeDark} / {DesktopThemeSystem}"),
+        new ClickraSetting(DesktopWindowBounds, DefaultEmpty, "4.0 桌面端上次的視窗位置與大小（x,y,寬,高,是否最大化；空 = 預設）"),
     };
 
     private static readonly Dictionary<string, ClickraSetting> ByKey =

@@ -41,6 +41,48 @@ public static class SettingsController
         set => WriteText(ClickraSettings.TranslateTargetLang, value);
     }
 
+    public static string PdfToImageFormat
+    {
+        get => ReadText(ClickraSettings.PdfToImageFormat);
+        set => WriteText(ClickraSettings.PdfToImageFormat, value);
+    }
+
+    public static string MarkdownTheme
+    {
+        get => ReadText(ClickraSettings.MarkdownTheme);
+        set => WriteText(ClickraSettings.MarkdownTheme, value);
+    }
+
+    public static string MarkdownPaper
+    {
+        get => ReadText(ClickraSettings.MarkdownPaper);
+        set => WriteText(ClickraSettings.MarkdownPaper, value);
+    }
+
+    public static string MarkdownTextSize
+    {
+        get => ReadText(ClickraSettings.MarkdownTextSize);
+        set => WriteText(ClickraSettings.MarkdownTextSize, value);
+    }
+
+    public static string MarkdownTemplatePath
+    {
+        get => ReadText(ClickraSettings.MarkdownTemplatePath);
+        set => WriteText(ClickraSettings.MarkdownTemplatePath, value ?? string.Empty);
+    }
+
+    public static string DesktopTheme
+    {
+        get => ReadText(ClickraSettings.DesktopTheme);
+        set => WriteText(ClickraSettings.DesktopTheme, value);
+    }
+
+    public static string DesktopWindowBounds
+    {
+        get => ReadText(ClickraSettings.DesktopWindowBounds);
+        set => WriteText(ClickraSettings.DesktopWindowBounds, value);
+    }
+
     public static string TranslateEngine
     {
         get => ReadText(ClickraSettings.TranslateEngine);
