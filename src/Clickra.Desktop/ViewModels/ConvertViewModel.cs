@@ -62,6 +62,8 @@ public sealed class ActionItemViewModel : ViewModelBase
     public string SourceDomain { get; }
     public string ColorHex { get; }
     public string IconGeometry { get; }
+    /// <summary>Official feature icon from assets/features (Assets/FeatureIcons.axaml).</summary>
+    public Avalonia.Media.IImage? Icon => FeatureIcons.Get(Command);
 
     public ActionItemViewModel(
         string command,
@@ -101,14 +103,13 @@ public sealed class ExecutionResultItemViewModel : ViewModelBase
     }
 }
 
-public sealed class RecentHistoryItemViewModel(HistoryItem item) : ViewModelBase
+/// <summary>A row of 最近處理 was pressed: History opens with that task expanded (spec 4.1).</summary>
+public sealed class ShowTaskEventArgs(string taskId) : EventArgs
 {
-    public string Title { get; } = item.FirstFileName;
-    public string Subtitle { get; } = $"{item.Subtitle} · {item.Time}";
-    public string CommandKey { get; } = item.Entry.Command ?? "";
+    public string TaskId { get; } = taskId;
 }
 
-public sealed class ConvertViewModel : ViewModelBase
+public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
 {
     private readonly ConvertWorkspaceController _workspace = new();
     private ConvertWorkflowState _state = ConvertWorkflowState.DropZone;
@@ -117,23 +118,86 @@ public sealed class ConvertViewModel : ViewModelBase
     private double _progressPercent;
     private string _progressMessage = "";
     private string _resultSummary = "";
-    private int _pdfCompressLevel = 1;
-    private int _imageCompressLevel = 2;
-    private string _imageTargetFormat = "PNG";
-    private string _translationLanguage = "繁體中文";
     private string _customOutputPath = "";
     private bool _isCustomOutput;
 
     public ObservableCollection<FileItemViewModel> SelectedFiles { get; } = [];
     public ObservableCollection<ActionItemViewModel> AvailableActions { get; } = [];
     public ObservableCollection<ExecutionResultItemViewModel> ResultItems { get; } = [];
-    public ObservableCollection<RecentHistoryItemViewModel> RecentItems { get; } = [];
+    public ObservableCollection<HistoryRowViewModel> RecentItems { get; } = [];
+
+    /// <summary>Raised when a 最近處理 row is pressed.</summary>
+    public event EventHandler<ShowTaskEventArgs>? ShowTaskRequested;
+
+    // ----- the running conversion (IConversionSession) -----
+    private string? _runningTaskId;
+    private int _runningIndex;
+    private int _runningTotal;
+    private bool _pauseRequested;
+    private bool _fileStepsReported;
+    private int _parkedAt;
+    private string? _lastPassword;
+
+    public event EventHandler? Changed;
+    public event EventHandler? Finished;
+
+    public bool IsRunning => IsExecuting;
+    public string? TaskId => _runningTaskId;
+    public int FileIndex => _runningIndex;
+    public int FileCount => _runningTotal;
+    public double Percent => ProgressPercent;
+    public int RemainingCount => Math.Max(0, _runningTotal - _runningIndex);
+    /// <summary>
+    /// Core parks only between files, and only actions that work file by file report each file start, so
+    /// ⏸ shows once a file start was reported and another file follows (spec 4.2).
+    /// </summary>
+    public bool CanPause => IsExecuting && _fileStepsReported && !_pauseRequested && _runningIndex < _runningTotal - 1;
+
+    public void RequestPause()
+    {
+        if (!CanPause) return;
+        _pauseRequested = true;
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void Stop() => CancelConversion();
 
     public ConvertViewModel()
     {
+        IsBusy = () => IsExecuting;
+        Options.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is "" or nameof(ActionOptionsViewModel.IsReady) or nameof(ActionOptionsViewModel.BlockingText))
+            {
+                OnPropertyChanged(nameof(CanStart));
+                OnPropertyChanged(nameof(StartButtonText));
+            }
+        };
+        Split.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is "" or nameof(SplitWorkspaceViewModel.IsReady) or nameof(SplitWorkspaceViewModel.StartText))
+            {
+                OnPropertyChanged(nameof(CanStart));
+                OnPropertyChanged(nameof(StartButtonText));
+            }
+        };
+        Order.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(OrderWorkspaceViewModel.HasOutputName))
+            {
+                OnPropertyChanged(nameof(CanStart));
+                OnPropertyChanged(nameof(StartButtonText));
+            }
+        };
+        Rename.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(RenameWorkspaceViewModel.CanRename) or nameof(RenameWorkspaceViewModel.RenameButtonText))
+            {
+                OnPropertyChanged(nameof(CanStart));
+                OnPropertyChanged(nameof(StartButtonText));
+            }
+        };
         RefreshRecentHistory();
-        _pdfCompressLevel = Math.Clamp(SettingsController.PdfCompressionImageLevel, 0, 2);
-        _imageCompressLevel = Math.Clamp(SettingsController.ImageCompressionLevel, 0, 3);
     }
 
     public ConvertWorkflowState State
@@ -172,13 +236,31 @@ public sealed class ConvertViewModel : ViewModelBase
             _selectedAction = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(StartButtonText));
+            OnPropertyChanged(nameof(ShowsOutputLocation));
             OnPropertyChanged(nameof(CanStart));
         }
     }
 
-    public string StartButtonText => SelectedAction is not null ? $"開始{SelectedAction.Name}" : "開始";
+    public string StartButtonText => IsRenameAction
+        ? Rename.RenameButtonText
+        : IsOrderAction && !Order.HasOutputName ? "先填寫檔名"
+        : IsSplitAction ? (Split.BlockingText.Length > 0 ? Split.BlockingText : Split.StartText)
+        : Options.BlockingText.Length > 0 ? Options.BlockingText
+        : SelectedAction is not null ? $"開始{SelectedAction.Name}" : "開始";
 
-    public bool CanStart => !IsExecuting && SelectedAction is not null && _workspace.CanStart;
+    /// <summary>The options card of the open action (spec 4.9).</summary>
+
+    public bool CanStart => !IsExecuting && SelectedAction is not null && _workspace.CanStart &&
+                            (!IsRenameAction || Rename.CanRename) && (!IsOrderAction || Order.HasOutputName) && (!IsSplitAction || Split.IsReady) && Options.IsReady;
+
+    /// <summary>批次重新命名 has its own workspace instead of an options card (spec 4.6).</summary>
+    public bool IsOptionsAction => SelectedAction is not null && !IsRenameAction && !IsOrderAction && !IsSplitAction;
+
+    /// <summary>PDF 分割: page thumbnails and cut points (spec 4.6).</summary>
+    /// <summary>Printing and renaming produce no new file, so the page has no 「存到…」 line.</summary>
+    public bool ShowsOutputLocation => SelectedAction is not null && !IsRenameAction && SelectedAction.Command != "print-pdf";
+
+    /// <summary>合併與拼接: the order list workspace (spec 4.6).</summary>
 
     public string FileSummaryHeader
     {
@@ -195,10 +277,17 @@ public sealed class ConvertViewModel : ViewModelBase
                 "ppt" => "PPT 簡報",
                 "markdown" => "Markdown 文件",
                 "image" => "張圖片",
-                _ => "個檔案"
+                _ => FileKindName()
             };
             return domain == "image" ? $"{count} {typeName}" : $"{count} 個 {typeName}";
         }
+    }
+
+    /// <summary>「影片」 when every file is one kind Clickra knows by name, else 「檔案」 (2 個影片, 3 個檔案).</summary>
+    private string FileKindName()
+    {
+        var kinds = SelectedFiles.Select(f => KindOf(f.Extension)).Distinct().ToList();
+        return kinds.Count == 1 && kinds[0] is not null ? kinds[0]! : "檔案";
     }
 
     public string FileSummarySubtext
@@ -256,17 +345,7 @@ public sealed class ConvertViewModel : ViewModelBase
         set { _resultSummary = value; OnPropertyChanged(); }
     }
 
-    public int PdfCompressLevel
-    {
-        get => _pdfCompressLevel;
-        set { _pdfCompressLevel = value; OnPropertyChanged(); }
-    }
 
-    public int ImageCompressLevel
-    {
-        get => _imageCompressLevel;
-        set { _imageCompressLevel = value; OnPropertyChanged(); }
-    }
 
     public string CustomOutputPath
     {
@@ -279,17 +358,7 @@ public sealed class ConvertViewModel : ViewModelBase
         }
     }
 
-    public string ImageTargetFormat
-    {
-        get => _imageTargetFormat;
-        set { _imageTargetFormat = value; OnPropertyChanged(); }
-    }
 
-    public string TranslationLanguage
-    {
-        get => _translationLanguage;
-        set { _translationLanguage = value; OnPropertyChanged(); }
-    }
 
     public string OutputSummaryText
     {
@@ -374,10 +443,22 @@ public sealed class ConvertViewModel : ViewModelBase
         RefreshRecentHistory();
     }
 
-    public async Task StartConversionAsync()
+    /// <summary>
+    /// Runs the selected action. <paramref name="existingTaskId"/> and <paramref name="resumeStartIndex"/>
+    /// continue a parked task (▶ 繼續) from the first file that was not done.
+    /// </summary>
+    public async Task StartConversionAsync(string? existingTaskId = null, int resumeStartIndex = 0)
     {
         if (SelectedAction is null || !CanStart) return;
 
+        _runningTaskId = existingTaskId;
+        _runningIndex = resumeStartIndex;
+        _runningTotal = SelectedFiles.Count;
+        _pauseRequested = false;
+        _fileStepsReported = false;
+        _lastPassword = null;
+        for (int i = 0; i < SelectedFiles.Count; i++)
+            SelectedFiles[i].StatusText = i < resumeStartIndex ? "完成" : i == resumeStartIndex ? "處理中" : "等待中";
         State = ConvertWorkflowState.Executing;
         ProgressPercent = 0;
         ProgressMessage = "準備轉換中...";
@@ -386,25 +467,26 @@ public sealed class ConvertViewModel : ViewModelBase
         _conversionCts = new CancellationTokenSource();
         var controller = new ConversionExecutionController();
         string command = SelectedAction.Command;
+        // Merge and stitch run in the order shown in the workspace.
         var files = SelectedFiles.Select(f => f.Path).ToArray();
 
         var options = new Dictionary<string, object>();
-        if (command == "compress-pdf")
+        Dictionary<string, string>? renamed = null;
+        if (IsRenameAction)
         {
-            options["level"] = PdfCompressLevel;
+            // Run exactly the plan shown in the preview.
+            options = Rename.BuildExecutionOptions();
+            renamed = Rename.Preview.Where(r => r.IsChanged).ToDictionary(r => r.NewName, r => r.OldName, StringComparer.OrdinalIgnoreCase);
         }
-        else if (command == "img-compress")
+        else
         {
-            options["level"] = ImageCompressLevel;
-        }
-        else if (command.StartsWith("img-to-", StringComparison.OrdinalIgnoreCase))
-        {
-            options["format"] = ImageTargetFormat;
+            options = new ConversionExecutionOptions();
         }
 
         try
         {
-            controller.Prepare(command, files, options);
+            IReadOnlyList<string> plannedOutputs = controller.Prepare(command, files, options, existingTaskId, resumeStartIndex).Outputs;
+            Changed?.Invoke(this, EventArgs.Empty);
 
             var progress = new Progress<TaskProgressReport>(report =>
             {
@@ -417,39 +499,57 @@ public sealed class ConvertViewModel : ViewModelBase
                     ProgressMessage = string.IsNullOrWhiteSpace(report.Message)
                         ? $"正在處理 ({report.Current}/{report.Total})..."
                         : report.Message;
+                    Changed?.Invoke(this, EventArgs.Empty);
                 });
             });
 
             var callbacks = new ConversionExecutionCallbacks(
-                PasswordPrompt: async (index, file, isWrong, ct) =>
+                TaskStarted: taskId => Dispatcher.UIThread.Post(() =>
                 {
-                    return await Dispatcher.UIThread.InvokeAsync(() =>
+                    _runningTaskId = taskId;
+                    Changed?.Invoke(this, EventArgs.Empty);
+                }),
+                FileStarting: index =>
+                {
+                    // ⏸: stop cleanly before the next file; Core records the task as parked (待繼續).
+                    if (_pauseRequested && index > resumeStartIndex)
                     {
-                        var resultItem = new ExecutionResultItemViewModel(file, succeeded: false, detail: isWrong ? "密碼不正確" : "需要輸入密碼", needsPassword: true);
-                        ResultItems.Add(resultItem);
-                        return (string?)null;
+                        _parkedAt = index;
+                        throw ConversionExecutionController.CreateParkSignal("已暫停", index);
+                    }
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        _runningIndex = index;
+                        _fileStepsReported = true;
+                        for (int i = 0; i < SelectedFiles.Count; i++)
+                        {
+                            if (SelectedFiles[i].NeedsPassword) continue;
+                            SelectedFiles[i].StatusText = i < index ? "完成" : i == index ? "處理中" : "等待中";
+                        }
+                        Changed?.Invoke(this, EventArgs.Empty);
                     });
                 });
 
             var result = await Task.Run(() => controller.ExecutePreparedAsync(callbacks, progress, _conversionCts.Token));
 
-            State = ConvertWorkflowState.Completed;
-            int total = files.Length;
-            int succeeded = result.Outputs.Count;
-            int failed = total - succeeded;
-
-            ResultSummary = failed == 0
-                ? $"{SelectedAction.Name}好 {total} 個檔案"
-                : $"{SelectedAction.Name}好 {succeeded} 個，{failed} 個需要處理";
-
-            foreach (string file in files)
+            if (result.Status == ConversionExecutionPresentationStatus.Canceled)
             {
-                if (!ResultItems.Any(r => string.Equals(r.FullPath, file, StringComparison.OrdinalIgnoreCase)))
-                {
-                    bool fileOk = result.Outputs.Any(o => o.Contains(System.IO.Path.GetFileNameWithoutExtension(file)));
-                    ResultItems.Add(new ExecutionResultItemViewModel(file, fileOk, fileOk ? "處理完成" : "未產生輸出檔案"));
-                }
+                State = ConvertWorkflowState.ActionPage;
+                ProgressMessage = "已停止";
+                return;
             }
+            if (result.Status == ConversionExecutionPresentationStatus.Parked)
+            {
+                State = ConvertWorkflowState.Completed;
+                int left = Math.Max(0, files.Length - _parkedAt);
+                ResultSummary = $"已暫停，剩下 {left} 個可在「歷史」繼續";
+                foreach (string file in files.Take(_parkedAt).Skip(resumeStartIndex))
+                    ResultItems.Add(new ExecutionResultItemViewModel(file, true, "處理完成"));
+                return;
+            }
+
+            State = ConvertWorkflowState.Completed;
+            ShowResults(result, files, plannedOutputs, renamed);
         }
         catch (OperationCanceledException)
         {
@@ -462,12 +562,111 @@ public sealed class ConvertViewModel : ViewModelBase
             ResultSummary = "轉檔未完成";
             ResultItems.Add(new ExecutionResultItemViewModel(files.FirstOrDefault() ?? "", false, ex.Message));
         }
+        finally
+        {
+            _pauseRequested = false;
+            RefreshRecentHistory();
+            Finished?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>
+    /// Fills the result page from what Core reported, not from guesses: the overall status decides
+    /// success, and each file is checked against its planned output.
+    /// </summary>
+    private void ShowResults(
+        ConversionExecutionPresentationResult result,
+        IReadOnlyList<string> files,
+        IReadOnlyList<string> plannedOutputs,
+        Dictionary<string, string>? renamed)
+    {
+        bool ok = result.Status == ConversionExecutionPresentationStatus.Succeeded;
+        string error = FirstLine(result.Error);
+
+        if (renamed is not null)
+        {
+            // Rename: list the files that got a new name.
+            var done = result.Outputs.Select(Path.GetFileName).Where(n => n is not null).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var (newName, oldName) in renamed)
+            {
+                bool fileOk = done.Contains(newName);
+                ResultItems.Add(new ExecutionResultItemViewModel(newName, fileOk, fileOk ? $"原本是 {oldName}" : (error.Length > 0 ? error : "沒有改名")));
+            }
+            int count = ResultItems.Count(r => r.Succeeded);
+            ResultSummary = ok ? $"重新命名好 {count} 個檔案" : $"重新命名好 {count} 個，{renamed.Count - count} 個沒有改";
+            return;
+        }
+
+        bool perFile = plannedOutputs.Count == files.Count;
+        int succeeded = 0;
+        for (int i = 0; i < files.Count; i++)
+        {
+            string file = files[i];
+            if (ResultItems.Any(r => string.Equals(r.FullPath, file, StringComparison.OrdinalIgnoreCase))) continue;
+            bool fileOk = ok || (perFile && File.Exists(plannedOutputs[i]) && result.Outputs.Contains(plannedOutputs[i], StringComparer.OrdinalIgnoreCase));
+            if (fileOk) succeeded++;
+            ResultItems.Add(new ExecutionResultItemViewModel(file, fileOk, fileOk ? "處理完成" : (error.Length > 0 ? error : "沒有完成")));
+        }
+        int failed = files.Count - succeeded;
+        ResultSummary = ok && failed == 0
+            ? $"{SelectedAction?.Name}好 {files.Count} 個檔案"
+            : $"{SelectedAction?.Name}好 {succeeded} 個，{failed} 個需要處理";
+    }
+
+    private static string FirstLine(string? text) =>
+        string.IsNullOrWhiteSpace(text) ? "" : text.Split('\n')[0].Trim();
+
+    /// <summary>再轉一次: the same action on these files, opened on its action page; the user presses 開始.</summary>
+    public bool PrepareRerun(string command, IReadOnlyList<string> files)
+    {
+        if (IsExecuting) return false;
+        ResetToStart();
+        AddFiles(files);
+        if (SelectedFiles.Count == 0) return false;
+        ActionItemViewModel? action = FindAction(command);
+        if (action is null) return true; // the catalog is shown instead
+        SelectAction(action);
+        Options.SetImageFormatFromCommand(command); // after SelectAction, which loads the defaults
+        return true;
+    }
+
+    /// <summary>▶ 繼續: runs a parked task again from the first file that was not done.</summary>
+    public async Task ResumeParkedAsync(ParkedTaskResumePresentation task)
+    {
+        if (IsExecuting) return;
+        ResetToStart();
+        _workspace.AddFiles(task.Files);
+        SyncFilesFromWorkspace();
+        UpdateAvailableActions();
+        State = ConvertWorkflowState.ActionCatalog;
+        ActionItemViewModel? action = FindAction(task.Command);
+        if (action is null) return;
+        SelectAction(action);
+        Options.SetImageFormatFromCommand(task.Command); // after SelectAction, which loads the defaults
+        await StartConversionAsync(task.TaskId, task.StartIndex);
+    }
+
+    private ActionItemViewModel? FindAction(string command)
+    {
+        ActionItemViewModel? action = AvailableActions.FirstOrDefault(a => string.Equals(a.Command, command, StringComparison.OrdinalIgnoreCase));
+        if (action is null && command.StartsWith("img-to-", StringComparison.OrdinalIgnoreCase))
+            action = AvailableActions.FirstOrDefault(a => a.Command.StartsWith("img-to-", StringComparison.OrdinalIgnoreCase));
+        return action;
+    }
+
+    /// <summary>A 最近處理 row was pressed: show it expanded on the History page.</summary>
+    public override void ToggleExpand(HistoryRowViewModel row)
+    {
+        DismissNoticeExcept(row);
+        ShowTaskRequested?.Invoke(this, new ShowTaskEventArgs(row.Id));
     }
 
     public void CancelConversion()
     {
         _conversionCts?.Cancel();
     }
+
+    public void RefreshRecent() => RefreshRecentHistory();
 
     public void OpenOutputDirectory()
     {
@@ -499,7 +698,7 @@ public sealed class ConvertViewModel : ViewModelBase
         var catalog = ConvertActionCatalog.GetActions();
         foreach (var action in catalog)
         {
-            if (_workspace.IsCommandCompatible(action.Command))
+            if (IsActionCompatible(action.Command))
             {
                 AvailableActions.Add(action);
             }
@@ -512,7 +711,11 @@ public sealed class ConvertViewModel : ViewModelBase
             AvailableActions.Remove(renameAction);
             AvailableActions.Add(renameAction);
         }
+        OnPropertyChanged(nameof(OnlyRename));
+        OnPropertyChanged(nameof(OnlyRenameText));
     }
+
+    private bool IsActionCompatible(string command) => _workspace.IsCommandCompatible(command);
 
     private void RefreshRecentHistory()
     {
@@ -522,7 +725,7 @@ public sealed class ConvertViewModel : ViewModelBase
             var feed = HistoryFeed.Load(SettingsController.Language, completedLimit: 3);
             foreach (var item in feed.OfKind(HistoryItemKind.Completed).Take(3))
             {
-                RecentItems.Add(new RecentHistoryItemViewModel(item));
+                RecentItems.Add(new HistoryRowViewModel(item, this));
             }
         }
         catch
@@ -554,28 +757,5 @@ public sealed class ConvertViewModel : ViewModelBase
         if (path.Length <= 24) return path;
         string dir = System.IO.Path.GetFileName(path.TrimEnd('\\', '/'));
         return string.IsNullOrEmpty(dir) ? path : $"…\\{dir}";
-    }
-
-    private static void OpenPath(string path)
-    {
-        try
-        {
-            if (OperatingSystem.IsWindows())
-            {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = path, UseShellExecute = true })?.Dispose();
-            }
-            else if (OperatingSystem.IsMacOS())
-            {
-                System.Diagnostics.Process.Start("open", $"\"{path}\"")?.Dispose();
-            }
-            else if (OperatingSystem.IsLinux())
-            {
-                System.Diagnostics.Process.Start("xdg-open", $"\"{path}\"")?.Dispose();
-            }
-        }
-        catch
-        {
-            // Best effort process launching
-        }
     }
 }

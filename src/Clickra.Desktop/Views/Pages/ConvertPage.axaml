@@ -1,8 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Clickra.Desktop.ViewModels"
+             xmlns:controls="using:Clickra.Desktop.Controls"
+             xmlns:rows="using:Clickra.Desktop.Views.Controls"
              x:Class="Clickra.Desktop.Views.Pages.ConvertPage"
-             x:DataType="vm:ConvertViewModel">
+             x:DataType="vm:ConvertViewModel"
+             DragDrop.AllowDrop="True">
 
     <UserControl.Styles>
         <Style Selector="Border.menuItem">
@@ -24,9 +27,9 @@
             <Setter Property="Padding" Value="16,10" />
         </Style>
         <Style Selector="Border.catalogPlate">
-            <Setter Property="Width" Value="64" />
-            <Setter Property="Height" Value="64" />
-            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Width" Value="68" />
+            <Setter Property="Height" Value="68" />
+            <Setter Property="CornerRadius" Value="18" />
             <Setter Property="Background" Value="{DynamicResource Clk.IconPlate}" />
             <Setter Property="BorderBrush" Value="{DynamicResource Clk.IconPlateBorder}" />
             <Setter Property="BorderThickness" Value="1" />
@@ -38,10 +41,42 @@
             <Setter Property="CornerRadius" Value="12" />
             <Setter Property="Padding" Value="12,16" />
             <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="VerticalAlignment" Value="Top" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="MinHeight" Value="130" />
+        </Style>
+        <!-- Card contents (normal size: icon 52 on a 68 plate, name 20; spec 4.1). -->
+        <Style Selector="StackPanel.cardStack">
+            <Setter Property="Spacing" Value="10" />
+        </Style>
+        <Style Selector="Image.cardIcon">
+            <Setter Property="Width" Value="52" />
+            <Setter Property="Height" Value="52" />
+        </Style>
+        <Style Selector="TextBlock.cardName">
+            <Setter Property="FontSize" Value="20" />
+        </Style>
+        <!-- Compact: used only when two rows of normal cards do not fit the height (small screens or high
+             display scaling, where the window opens below 660). Set in code-behind (FitCatalog). -->
+        <Style Selector="ItemsControl.compact Button.catalogCard">
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="MinHeight" Value="0" />
+        </Style>
+        <Style Selector="ItemsControl.compact StackPanel.cardStack">
+            <Setter Property="Spacing" Value="6" />
+        </Style>
+        <Style Selector="ItemsControl.compact Border.catalogPlate">
+            <Setter Property="Width" Value="56" />
+            <Setter Property="Height" Value="56" />
+            <Setter Property="CornerRadius" Value="15" />
+        </Style>
+        <Style Selector="ItemsControl.compact Image.cardIcon">
+            <Setter Property="Width" Value="42" />
+            <Setter Property="Height" Value="42" />
+        </Style>
+        <Style Selector="ItemsControl.compact TextBlock.cardName">
+            <Setter Property="FontSize" Value="18" />
         </Style>
         <Style Selector="Button.catalogCard:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource Clk.CardHover}" />
@@ -49,7 +84,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid Margin="0,0,0,24">
+    <Grid Name="PageGrid" Margin="0,0,0,24">
         <Grid.RowDefinitions>
             <!-- Top Area: Drop Zone (State A) or File Narrow Row (State B-F) -->
             <RowDefinition Height="Auto" />
@@ -60,83 +95,91 @@
 
         <!-- ==================== TOP AREA ==================== -->
         <!-- State A: Drop zone -->
-        <Panel Grid.Row="0" IsVisible="{Binding IsDropZone}" MinHeight="260" MaxHeight="356" DragDrop.AllowDrop="True">
-            <Border Background="{DynamicResource Clk.Card}" CornerRadius="16" />
-            <Rectangle Stroke="{DynamicResource Clk.ControlBorder}" StrokeThickness="1"
-                       StrokeDashArray="4,3" RadiusX="16" RadiusY="16" />
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
-                <Border Width="60" Height="60" CornerRadius="30" HorizontalAlignment="Center"
-                        Background="{DynamicResource Clk.Surface}">
-                    <Path Data="M12,4 V15 M7,10 L12,15 L17,10 M5,20 H19"
-                          Stroke="{DynamicResource Clk.Accent}" StrokeThickness="1.7"
-                          StrokeLineCap="Round" StrokeJoin="Round"
-                          Width="26" Height="26" Stretch="Uniform"
-                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Border>
-                <TextBlock Classes="h1" FontSize="26" Text="要處理什麼檔案？" HorizontalAlignment="Center" />
-                <TextBlock Classes="secondary" FontSize="15" Text="把檔案拖到這裡，Clickra 會告訴你可以做什麼。"
-                           HorizontalAlignment="Center" />
-                <Button Classes="primary" Name="PickFilesButton" Content="選擇檔案" HorizontalAlignment="Center" Margin="0,8,0,0" />
-            </StackPanel>
+        <!-- With no files the drop zone fills what 最近處理 leaves (at least 240); rows are switched in code-behind.
+             TopArea holds both top states so the collapse animation (spec 4.1) can shrink one box down to 72. -->
+        <Panel Grid.Row="0" Name="TopArea" ClipToBounds="True" VerticalAlignment="Top">
+            <Panel Name="DropZone" IsVisible="{Binding IsDropZone}" VerticalAlignment="Stretch">
+                <Border Background="{DynamicResource Clk.Card}" CornerRadius="16" />
+                <Rectangle Stroke="{DynamicResource Clk.ControlBorder}" StrokeThickness="1"
+                           StrokeDashArray="4,3" RadiusX="16" RadiusY="16" />
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+                    <Border Width="60" Height="60" CornerRadius="30" HorizontalAlignment="Center"
+                            Background="{DynamicResource Clk.Surface}">
+                        <Viewbox Classes="ic" Width="26" Height="26" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Canvas Width="24" Height="24">
+                                <Path Data="M12,4 V15 M7,10 L12,15 L17,10 M5,20 H19"
+                                      Stroke="{DynamicResource Clk.Accent}"
+                                      Fill="Transparent" />
+                            </Canvas>
+                        </Viewbox>
+                    </Border>
+                    <TextBlock Classes="h1" FontSize="26" Text="要處理什麼檔案？" HorizontalAlignment="Center" />
+                    <TextBlock Classes="secondary" FontSize="15" Text="把檔案拖到這裡，Clickra 會告訴你可以做什麼。"
+                               HorizontalAlignment="Center" />
+                    <Button Classes="primary" Name="PickFilesButton" Content="選擇檔案" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                </StackPanel>
+            </Panel>
+
+            <!-- State B-F: File summary narrow row (Height 72 DIP) -->
+            <Border Name="FileNarrowRow" Classes="fileNarrowRow" IsVisible="{Binding HasFiles}" VerticalAlignment="Top">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                    <!-- File domain icon plate -->
+                    <Border Grid.Column="0" Width="44" Height="44" CornerRadius="10"
+                            Background="{Binding PrimaryDomainColor}" Margin="0,0,14,0"
+                            VerticalAlignment="Center">
+                        <Viewbox Classes="ic" Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Canvas Width="24" Height="24">
+                                <Path Data="M6,2 H14 L18,6 V22 H6 Z M14,2 V6 H18"
+                                      Stroke="#FFFFFF"
+                                      Fill="Transparent" />
+                            </Canvas>
+                        </Viewbox>
+                    </Border>
+
+                    <!-- File Summary Texts -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="{Binding FileSummaryHeader}" FontSize="16" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding FileSummarySubtext}" Classes="secondary" FontSize="13" TextTrimming="CharacterEllipsis" MaxWidth="500" HorizontalAlignment="Left" />
+                    </StackPanel>
+
+                    <!-- Actions: Manage Files and Re-pick -->
+                    <Button Grid.Column="2" Classes="secondary" Name="ManageFilesButton"
+                            Content="管理檔案" Margin="0,0,8,0" VerticalAlignment="Center"
+                            IsEnabled="{Binding !IsExecuting}" />
+                    <Button Grid.Column="3" Classes="subtle" Name="RePickFilesButton"
+                            Content="重新選" VerticalAlignment="Center"
+                            IsEnabled="{Binding !IsExecuting}" />
+                </Grid>
+            </Border>
+
         </Panel>
 
-        <!-- State B-F: File summary narrow row (Height 72 DIP) -->
-        <Border Grid.Row="0" Classes="fileNarrowRow" IsVisible="{Binding HasFiles}">
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                <!-- File domain icon plate -->
-                <Border Grid.Column="0" Width="44" Height="44" CornerRadius="10"
-                        Background="{Binding PrimaryDomainColor}" Margin="0,0,14,0"
-                        VerticalAlignment="Center">
-                    <Path Data="M6,2 H14 L18,6 V22 H6 Z M14,2 V6 H18"
-                          Stroke="#FFFFFF" StrokeThickness="1.6"
-                          Fill="Transparent" Width="20" Height="20" Stretch="Uniform"
-                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Border>
-
-                <!-- File Summary Texts -->
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                    <TextBlock Text="{Binding FileSummaryHeader}" FontSize="16" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding FileSummarySubtext}" Classes="secondary" FontSize="13" TextTrimming="CharacterEllipsis" MaxWidth="500" />
-                </StackPanel>
-
-                <!-- Actions: Manage Files and Re-pick -->
-                <Button Grid.Column="2" Classes="secondary" Name="ManageFilesButton"
-                        Content="管理檔案" Margin="0,0,8,0" VerticalAlignment="Center"
-                        IsEnabled="{Binding !IsExecuting}" />
-                <Button Grid.Column="3" Classes="subtle" Name="RePickFilesButton"
-                        Content="重新選" VerticalAlignment="Center"
-                        IsEnabled="{Binding !IsExecuting}" />
-            </Grid>
-        </Border>
-
         <!-- ==================== BOTTOM AREA ==================== -->
-        <Border Grid.Row="2" Classes="section">
+        <Border Grid.Row="2" Name="BottomSection" Classes="section">
             <Panel>
 
                 <!-- STATE A: No files yet -->
-                <Panel IsVisible="{Binding IsDropZone}">
-                    <!-- A1: If recent history exists, show recent list -->
-                    <StackPanel IsVisible="{Binding HasRecentHistory}" Spacing="10">
-                        <Grid ColumnDefinitions="*,Auto">
+                <Panel Name="StartBottom" IsVisible="{Binding IsDropZone}">
+                    <!-- A1: 最近處理, the same rows and buttons as History (spec 4.1). The section hugs its rows
+                         (at most 3); rows that do not fit are left out, never cut (spec 5.2). -->
+                    <Grid IsVisible="{Binding HasRecentHistory}" RowDefinitions="Auto,*" VerticalAlignment="Top">
+                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,-6,0,6">
                             <TextBlock Grid.Column="0" Text="最近處理" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
                             <Button Grid.Column="1" Classes="link" Name="ViewAllHistoryButton" Content="全部歷史 ›" FontSize="13" />
                         </Grid>
-                        <ItemsControl ItemsSource="{Binding RecentItems}">
+                        <ItemsControl Grid.Row="1" ItemsSource="{Binding RecentItems}" Margin="-20,0,-20,-14">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <controls:FitStackPanel Spacing="0" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Classes="card" Margin="0,0,0,8" Padding="14,10">
-                                        <Grid ColumnDefinitions="Auto,*,Auto">
-                                            <Path Grid.Column="0" Data="M12,4 V15 M7,10 L12,15 L17,10"
-                                                  Stroke="{DynamicResource Clk.TextSecondary}" StrokeThickness="1.5"
-                                                  Width="14" Height="14" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="2" Text="{Binding Subtitle}" Classes="secondary" FontSize="13" VerticalAlignment="Center" />
-                                        </Grid>
-                                    </Border>
+                                <DataTemplate x:DataType="vm:HistoryRowViewModel">
+                                    <rows:HistoryRowView />
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                    </StackPanel>
+                    </Grid>
 
                     <!-- A2: First-time hint if no history -->
                     <StackPanel IsVisible="{Binding !HasRecentHistory}" Orientation="Horizontal" Spacing="22"
@@ -169,10 +212,12 @@
                 </Panel>
 
                 <!-- STATE B1: Action Catalog (Grid of available actions) -->
-                <Grid RowDefinitions="Auto,*" IsVisible="{Binding IsActionCatalog}">
+                <Grid Name="CatalogPanel" RowDefinitions="Auto,Auto,*,Auto" IsVisible="{Binding IsActionCatalog}">
                     <TextBlock Grid.Row="0" Text="要對這些檔案做什麼？" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,16" />
-                    <ScrollViewer Grid.Row="1">
-                        <ItemsControl ItemsSource="{Binding AvailableActions}">
+                    <ScrollViewer Grid.Row="2" Name="CatalogScroll">
+                        <!-- Top-aligned: cards keep their own height instead of being stretched to fill the viewport,
+                             which made the content exactly as tall as the view and showed a scroll bar from rounding. -->
+                        <ItemsControl Name="CatalogItems" ItemsSource="{Binding AvailableActions}" VerticalAlignment="Top">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <UniformGrid Columns="4" />
@@ -184,14 +229,13 @@
                                             ToolTip.Tip="{Binding ToolTip}"
                                             Command="{Binding $parent[UserControl].((vm:ConvertViewModel)DataContext).SelectAction}"
                                             CommandParameter="{Binding}">
-                                        <StackPanel Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <StackPanel Classes="cardStack" HorizontalAlignment="Center" VerticalAlignment="Center">
                                             <Border Classes="catalogPlate" HorizontalAlignment="Center">
-                                                <Path Data="{Binding IconGeometry}"
-                                                      Stroke="{Binding ColorHex}" StrokeThickness="2"
-                                                      Fill="Transparent" Width="28" Height="28" Stretch="Uniform"
-                                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                <!-- Official feature icon (assets/features, same as the context menu), 52 on a 68 plate (spec 4.1). -->
+                                                <Image Classes="cardIcon" Source="{Binding Icon}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
                                             </Border>
-                                            <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" />
+                                            <TextBlock Classes="cardName" Text="{Binding Name}" FontWeight="SemiBold" HorizontalAlignment="Center" />
                                         </StackPanel>
                                     </Button>
                                 </DataTemplate>
@@ -201,43 +245,27 @@
                 </Grid>
 
                 <!-- STATE B2: Action Page (Options and Start) -->
-                <Grid RowDefinitions="Auto,*,Auto" IsVisible="{Binding IsActionPage}">
+                <Grid Name="ActionPagePanel" RowDefinitions="Auto,*,Auto" IsVisible="{Binding IsActionPage}">
                     <!-- Title Row: Back button + Icon + Name -->
-                    <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*" Margin="0,0,0,16">
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,0,0,16">
                         <Button Grid.Column="0" Classes="link" Name="BackToCatalogButton"
                                 Content="‹ 所有動作" FontSize="15" Margin="0,0,16,0" VerticalAlignment="Center" />
-                        <Border Grid.Column="1" Width="32" Height="32" CornerRadius="8"
-                                Background="{Binding SelectedAction.ColorHex}" Margin="0,0,10,0" VerticalAlignment="Center">
-                            <Path Data="{Binding SelectedAction.IconGeometry}"
-                                  Stroke="#FFFFFF" StrokeThickness="1.5"
-                                  Fill="Transparent" Width="16" Height="16" Stretch="Uniform"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
+                        <!-- The feature icon is its own coloured tile, so it gets no extra plate (spec 7). -->
+                        <Image Grid.Column="1" Name="ActionIcon" Width="32" Height="32" Margin="0,0,10,0"
+                               VerticalAlignment="Center" Source="{Binding SelectedAction.Icon}" />
                         <TextBlock Grid.Column="2" Text="{Binding SelectedAction.FullFeatureName}"
                                    FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
                     </Grid>
 
-                    <!-- Options Card Area -->
-                    <ScrollViewer Grid.Row="1">
-                        <StackPanel Spacing="12">
-                            <Border Classes="card">
-                                <StackPanel Spacing="10">
-                                    <TextBlock Text="選項設定" FontSize="15" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding SelectedAction.ToolTip}" Classes="secondary" FontSize="14" />
-                                    <!-- Options Hint -->
-                                    <TextBlock Text="這個動作已備妥最佳預設值，確認存檔位置後即可開始。"
-                                               Classes="secondary" FontSize="13" Margin="0,6,0,0" />
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-                    </ScrollViewer>
-
                     <!-- Bottom Bar: Output Path + Start Button -->
                     <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,16,0,0" VerticalAlignment="Bottom">
-                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <Path Data="M3,4 H9 L11,6 H21 V18 H3 Z" Stroke="{DynamicResource Clk.TextSecondary}"
-                                  StrokeThickness="1.5" Fill="Transparent" Width="16" Height="16" Stretch="Uniform"
-                                  VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
+                                    IsVisible="{Binding ShowsOutputLocation}">
+                            <Viewbox Classes="ic" Width="16" Height="16" VerticalAlignment="Center">
+                                <Canvas Width="24" Height="24">
+                                    <Path Data="M3,4 H9 L11,6 H21 V18 H3 Z" Stroke="{DynamicResource Clk.TextSecondary}" Fill="Transparent" />
+                                </Canvas>
+                            </Viewbox>
                             <TextBlock Text="{Binding OutputSummaryText}" Classes="secondary" FontSize="14" VerticalAlignment="Center" />
                         </StackPanel>
                         <Button Grid.Column="1" Classes="primary" Name="StartConversionButton"
@@ -256,9 +284,13 @@
                                         <Grid ColumnDefinitions="*,Auto,Auto">
                                             <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="14" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                             <TextBlock Grid.Column="1" Text="{Binding FileSizeText}" Classes="secondary" FontSize="13" Margin="12,0" VerticalAlignment="Center" />
-                                            <Button Grid.Column="2" Classes="subtle" Content="✕"
+                                            <Button Grid.Column="2" Classes="subtle" Padding="8" ToolTip.Tip="移除" AutomationProperties.Name="移除"
                                                     Command="{Binding $parent[UserControl].((vm:ConvertViewModel)DataContext).RemoveFile}"
-                                                    CommandParameter="{Binding Path}" />
+                                                    CommandParameter="{Binding Path}">
+                                                <Viewbox Classes="ic" Width="16" Height="16">
+                                                    <Canvas Width="24" Height="24"><Path Data="M6,6 L18,18 M18,6 L6,18" Stroke="{DynamicResource Clk.TextSecondary}" /></Canvas>
+                                                </Viewbox>
+                                            </Button>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
@@ -277,12 +309,13 @@
                     <ScrollViewer Grid.Row="2">
                         <ItemsControl ItemsSource="{Binding SelectedFiles}">
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate>
+                                <DataTemplate x:DataType="vm:FileItemViewModel">
                                     <Border Classes="card" Margin="0,0,0,6" Padding="12,8">
                                         <Grid ColumnDefinitions="*,Auto">
-                                            <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="14" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="1" Text="處理中..." Classes="secondary" FontSize="13" VerticalAlignment="Center" />
-                                        </Grid>
+                                            <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="14" VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="1" Text="{Binding StatusText}" Classes="secondary" FontSize="13" VerticalAlignment="Center" />
+                                        </Grid>                                        </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -303,12 +336,13 @@
                                         <Grid ColumnDefinitions="Auto,*,Auto">
                                             <!-- Status Icon -->
                                             <Panel Grid.Column="0" Width="20" Height="20" Margin="0,0,12,0" VerticalAlignment="Center">
-                                                <Path Data="M4,10 L8,14 L16,6" Stroke="{DynamicResource Clk.Success}"
-                                                      StrokeThickness="2" Fill="Transparent" Stretch="Uniform"
-                                                      IsVisible="{Binding Succeeded}" />
-                                                <Path Data="M6,6 L14,14 M6,14 L14,6" Stroke="{DynamicResource Clk.Danger}"
-                                                      StrokeThickness="2" Fill="Transparent" Stretch="Uniform"
-                                                      IsVisible="{Binding !Succeeded}" />
+                                                <!-- Same status icons as the history rows: gray ✓, red ✕ (spec 7). -->
+                                                <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding Succeeded}">
+                                                    <Canvas Width="24" Height="24"><Path Data="M5,12.5 L9.5,17 L19,7.5" Stroke="{DynamicResource Clk.TextTertiary}" /></Canvas>
+                                                </Viewbox>
+                                                <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding !Succeeded}">
+                                                    <Canvas Width="24" Height="24"><Path Data="M6,6 L18,18 M18,6 L6,18" Stroke="{DynamicResource Clk.Danger}" /></Canvas>
+                                                </Viewbox>
                                             </Panel>
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                                 <TextBlock Text="{Binding FileName}" FontSize="14" FontWeight="SemiBold" />
