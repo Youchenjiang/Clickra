@@ -237,6 +237,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             OnPropertyChanged();
             OnPropertyChanged(nameof(StartButtonText));
             OnPropertyChanged(nameof(IsRenameAction));
+            OnPropertyChanged(nameof(IsOptionsAction));
             OnPropertyChanged(nameof(IsOrderAction));
             OnPropertyChanged(nameof(IsSplitAction));
             OnPropertyChanged(nameof(ShowsOutputLocation));
@@ -252,6 +253,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         : SelectedAction is not null ? $"開始{SelectedAction.Name}" : "開始";
 
     /// <summary>The options card of the open action (spec 4.9).</summary>
+    public ActionOptionsViewModel Options { get; } = new();
 
     public bool CanStart => !IsExecuting && SelectedAction is not null && _workspace.CanStart &&
                             (!IsRenameAction || Rename.CanRename) && (!IsOrderAction || Order.HasOutputName) && (!IsSplitAction || Split.IsReady) && Options.IsReady;
@@ -430,10 +432,12 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         if (!_workspace.TrySelectCommand(action.Command)) return;
         if (string.Equals(action.Command, ConvertWorkspaceController.BatchRenameCommand, StringComparison.OrdinalIgnoreCase))
             Rename.SetFiles(SelectedFiles.Select(f => f.Path));
+        Options.Reset(action.Command);
         if (action.Command is "merge-pdf" or "img-merge" or "img-stitch")
             Order.SetFiles(action.Command, SelectedFiles.Select(f => f.Path));
         if (action.Command == "split-pdf")
             Split.SetFiles(SelectedFiles.Select(f => f.Path).ToList());
+        Options.SetAllowedImageFormats(_workspace.IsCommandCompatible);
         SelectedAction = action;
         State = ConvertWorkflowState.ActionPage;
     }
@@ -503,7 +507,8 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         }
         else
         {
-            options = new ConversionExecutionOptions();
+            options = Options.Build();
+            command = Options.ResolveCommand(command);
         }
 
         try

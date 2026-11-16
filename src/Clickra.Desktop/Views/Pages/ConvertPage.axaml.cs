@@ -18,6 +18,52 @@ namespace Clickra.Desktop.Views.Pages;
 
 public partial class ConvertPage : UserControl
 {
+    private const double MinOptionGap = 14, MaxOptionGap = 24;
+    private bool _optionGapQueued;
+
+    private void QueueFitOptionGap()
+    {
+        if (_optionGapQueued) return;
+        _optionGapQueued = true;
+        Dispatcher.UIThread.Post(() => { _optionGapQueued = false; FitOptionGap(); }, DispatcherPriority.Background);
+    }
+
+    /// <summary>
+    /// Spec 4.9: when the window has room, the gaps between options grow (14 up to 24) instead of leaving
+    /// empty space under the card; when it is tight they stay at 14 so the card fits without scrolling
+    /// for as long as possible. The card is measured at two gaps to know how many gaps it has.
+    /// </summary>
+    private void FitOptionGap()
+    {
+        if (!OptionsScroller.IsVisible) return;
+        double viewport = OptionsScroller.Bounds.Height, width = OptionsScroller.Bounds.Width;
+        if (viewport <= 0 || width <= 0) return;
+
+        List<StackPanel> stacks = OptionsCard.GetVisualDescendants().OfType<StackPanel>()
+            .Where(p => p.Classes.Contains("optGap") && p.IsEffectivelyVisible).ToList();
+        List<OptionRow> rows = OptionsCard.GetVisualDescendants().OfType<OptionRow>()
+            .Where(r => r.IsEffectivelyVisible).ToList();
+        double current = stacks.Count > 0 ? stacks[0].Spacing : MinOptionGap;
+
+        double HeightAt(double gap)
+        {
+            foreach (StackPanel p in stacks) p.Spacing = gap;
+            foreach (OptionRow r in rows) r.RowSpacing = gap;
+            // A parent keeps its cached size until it is invalidated itself, so invalidate the whole card.
+            foreach (Layoutable l in OptionsCard.GetVisualDescendants().OfType<Layoutable>()) l.InvalidateMeasure();
+            OptionsCard.InvalidateMeasure();
+            OptionsCard.Measure(new Size(width, double.PositiveInfinity));
+            return OptionsCard.DesiredSize.Height;
+        }
+
+        double atMin = HeightAt(MinOptionGap);
+        double perGap = HeightAt(MinOptionGap + 1) - atMin; // how many gaps the visible card has
+        double gap = perGap <= 0 ? MinOptionGap
+            : Math.Clamp(MinOptionGap + Math.Floor((viewport - atMin) / perGap), MinOptionGap, MaxOptionGap);
+        HeightAt(gap);
+        if (Math.Abs(gap - current) > 0.1) OptionsCard.InvalidateMeasure();
+    }
+
     public ConvertPage()
     {
         InitializeComponent();

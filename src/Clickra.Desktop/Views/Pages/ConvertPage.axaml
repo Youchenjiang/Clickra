@@ -46,6 +46,11 @@
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="MinHeight" Value="130" />
         </Style>
+        <Style Selector="TextBlock.optLabel">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
         <!-- Card contents (normal size: icon 52 on a 68 plate, name 20; spec 4.1). -->
         <Style Selector="StackPanel.cardStack">
             <Setter Property="Spacing" Value="10" />
@@ -255,6 +260,20 @@
                                VerticalAlignment="Center" Source="{Binding SelectedAction.Icon}" />
                         <TextBlock Grid.Column="2" Text="{Binding SelectedAction.FullFeatureName}"
                                    FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <!-- 設為預設值 for the whole card, at the right of the title row (spec 4.9): next to the action's
+                             name it reads as "this action's settings", away from the one-off 存放位置 at the bottom. -->
+                        <Panel Grid.Column="3" VerticalAlignment="Center" IsVisible="{Binding IsOptionsAction}">
+                            <Button Classes="secondary" Content="設為預設值" Command="{Binding Options.SaveDefault}"
+                                    IsVisible="{Binding Options.ShowSaveDefault}" />
+                            <StackPanel Orientation="Horizontal" Spacing="6" MinHeight="32" IsVisible="{Binding Options.ShowSavedNote}">
+                                <Viewbox Classes="ic" Width="16" Height="16" VerticalAlignment="Center">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="M5,12.5 L9.5,17 L19,7.5" Stroke="{DynamicResource Clk.Success}" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock Text="已設為預設值" Classes="secondary" FontSize="13" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Panel>
                     </Grid>
 
                     <!-- 批次重新命名: full workspace, rules left and live preview right (spec 4.6). -->
@@ -502,6 +521,173 @@
                             </Grid>
                         </StackPanel>
                     </Grid>
+
+                    <!-- Options card (spec 4.9, decision 2026-11-17 D2): every option is shown, none hidden under
+                         進階選項. Each option is its label above its control; short ones sit side by side in an
+                         OptionRow and wrap when the window is narrow. Values start from the feature defaults and
+                         change only this run; 設為預設值 at the bottom saves what is on the card. The gap between options
+                         grows from 14 up to 24 when the window has room (FitOptionGap). -->
+                    <ScrollViewer Grid.Row="1" Name="OptionsScroller" IsVisible="{Binding IsOptionsAction}">
+                        <Border Classes="card" Name="OptionsCard" Padding="20,16" VerticalAlignment="Top">
+                            <StackPanel>
+                                    <!-- PDF 壓縮 -->
+                                    <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.IsCompressPdf}">
+                                        <StackPanel Spacing="6">
+                                            <TextBlock Classes="optLabel" Text="壓縮程度" />
+                                            <TextBlock Text="{Binding Options.PdfLevelHint}" Classes="secondary" FontSize="13" />
+                                            <controls:StepSlider Steps="{Binding Options.PdfLevelSteps}" SelectedIndex="{Binding Options.PdfLevel, Mode=TwoWay}" />
+                                        </StackPanel>
+                                        <controls:OptionRow MinItemWidth="240">
+                                            <CheckBox Content="移除內嵌字型（檔案更小，少見的字可能顯示不同）" IsChecked="{Binding Options.StripFonts}" />
+                                            <CheckBox Content="精簡內容串流" IsChecked="{Binding Options.MinifyContent}" />
+                                        </controls:OptionRow>
+                                    </StackPanel>
+
+                                    <!-- 圖片壓縮 -->
+                                    <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.IsImageCompress}">
+                                        <StackPanel Spacing="6">
+                                            <TextBlock Classes="optLabel" Text="壓縮程度" />
+                                            <controls:StepSlider Steps="{Binding Options.ImageLevelSteps}" SelectedIndex="{Binding Options.ImageLevel, Mode=TwoWay}" />
+                                        </StackPanel>
+                                        <StackPanel Spacing="6">
+                                            <TextBlock Classes="optLabel" Text="最大邊長" />
+                                            <ComboBox ItemsSource="{Binding Options.MaxDimChoices}" SelectedIndex="{Binding Options.ImageMaxDimIndex, Mode=TwoWay}"
+                                                      HorizontalAlignment="Left" MinWidth="260" />
+                                            <TextBlock Text="比這個小的圖片不會被放大" Classes="secondary" FontSize="13" />
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- PDF 轉成圖片 -->
+                                    <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.IsPdfToImage}">
+                                        <controls:OptionRow MinItemWidth="200">
+                                            <StackPanel Spacing="6">
+                                                <TextBlock Classes="optLabel" Text="格式" />
+                                                <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.PdfImageFormatIndex, Mode=TwoWay}"><ListBoxItem Content="PNG" /><ListBoxItem Content="JPG" /><ListBoxItem Content="WebP" /></ListBox>
+                                            </StackPanel>
+                                            <StackPanel Spacing="6">
+                                                <TextBlock Classes="optLabel" Text="解析度" />
+                                                <ComboBox ItemsSource="{Binding Options.DpiChoices}" SelectedIndex="{Binding Options.PdfImageDpiIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+                                            </StackPanel>
+                                        </controls:OptionRow>
+                                        <controls:OptionRow MinItemWidth="200">
+                                            <StackPanel Spacing="6">
+                                                <TextBlock Classes="optLabel" Text="頁面範圍" />
+                                                <TextBox Text="{Binding Options.PdfImagePages}" PlaceholderText="全部頁面；例如 1-3, 5" />
+                                            </StackPanel>
+                                            <StackPanel Spacing="6">
+                                                <TextBlock Classes="optLabel" Text="輸出" />
+                                                <CheckBox Content="所有頁面接成一張長圖" IsChecked="{Binding Options.PdfImageStitch}" />
+                                            </StackPanel>
+                                        </controls:OptionRow>
+                                    </StackPanel>
+
+                                    <!-- PDF 翻譯 -->
+                                    <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.IsTranslate}">
+                                        <controls:OptionRow MinItemWidth="200">
+                                            <StackPanel Spacing="6">
+                                                <TextBlock Classes="optLabel" Text="翻譯成" />
+                                                <ComboBox ItemsSource="{Binding Options.TranslateChoices}" SelectedIndex="{Binding Options.TranslateLanguageIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+                                            </StackPanel>
+                                            <StackPanel Spacing="6">
+                                                <TextBlock Classes="optLabel" Text="翻譯服務" />
+                                                <ComboBox SelectedIndex="{Binding Options.TranslateEngineIndex, Mode=TwoWay}" HorizontalAlignment="Stretch"><ComboBoxItem Content="Google 翻譯" /><ComboBoxItem Content="自訂 AI 服務（在設定頁填寫網址與金鑰）" /></ComboBox>
+                                            </StackPanel>
+                                        </controls:OptionRow>
+                                        <!-- Privacy affects the result, so it is said on the card (spec 4.9). -->
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="翻譯需要連網，檔案內容會送到" Classes="secondary" FontSize="13" />
+                                            <TextBlock Text="{Binding Options.TranslateServiceName}" Classes="secondary" FontSize="13" />
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- 解密 PDF -->
+                                    <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.IsDecrypt}">
+                                        <TextBlock Classes="optLabel" Text="密碼" />
+                                        <TextBox Text="{Binding Options.Password}" PasswordChar="●" RevealPassword="False" />
+                                        <TextBlock Text="多個檔案會先用同一組密碼試；密碼只用這一次，不會儲存" Classes="secondary" FontSize="13" />
+                                    </StackPanel>
+
+                                    <!-- 圖片轉換格式（必選，沒有預設） -->
+                                    <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.IsImageFormat}">
+                                        <TextBlock Classes="optLabel" Text="轉成" />
+                                        <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.ImageFormatIndex, Mode=TwoWay}">
+                                            <ListBoxItem Content="PNG" IsEnabled="{Binding Options.ImageFormatAllowed[0]}" />
+                                            <ListBoxItem Content="JPG" IsEnabled="{Binding Options.ImageFormatAllowed[1]}" />
+                                            <ListBoxItem Content="WebP" IsEnabled="{Binding Options.ImageFormatAllowed[2]}" />
+                                            <ListBoxItem Content="GIF" IsEnabled="{Binding Options.ImageFormatAllowed[3]}" />
+                                            <ListBoxItem Content="HEIC" IsEnabled="{Binding Options.ImageFormatAllowed[4]}" />
+                                        </ListBox>
+                                    </StackPanel>
+
+                                    <!-- Markdown 轉成 PDF／Word (canvas MarkdownB / MarkdownWordB / MarkdownWordFailB, D2): template cards, what was read from a Word template, then paper, text size and code blocks side by side -->
+                                    <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.IsMarkdown}">
+                                        <controls:OptionRow MinItemWidth="160">
+                                            <StackPanel Spacing="6" IsVisible="{Binding Options.IsMarkdownPdf}">
+                                                <TextBlock Classes="optLabel" Text="紙張" />
+                                                <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.MarkdownPaperIndex, Mode=TwoWay}"><ListBoxItem Content="A4" /><ListBoxItem Content="Letter" /></ListBox>
+                                            </StackPanel>
+                                            <StackPanel Spacing="6">
+                                                <TextBlock Classes="optLabel" Text="文字縮放" />
+                                                <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.MarkdownTextSizeIndex, Mode=TwoWay}"><ListBoxItem Content="0.9 倍" /><ListBoxItem Content="1 倍" /><ListBoxItem Content="1.12 倍" /></ListBox>
+                                            </StackPanel>
+                                            <StackPanel Spacing="6">
+                                                <TextBlock Classes="optLabel" Text="程式碼區塊配色" />
+                                                <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.MarkdownCodeIndex, Mode=TwoWay}"><ListBoxItem Content="深色底" /><ListBoxItem Content="淺色底" /></ListBox>
+                                            </StackPanel>
+                                        </controls:OptionRow>
+                                    </StackPanel>
+
+                                    <!-- Office 轉成 PDF：沒有選項 -->
+                                    <TextBlock IsVisible="{Binding Options.IsOffice}" Classes="secondary" FontSize="14"
+                                               Text="這個動作沒有需要調整的選項" />
+
+                                    <!-- 列印：印表機與份數同一列，其餘並排在下面 -->
+                                    <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.IsPrint}">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="28" IsVisible="{Binding Options.HasPrinters}">
+                                            <StackPanel Spacing="6">
+                                                <TextBlock Classes="optLabel" Text="印表機" />
+                                                <ComboBox ItemsSource="{Binding Options.Printers}" SelectedIndex="{Binding Options.PrinterIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Spacing="6">
+                                                <TextBlock Classes="optLabel" Text="份數" />
+                                                <NumericUpDown Value="{Binding Options.Copies, Mode=TwoWay}" Minimum="1" Maximum="99" Increment="1" FormatString="0" Width="140" />
+                                            </StackPanel>
+                                        </Grid>
+                                        <StackPanel Spacing="6" IsVisible="{Binding !Options.HasPrinters}">
+                                            <TextBlock Classes="optLabel" Text="印表機" />
+                                            <TextBlock Classes="secondary" FontSize="14" Text="這台電腦沒有可用的印表機" />
+                                        </StackPanel>
+                                        <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.HasPrinters}">
+                                        <controls:OptionRow MinItemWidth="200">
+                                            <StackPanel Spacing="6">
+                                                <TextBlock Classes="optLabel" Text="頁面範圍" />
+                                                <TextBox Text="{Binding Options.PrintPages}" PlaceholderText="全部頁面；例如 1-3, 5" />
+                                            </StackPanel>
+                                            <StackPanel Spacing="6">
+                                                <TextBlock Classes="optLabel" Text="紙張" />
+                                                <ComboBox ItemsSource="{Binding Options.PaperSizes}" SelectedIndex="{Binding Options.PaperIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+                                            </StackPanel>
+                                        </controls:OptionRow>
+                                        <controls:OptionRow MinItemWidth="380">
+                                            <StackPanel Spacing="6">
+                                                <TextBlock Classes="optLabel" Text="雙面" />
+                                                <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.DuplexIndex, Mode=TwoWay}"><ListBoxItem Content="單面" /><ListBoxItem Content="雙面（長邊翻頁）" /><ListBoxItem Content="雙面（短邊翻頁）" /></ListBox>
+                                            </StackPanel>
+                                            <StackPanel Spacing="6">
+                                                <TextBlock Classes="optLabel" Text="方向" />
+                                                <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.OrientationIndex, Mode=TwoWay}"><ListBoxItem Content="自動" /><ListBoxItem Content="直向" /><ListBoxItem Content="橫向" /></ListBox>
+                                            </StackPanel>
+                                        </controls:OptionRow>
+                                        <controls:OptionRow MinItemWidth="200">
+                                            <CheckBox Content="縮放至紙張大小" IsChecked="{Binding Options.FitToPage}" />
+                                            <CheckBox Content="加深淺色文字" IsChecked="{Binding Options.DarkenText}" />
+                                        </controls:OptionRow>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                            </StackPanel>
+                        </Border>
+                    </ScrollViewer>
 
                     <!-- Bottom Bar: Output Path + Start Button -->
                     <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,16,0,0" VerticalAlignment="Bottom">
