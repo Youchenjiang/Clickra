@@ -112,6 +112,10 @@ public static class ClickraSettings
     public const int MaxImageCompressLevel = 3;
     public const int MinImageCompressMaxDimension = 0;
     public const int MaxImageCompressMaxDimension = int.MaxValue;
+    public const int MinPdfToImageDpi = 72;
+    public const int MaxPdfToImageDpi = 600;
+    public const int MinPrintCopies = 1;
+    public const int MaxPrintCopies = 99;
 
     // ─── 設定值的列舉字彙 ─────────────────────────────────────────────────
     public const string OutputDirDesktop = "desktop";
@@ -195,6 +199,8 @@ public static class ClickraSettings
             [PdfCompressImageLevel] = new(MinPdfCompressLevel, MaxPdfCompressLevel, 1),
             [ImageCompressLevel] = new(MinImageCompressLevel, MaxImageCompressLevel, 1),
             [ImageCompressMaxDimension] = new(MinImageCompressMaxDimension, MaxImageCompressMaxDimension, 0),
+            [PdfToImageDpi] = new(MinPdfToImageDpi, MaxPdfToImageDpi, 150),
+            [PrintCopies] = new(MinPrintCopies, MaxPrintCopies, 1),
         };
 
     /// <summary>取得指定數值設定的合法範圍宣告；若未註冊則回傳 false。</summary>

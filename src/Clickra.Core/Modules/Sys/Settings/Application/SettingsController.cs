@@ -67,8 +67,10 @@ public static class SettingsController
 
     public static int PdfToImageDpi
     {
-        get => int.TryParse(ReadText(ClickraSettings.PdfToImageDpi), out int dpi) && dpi > 0 ? dpi : int.Parse(ClickraSettings.DefaultPdfToImageDpi);
-        set => WriteText(ClickraSettings.PdfToImageDpi, Math.Max(1, value).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        get => int.TryParse(ReadText(ClickraSettings.PdfToImageDpi), out int dpi)
+            ? ClickraSettings.ClampNumericSetting(ClickraSettings.PdfToImageDpi, dpi)
+            : int.Parse(ClickraSettings.DefaultPdfToImageDpi);
+        set => WriteText(ClickraSettings.PdfToImageDpi, ClickraSettings.ClampNumericSetting(ClickraSettings.PdfToImageDpi, value).ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 
     public static bool PdfToImageStitch
@@ -85,8 +87,10 @@ public static class SettingsController
 
     public static int PrintCopies
     {
-        get => int.TryParse(ReadText(ClickraSettings.PrintCopies), out int copies) ? Math.Clamp(copies, 1, 99) : 1;
-        set => WriteText(ClickraSettings.PrintCopies, Math.Clamp(value, 1, 99).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        get => int.TryParse(ReadText(ClickraSettings.PrintCopies), out int copies)
+            ? ClickraSettings.ClampNumericSetting(ClickraSettings.PrintCopies, copies)
+            : int.Parse(ClickraSettings.DefaultPrintCopies);
+        set => WriteText(ClickraSettings.PrintCopies, ClickraSettings.ClampNumericSetting(ClickraSettings.PrintCopies, value).ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 
     public static string PrintDuplex
