@@ -238,6 +238,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             OnPropertyChanged(nameof(StartButtonText));
             OnPropertyChanged(nameof(IsRenameAction));
             OnPropertyChanged(nameof(IsOrderAction));
+            OnPropertyChanged(nameof(IsSplitAction));
             OnPropertyChanged(nameof(ShowsOutputLocation));
             OnPropertyChanged(nameof(CanStart));
         }
@@ -261,6 +262,8 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     public bool IsOptionsAction => SelectedAction is not null && !IsRenameAction && !IsOrderAction && !IsSplitAction;
 
     /// <summary>PDF 分割: page thumbnails and cut points (spec 4.6).</summary>
+    public SplitWorkspaceViewModel Split { get; } = new();
+    public bool IsSplitAction => SelectedAction?.Command == "split-pdf";
     /// <summary>Printing and renaming produce no new file, so the page has no 「存到…」 line.</summary>
     public bool ShowsOutputLocation => SelectedAction is not null && !IsRenameAction && SelectedAction.Command != "print-pdf";
 
@@ -429,6 +432,8 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             Rename.SetFiles(SelectedFiles.Select(f => f.Path));
         if (action.Command is "merge-pdf" or "img-merge" or "img-stitch")
             Order.SetFiles(action.Command, SelectedFiles.Select(f => f.Path));
+        if (action.Command == "split-pdf")
+            Split.SetFiles(SelectedFiles.Select(f => f.Path).ToList());
         SelectedAction = action;
         State = ConvertWorkflowState.ActionPage;
     }
@@ -491,6 +496,10 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         else if (IsOrderAction)
         {
             options = Order.BuildOptions();
+        }
+        else if (IsSplitAction)
+        {
+            options = Split.BuildOptions();
         }
         else
         {

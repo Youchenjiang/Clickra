@@ -372,6 +372,71 @@
                         </Border>
                     </Grid>
 
+                    <!-- PDF 分割 (spec 4.6): three ways to split on top, page tiles below (the only part that scrolls).
+                         Custom mode: click the gap between two pages to add or remove a cut. The band under each page
+                         shows which part it goes to, alternating two colours. -->
+                    <Grid Grid.Row="1" IsVisible="{Binding IsSplitAction}" RowDefinitions="Auto,*" RowSpacing="12">
+                        <WrapPanel Grid.Row="0" Orientation="Horizontal">
+                            <ListBox Classes="segmented" SelectedIndex="{Binding Split.Mode, Mode=TwoWay}" Margin="0,0,10,0">
+                                <ListBoxItem Content="自訂切點" IsEnabled="{Binding Split.IsSingleFile}" />
+                                <ListBoxItem Content="每一頁一份" />
+                                <ListBoxItem Content="每 N 頁一份" />
+                            </ListBox>
+                            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding Split.IsFixed}" VerticalAlignment="Center" Margin="0,0,10,0">
+                                <TextBlock Text="每" VerticalAlignment="Center" />
+                                <NumericUpDown Value="{Binding Split.PagesPerPart, Mode=TwoWay}" Minimum="1" Increment="1" FormatString="0"
+                                               Width="110" VerticalAlignment="Center" />
+                                <TextBlock Text="頁一份" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding Split.Hint}" Classes="secondary" FontSize="13" VerticalAlignment="Center" />
+                        </WrapPanel>
+                        <Border Grid.Row="1" Classes="card" Padding="12">
+                            <Panel>
+                                <TextBlock IsVisible="{Binding Split.HasMessage}" Text="{Binding Split.Message}" Classes="secondary"
+                                           FontSize="14" TextWrapping="Wrap" />
+                                <ScrollViewer IsVisible="{Binding !Split.HasMessage}">
+                                    <ItemsControl ItemsSource="{Binding Split.Pages}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:SplitPageViewModel">
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                                    <StackPanel Width="84" Spacing="4">
+                                                        <Border Width="84" Height="108" CornerRadius="4" BorderThickness="1"
+                                                                BorderBrush="{DynamicResource Clk.CardBorder}" Background="#FFFFFF" ClipToBounds="True">
+                                                            <Panel>
+                                                                <Image Source="{Binding Thumbnail}" Stretch="Uniform" IsVisible="{Binding HasThumbnail}" />
+                                                                <TextBlock Text="{Binding Number}" Foreground="#9AA0A6" FontSize="20"
+                                                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                           IsVisible="{Binding !HasThumbnail}" />
+                                                            </Panel>
+                                                        </Border>
+                                                        <Panel Height="4">
+                                                            <Border CornerRadius="2" Background="{DynamicResource Clk.Accent}" IsVisible="{Binding IsOddPart}" />
+                                                            <Border CornerRadius="2" Background="#F2A33A" IsVisible="{Binding !IsOddPart}" />
+                                                        </Panel>
+                                                        <TextBlock Text="{Binding Number}" FontSize="12" Classes="secondary" HorizontalAlignment="Center" />
+                                                    </StackPanel>
+                                                    <!-- The gap after a page: a cut shows as a dashed line with scissors-like marks. -->
+                                                    <Button Width="18" Height="108" Padding="0" Margin="2,0" VerticalAlignment="Top"
+                                                            Background="Transparent" BorderThickness="0" IsVisible="{Binding HasGap}"
+                                                            IsEnabled="{Binding CanEditGap}" Command="{Binding ToggleCut}"
+                                                            ToolTip.Tip="加上或取消切點">
+                                                        <Panel>
+                                                            <Rectangle Width="2" Height="96" Fill="{DynamicResource Clk.Danger}" IsVisible="{Binding CutAfter}" />
+                                                            <Rectangle Width="1" Height="96" Fill="{DynamicResource Clk.Divider}" IsVisible="{Binding !CutAfter}" />
+                                                        </Panel>
+                                                    </Button>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Panel>
+                        </Border>
+                    </Grid>
+
                     <!-- 合併與拼接 (spec 4.6): the order list is the only part that scrolls. Rows are dragged by the
                          handle or moved with ↑ ↓; the small title row is left-aligned with its buttons right after it. -->
                     <Grid Grid.Row="1" IsVisible="{Binding IsOrderAction}" RowDefinitions="Auto,*,Auto" RowSpacing="10">
