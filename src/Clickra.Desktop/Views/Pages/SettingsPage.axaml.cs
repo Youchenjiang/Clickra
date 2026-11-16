@@ -32,27 +32,29 @@ public partial class SettingsPage : UserControl
             GeneralPanel.IsVisible = !defaults;
             DefaultsPanel.IsVisible = defaults;
         };
-        PdfCompressSlider.ValueChanged += (_, _) =>
+        // 轉好的檔案存到: choosing 自訂… opens a folder picker; cancelling keeps the previous choice.
+        OutputDirBox.SelectionChanged += async (_, _) =>
         {
-            if (DataContext is SettingsViewModel vm)
+            if (DataContext is not SettingsViewModel vm || OutputDirBox.SelectedIndex == vm.OutputDirKind) return;
+            if (OutputDirBox.SelectedIndex != 3)
             {
-                vm.PdfCompressionLevel = PdfCompressSlider.SelectedIndex;
+                vm.OutputDirKind = OutputDirBox.SelectedIndex;
+                return;
             }
-        };
-        ImageCompressSlider.ValueChanged += (_, _) =>
-        {
-            if (DataContext is SettingsViewModel vm)
+            if (TopLevel.GetTopLevel(this) is not { } top) return;
+            var folders = await top.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
             {
-                vm.ImageCompressionLevel = ImageCompressSlider.SelectedIndex;
-            }
-        };
-        AppearanceBox.SelectionChanged += (_, _) =>
-        {
-            ApplyAppearance(AppearanceBox.SelectedIndex);
-            if (DataContext is SettingsViewModel vm)
+                Title = "選擇轉好的檔案要存到哪裡",
+                AllowMultiple = false,
+            });
+            string? path = folders.Count > 0 ? Avalonia.Platform.Storage.StorageProviderExtensions.TryGetLocalPath(folders[0]) : null;
+            if (string.IsNullOrWhiteSpace(path))
             {
-                vm.ThemeIndex = AppearanceBox.SelectedIndex;
+                OutputDirBox.SelectedIndex = vm.OutputDirKind; // cancelled
+                return;
             }
+            vm.CustomOutputDir = path;
+            vm.OutputDirKind = 3;
         };
         ViewLogsButton.Click += (_, _) => (DataContext as SettingsViewModel)?.OpenLogsFolder();
         SendReportButton.Click += (_, _) => (DataContext as SettingsViewModel)?.SendDiagnosticsEmail();
@@ -65,7 +67,7 @@ public partial class SettingsPage : UserControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        SubscribeToViewModel((VisualRoot as Window)?.DataContext as MainWindowViewModel ?? DataContext as MainWindowViewModel);
+        SubscribeToViewModel((TopLevel.GetTopLevel(this) as Window)?.DataContext as MainWindowViewModel ?? DataContext as MainWindowViewModel);
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -77,7 +79,7 @@ public partial class SettingsPage : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
-        SubscribeToViewModel((VisualRoot as Window)?.DataContext as MainWindowViewModel ?? DataContext as MainWindowViewModel);
+        SubscribeToViewModel((TopLevel.GetTopLevel(this) as Window)?.DataContext as MainWindowViewModel ?? DataContext as MainWindowViewModel);
     }
 
     private static void OpenExternalUri(string uri)
@@ -138,25 +140,50 @@ public partial class SettingsPage : UserControl
         DispatcherTimer.RunOnce(() => highlight.Opacity = 0, TimeSpan.FromMilliseconds(500));
     }
 
-    // ---- Right-click menu checklist (spec 4.4). UI state only; saving to settings lands in branch 7. ----
+    // ---- Right-click menu checklist (spec 4.4). Saved to settings; the shell extension (ClickraShell.dll)
+    // reads the same settings on every right-click, so a change applies the next time the menu opens. ----
 
-    private static readonly (string Group, string[] Items)[] MenuItems =
+    private static readonly string[] ImageFormats = [.. Clickra.Shared.ContextMenuVisibility.ImageFormatCommands];
+
+    private static readonly (string Group, (string Label, string[] Commands)[] Items)[] MenuItems =
     [
-        ("文件", ["Word → PDF", "Excel → PDF", "PPT → PDF", "MD → PDF", "MD → Word"]),
-        ("PDF", ["合併 PDF", "分割 PDF", "壓縮 PDF", "PDF → 圖片", "翻譯 PDF", "解密 PDF", "列印 PDF"]),
-        ("圖片", ["圖片 → PDF", "轉換圖片格式", "壓縮圖片", "合併圖片", "拼接圖片"]),
-        ("整理", ["批次重新命名"]),
+        ("文件", [("Word → PDF", ["word2pdf"]), ("Excel → PDF", ["excel2pdf"]), ("PPT → PDF", ["ppt2pdf"]),
+                  ("MD → PDF", ["md2pdf"]), ("MD → Word", ["md2word"])]),
+        ("PDF", [("合併 PDF", ["merge-pdf"]), ("分割 PDF", ["split-pdf"]), ("壓縮 PDF", ["compress-pdf"]),
+                 ("PDF → 圖片", ["pdf2img"]), ("翻譯 PDF", ["translate-pdf"]), ("解密 PDF", ["decrypt-pdf"]),
+                 ("列印 PDF", ["print-pdf"])]),
+        ("圖片", [("圖片 → PDF", ["img2pdf"]), ("轉換圖片格式", ImageFormats), ("壓縮圖片", ["img-compress"]),
+                 ("合併圖片", ["img-merge"]), ("拼接圖片", ["img-stitch"])]),
+        ("整理", [("批次重新命名", ["batch-rename"])]),
     ];
 
     private readonly List<(CheckBox Group, List<ToggleButton> Items)> _menuGroups = [];
+    private readonly Dictionary<ToggleButton, string[]> _menuCommands = [];
+    private bool _menuLoaded;
     private bool _menuSyncing;
 
     private const string CheckGeometry = "M5,12.5 L9.5,17 L19,7.5";
     private const string PlusGeometry = "M12,6 V18 M6,12 H18";
 
+    /// <summary>A chip mark on the shared 24 x 24 icon grid (Styles/Controls.axaml, Viewbox.ic).</summary>
+    private static Viewbox Mark(string role, string geometry)
+    {
+        var box = new Viewbox
+        {
+            Child = new Canvas { Width = 24, Height = 24, Children = { new Path { Data = Geometry.Parse(geometry) } } },
+        };
+        box.Classes.Add("ic");
+        box.Classes.Add(role);
+        return box;
+    }
+
     private void BuildContextMenuChecklist()
     {
-        foreach ((string group, string[] items) in MenuItems)
+        HashSet<string> hidden = Clickra.Shared.ContextMenuVisibility.ParseHidden(
+            Clickra.Core.Storage.ClickraStorage.GetSetting(Clickra.Core.Storage.ClickraSettings.ContextMenuHidden));
+        MenuEnabledBox.IsChecked = Clickra.Core.Storage.ClickraStorage.GetSettingBool(Clickra.Core.Storage.ClickraSettings.ContextMenuEnabled);
+
+        foreach ((string group, (string Label, string[] Commands)[] items) in MenuItems)
         {
             var groupBox = new CheckBox
             {
@@ -168,12 +195,12 @@ public partial class SettingsPage : UserControl
 
             var chips = new WrapPanel { Orientation = Orientation.Horizontal };
             var toggles = new List<ToggleButton>();
-            foreach (string item in items)
+            foreach ((string item, string[] commands) in items)
             {
                 var chip = new ToggleButton
                 {
                     Classes = { "chip" },
-                    IsChecked = true,
+                    IsChecked = !commands.All(hidden.Contains),
                     Margin = new Thickness(0, 0, 8, 8),
                     Content = new StackPanel
                     {
@@ -181,14 +208,15 @@ public partial class SettingsPage : UserControl
                         Spacing = 6,
                         Children =
                         {
-                            new Path { Classes = { "checkMark" }, Data = Geometry.Parse(CheckGeometry) },
-                            new Path { Classes = { "plusMark" }, Data = Geometry.Parse(PlusGeometry) },
+                            Mark("checkMark", CheckGeometry),
+                            Mark("plusMark", PlusGeometry),
                             new TextBlock { Text = item, VerticalAlignment = VerticalAlignment.Center },
                         },
                     },
                 };
                 AutomationProperties.SetName(chip, item);
                 chip.IsCheckedChanged += (_, _) => OnMenuItemChanged();
+                _menuCommands[chip] = commands;
                 toggles.Add(chip);
                 chips.Children.Add(chip);
             }
@@ -217,6 +245,26 @@ public partial class SettingsPage : UserControl
         MenuExpandButton.Click += (_, _) => SetMenuExpanded(MenuChecklist, MenuEnabledBox.IsChecked.GetValueOrDefault(), MenuChevron, !MenuChecklist.IsVisible);
         MenuEnabledBox.IsCheckedChanged += (_, _) => UpdateMenuState();
         UpdateMenuState();
+        _menuLoaded = true;
+    }
+
+    /// <summary>Writes the master switch and the unchecked commands to settings.</summary>
+    private void SaveMenuSettings()
+    {
+        if (!_menuLoaded) return;
+        bool enabled = MenuEnabledBox.IsChecked.GetValueOrDefault();
+        string hidden = Clickra.Shared.ContextMenuVisibility.JoinHidden(
+            _menuCommands.Where(pair => !pair.Key.IsChecked.GetValueOrDefault()).SelectMany(pair => pair.Value));
+        try
+        {
+            Clickra.Core.Storage.ClickraStorage.SaveSetting(Clickra.Core.Storage.ClickraSettings.ContextMenuEnabled,
+                enabled ? Clickra.Core.Storage.ClickraSettings.ValueTrue : Clickra.Core.Storage.ClickraSettings.ValueFalse);
+            Clickra.Core.Storage.ClickraStorage.SaveSetting(Clickra.Core.Storage.ClickraSettings.ContextMenuHidden, hidden);
+        }
+        catch
+        {
+            // Best effort: the checklist still shows the user's choice.
+        }
     }
 
     private static void SetMenuExpanded(Control checklist, bool isEnabled, Control chevron, bool expanded)
@@ -262,6 +310,7 @@ public partial class SettingsPage : UserControl
         MenuExpandButton.IsVisible = enabled;
         if (!enabled) SetMenuExpanded(MenuChecklist, false, MenuChevron, false);
         MenuSummary.Text = FormatMenuSummary(enabled, shown, total);
+        SaveMenuSettings();
     }
 
     private static string FormatMenuSummary(bool enabled, int shown, int total)
@@ -270,17 +319,5 @@ public partial class SettingsPage : UserControl
         if (shown == total) return $"{total} 項全部顯示（預設）";
         if (shown == 0) return "沒有勾選任何功能，右鍵選單不會出現 Clickra";
         return $"顯示 {shown} 項，已隱藏 {total - shown} 項";
-    }
-
-    // Order matches the spec: 淺色 (default), 深色, 跟隨系統.
-    private static void ApplyAppearance(int index)
-    {
-        if (Application.Current is null) return;
-        Application.Current.RequestedThemeVariant = index switch
-        {
-            1 => ThemeVariant.Dark,
-            2 => ThemeVariant.Default,
-            _ => ThemeVariant.Light,
-        };
     }
 }
