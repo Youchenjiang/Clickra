@@ -237,6 +237,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             OnPropertyChanged();
             OnPropertyChanged(nameof(StartButtonText));
             OnPropertyChanged(nameof(IsRenameAction));
+            OnPropertyChanged(nameof(IsOrderAction));
             OnPropertyChanged(nameof(ShowsOutputLocation));
             OnPropertyChanged(nameof(CanStart));
         }
@@ -264,6 +265,8 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     public bool ShowsOutputLocation => SelectedAction is not null && !IsRenameAction && SelectedAction.Command != "print-pdf";
 
     /// <summary>合併與拼接: the order list workspace (spec 4.6).</summary>
+    public OrderWorkspaceViewModel Order { get; } = new();
+    public bool IsOrderAction => SelectedAction?.Command is "merge-pdf" or "img-merge" or "img-stitch";
 
     public string FileSummaryHeader
     {
@@ -424,6 +427,8 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         if (!_workspace.TrySelectCommand(action.Command)) return;
         if (string.Equals(action.Command, ConvertWorkspaceController.BatchRenameCommand, StringComparison.OrdinalIgnoreCase))
             Rename.SetFiles(SelectedFiles.Select(f => f.Path));
+        if (action.Command is "merge-pdf" or "img-merge" or "img-stitch")
+            Order.SetFiles(action.Command, SelectedFiles.Select(f => f.Path));
         SelectedAction = action;
         State = ConvertWorkflowState.ActionPage;
     }
@@ -473,7 +478,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         var controller = new ConversionExecutionController();
         string command = SelectedAction.Command;
         // Merge and stitch run in the order shown in the workspace.
-        var files = SelectedFiles.Select(f => f.Path).ToArray();
+        var files = (IsOrderAction ? Order.OrderedFiles : SelectedFiles.Select(f => f.Path)).ToArray();
 
         var options = new Dictionary<string, object>();
         Dictionary<string, string>? renamed = null;
@@ -482,6 +487,10 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             // Run exactly the plan shown in the preview.
             options = Rename.BuildExecutionOptions();
             renamed = Rename.Preview.Where(r => r.IsChanged).ToDictionary(r => r.NewName, r => r.OldName, StringComparer.OrdinalIgnoreCase);
+        }
+        else if (IsOrderAction)
+        {
+            options = Order.BuildOptions();
         }
         else
         {

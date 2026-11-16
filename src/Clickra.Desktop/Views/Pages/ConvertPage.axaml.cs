@@ -84,6 +84,34 @@ public partial class ConvertPage : UserControl
     private bool _startRows = true;
 
     /// <summary>選擇 Word 範本: a .docx picker; cancelling keeps the previous template (spec 4.9).</summary>
+    // ---- Dragging rows of the merge/stitch order list by their handle (spec 4.6). ----
+    private OrderItemViewModel? _dragItem;
+
+    private void OnOrderPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.Source is not Visual source) return;
+        Border? handle = source as Border ?? source.FindAncestorOfType<Border>(includeSelf: true);
+        while (handle is not null && !handle.Classes.Contains("dragHandle")) handle = handle.FindAncestorOfType<Border>();
+        if (handle?.DataContext is not OrderItemViewModel item || !e.GetCurrentPoint(handle).Properties.IsLeftButtonPressed) return;
+        _dragItem = item;
+        e.Pointer.Capture(OrderList);
+        e.Handled = true;
+    }
+
+    private void OnOrderPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_dragItem is null || GetViewModel() is not { } vm) return;
+        double y = e.GetPosition(OrderList).Y;
+        int index = 0;
+        foreach (Control row in OrderList.GetRealizedContainers())
+        {
+            if (y > row.Bounds.Y + row.Bounds.Height / 2) index++;
+        }
+        int from = vm.Order.Items.IndexOf(_dragItem);
+        int target = index > from ? index - 1 : index;
+        if (target != from) vm.Order.Move(_dragItem, target);
+    }
+
     private double _normalCardHeight;
 
     /// <summary>
