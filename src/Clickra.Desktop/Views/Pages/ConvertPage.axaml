@@ -864,11 +864,32 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:FileItemViewModel">
                                     <Border Classes="card" Margin="0,0,0,6" Padding="12,8">
-                                        <Grid ColumnDefinitions="*,Auto">
-                                            <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="14" VerticalAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Grid.Column="1" Text="{Binding StatusText}" Classes="secondary" FontSize="13" VerticalAlignment="Center" />
-                                        </Grid>                                        </StackPanel>
+                                        <StackPanel Spacing="8">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                                <!-- 需要密碼: a lock, not the red failure cross (spec 4.1). -->
+                                                <Viewbox Grid.Column="0" Classes="ic" Width="18" Height="18" IsVisible="{Binding NeedsPassword}">
+                                                    <Canvas Width="24" Height="24">
+                                                        <Path Data="M7,11 V8 A5,5 0 0 1 17,8 V11 M5,11 H19 V21 H5 Z" Stroke="{DynamicResource Clk.Warning}" />
+                                                    </Canvas>
+                                                </Viewbox>
+                                                <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="14" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="2" Text="{Binding StatusText}" Classes="secondary" FontSize="13" VerticalAlignment="Center" />
+                                            </Grid>
+                                            <StackPanel Spacing="6" IsVisible="{Binding NeedsPassword}">
+                                                <TextBlock Text="{Binding PasswordError}" Foreground="{DynamicResource Clk.Danger}" FontSize="13"
+                                                           IsVisible="{Binding HasPasswordError}" />
+                                                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                                                    <TextBox Text="{Binding PasswordInput}" PasswordChar="●" PlaceholderText="這個 PDF 有密碼，請輸入" />
+                                                    <!-- Core cancels the whole task when no password is given, so this button says 停止 until a real
+                                                         per-file skip lands (docs/specs/pdf_password_unlock_plan.md). -->
+                                                    <Button Grid.Column="1" Classes="secondary" Content="停止" Command="{Binding SkipPassword}"
+                                                            ToolTip.Tip="不輸入密碼，停止這次處理" />
+                                                    <Button Grid.Column="2" Classes="primary" Content="{Binding UnlockText}" Command="{Binding SubmitPassword}" />
+                                                </Grid>
+                                                <TextBlock Text="密碼只用這一次，不會儲存；同一批其他有密碼的檔案會先用這組試" Classes="secondary" FontSize="12" />
+                                            </StackPanel>
+                                        </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>

@@ -32,6 +32,49 @@ public sealed class FileItemViewModel(string path) : ViewModelBase
     public string Name { get; } = System.IO.Path.GetFileName(path);
     public string Extension { get; } = System.IO.Path.GetExtension(path).ToLowerInvariant();
 
+    // ----- while running (spec 4.1: 能當場補救的問題不算失敗) -----
+    private string _status = "";
+    private bool _needsPassword;
+    private string _passwordInput = "";
+    private string _passwordError = "";
+    private string _unlockText = "解鎖並繼續";
+    private System.Threading.Tasks.TaskCompletionSource<string?>? _passwordWait;
+
+    public string StatusText { get => _status; set { _status = value; OnPropertyChanged(); } }
+    public bool NeedsPassword { get => _needsPassword; private set { _needsPassword = value; OnPropertyChanged(); } }
+    public string PasswordInput { get => _passwordInput; set { _passwordInput = value ?? ""; OnPropertyChanged(); } }
+    public string PasswordError { get => _passwordError; private set { _passwordError = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasPasswordError)); } }
+    public bool HasPasswordError => _passwordError.Length > 0;
+    public string UnlockText { get => _unlockText; private set { _unlockText = value; OnPropertyChanged(); } }
+
+    /// <summary>Shows the password field on this row and waits for 解鎖 or 略過.</summary>
+    public System.Threading.Tasks.Task<string?> AskPasswordAsync(bool wrong, string unlockText)
+    {
+        _passwordWait?.TrySetResult(null);
+        _passwordWait = new System.Threading.Tasks.TaskCompletionSource<string?>();
+        UnlockText = unlockText;
+        PasswordError = wrong ? "密碼不正確，請再輸入一次" : "";
+        PasswordInput = "";
+        StatusText = "需要密碼";
+        NeedsPassword = true;
+        return _passwordWait.Task;
+    }
+
+    public void SubmitPassword()
+    {
+        if (_passwordInput.Length == 0) return;
+        NeedsPassword = false;
+        StatusText = "處理中";
+        _passwordWait?.TrySetResult(_passwordInput);
+    }
+
+    public void SkipPassword()
+    {
+        NeedsPassword = false;
+        StatusText = "已停止";
+        _passwordWait?.TrySetResult(null);
+    }
+
     public string FileSizeText
     {
         get
@@ -532,6 +575,28 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             });
 
             var callbacks = new ConversionExecutionCallbacks(
+                PasswordPrompt: async (index, file, isWrong, ct) =>
+                {
+                    // A password typed for one file is tried on the next ones first (spec 4.1); only files it
+                    // does not open ask again. It is kept for this run only.
+                    if (!isWrong && _lastPassword is { } known) return known;
+                    string unlock = $"解鎖並{SelectedAction?.Name ?? "繼續"}";
+                    using (ct.Register(() => Dispatcher.UIThread.Post(() =>
+                    {
+                        foreach (FileItemViewModel f in SelectedFiles.Where(f => f.NeedsPassword)) f.SkipPassword();
+                    })))
+                    {
+                        // The row shows the field; the returned task finishes when 解鎖 or 略過 is pressed.
+                        string? password = await Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            FileItemViewModel? row = SelectedFiles.FirstOrDefault(f => string.Equals(f.Path, file, StringComparison.OrdinalIgnoreCase))
+                                                     ?? (index >= 0 && index < SelectedFiles.Count ? SelectedFiles[index] : null);
+                            return row is null ? Task.FromResult<string?>(null) : row.AskPasswordAsync(isWrong, unlock);
+                        });
+                        if (password is not null) _lastPassword = password;
+                        return password;
+                    }
+                },
                 TaskStarted: taskId => Dispatcher.UIThread.Post(() =>
                 {
                     _runningTaskId = taskId;
