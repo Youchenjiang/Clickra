@@ -58,6 +58,30 @@ namespace ClickraShell
             catch { return key; }
         }
 
+        private static string? _packageFamilyName;
+        private static bool _packageFamilyNameRead;
+
+        /// <summary>Package family name when running from the MSIX package, otherwise null.</summary>
+        public static string? GetPackageFamilyName()
+        {
+            if (_packageFamilyNameRead) return _packageFamilyName;
+            try
+            {
+                string packageName = Path.GetFileName(GetModuleDir());
+                int separator = packageName.IndexOf('_');
+                int publisherSeparator = packageName.LastIndexOf("__", StringComparison.Ordinal);
+                _packageFamilyName = separator <= 0 || publisherSeparator <= separator + 1
+                    ? null
+                    : packageName[..separator] + "_" + packageName[(publisherSeparator + 2)..];
+            }
+            catch
+            {
+                _packageFamilyName = null;
+            }
+            _packageFamilyNameRead = true;
+            return _packageFamilyName;
+        }
+
         public static string? GetPackagedAppUserModelId()
         {
             try
