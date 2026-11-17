@@ -27,6 +27,8 @@ static partial class TestSuite
         string projText = File.ReadAllText(projPath);
         Assert.True(projText.Contains("<TargetFramework>net8.0</TargetFramework>", StringComparison.Ordinal),
             "Clickra.Desktop must target universal net8.0.");
+        Assert.True(projText.Contains("<TargetFramework Condition=\"$(RuntimeIdentifier.StartsWith('win'))\">net8.0-windows10.0.19041.0</TargetFramework>", StringComparison.Ordinal),
+            "Clickra.Desktop must override TargetFramework to net8.0-windows10.0.19041.0 for Windows runtime publishes to enable the built-in PDF engine and WIC.");
         Assert.True(projText.Contains("<PublishAot>true</PublishAot>", StringComparison.Ordinal),
             "Clickra.Desktop must enable PublishAot for NativeAOT compilation.");
         Assert.True(projText.Contains("Avalonia", StringComparison.Ordinal) && projText.Contains("11.", StringComparison.Ordinal),

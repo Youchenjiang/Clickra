@@ -31,6 +31,8 @@ static partial class TestSuite
 
             Assert.True(cliProjText.Contains("<TargetFramework>net8.0</TargetFramework>", StringComparison.Ordinal),
                 "Clickra.CLI must target universal net8.0 for tool packaging and standalone NativeAOT compilation.");
+            Assert.True(cliProjText.Contains("<TargetFramework Condition=\"$(RuntimeIdentifier.StartsWith('win'))\">net8.0-windows10.0.19041.0</TargetFramework>", StringComparison.Ordinal),
+                "Clickra.CLI must override TargetFramework to net8.0-windows10.0.19041.0 for Windows runtime publishes to enable the built-in PDF engine and WIC.");
             Assert.True(cliProjText.Contains("<PackAsTool>true</PackAsTool>", StringComparison.Ordinal),
                 "Clickra.CLI must configure PackAsTool for net8.0 tool creation.");
             Assert.True(cliProjText.Contains("<ToolCommandName>clickra</ToolCommandName>", StringComparison.Ordinal),
