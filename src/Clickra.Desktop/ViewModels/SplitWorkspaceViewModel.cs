@@ -25,11 +25,14 @@ public sealed class SplitPageViewModel(SplitWorkspaceViewModel owner, int number
     public int Part { get => _part; set { _part = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsOddPart)); OnPropertyChanged(nameof(PartText)); } }
     public bool IsOddPart => _part % 2 == 1;
     public string PartText => $"第 {_part} 份";
-    public bool CutAfter { get => _cutAfter; set { _cutAfter = value; OnPropertyChanged(); } }
+    public bool CutAfter { get => _cutAfter; set { _cutAfter = value; OnPropertyChanged(); OnPropertyChanged(nameof(GapTip)); } }
     public bool HasGap => Number < owner.TotalPages;
-    public bool CanEditGap => owner.IsCustom;
+    /// <summary>Every gap can be clicked on a single file; in 每一頁／每 N 頁 that switches to custom cuts first.</summary>
+    public bool CanEditGap => owner.IsSingleFile;
+    public string GapTip => CutAfter ? $"取消第 {Number} 頁後面的切點" : $"在第 {Number} 頁後面切開";
 
     public void ToggleCut() => owner.ToggleCut(this);
+    public void OpenPreview() => owner.OpenPreview(this);
     internal void RefreshGap() => OnPropertyChanged(nameof(CanEditGap));
 }
 
@@ -62,6 +65,7 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
             if (value is < 0 or > 2 || value == _mode) return;
             if (value == 0 && !IsSingleFile) return; // custom cuts need one file
             _mode = value;
+            ConvertedToCustom = false;
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsCustom));
             OnPropertyChanged(nameof(IsFixed));
@@ -88,9 +92,9 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
 
     public string Hint => _mode switch
     {
-        0 => "點兩頁之間的縫隙，加上或取消切點",
-        1 => IsSingleFile ? $"每一頁存成一個 PDF" : $"{_fileCount} 個檔案的每一頁各存成一個 PDF",
-        _ => IsSingleFile ? "從第 1 頁開始，每幾頁存成一份" : $"{_fileCount} 個檔案都照這個頁數分割",
+        0 => "點兩頁之間的縫隙加上或取消切點；點兩下頁面放大",
+        1 => IsSingleFile ? "每一頁存成一個 PDF；點縫隙可以增減切點，點兩下頁面放大" : $"{_fileCount} 個檔案的每一頁各存成一個 PDF",
+        _ => IsSingleFile ? "點縫隙可以增減切點，點兩下頁面放大" : $"{_fileCount} 個檔案都照這個頁數分割",
     };
 
     /// <summary>Shown instead of the thumbnails (several files, or the PDF cannot be read).</summary>
@@ -107,6 +111,9 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
     public void SetFiles(IReadOnlyList<string> files)
     {
         _thumbnailsCts?.Cancel();
+        ClosePreview();
+        ConvertedToCustom = false;
+        _file = files.Count == 1 ? files[0] : "";
         _fileCount = files.Count;
         _cuts.Clear();
         Pages.Clear();
@@ -138,11 +145,102 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
         Recompute();
     }
 
+    /// <summary>
+    /// Adds or removes the cut after a page. In 每一頁一份／每 N 頁一份 the current cuts are kept as custom cuts
+    /// first, so one exception (e.g. "these two pages stay together") does not mean starting over.
+    /// </summary>
     internal void ToggleCut(SplitPageViewModel page)
     {
-        if (!IsCustom || !page.HasGap) return;
+        if (!IsSingleFile || !page.HasGap) return;
+        if (!IsCustom)
+        {
+            _cuts.Clear();
+            foreach (SplitPageViewModel p in Pages) if (p.CutAfter) _cuts.Add(p.Number);
+            _mode = 0;
+            ConvertedToCustom = true;
+            OnPropertyChanged(nameof(Mode));
+            OnPropertyChanged(nameof(IsCustom));
+            OnPropertyChanged(nameof(IsFixed));
+            OnPropertyChanged(nameof(Hint));
+        }
         if (!_cuts.Remove(page.Number)) _cuts.Add(page.Number);
         Recompute();
+        OnPropertyChanged(nameof(PreviewCutText));
+        OnPropertyChanged(nameof(PreviewPartText));
+    }
+
+    private bool _convertedToCustom;
+    /// <summary>Shown once after a gap click switched from 每 N 頁 to custom cuts.</summary>
+    public bool ConvertedToCustom { get => _convertedToCustom; private set { _convertedToCustom = value; OnPropertyChanged(); } }
+
+    // ----- 放大預覽 (spec 4.6): double-click a page; ← → turn pages, Esc closes -----
+    private string _file = "";
+    private SplitPageViewModel? _preview;
+    private IImage? _previewImage;
+    private CancellationTokenSource? _previewCts;
+
+    public bool IsPreviewOpen => _preview is not null;
+    public IImage? PreviewImage { get => _previewImage; private set { _previewImage = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasPreviewImage)); } }
+    public bool HasPreviewImage => _previewImage is not null;
+    public string PreviewTitle => _preview is null ? "" : $"第 {_preview.Number} 頁，共 {_totalPages} 頁";
+    public string PreviewPartText => _preview is null ? "" : $"屬於第 {_preview.Part} 份";
+    public bool PreviewHasGap => _preview?.HasGap == true;
+    public string PreviewCutText => _preview?.CutAfter == true ? "取消這頁後面的切點" : "在這頁後面切開";
+
+    private bool _previewWholePage;
+    /// <summary>符合寬度 (default, scroll to read) or 整頁 (see the whole layout).</summary>
+    public bool PreviewWholePage { get => _previewWholePage; private set { _previewWholePage = value; OnPropertyChanged(); OnPropertyChanged(nameof(PreviewFitWidth)); OnPropertyChanged(nameof(PreviewFitText)); } }
+    public bool PreviewFitWidth => !_previewWholePage;
+    public string PreviewFitText => _previewWholePage ? "符合寬度" : "顯示整頁";
+    public void TogglePreviewFit() => PreviewWholePage = !PreviewWholePage;
+
+    internal void OpenPreview(SplitPageViewModel page)
+    {
+        _preview = page;
+        PreviewImage = page.Thumbnail; // the small one at once, the large one when it is ready
+        OnPropertyChanged(nameof(IsPreviewOpen));
+        RefreshPreviewTexts();
+        _previewCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _previewCts = cts;
+        string file = _file;
+        int number = page.Number;
+        _ = Task.Run(() =>
+        {
+            IImage? image = Render(file, number, 1600, null); // sharp at full width on high-DPI screens
+            if (image is null || cts.IsCancellationRequested) return;
+            Dispatcher.UIThread.Post(() => { if (!cts.IsCancellationRequested && _preview?.Number == number) PreviewImage = image; });
+        });
+    }
+
+    public void PreviousPage() => MovePreview(-1);
+    public void NextPage() => MovePreview(1);
+    public void ClosePreview()
+    {
+        _previewCts?.Cancel();
+        _preview = null;
+        PreviewImage = null;
+        OnPropertyChanged(nameof(IsPreviewOpen));
+    }
+    public void TogglePreviewCut()
+    {
+        if (_preview is not null) ToggleCut(_preview);
+        RefreshPreviewTexts();
+    }
+
+    private void MovePreview(int step)
+    {
+        if (_preview is null) return;
+        int index = Math.Clamp(_preview.Number - 1 + step, 0, Pages.Count - 1);
+        if (Pages[index] != _preview) OpenPreview(Pages[index]);
+    }
+
+    private void RefreshPreviewTexts()
+    {
+        OnPropertyChanged(nameof(PreviewTitle));
+        OnPropertyChanged(nameof(PreviewPartText));
+        OnPropertyChanged(nameof(PreviewHasGap));
+        OnPropertyChanged(nameof(PreviewCutText));
     }
 
     public Dictionary<string, object> BuildOptions() => new(StringComparer.Ordinal)
@@ -203,25 +301,34 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
             foreach (SplitPageViewModel page in pages)
             {
                 if (cts.IsCancellationRequested) return;
-                IImage? image = Render(file, page.Number);
+                // Like the 3.x splitter: draw at 660 px (the word overlay needs room for readable text, at 160 px
+            // the words shrink to 3 px and run into each other), then scale down to the tile.
+            IImage? image = Render(file, page.Number, ThumbnailRenderWidth, ThumbnailDisplayWidth);
                 if (image is null) return; // rendering is not available here: keep the numbered tiles
                 Dispatcher.UIThread.Post(() => page.Thumbnail = image);
             }
         });
     }
 
-    private static IImage? Render(string file, int pageNumber)
+    private const int ThumbnailRenderWidth = 660;
+    private const int ThumbnailDisplayWidth = 168; // the 84 px tile at 200 % scaling
+
+    /// <summary>Renders a page at <paramref name="size"/> px and, when <paramref name="decodeWidth"/> is given, keeps a
+    /// high-quality downscaled copy so two dozen tiles do not hold full-size bitmaps.</summary>
+    private static IImage? Render(string file, int pageNumber, int size, int? decodeWidth)
     {
         try
         {
 #pragma warning disable CA1416 // thumbnails use System.Drawing, available on Windows; elsewhere the tiles stay numbered
-            using System.Drawing.Bitmap? bitmap = PdfPageThumbnailQuery.RenderPageFromFile(file, pageNumber, 160);
+            using System.Drawing.Bitmap? bitmap = PdfPageThumbnailQuery.RenderPageFromFile(file, pageNumber, size);
             if (bitmap is null) return null;
             using var stream = new MemoryStream();
             bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
 #pragma warning restore CA1416
             stream.Position = 0;
-            return new Avalonia.Media.Imaging.Bitmap(stream);
+            return decodeWidth is int width
+                ? Avalonia.Media.Imaging.Bitmap.DecodeToWidth(stream, width, Avalonia.Media.Imaging.BitmapInterpolationMode.HighQuality)
+                : new Avalonia.Media.Imaging.Bitmap(stream);
         }
         catch
         {

@@ -477,7 +477,11 @@
                                                Width="110" VerticalAlignment="Center" />
                                 <TextBlock Text="頁一份" VerticalAlignment="Center" />
                             </StackPanel>
-                            <TextBlock Text="{Binding Split.Hint}" Classes="secondary" FontSize="13" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Split.Hint}" Classes="secondary" FontSize="13" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <Border IsVisible="{Binding Split.ConvertedToCustom}" Background="{DynamicResource Clk.ChipOn}" CornerRadius="6"
+                                    Padding="10,4" VerticalAlignment="Center">
+                                <TextBlock Text="已改成自訂切點，原本的切點都保留" FontSize="13" />
+                            </Border>
                         </WrapPanel>
                         <Border Grid.Row="1" Classes="card" Padding="12">
                             <Panel>
@@ -492,8 +496,10 @@
                                             <DataTemplate x:DataType="vm:SplitPageViewModel">
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                                     <StackPanel Width="84" Spacing="4">
+                                                        <!-- Double-click: a large preview over the workspace (spec 4.6). -->
                                                         <Border Width="84" Height="108" CornerRadius="4" BorderThickness="1"
-                                                                BorderBrush="{DynamicResource Clk.CardBorder}" Background="#FFFFFF" ClipToBounds="True">
+                                                                BorderBrush="{DynamicResource Clk.CardBorder}" Background="#FFFFFF" ClipToBounds="True"
+                                                                Cursor="Hand" ToolTip.Tip="點兩下放大" DoubleTapped="OnSplitPageDoubleTapped">
                                                             <Panel>
                                                                 <Image Source="{Binding Thumbnail}" Stretch="Uniform" IsVisible="{Binding HasThumbnail}" />
                                                                 <TextBlock Text="{Binding Number}" Foreground="#9AA0A6" FontSize="20"
@@ -511,7 +517,7 @@
                                                     <Button Width="18" Height="108" Padding="0" Margin="2,0" VerticalAlignment="Top"
                                                             Background="Transparent" BorderThickness="0" IsVisible="{Binding HasGap}"
                                                             IsEnabled="{Binding CanEditGap}" Command="{Binding ToggleCut}"
-                                                            ToolTip.Tip="加上或取消切點">
+                                                            ToolTip.Tip="{Binding GapTip}">
                                                         <Panel>
                                                             <Rectangle Width="2" Height="96" Fill="{DynamicResource Clk.Danger}" IsVisible="{Binding CutAfter}" />
                                                             <Rectangle Width="1" Height="96" Fill="{DynamicResource Clk.Divider}" IsVisible="{Binding !CutAfter}" />
@@ -525,6 +531,54 @@
                             </Panel>
                         </Border>
                     </Grid>
+
+                    <!-- 分割的放大預覽: a sibling of the workspace (not inside its rows, so a tall page cannot stretch them);
+                         ← → turn pages, Esc closes (handled in code-behind). -->
+                    <Border Grid.Row="1" CornerRadius="12"
+                            Background="{DynamicResource Clk.Card}" BorderThickness="1" BorderBrush="{DynamicResource Clk.CardBorder}">
+                        <Border.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="IsSplitAction" />
+                                <Binding Path="Split.IsPreviewOpen" />
+                            </MultiBinding>
+                        </Border.IsVisible>
+                        <Grid RowDefinitions="*,Auto" Margin="16">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
+                                <Button Classes="secondary" Content="‹" FontSize="20" Width="44" Height="44" VerticalAlignment="Center"
+                                        Command="{Binding Split.PreviousPage}" ToolTip.Tip="上一頁（←）" />
+                                <!-- 符合寬度: the page fills the width and scrolls, so text can be read; 整頁: the whole page fits. -->
+                            <Panel Grid.Column="1">
+                                <ScrollViewer IsVisible="{Binding Split.PreviewFitWidth}" HorizontalScrollBarVisibility="Disabled">
+                                    <Border Background="#FFFFFF" CornerRadius="4" BorderThickness="1" BorderBrush="{DynamicResource Clk.CardBorder}">
+                                        <Panel>
+                                            <Image Source="{Binding Split.PreviewImage}" Stretch="Uniform" IsVisible="{Binding Split.HasPreviewImage}" />
+                                            <TextBlock Text="{Binding Split.PreviewTitle}" Foreground="#9AA0A6" Margin="40,160"
+                                                       HorizontalAlignment="Center" IsVisible="{Binding !Split.HasPreviewImage}" />
+                                        </Panel>
+                                    </Border>
+                                </ScrollViewer>
+                                <Border IsVisible="{Binding Split.PreviewWholePage}" Background="#FFFFFF" CornerRadius="4" BorderThickness="1" MinWidth="280"
+                                        BorderBrush="{DynamicResource Clk.CardBorder}" HorizontalAlignment="Center">
+                                    <Panel>
+                                        <Image Source="{Binding Split.PreviewImage}" Stretch="Uniform" IsVisible="{Binding Split.HasPreviewImage}" />
+                                        <TextBlock Text="{Binding Split.PreviewTitle}" Foreground="#9AA0A6" Margin="40"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !Split.HasPreviewImage}" />
+                                    </Panel>
+                                </Border>
+                            </Panel>
+                                <Button Grid.Column="2" Classes="secondary" Content="›" FontSize="20" Width="44" Height="44" VerticalAlignment="Center"
+                                        Command="{Binding Split.NextPage}" ToolTip.Tip="下一頁（→）" />
+                            </Grid>
+                            <WrapPanel Grid.Row="1" HorizontalAlignment="Center" Margin="0,12,0,0">
+                                <TextBlock Text="{Binding Split.PreviewTitle}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <TextBlock Text="{Binding Split.PreviewPartText}" Classes="secondary" VerticalAlignment="Center" Margin="0,0,16,0" />
+                                <Button Classes="secondary" Content="{Binding Split.PreviewCutText}" Command="{Binding Split.TogglePreviewCut}"
+                                        IsVisible="{Binding Split.PreviewHasGap}" Margin="0,0,8,0" />
+                                <Button Classes="secondary" Content="{Binding Split.PreviewFitText}" Command="{Binding Split.TogglePreviewFit}" Margin="0,0,8,0" />
+                            <Button Classes="secondary" Content="關閉" Command="{Binding Split.ClosePreview}" ToolTip.Tip="Esc" />
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
 
                     <!-- 合併與拼接 (spec 4.6): the order list is the only part that scrolls. Rows are dragged by the
                          handle or moved with ↑ ↓; the small title row is left-aligned with its buttons right after it. -->

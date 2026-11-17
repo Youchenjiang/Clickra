@@ -83,6 +83,7 @@ public partial class ConvertPage : UserControl
         OrderList.AddHandler(PointerReleasedEvent, (_, _) => _dragItem = null, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         OrderList.AddHandler(PointerCaptureLostEvent, (_, _) => _dragItem = null);
         CatalogItems.LayoutUpdated += (_, _) => FitCatalog();
+        AddHandler(KeyDownEvent, OnSplitPreviewKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         OptionsScroller.SizeChanged += (_, _) => QueueFitOptionGap();
         OptionsCard.SizeChanged += (_, _) => QueueFitOptionGap();
 
@@ -384,6 +385,24 @@ public partial class ConvertPage : UserControl
         {
             var paths = files.Select(f => f.Path.LocalPath).ToList();
             GetViewModel()?.AddFiles(paths);
+        }
+    }
+
+    // ===== 分割：放大預覽 (spec 4.6) =====
+
+    private void OnSplitPageDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is SplitPageViewModel page) page.OpenPreview();
+    }
+
+    private void OnSplitPreviewKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (GetViewModel() is not { IsSplitAction: true } vm || !vm.Split.IsPreviewOpen) return;
+        switch (e.Key)
+        {
+            case Key.Left: vm.Split.PreviousPage(); e.Handled = true; break;
+            case Key.Right: vm.Split.NextPage(); e.Handled = true; break;
+            case Key.Escape: vm.Split.ClosePreview(); e.Handled = true; break;
         }
     }
 
