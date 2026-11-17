@@ -1,5 +1,11 @@
 # Changelog
 
+## [v3.20.2.0] - 2026-11-18
+
+- **修復 Windows PDF 渲染與 WIC 圖片解碼引擎 (Fix Windows PDF Render & WIC Decoder Regression)**：修正自 v3.20.0.0 起因單一 `net8.0` 目標發布導致 Windows 發布版本缺少 `WINDOWS` 前置編譯符號，造成 PDF 轉圖片、列印與分割預覽退化為僅繪製文字層（照片、向量色塊、表格線與架構圖消失）之嚴重回歸。於 `Clickra.CLI` 與 `Clickra.Desktop` 專案檔中針對 Windows 執行時期目標（`-r win-*`）加入條件式 `net8.0-windows10.0.19041.0` TFM 覆蓋，完整恢復系統原生 `Windows.Data.Pdf` 向量光柵化引擎與 WIC 圖片解碼支援。
+- **持續整合新增 Windows 桌面目標建置驗證 (CI Windows Desktop Target Matrix Build)**：於 GitHub Actions CI 矩陣中為 `Clickra.Desktop` 增補帶有 `-r win-x64` 的 Windows 專案建置 step（`dotnet build -c Release -r win-x64 -warnaserror`），確保 Windows 專屬 TFM 於 CI 流程中維持常態編譯驗證，並在通用目標與 Windows 目標間建立雙重防護守衛。
+- **多平台目標發佈規範與架構邊界澄清 (Clarify Multi-Target Delivery Invariants)**：更正 v3.20.0.0 條目描述：自該版起 CLI 於跨平台發布與 .NET 全域工具中維持單一通用 `net8.0` 目標；本版起僅於 Windows 專屬 NativeAOT 與 MSIX 發布中使用條件式 `net8.0-windows10.0.19041.0`，Linux、macOS 與 .NET 全域工具維持純 `net8.0`，待跨平台 PDFium 與影像引擎就緒後重回單一 TFM。
+
 ## [v3.20.1.0] - 2026-11-15
 
 - **Avalonia 11 跨平台桌面應用專案架構 (Avalonia 11 Fluent Desktop Shell)**：落實跨平台新世代第三階段（Avalonia Desktop 介面外框）。建立全新 `src/Clickra.Desktop` 專案，採用 Avalonia 11.2.8 與 NativeAOT 單檔編譯，打造現代頂部三分頁導航（轉檔、歷史、設定）與深淺色自適應介面。
@@ -11,7 +17,7 @@
 ## [v3.20.0.0] - 2026-11-12
 
 - **跨平台通用 CLI 與 .NET Global Tool 發布 (Universal CLI & .NET Tool Distribution)**：落實跨平台新世代第二階段（Universal CLI）。配置 `PackAsTool` 產出官方 `Clickra` .NET 全域工具，全平台開發者僅需一行 `dotnet tool install -g Clickra --add-source https://nuget.pkg.github.com/Youchenjiang/index.json` 即可直接在終端使用 `clickra`。
-- **Core 與 CLI 多目標架構支援 (Multi-Targeting net8.0 & Platform Preprocessor Guards)**：將 `Clickra.Core` 與 `Clickra.CLI` 升級為支援 `net8.0;net8.0-windows10.0.19041.0` 多目標編譯；在 `WicImageHelper`、`PdfToImageProcessor` 與 `PdfPageThumbnailRenderer` 中透過 `#if WINDOWS` 安全隔離 WinRT 與 WIC API，確保純 `net8.0` 環境下零編譯錯誤與警告。
+- **Core 多目標與 CLI 跨平台解耦架構 (Core Multi-Targeting & CLI Cross-Platform Decoupling)**：將 `Clickra.Core` 升級為支援 `net8.0;net8.0-windows10.0.19041.0` 多目標編譯，CLI 則採單一 `net8.0` 目標以支援跨平台工具封裝；在 `WicImageHelper`、`PdfToImageProcessor` 與 `PdfPageThumbnailRenderer` 中透過 `#if WINDOWS` 安全隔離 WinRT 與 WIC API，確保純 `net8.0` 環境下零編譯錯誤與警告。
 - **GitHub Actions 跨平台 NativeAOT 矩陣與發布自動化 (Cross-Platform Matrix & Release CI)**：在 `ci.yml` 新增 Linux (x64) 與 macOS (ARM64) NativeAOT 原生編譯與 .NET Tool 封裝驗證；在 `release.yml` 實現發布時自動打包 `clickra-cli-linux-x64.tar.gz`、`clickra-cli-osx-arm64.tar.gz`、`clickra-cli-win-x64.zip` 上傳至 GitHub Release Assets，並自動推送 NuGet 套件至 GitHub Packages。
 - **通用套件與多平台契約架構守衛 (Universal Package Architectural Guards)**：於測試套件新增 `TestSuite.UniversalPackage.cs`（守衛總數提升至 97 項），全面防護 Core/CLI 多目標定義、.NET Tool 指令命名與授權規範、CI/Release 跨平台工作流程一致性與 WinRT 前置編譯器防護。
 

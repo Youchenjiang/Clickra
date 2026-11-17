@@ -1,6 +1,6 @@
 # Microsoft Store 목록 - 한국어
 
-다음은 Microsoft 파트너 센터 (Partner Center)에 직접 복사하여 붙여넣을 수 있는 전체 정보입니다 (v3.20.1.0 기준).
+다음은 Microsoft 파트너 센터 (Partner Center)에 직접 복사하여 붙여넣을 수 있는 전체 정보입니다 (v3.20.2.0 기준).
 
 ---
 
@@ -15,8 +15,9 @@ Clickra는 Windows 파일 탐색기를 위한 네이티브 우클릭 확장 프�
 소스 코드: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
+- PDF를 이미지로 변환, 인쇄 및 분할 미리보기 렌더링 수정: 텍스트만 렌더링되던 문제를 해결하여 이미지, 표, 다이어그램이 포함된 전체 화면 출력을 복원했습니다.
 - 유니버설 CLI 및 크로스 플랫폼 패키징: Clickra CLI가 이제 .NET 전역 도구(dotnet tool install -g Clickra) 및 Windows, Linux, macOS용 NativeAOT 독립 바이너리로 제공됩니다.
-- 멀티 타겟 아키텍처: Core 및 CLI의 net8.0 멀티 타겟 컴파일 및 플랫폼 분리 완료.
+- 멀티 타겟 아키텍처: Core는 멀티 타겟을 지원하며, CLI는 크로스 플랫폼 도구 패키징을 위해 net8.0을 채택.
 - 헤드리스 실행 및 ANSI 진행 표시줄: 헤드리스 모드(--headless), 플랫폼 진단(--diagnostics) 및 실시간 터미널 진행 표시줄 지원.
 - 이중 배포 채널: GitHub Release Assets 독립 아카이브 및 GitHub Packages NuGet 레ジ스트리 배포 제공.
 

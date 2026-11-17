@@ -1,6 +1,6 @@
 # Microsoft Store リスト - 日本語
 
-以下は、Microsoft パートナー センター (Partner Center) に直接コピー＆ペーストできる完全な情報です（v3.20.1.0 対応）。
+以下は、Microsoft パートナー センター (Partner Center) に直接コピー＆ペーストできる完全な情報です（v3.20.2.0 対応）。
 
 ---
 
@@ -15,8 +15,9 @@ Clickra は、Windows のエクスプローラー向けに設計されたネイ�
 ソースコード：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
+- PDF から画像への変換、印刷、分割プレビューの描画を修正：テキストのみ描画されていた問題を解消し、画像、表、図表を含む完全な画面表示を復元しました。
 - ユニバーサル CLI とクロスプラットフォーム パッケージ：Clickra CLI が .NET グローバル ツール（dotnet tool install -g Clickra）および Windows、Linux、macOS 向け NativeAOT スタンドアロン バイナリとして利用可能になりました。
-- マルチターゲット アーキテクチャ：Core および CLI の net8.0 マルチターゲット コンパイルとプラットフォーム分離を完了。
+- マルチターゲット アーキテクチャ：Core はマルチターゲットをサポートし、CLI はクロスプラットフォーム ツール パッケージング向けに net8.0 を採用。
 - ヘッドレス実行と ANSI プログレス：ヘッドレス モード（--headless）、プラットフォーム診断（--diagnostics）、リアルタイム ターミナル プログレス バーをサポート。
 - デュアル配布チャネル：GitHub Release Assets スタンドアロン アーカイブと GitHub Packages NuGet 配布を提供。
 

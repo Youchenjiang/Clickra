@@ -1,6 +1,6 @@
 # Microsoft Store 清单 - 中文 (简体)
 
-以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.20.1.0。
+以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.20.2.0。
 
 ---
 
@@ -15,8 +15,9 @@ Clickra 是一款专为 Windows 资源管理器打造的原生右键扩展工具
 源代码：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
+- 修复 PDF 转图片、打印与分割预览功能：修复先前版本仅绘制文字的问题，完整恢复图片、表格与版面画面。
 - 通用 CLI 与跨平台打包：Clickra CLI 现已正式支持 .NET 全局工具（dotnet tool install -g Clickra）以及 Windows、Linux、macOS 原生 NativeAOT 独立二进制文件。
-- 多目标架构解耦：Core 与 CLI 全面支持 net8.0 多目标编译与跨平台边界隔离。
+- 多目标架构解耦：Core 支持多目标，CLI 采 net8.0 以支持跨平台工具封装。
 - 无头执行与 ANSI 彩色进度：支持无头后台执行（--headless）、平台与引擎诊断（--diagnostics）及终端实时彩色进度条。
 - 双轨发布渠道：提供 GitHub Release Assets 原生压缩包与 GitHub Packages NuGet 注册表发布。
 

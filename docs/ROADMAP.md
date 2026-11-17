@@ -132,7 +132,7 @@
 
     - [x] CLI 終端 ANSI 進度引擎與無頭調度支援（解耦 Win32 進度視窗、支援 `--headless`、`--info`、`--diagnostics` 與 ANSI 即時進度；v3.19.10.0 完成）。
 
-    - [x] 跨平台多目標架構與 WinRT 前置編譯器隔離（`Clickra.Core` 與 `Clickra.CLI` 支援 `net8.0;net8.0-windows10.0.19041.0`；v3.20.0.0 完成）。
+    - [x] 跨平台多目標架構與 WinRT 前置編譯器隔離（`Clickra.Core` 支援多目標；`Clickra.CLI` 與 `Clickra.Desktop` 於 Windows 目標下使用 `net8.0-windows10.0.19041.0` 恢復原生 PDF 引擎與 WIC；v3.20.2.0 完成）。
 
     - [x] GitHub Actions 跨平台 NativeAOT 矩陣建置（Linux x64、macOS ARM64、Windows x64）與 Release Assets 自動歸檔發布（v3.20.0.0 完成）。
 
