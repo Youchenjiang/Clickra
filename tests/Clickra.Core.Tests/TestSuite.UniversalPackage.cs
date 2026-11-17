@@ -70,6 +70,9 @@ static partial class TestSuite
                 "ci.yml must validate .NET tool packaging.");
             Assert.True(ciText.Contains("needs: [build-components, cross-platform]", StringComparison.Ordinal),
                 "ci.yml build gate must require both component builds and cross-platform verification.");
+            Assert.True(ciText.Contains("Build Clickra.Desktop (Windows target)", StringComparison.Ordinal) &&
+                        ciText.Contains("dotnet build \"${{ matrix.project }}\" -c Release -r win-x64", StringComparison.Ordinal),
+                "ci.yml must validate Clickra.Desktop build with Windows target (-r win-x64).");
 
             // 2. Verify Release workflow distribution channels
             string releasePath = Path.Combine(root, ".github", "workflows", "release.yml");
