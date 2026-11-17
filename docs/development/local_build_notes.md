@@ -105,6 +105,21 @@ For Fluent development, build `src\Clickra.Fluent\Clickra.Fluent.csproj` separat
 
 Use `scripts/build_msix.ps1` for the actual current Main package so the CLI, Launcher, Shell, assets, strings, codec runtime files, and manifest are assembled consistently.
 
+### 本地開發與 Windows 渲染目標說明 (Target Framework & Windows PDF / WIC Engine)
+
+當在本機使用 `dotnet run` 或 `dotnet build` 且**未帶 `-r`**（RuntimeIdentifier）參數時：
+- 專案評估為通用 `net8.0` 目標，不會定義 `WINDOWS` 編譯符號。
+- 此時 PDF 預覽、PDF 轉圖片、列印僅透過 PdfPig 繪製文字版面疊圖（照片、表格框線、背景色塊與向量圖形不會繪製），此為純 `net8.0` 跨平台環境之**正常降級行為**。
+- 若要在本機測試或使用 Windows 系統內建的 PDF 渲染引擎（`Windows.Data.Pdf`）與 WIC 圖片解碼器，請加上 `-r win-x64`：
+
+```powershell
+# CLI 本地執行（啟用 Windows 內建 PDF 引擎與 WIC）
+dotnet run --project src/Clickra.CLI/Clickra.csproj -r win-x64 -- pdf2img "sample.pdf"
+
+# Desktop 桌面端本地執行（啟用 Windows 內建 PDF 引擎與 WIC）
+dotnet run --project src/Clickra.Desktop/Clickra.Desktop.csproj -r win-x64
+```
+
 ## Automated Packaging & Versioning Scripts
 The project provides built-in PowerShell scripts for automated version bumping and MSIX packaging:
 
