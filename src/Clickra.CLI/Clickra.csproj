@@ -4,6 +4,8 @@
     <OutputType Condition="'$(PackAsTool)' == 'true'">Exe</OutputType>
     <OutputType Condition="'$(PackAsTool)' != 'true'">WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
+    <!-- Windows publishes (-r win-*) compile Core's Windows paths in: the built-in PDF engine and WIC. -->
+    <TargetFramework Condition="$(RuntimeIdentifier.StartsWith('win'))">net8.0-windows10.0.19041.0</TargetFramework>
     <RollForward>LatestMajor</RollForward>
     <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('windows'))">../../obj/icons/app.ico</ApplicationIcon>
     <ImplicitUsings>enable</ImplicitUsings>
