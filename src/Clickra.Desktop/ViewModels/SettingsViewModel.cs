@@ -173,8 +173,14 @@ public sealed class SettingsViewModel : ViewModelBase
                 ? Clickra.Core.Storage.ClickraSettings.TranslateEngineCustomAi
                 : Clickra.Core.Storage.ClickraSettings.TranslateEngineGoogle;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(IsCustomAi));
         }
     }
+
+    public bool IsCustomAi => TranslateEngineIndex == 1;
+    public string AiEndpoint { get => SettingsController.TranslateAiEndpoint; set { SettingsController.TranslateAiEndpoint = value ?? ""; OnPropertyChanged(); } }
+    public string AiModel { get => SettingsController.TranslateAiModel; set { SettingsController.TranslateAiModel = value ?? ""; OnPropertyChanged(); } }
+    public string AiApiKey { get => SettingsController.TranslateAiApiKey; set { SettingsController.TranslateAiApiKey = value ?? ""; OnPropertyChanged(); } }
 
     public IReadOnlyList<string> DpiChoices => ActionOptionsViewModel.DpiLabelsPublic;
     public int PdfImageDpiIndex

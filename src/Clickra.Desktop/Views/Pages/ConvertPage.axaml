@@ -660,14 +660,41 @@
                                             </StackPanel>
                                             <StackPanel Spacing="6">
                                                 <TextBlock Classes="optLabel" Text="翻譯服務" />
-                                                <ComboBox SelectedIndex="{Binding Options.TranslateEngineIndex, Mode=TwoWay}" HorizontalAlignment="Stretch"><ComboBoxItem Content="Google 翻譯" /><ComboBoxItem Content="自訂 AI 服務（在設定頁填寫網址與金鑰）" /></ComboBox>
+                                                <ComboBox SelectedIndex="{Binding Options.TranslateEngineIndex, Mode=TwoWay}" HorizontalAlignment="Stretch"><ComboBoxItem Content="Google 翻譯" /><ComboBoxItem Content="自訂 AI 服務" /></ComboBox>
                                             </StackPanel>
                                         </controls:OptionRow>
-                                        <!-- Privacy affects the result, so it is said on the card (spec 4.9). -->
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <TextBlock Text="翻譯需要連網，檔案內容會送到" Classes="secondary" FontSize="13" />
-                                            <TextBlock Text="{Binding Options.TranslateServiceName}" Classes="secondary" FontSize="13" />
+                                        <!-- 自訂 AI 服務 (canvas B): a remembered service is one line with 變更; otherwise the
+                                             address, model and key are filled in here, with 「記住這個服務」. -->
+                                        <Border Background="{DynamicResource Clk.TileFill}" CornerRadius="10" Padding="14,8"
+                                                IsVisible="{Binding Options.ShowAiSummary}">
+                                            <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="4">
+                                                <TextBlock Text="使用" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Options.AiSummaryModel}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="2" Text="{Binding Options.AiSummaryHost}" Classes="secondary" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <Button Grid.Column="3" Classes="secondary" Content="變更" Command="{Binding Options.EditAi}" />
+                                            </Grid>
+                                        </Border>
+                                        <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.ShowAiFields}">
+                                            <controls:OptionRow MinItemWidth="220">
+                                                <StackPanel Spacing="6">
+                                                    <TextBlock Classes="optLabel" Text="服務網址" />
+                                                    <TextBox Text="{Binding Options.AiEndpoint}" PlaceholderText="https://api.openai.com/v1" />
+                                                </StackPanel>
+                                                <StackPanel Spacing="6">
+                                                    <TextBlock Classes="optLabel" Text="模型" />
+                                                    <TextBox Text="{Binding Options.AiModel}" PlaceholderText="例如 gpt-4o-mini" />
+                                                </StackPanel>
+                                                <StackPanel Spacing="6">
+                                                    <TextBlock Classes="optLabel" Text="API 金鑰" />
+                                                    <TextBox Text="{Binding Options.AiApiKey}" PasswordChar="●" RevealPassword="False" />
+                                                </StackPanel>
+                                            </controls:OptionRow>
+                                            <CheckBox Content="記住這個服務，下次不用再填" IsChecked="{Binding Options.RememberAi}" />
                                         </StackPanel>
+                                        <!-- Privacy affects the result, so it is said on the card (spec 4.9). -->
+                                        <TextBlock Classes="secondary" FontSize="13" TextWrapping="Wrap"
+                                                   Text="{Binding Options.TranslateServiceName, StringFormat='翻譯需要連網，檔案內容會送到 {0}'}" />
                                     </StackPanel>
 
                                     <!-- 解密 PDF -->

@@ -261,6 +261,21 @@
                                     <TextBlock Text="翻譯服務" />
                                     <ComboBox Grid.Column="1" SelectedIndex="{Binding TranslateEngineIndex, Mode=TwoWay}"><ComboBoxItem Content="Google 翻譯" /><ComboBoxItem Content="自訂 AI 服務" /></ComboBox>
                                 </Grid>
+                                <Border Classes="rowLine" IsVisible="{Binding IsCustomAi}" />
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" IsVisible="{Binding IsCustomAi}">
+                                    <TextBlock Text="服務網址" />
+                                    <TextBox Grid.Column="1" Text="{Binding AiEndpoint}" Width="260" PlaceholderText="https://api.openai.com/v1" />
+                                </Grid>
+                                <Border Classes="rowLine" IsVisible="{Binding IsCustomAi}" />
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" IsVisible="{Binding IsCustomAi}">
+                                    <TextBlock Text="模型" />
+                                    <TextBox Grid.Column="1" Text="{Binding AiModel}" Width="260" PlaceholderText="例如 gpt-4o-mini" />
+                                </Grid>
+                                <Border Classes="rowLine" IsVisible="{Binding IsCustomAi}" />
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" IsVisible="{Binding IsCustomAi}">
+                                    <TextBlock Text="API 金鑰" />
+                                    <TextBox Grid.Column="1" Text="{Binding AiApiKey}" Width="260" PasswordChar="●" RevealPassword="False" />
+                                </Grid>
                             </StackPanel>
                         </Grid>
 

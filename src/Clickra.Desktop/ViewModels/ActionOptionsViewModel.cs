@@ -76,6 +76,11 @@ public sealed class ActionOptionsViewModel : ViewModelBase
         _translateLanguage = Math.Max(0, Array.FindIndex(TranslateLanguageCodes,
             c => c.Equals(SettingsController.TranslationTargetLanguage, StringComparison.OrdinalIgnoreCase)));
         _translateEngine = Math.Max(0, Array.IndexOf(TranslateEngines, SettingsController.TranslateEngine));
+        _aiEndpoint = SettingsController.TranslateAiEndpoint;
+        _aiModel = SettingsController.TranslateAiModel;
+        _aiApiKey = SettingsController.TranslateAiApiKey;
+        _aiEditing = !AiSaved;
+        _rememberAi = true;
         _password = "";
         _imageFormat = -1;
         _markdownTheme = Math.Max(0, Array.IndexOf(MarkdownThemes, SettingsController.MarkdownTheme));
@@ -265,10 +270,43 @@ public sealed class ActionOptionsViewModel : ViewModelBase
         set
         {
             _translateEngine = Math.Clamp(value, 0, 1);
-            Changed(nameof(TranslateEngineIndex), nameof(TranslateIsDefault), nameof(TranslateServiceName));
+            Changed(nameof(TranslateEngineIndex), nameof(TranslateIsDefault), nameof(TranslateServiceName), nameof(IsCustomAi),
+                nameof(ShowAiSummary), nameof(ShowAiFields), nameof(AiSummaryHost), nameof(IsReady), nameof(BlockingText));
         }
     }
-    public string TranslateServiceName => _translateEngine == 1 ? "自訂 AI 服務" : "Google 翻譯";
+    /// <summary>Who receives the content, by name: Google 翻譯, or the custom service's host (api.openai.com).</summary>
+    public string TranslateServiceName
+    {
+        get
+        {
+            if (_translateEngine != 1) return "Google 翻譯";
+            return Uri.TryCreate(_aiEndpoint.Trim(), UriKind.Absolute, out Uri? uri) && uri.Host.Length > 0 ? uri.Host : "你的 AI 服務";
+        }
+    }
+
+    // 自訂 AI 服務 (spec 4.9, canvas 「翻譯的自訂 AI 服務要在哪裡填」 B): once a service is remembered the card shows
+    // one line with 變更; the first time, or after 變更, the address, model and key are filled in right here with
+    // 「記住這個服務」. Remembering a service is separate from 設為預設值, which only picks the default translator.
+    private string _aiEndpoint = "", _aiModel = "", _aiApiKey = "";
+    private bool _aiEditing, _rememberAi = true;
+    public bool IsCustomAi => _translateEngine == 1;
+    private static bool AiSaved =>
+        SettingsController.TranslateAiEndpoint.Trim().Length > 0 && SettingsController.TranslateAiModel.Trim().Length > 0
+        && SettingsController.TranslateAiApiKey.Trim().Length > 0;
+    public bool ShowAiSummary => IsCustomAi && !_aiEditing;
+    public bool ShowAiFields => IsCustomAi && _aiEditing;
+    public string AiSummaryModel => _aiModel.Trim();
+    public string AiSummaryHost => $"（{TranslateServiceName}）";
+    public bool RememberAi { get => _rememberAi; set { _rememberAi = value; OnPropertyChanged(); } }
+    public void EditAi()
+    {
+        _aiEditing = true;
+        Changed(nameof(ShowAiSummary), nameof(ShowAiFields));
+    }
+    public string AiEndpoint { get => _aiEndpoint; set { _aiEndpoint = value ?? ""; Changed(nameof(AiEndpoint), nameof(TranslateServiceName), nameof(AiSummaryHost), nameof(IsReady), nameof(BlockingText)); } }
+    public string AiModel { get => _aiModel; set { _aiModel = value ?? ""; Changed(nameof(AiModel), nameof(AiSummaryModel), nameof(IsReady), nameof(BlockingText)); } }
+    public string AiApiKey { get => _aiApiKey; set { _aiApiKey = value ?? ""; Changed(nameof(AiApiKey), nameof(IsReady), nameof(BlockingText)); } }
+    private bool AiIncomplete => IsCustomAi && (_aiEndpoint.Trim().Length == 0 || _aiModel.Trim().Length == 0 || _aiApiKey.Trim().Length == 0);
     public bool TranslateIsDefault =>
         TranslateLanguageCodes[_translateLanguage].Equals(SettingsController.TranslationTargetLanguage, StringComparison.OrdinalIgnoreCase) &&
         TranslateEngines[_translateEngine] == SettingsController.TranslateEngine;
@@ -534,7 +572,7 @@ public sealed class ActionOptionsViewModel : ViewModelBase
 
     // ----- start button -----
     /// <summary>False while a required choice is missing (spec 4.1: 必選選項).</summary>
-    public bool IsReady => !(IsMarkdown && UsesWordTemplate && HasTemplateError) && !(IsDecrypt && _password.Length == 0) && !(IsImageFormat && _imageFormat < 0) && !(IsPrint && _printerIndex < 0);
+    public bool IsReady => !(IsMarkdown && UsesWordTemplate && HasTemplateError) && !(IsDecrypt && _password.Length == 0) && !(IsImageFormat && _imageFormat < 0) && !(IsPrint && _printerIndex < 0) && !(IsTranslate && AiIncomplete);
 
     /// <summary>What the start button says while it is disabled.</summary>
     public string BlockingText =>
@@ -542,6 +580,7 @@ public sealed class ActionOptionsViewModel : ViewModelBase
         : IsDecrypt && _password.Length == 0 ? "先輸入密碼"
         : IsImageFormat && _imageFormat < 0 ? "先選要轉成的格式"
         : IsPrint && _printerIndex < 0 ? (HasPrinters ? "先選印表機" : "找不到印表機")
+        : IsTranslate && AiIncomplete ? "先填好 AI 服務的網址、模型與金鑰"
         : "";
 
     /// <summary>The command to run: the image format card picks one of the img-to-* commands.</summary>
@@ -576,6 +615,19 @@ public sealed class ActionOptionsViewModel : ViewModelBase
         {
             options[TranslatePdfUseCase.TargetLanguageOptionKey] = TranslateLanguageCodes[_translateLanguage];
             options[TranslatePdfUseCase.EngineOptionKey] = TranslateEngines[_translateEngine];
+            if (IsCustomAi)
+            {
+                options[TranslatePdfUseCase.AiEndpointOptionKey] = _aiEndpoint.Trim();
+                options[TranslatePdfUseCase.AiModelOptionKey] = _aiModel.Trim();
+                options[TranslatePdfUseCase.AiApiKeyOptionKey] = _aiApiKey.Trim();
+                // 「記住這個服務」: kept for next time when the run starts; unticked, nothing is stored.
+                if (_aiEditing && _rememberAi)
+                {
+                    SettingsController.TranslateAiEndpoint = _aiEndpoint.Trim();
+                    SettingsController.TranslateAiModel = _aiModel.Trim();
+                    SettingsController.TranslateAiApiKey = _aiApiKey.Trim();
+                }
+            }
         }
         else if (IsPrint)
         {
