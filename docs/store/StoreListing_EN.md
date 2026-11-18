@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.20.2.0.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.21.0.0.
 
 ---
 
@@ -15,11 +15,10 @@ Core document operations run completely offline on your local PC to keep your da
 Source Code: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- Fixed PDF to image, print, and split preview rendering: Resolved an issue where only text was rendered, fully restoring images, tables, and diagrams.
-- Universal CLI & Cross-Platform Packaging: Clickra CLI is now available as a universal .NET Global Tool (dotnet tool install -g Clickra) and standalone NativeAOT binaries for Windows, Linux, and macOS.
-- Multi-Target Architecture: Core supports multi-targeting, CLI targets net8.0 for cross-platform tool packaging.
-- Headless Execution & ANSI Progress: Headless mode (--headless), platform and engine diagnostics (--diagnostics), and interactive ANSI terminal progress.
-- Dual-Channel Distribution: Standalone NativeAOT release assets and official GitHub Packages NuGet registry distribution.
+- Protection-Aware PDF Decryption: Intelligently detects password-protected or print/copy-restricted PDFs; tries card-entered passwords first and unlocks restricted PDFs without requiring credentials.
+- Enhanced Visual PDF Split Workspace: Renders thumbnails according to true page aspect ratios and introduces full-area double-click zoom preview with line icon toolbars and interactive cut adjustments in all split modes.
+- Modern Desktop App Preview (Clickra.Desktop): Avalonia-powered cross-platform desktop interface featuring file drag-and-drop, action catalog, stitch/merge reordering workspaces, accessible via the --desktop flag.
+- Specialized Workspaces & UX Improvements: Adds live batch rename previews, visual Markdown template selection cards, window geometry persistence, and background processing on window close.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*

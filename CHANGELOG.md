@@ -1,5 +1,13 @@
 # Changelog
 
+## [v3.21.0.0] - 2026-11-19
+
+- **跨平台桌面端全新介面預覽 (Modern Desktop App Preview)**：實作 `Clickra.Desktop` 統一桌面端介面（維持預覽，可使用 `--desktop` 或環境變數 `CLICKRA_DESKTOP=1` 開啟）。提供現代檔案拖放、動作目錄與動作頁、動態選項卡片（支援儲存自訂預設值）、歷史紀錄及設定頁面。
+- **PDF 密碼感知與解密整合 (Protection-Aware PDF Decrypt & Restriction Bypass)**：目錄自動識別帶有密碼或列印/複製限制之 PDF，醒目標示解密動作並向使用者說明受限狀態；卡片密碼先試機制，且對於僅限制列印或複製的 PDF 無需密碼即可直接移除限制。
+- **視覺化 PDF 分割與多頁放大預覽 (Visual PDF Split Workspace & Full-Area Preview)**：分割頁面縮圖依照 PDF 頁面原始長寬比排版，杜絕拉伸變形；支援雙擊開啟全內容區放大預覽（整頁/符合寬度縮放、線條圖示工具列、Esc 與快捷鍵支援），且在每一頁或每 N 頁模式下亦能即時點選縫隙調整切點。
+- **專屬任務工作區與細緻互動體驗 (Focused Task Workspaces & Refined Interactions)**：串接長圖拼接與合併順序調整工作區、批次重新命名即時預覽、Markdown 視覺化範本卡片；支援視窗位置與尺寸記憶、關閉時背景持續轉檔及多檔案命名自適應。
+- **確立 4.0 正式版整備清單與版本節奏 (Version Rhythm & 4.0 Release Readiness Checklist)**：本版定位為預覽推進版（v3.21.0.0），啟動器優先順序與正式發布套件暫維持現有穩定介面；同步於規格書訂定邁向 4.0 正式版之 11 項整備清單（多語系、實機驗收、當場解鎖、右鍵精簡視窗、體積裁剪等），確保品質完備後再切換為預設介面。
+
 ## [v3.20.2.0] - 2026-11-18
 
 - **修復 Windows PDF 渲染與 WIC 圖片解碼引擎 (Fix Windows PDF Render & WIC Decoder Regression)**：修正自 v3.20.0.0 起因單一 `net8.0` 目標發布導致 Windows 發布版本缺少 `WINDOWS` 前置編譯符號，造成 PDF 轉圖片、列印與分割預覽退化為僅繪製文字層（照片、向量色塊、表格線與架構圖消失）之嚴重回歸。於 `Clickra.CLI` 與 `Clickra.Desktop` 專案檔中針對 Windows 執行時期目標（`-r win-*`）加入條件式 `net8.0-windows10.0.19041.0` TFM 覆蓋，完整恢復系統原生 `Windows.Data.Pdf` 向量光柵化引擎與 WIC 圖片解碼支援。
