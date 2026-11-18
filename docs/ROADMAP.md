@@ -144,6 +144,8 @@
 
     - 規範詳見：[4.0 跨平台總計畫 (v4_cross_platform_master_plan.md)](specs/v4_cross_platform_master_plan.md) 與 [4.0 桌面端版面規格 (v4_desktop_ui_layout.md)](specs/v4_desktop_ui_layout.md)。
 
+    - 版本節奏（2026-11-19）：`feat/avalonia-views` 以 v3.21.0.0 合併，新介面維持預覽（不進正式套件）；新介面成為預設介面時才是 v4.0.0.0，前置工作見總計畫〈4.0 上線前清單〉（多語系、實機驗收、密碼當場解鎖、右鍵精簡視窗、設定沿用、發佈流程、體積、舊介面退場、測試、商店素材、文件）。
+
     - 建置 Clickra.Desktop 統一桌面端（以 Avalonia 11+ 為評估首選候選框架）。
 
     - 實踐自適應平台融合：Windows Fluent (Mica/Acrylic)、macOS HIG Vibrancy、Linux 桌面主題（Adwaita/Breeze），並遵循 100% 來源檔案驅動調色盤。

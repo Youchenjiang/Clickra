@@ -177,7 +177,8 @@ flowchart LR
      - 目的：架構守衛確保桌面專案依賴單向性與各項契約測試 100% 通過。
 
 #### 分支 7：`feat/avalonia-views` (14 字元)
-* **脈絡與目的**：依介面規格實作轉檔頁（放檔、動作目錄與動作頁）、歷史紀錄與進度狀態，**串接 Core**，調整 4.0 介面用語的語系字串，串接全平台 NativeAOT 發布產線，並升級至 `v4.0.0.0` 正式版。
+* **脈絡與目的**：依介面規格實作轉檔頁（放檔、動作目錄與動作頁）、歷史紀錄與進度狀態，**串接 Core**。
+* **版本調整（2026-11-19 決策）**：本分支升級為 **`v3.21.0.0`**，不是 `v4.0.0.0`。合併後新介面仍是預覽：啟動器優先順序不變、正式發佈與商店套件不含 `Clickra.Desktop`，開發者以 `--desktop` 或 `CLICKRA_DESKTOP=1` 開啟。原列於本分支的「切換 MSIX 主程式」「全平台桌面發布產線」「升級 4.0.0.0」移到下方〈4.0 上線前清單〉。理由：版本號反映使用者實際拿到的東西，合併後正式版使用者打開的仍是 Fluent 或 Win32 介面，標成 4.0 會讓人以為介面換了；且新介面尚未多語系化（見清單 1），不能成為預設。
 * **預期原子提交**：
   1. `feat(shell): port convert workspace and action pages to avalonia xaml`
      - 目的：實現檔案拖放、檔案窄列、只列出可用動作的動作目錄，以及每個動作一個動作頁（含滑入／滑回動畫與選項卡片），串接 `ConvertWorkspaceController`。
@@ -192,11 +193,30 @@ flowchart LR
     - 歷史頁：接上歷史清單與篩選。
     - 平台相關文字：「檔案總管」在 macOS 為 Finder、Linux 為檔案管理員。
     - 系統「減少動態效果」設定的偵測（Avalonia 11 尚無 API），開啟時取消介面動畫。
-  4. `ci: add cross-platform desktop nativeaot release matrix`
-     - 目的：在 CI/Release workflow 加入全平台桌面端 NativeAOT 打包。
-  5. `chore(msix): switch msix app entry to desktop and bump to 4.0.0.0`
-     - 目的：MSIX 主程式切換為跨平台桌面端，推進版本至 `4.0.0.0`，同步更新 CHANGELOG、ROADMAP 與商店文件。
-  6. `test(shell): add comprehensive view and viewmodel test suite`
+  4. ~~`ci: add cross-platform desktop nativeaot release matrix`~~ → 移到〈4.0 上線前清單〉6。（本分支只在 CI 建置 Windows 目標，見 3.20.2 hotfix。）
+  5. ~~`chore(msix): switch msix app entry to desktop and bump to 4.0.0.0`~~ → 改為 `chore(msix): bump version to 3.21.0.0 and update docs`；切換主程式移到清單 6。
+  6. ~~`test(shell): add comprehensive view and viewmodel test suite`~~ → 移到清單 9。
+
+#### 4.0 上線前清單 (Release Readiness)
+
+新介面成為使用者預設介面的那一版才是 `v4.0.0.0`。以下全部完成並經 Windows 實機驗收後，才切換啟動器與發佈流程。每項各自一個 PR（分支名稱另定），完成後在此打勾並註明 PR 與版本。
+
+1. [ ] **多語系**：`Clickra.Desktop` 的介面文字目前幾乎都直接寫成繁體中文（2026-11-19 檢查，只有少數地方讀取 `Localization`）。全部改走 Core 語系檔，補齊繁中、簡中、英、日、韓五種語言（介面用語依 [v4_desktop_ui_layout.md](v4_desktop_ui_layout.md) 4.10，改前改後須經使用者確認）；檢查英文等較長文字在 760 寬度下不截斷、不換出版面。
+2. [ ] **Windows 實機驗收 `feat/avalonia-views`**：轉檔各動作、分割縮圖與放大預覽、列印、PDF → 圖片、有密碼的 PDF（`tmp/enc/` 測試檔）、自訂 AI 服務、拖曳資料夾、設為預設值、歷史、設定、760 × 600 最小視窗、深淺色主題、高 DPI。
+3. [ ] **有密碼的 PDF 當場解鎖**：[pdf_password_unlock_plan.md](pdf_password_unlock_plan.md)。完成後拿掉目錄「要先解密」的過渡停用。
+4. [ ] **右鍵執行的精簡視窗**：依介面規格 4.x 與畫布「右鍵執行」一列（處理中、全部成功、需要密碼、有檔案沒成功、沒有 Office 轉檔工具），由 4.0 介面取代 3.x 進度視窗；安靜模式行為不變。
+5. [ ] **設定沿用**：3.x 的設定、歷史、待繼續任務、右鍵選單勾選在 4.0 原樣可用；第一次開啟 4.0 不重設任何使用者設定。
+6. [ ] **發佈流程**：
+   - [ ] 啟動器（`ClickraLauncher`）改為優先開 `Clickra.Desktop`，Fluent／Win32 退為備援，最後一版再移除。
+   - [ ] `release.yml` 發佈 `Clickra.Desktop`（Windows `-r win-x64`，使用 Windows PDF 引擎）並打包進 MSIX；`build_store.ps1` 同步。
+   - [ ] macOS／Linux 桌面套件（App Bundle／AppImage）與 CI 矩陣；若延後，4.0 先只發 Windows 並在此註明。
+7. [ ] **體積**：`Clickra.Desktop.exe` 目前約 64 MB（2026-11-18，`-r win-x64` NativeAOT），超過第 5 節 35～40 MB 的目標。依第 6 節裁剪後重新量測，或修訂目標並記錄理由。
+8. [ ] **舊介面退場**：決定 Fluent（WinUI 3）可選套件與 Win32 Dashboard 的退場時間；商店上的 Fluent 可選套件如何處理；在 4.0 CHANGELOG 與商店說明公告。
+9. [ ] **測試**：ViewModel 測試（轉檔流程、分割、合併順序、重新命名預覽、設為預設值、密碼列）與架構測試（桌面端不得直接引用 `Processing` 命名空間等）。
+10. [ ] **商店素材**：五種語言的商店說明改寫為 4.0 介面；截圖重拍（深淺色各一套）。
+11. [ ] **文件**：README、ROADMAP、`v4_desktop_ui_layout.md` 狀態改為已實作；本計畫書階段三標為完成。
+
+完成 1～11 後的 `v4.0.0.0` PR 只做：切換啟動器與發佈流程（6 的前兩項若尚未合併）、升版號、CHANGELOG、商店文件。
 
 ---
 
