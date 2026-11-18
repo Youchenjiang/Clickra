@@ -135,6 +135,23 @@
         <Style Selector="ItemsControl.compact TextBlock.cardName">
             <Setter Property="FontSize" Value="18" />
         </Style>
+        <!-- 解密 when some PDFs are protected: outlined in the accent colour (spec 4.1). -->
+        <Style Selector="Button.catalogCard.suggested /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{DynamicResource Clk.Accent}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <!-- An action that waits for 解密: stays in place, faded; the note above the cards names these actions and
+             the tooltip says 「要先解密」 (a line under the name would make these cards taller than the rest). -->
+        <Style Selector="Button.catalogCard:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Clk.CardBorder}" />
+        </Style>
+        <Style Selector="Button.catalogCard:disabled Border.catalogPlate">
+            <Setter Property="Opacity" Value="0.4" />
+        </Style>
+        <Style Selector="Button.catalogCard:disabled TextBlock.cardName">
+            <Setter Property="Foreground" Value="{DynamicResource Clk.TextSecondary}" />
+        </Style>
         <Style Selector="Button.catalogCard:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource Clk.CardHover}" />
             <Setter Property="BorderBrush" Value="{DynamicResource Clk.CardBorder}" />
@@ -270,7 +287,7 @@
                 </Panel>
 
                 <!-- STATE B1: Action Catalog (Grid of available actions) -->
-                <Grid Name="CatalogPanel" RowDefinitions="Auto,Auto,*,Auto" IsVisible="{Binding IsActionCatalog}">
+                <Grid Name="CatalogPanel" RowDefinitions="Auto,Auto,Auto,*,Auto" IsVisible="{Binding IsActionCatalog}">
                     <TextBlock Grid.Row="0" Text="要對這些檔案做什麼？" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,16" />
                     <!-- Only 重新命名 is left (spec 4.1): say why in one sentence and offer 建議新功能. -->
                     <Border Grid.Row="1" Classes="card" Padding="16,10" Margin="6,0,6,10" IsVisible="{Binding OnlyRename}">
@@ -285,7 +302,19 @@
                             <Button Grid.Column="2" Classes="secondary" Content="建議新功能" Command="{Binding SuggestFeature}" VerticalAlignment="Center" />
                         </Grid>
                     </Border>
-                    <ScrollViewer Grid.Row="2" Name="CatalogScroll">
+                    <!-- PDFs with a password or print/copy restrictions (spec 4.1): which actions wait for 解密. -->
+                    <Border Grid.Row="2" Classes="card" Padding="16,10" Margin="6,0,6,10" IsVisible="{Binding HasProtectedPdf}">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <Viewbox Classes="ic" Width="18" Height="18" VerticalAlignment="Center">
+                                <Canvas Width="24" Height="24">
+                                    <Path Data="M7,11 V7 A5,5 0 0 1 17,7 V11 M5,11 H19 V21 H5 Z" Stroke="{DynamicResource Clk.Warning}" />
+                                </Canvas>
+                            </Viewbox>
+                            <TextBlock Grid.Column="1" Text="{Binding ProtectedPdfText}" FontSize="14" TextWrapping="Wrap" VerticalAlignment="Center" />
+                            <Button Grid.Column="2" Classes="primary" Content="先解密" Command="{Binding DecryptFirst}" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+                    <ScrollViewer Grid.Row="3" Name="CatalogScroll">
                         <!-- Top-aligned: cards keep their own height instead of being stretched to fill the viewport,
                              which made the content exactly as tall as the view and showed a scroll bar from rounding. -->
                         <ItemsControl Name="CatalogItems" ItemsSource="{Binding AvailableActions}" VerticalAlignment="Top">
@@ -297,7 +326,9 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Button Classes="catalogCard" Margin="6" Tag="{Binding}"
-                                            ToolTip.Tip="{Binding ToolTip}"
+                                            Classes.suggested="{Binding IsSuggested}"
+                                            IsEnabled="{Binding IsAvailable}"
+                                            ToolTip.Tip="{Binding CardTip}" ToolTip.ShowOnDisabled="True"
                                             Command="{Binding $parent[UserControl].((vm:ConvertViewModel)DataContext).SelectAction}"
                                             CommandParameter="{Binding}">
                                         <StackPanel Classes="cardStack" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -314,7 +345,7 @@
                         </ItemsControl>
                     </ScrollViewer>
                     <!-- The action may simply not exist yet: a quiet line under the cards (spec 4.1). -->
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="12" Margin="6,8,6,0" IsVisible="{Binding !OnlyRename}">
+                    <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="12" Margin="6,8,6,0" IsVisible="{Binding !OnlyRename}">
                         <TextBlock Text="沒有你要的？" Classes="secondary" FontSize="13" VerticalAlignment="Center" />
                         <Button Classes="secondary" Content="建議新功能" Command="{Binding SuggestFeature}" />
                     </StackPanel>
@@ -706,10 +737,16 @@
                                     </StackPanel>
 
                                     <!-- 解密 PDF -->
+                                    <!-- The password is asked only when some file needs one to open; a PDF that only restricts
+                                         printing or copying is decrypted without one (spec 4.9). -->
                                     <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.IsDecrypt}">
-                                        <TextBlock Classes="optLabel" Text="密碼" />
-                                        <TextBox Text="{Binding Options.Password}" PasswordChar="●" RevealPassword="False" />
-                                        <TextBlock Text="多個檔案會先用同一組密碼試；密碼只用這一次，不會儲存" Classes="secondary" FontSize="13" />
+                                        <StackPanel Spacing="14" IsVisible="{Binding Options.DecryptNeedsPassword}">
+                                            <TextBlock Classes="optLabel" Text="密碼" />
+                                            <TextBox Text="{Binding Options.Password}" PasswordChar="●" RevealPassword="False" />
+                                            <TextBlock Text="多個檔案會先用同一組密碼試；密碼只用這一次，不會儲存" Classes="secondary" FontSize="13" />
+                                        </StackPanel>
+                                        <TextBlock IsVisible="{Binding Options.DecryptNoPassword}" TextWrapping="Wrap" FontSize="14"
+                                                   Text="這些 PDF 開啟不用密碼，只是限制了列印或複製；解密會移除這些限制，不用輸入密碼。" />
                                     </StackPanel>
 
                                     <!-- 圖片轉換格式（必選，沒有預設） -->

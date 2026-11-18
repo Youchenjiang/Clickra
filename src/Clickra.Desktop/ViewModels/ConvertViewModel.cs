@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Avalonia.Threading;
 using Clickra.Core;
 using Clickra.Core.Application;
+using Clickra.Core.Modules.Pdf.Decrypt.Application;
 using Clickra.Core.Modules.Sys.HistoryTasks.Application;
 using Clickra.Core.Modules.Sys.HistoryTasks.Presentation;
 using Clickra.Core.Modules.Sys.Settings.Application;
@@ -107,6 +108,16 @@ public sealed class ActionItemViewModel : ViewModelBase
     public string IconGeometry { get; }
     /// <summary>Official feature icon from assets/features (Assets/FeatureIcons.axaml).</summary>
     public Avalonia.Media.IImage? Icon => FeatureIcons.Get(Command);
+
+    private bool _needsDecryptFirst;
+    private bool _isSuggested;
+    /// <summary>Core refuses PDFs with a password or print/copy restrictions for this action (spec 4.1): the card
+    /// stays in place, disabled, and its tooltip says why.</summary>
+    public bool NeedsDecryptFirst { get => _needsDecryptFirst; set { _needsDecryptFirst = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsAvailable)); OnPropertyChanged(nameof(CardTip)); } }
+    public string CardTip => _needsDecryptFirst ? $"有密碼或使用限制的 PDF 要先解密才能{Name}" : ToolTip;
+    public bool IsAvailable => !_needsDecryptFirst;
+    /// <summary>解密 when some files are protected: first and outlined.</summary>
+    public bool IsSuggested { get => _isSuggested; set { _isSuggested = value; OnPropertyChanged(); } }
 
     public ActionItemViewModel(
         string command,
@@ -447,6 +458,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         SyncFilesFromWorkspace();
         UpdateAvailableActions();
         State = ConvertWorkflowState.ActionCatalog;
+        RefreshProtection();
     }
 
     public void RemoveFile(string path)
@@ -487,6 +499,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         if (string.Equals(action.Command, ConvertWorkspaceController.BatchRenameCommand, StringComparison.OrdinalIgnoreCase))
             Rename.SetFiles(SelectedFiles.Select(f => f.Path));
         Options.Reset(action.Command);
+        if (action.Command == DecryptCommand) Options.DecryptNeedsPassword = ProtectedNeedsPassword;
         if (action.Command is "merge-pdf" or "img-merge" or "img-stitch")
             Order.SetFiles(action.Command, SelectedFiles.Select(f => f.Path));
         if (action.Command == "split-pdf")
@@ -505,6 +518,8 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     public void ResetToStart()
     {
         _workspace.ClearFiles();
+        _protectionCts?.Cancel();
+        _protection.Clear();
         SelectedFiles.Clear();
         AvailableActions.Clear();
         ResultItems.Clear();
@@ -526,12 +541,14 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
 
         _runningTaskId = existingTaskId;
         _runningIndex = resumeStartIndex;
-        _runningTotal = SelectedFiles.Count;
+        // 解密 runs only on the protected files; the others are left as they are (Core refuses unprotected ones).
+        var decryptFiles = SelectedAction.Command == DecryptCommand && HasProtectedPdf
+            ? ProtectedFiles.Select(f => f.Path).ToHashSet(StringComparer.OrdinalIgnoreCase)
+            : null;
+        _runningTotal = decryptFiles?.Count ?? SelectedFiles.Count;
         _pauseRequested = false;
         _fileStepsReported = false;
         _lastPassword = null;
-        for (int i = 0; i < SelectedFiles.Count; i++)
-            SelectedFiles[i].StatusText = i < resumeStartIndex ? "完成" : i == resumeStartIndex ? "處理中" : "等待中";
         State = ConvertWorkflowState.Executing;
         ProgressPercent = 0;
         ProgressMessage = "準備轉換中...";
@@ -541,7 +558,10 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         var controller = new ConversionExecutionController();
         string command = SelectedAction.Command;
         // Merge and stitch run in the order shown in the workspace.
-        var files = (IsOrderAction ? Order.OrderedFiles : SelectedFiles.Select(f => f.Path)).ToArray();
+        var files = (IsOrderAction ? Order.OrderedFiles : SelectedFiles.Select(f => f.Path))
+            .Where(f => decryptFiles is null || decryptFiles.Contains(f))
+            .ToArray();
+        MarkFileSteps(files, resumeStartIndex);
 
         var options = new Dictionary<string, object>();
         Dictionary<string, string>? renamed = null;
@@ -625,11 +645,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
                     {
                         _runningIndex = index;
                         _fileStepsReported = true;
-                        for (int i = 0; i < SelectedFiles.Count; i++)
-                        {
-                            if (SelectedFiles[i].NeedsPassword) continue;
-                            SelectedFiles[i].StatusText = i < index ? "完成" : i == index ? "處理中" : "等待中";
-                        }
+                        MarkFileSteps(files, index);
                         Changed?.Invoke(this, EventArgs.Empty);
                     });
                 });
@@ -654,6 +670,9 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
 
             State = ConvertWorkflowState.Completed;
             ShowResults(result, files, plannedOutputs, renamed);
+            if (decryptFiles is not null)
+                foreach (FileItemViewModel f in SelectedFiles.Where(f => !decryptFiles.Contains(f.Path)))
+                    ResultItems.Add(new ExecutionResultItemViewModel(f.Path, true, "沒有密碼或限制，不用解密"));
         }
         catch (OperationCanceledException)
         {
@@ -671,6 +690,20 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             _pauseRequested = false;
             RefreshRecentHistory();
             Finished?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>Shows each row's step by its place in the run (merge runs in the workspace order, 解密 skips files
+    /// without protection), not by its place in the file list.</summary>
+    private void MarkFileSteps(IReadOnlyList<string> runFiles, int current)
+    {
+        foreach (FileItemViewModel row in SelectedFiles)
+        {
+            if (row.NeedsPassword) continue;
+            int at = -1;
+            for (int i = 0; i < runFiles.Count; i++)
+                if (string.Equals(runFiles[i], row.Path, StringComparison.OrdinalIgnoreCase)) { at = i; break; }
+            row.StatusText = at < 0 ? "不用處理" : at < current ? "完成" : at == current ? "處理中" : "等待中";
         }
     }
 
@@ -815,8 +848,127 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             AvailableActions.Remove(renameAction);
             AvailableActions.Add(renameAction);
         }
+
+        // 解密 depends on the files themselves (spec 4.1): hidden when none is protected (Core refuses unprotected
+        // files), first and outlined when some are; the actions Core refuses for protected files stay, disabled.
+        var decrypt = AvailableActions.FirstOrDefault(a => a.Command == DecryptCommand);
+        if (decrypt is not null)
+        {
+            AvailableActions.Remove(decrypt);
+            if (HasProtectedPdf)
+            {
+                decrypt.IsSuggested = true;
+                AvailableActions.Insert(0, decrypt);
+            }
+        }
+        foreach (ActionItemViewModel action in AvailableActions)
+            action.NeedsDecryptFirst = HasProtectedPdf && NeedsUnprotectedInput(action.Command);
+
         OnPropertyChanged(nameof(OnlyRename));
         OnPropertyChanged(nameof(OnlyRenameText));
+        OnPropertyChanged(nameof(HasProtectedPdf));
+        OnPropertyChanged(nameof(ProtectedPdfText));
+    }
+
+    // ----- 有密碼或使用限制的 PDF (spec 4.1) -----
+
+    private const string DecryptCommand = "decrypt-pdf";
+    private enum PdfProtection { None, Restricted, OpenPassword }
+    private readonly Dictionary<string, PdfProtection> _protection = new(StringComparer.OrdinalIgnoreCase);
+    private CancellationTokenSource? _protectionCts;
+
+    /// <summary>Core refuses protected PDFs for these (they need the file's content unlocked first); split and
+    /// PDF → image ask for the password while running, so they stay available.</summary>
+    private static bool NeedsUnprotectedInput(string command) =>
+        command is "merge-pdf" or "compress-pdf" or "translate-pdf" or "print-pdf";
+
+    private PdfProtection ProtectionOf(string path) =>
+        _protection.TryGetValue(path, out PdfProtection value) ? value : PdfProtection.None;
+
+    private List<FileItemViewModel> ProtectedFiles =>
+        SelectedFiles.Where(f => ProtectionOf(f.Path) != PdfProtection.None).ToList();
+
+    public bool HasProtectedPdf => SelectedFiles.Any(f => ProtectionOf(f.Path) != PdfProtection.None);
+
+    /// <summary>Some files need their open password typed on the decrypt card; restricted ones need none.</summary>
+    public bool ProtectedNeedsPassword => SelectedFiles.Any(f => ProtectionOf(f.Path) == PdfProtection.OpenPassword);
+
+    /// <summary>One sentence above the cards: what is protected and what has to wait for 解密.</summary>
+    public string ProtectedPdfText
+    {
+        get
+        {
+            List<FileItemViewModel> files = ProtectedFiles;
+            if (files.Count == 0) return "";
+            bool open = files.Any(f => ProtectionOf(f.Path) == PdfProtection.OpenPassword);
+            bool onlyRestricted = !open;
+            const string blocked = "合併、壓縮、翻譯、列印要先解密";
+            if (SelectedFiles.Count == 1)
+            {
+                return onlyRestricted
+                    ? $"這個 PDF 限制了列印或複製。{blocked}，不用密碼。"
+                    : $"這個 PDF 要密碼才能開啟。{blocked}；分割、轉成圖片會在執行時問密碼。";
+            }
+            string names = files.Count <= 2
+                ? string.Join("、", files.Select(f => f.Name))
+                : string.Join("、", files.Take(2).Select(f => f.Name)) + " 等";
+            if (files.Count == SelectedFiles.Count)
+                return $"這 {files.Count} 個 PDF 都有密碼或使用限制。{blocked}。";
+            return $"{SelectedFiles.Count} 個 PDF 中有 {files.Count} 個有密碼或使用限制（{names}）。解密只會處理{(files.Count == 1 ? "這個檔案" : "這些檔案")}；{blocked}。";
+        }
+    }
+
+    /// <summary>「先解密」 in the note above the cards.</summary>
+    public void DecryptFirst()
+    {
+        ActionItemViewModel? decrypt = AvailableActions.FirstOrDefault(a => a.Command == DecryptCommand);
+        if (decrypt is not null) SelectAction(decrypt);
+    }
+
+    /// <summary>
+    /// Checks the PDFs in the background (each is opened once); until a file is checked it counts as unprotected,
+    /// so the cards show at once and are updated when the answer comes.
+    /// </summary>
+    private void RefreshProtection()
+    {
+        _protectionCts?.Cancel();
+        List<string> pending = SelectedFiles
+            .Where(f => f.Extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase) && !_protection.ContainsKey(f.Path))
+            .Select(f => f.Path)
+            .ToList();
+        if (pending.Count == 0) return;
+        var cts = new CancellationTokenSource();
+        _protectionCts = cts;
+        _ = Task.Run(() =>
+        {
+            var found = new Dictionary<string, PdfProtection>(StringComparer.OrdinalIgnoreCase);
+            foreach (string path in pending)
+            {
+                if (cts.IsCancellationRequested) return;
+                PdfProtection protection;
+                try
+                {
+                    protection = !PdfEncryptionQuery.IsEncrypted(path) ? PdfProtection.None
+                        : PdfEncryptionQuery.NeedsOpenPassword(path) ? PdfProtection.OpenPassword
+                        : PdfProtection.Restricted;
+                }
+                catch
+                {
+                    protection = PdfProtection.None;
+                }
+                found[path] = protection;
+            }
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (cts.IsCancellationRequested) return;
+                foreach (var (path, protection) in found) _protection[path] = protection;
+                if (found.Values.Any(p => p != PdfProtection.None))
+                {
+                    UpdateAvailableActions();
+                    if (SelectedAction?.Command == DecryptCommand) Options.DecryptNeedsPassword = ProtectedNeedsPassword;
+                }
+            });
+        });
     }
 
     /// <summary>

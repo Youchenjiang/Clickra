@@ -191,8 +191,9 @@ public partial class ConvertPage : UserControl
         int count = CatalogItems.ItemCount;
         int rows = (count + 3) / 4;
         bool compact = CatalogItems.Classes.Contains("compact");
-        if (!compact && CatalogItems.GetRealizedContainers().FirstOrDefault() is Control first && first.DesiredSize.Height > 0)
-            _normalCardHeight = first.DesiredSize.Height; // includes the card margin
+        // The tallest card sets the row (a card waiting for 解密 has one more line); includes the card margin.
+        double tallest = compact ? 0 : CatalogItems.GetRealizedContainers().Select(c => c.DesiredSize.Height).DefaultIfEmpty(0).Max();
+        if (tallest > 0) _normalCardHeight = tallest;
         if (rows is 0 or > 2 || _normalCardHeight <= 0)
         {
             if (compact) CatalogItems.Classes.Remove("compact");

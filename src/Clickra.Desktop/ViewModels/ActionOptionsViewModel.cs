@@ -321,6 +321,16 @@ public sealed class ActionOptionsViewModel : ViewModelBase
     // ----- decrypt -----
     public string Password { get => _password; set { _password = value ?? ""; Changed(nameof(Password), nameof(IsReady), nameof(BlockingText)); } }
 
+    private bool _decryptNeedsPassword = true;
+    /// <summary>False when every protected file only restricts printing or copying: they open without a password,
+    /// so the card asks for none (spec 4.9).</summary>
+    public bool DecryptNeedsPassword
+    {
+        get => _decryptNeedsPassword;
+        set { _decryptNeedsPassword = value; Changed(nameof(DecryptNeedsPassword), nameof(DecryptNoPassword), nameof(IsReady), nameof(BlockingText)); }
+    }
+    public bool DecryptNoPassword => !_decryptNeedsPassword;
+
     // ----- image format -----
     private bool[] _imageFormatAllowed = [true, true, true, true, true];
     /// <summary>Formats the selected files can be converted to (a PNG cannot become PNG); others are disabled.</summary>
@@ -572,12 +582,12 @@ public sealed class ActionOptionsViewModel : ViewModelBase
 
     // ----- start button -----
     /// <summary>False while a required choice is missing (spec 4.1: 必選選項).</summary>
-    public bool IsReady => !(IsMarkdown && UsesWordTemplate && HasTemplateError) && !(IsDecrypt && _password.Length == 0) && !(IsImageFormat && _imageFormat < 0) && !(IsPrint && _printerIndex < 0) && !(IsTranslate && AiIncomplete);
+    public bool IsReady => !(IsMarkdown && UsesWordTemplate && HasTemplateError) && !(IsDecrypt && _decryptNeedsPassword && _password.Length == 0) && !(IsImageFormat && _imageFormat < 0) && !(IsPrint && _printerIndex < 0) && !(IsTranslate && AiIncomplete);
 
     /// <summary>What the start button says while it is disabled.</summary>
     public string BlockingText =>
         IsMarkdown && UsesWordTemplate && HasTemplateError ? "先換一個能用的範本"
-        : IsDecrypt && _password.Length == 0 ? "先輸入密碼"
+        : IsDecrypt && _decryptNeedsPassword && _password.Length == 0 ? "先輸入密碼"
         : IsImageFormat && _imageFormat < 0 ? "先選要轉成的格式"
         : IsPrint && _printerIndex < 0 ? (HasPrinters ? "先選印表機" : "找不到印表機")
         : IsTranslate && AiIncomplete ? "先填好 AI 服務的網址、模型與金鑰"
