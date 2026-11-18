@@ -15,6 +15,11 @@ SUBJECT = re.compile(rf"^(?:{ALLOWED_TYPES})(?:\((?:{ALLOWED_SCOPES})\))?: [a-z0
 BODY_NUMBER = re.compile(r"1[.)][ \t]+")
 CHECKLIST_SECTION = "## Review Checklist"
 REQUIRED_SECTIONS = ("## Summary", "## Changes", "## Validation", CHECKLIST_SECTION)
+CJK_PATTERN = re.compile(r"[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]")
+COMMIT_HASH_PATTERN = re.compile(
+    r"\b(?=[0-9a-f]{7,40}\b)(?:[0-9a-f]{40}|(?=[a-f]*[0-9])(?=[0-9]*[a-f])[0-9a-f]{7,40})\b",
+    re.IGNORECASE
+)
 PLACEHOLDER = re.compile(r"(?i)\b(?:todo|tbd|placeholder|describe the|assign the|add an appropriate|choose the|not run: full pre-push)\b")
 VAGUE = {"update", "misc", "stuff", "changes", "fix bug", "bug fix"}
 GIT_TIMEOUT = 30
@@ -120,6 +125,18 @@ def _live_metadata_errors(metadata):
 
 def validate_pr_body(body, metadata=None):
     errors = []
+    clean_body = re.sub(r"<!--.*?-->", "", body, flags=re.DOTALL)
+    prose = re.sub(r"```.*?```", "", clean_body, flags=re.DOTALL)
+    prose = re.sub(r"`.*?`", "", prose)
+
+    if CJK_PATTERN.search(prose):
+        errors.append("PR body must be written in English")
+
+    if COMMIT_HASH_PATTERN.search(prose):
+        errors.append(
+            "PR body must not contain internal commit hashes; describe changes in public-facing terms"
+        )
+
     sections = _split_pr_sections(body)
     for heading in REQUIRED_SECTIONS:
         if heading not in sections:
