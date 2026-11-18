@@ -17,7 +17,10 @@ fill / fill-opacity / stroke / stroke-width / stroke-linecap / stroke-linejoin /
 from __future__ import annotations
 
 import sys
-import xml.etree.ElementTree as ET  # skipcq: PTC-W0017, BAN-B314
+try:
+    import defusedxml.ElementTree as ET  # type: ignore
+except ImportError:
+    import xml.etree.ElementTree as ET  # skipcq: PTC-W0017, BAN-B314, BAN-B405
 from pathlib import Path
 from xml.sax.saxutils import quoteattr
 

@@ -142,9 +142,10 @@ public partial class MainWindow : Window
         {
             // Maximized: keep the last normal size so un-maximizing next time returns to it.
             bool maximized = WindowState == WindowState.Maximized;
+            int maxFlag = maximized ? 1 : 0;
             string value = maximized && _normalBounds is { } nb
                 ? $"{nb.X},{nb.Y},{nb.W.ToString(System.Globalization.CultureInfo.InvariantCulture)},{nb.H.ToString(System.Globalization.CultureInfo.InvariantCulture)},1"
-                : $"{Position.X},{Position.Y},{Width.ToString(System.Globalization.CultureInfo.InvariantCulture)},{Height.ToString(System.Globalization.CultureInfo.InvariantCulture)},{(maximized ? 1 : 0)}";
+                : $"{Position.X},{Position.Y},{Width.ToString(System.Globalization.CultureInfo.InvariantCulture)},{Height.ToString(System.Globalization.CultureInfo.InvariantCulture)},{maxFlag}";
             Clickra.Core.Modules.Sys.Settings.Application.SettingsController.DesktopWindowBounds = value;
         }
         catch

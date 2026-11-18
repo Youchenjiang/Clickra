@@ -146,11 +146,19 @@ public abstract class HistoryRowHostBase : ViewModelBase, IHistoryRowHost
 
         if (missing.Count == files.Count)
         {
-            string text = driveMissing
-                ? MissingDriveText(root!)
-                : files.Count == 1
-                    ? $"找不到 {Path.GetFileName(files[0])}，可能已被移動或刪除"
-                    : $"{files.Count} 個檔案都找不到，可能已被移動或刪除";
+            string text;
+            if (driveMissing)
+            {
+                text = MissingDriveText(root!);
+            }
+            else if (files.Count == 1)
+            {
+                text = $"找不到 {Path.GetFileName(files[0])}，可能已被移動或刪除";
+            }
+            else
+            {
+                text = $"{files.Count} 個檔案都找不到，可能已被移動或刪除";
+            }
             Show(row, NoticeSource.Rerun, text);
             return;
         }

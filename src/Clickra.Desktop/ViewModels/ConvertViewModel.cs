@@ -299,12 +299,19 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         }
     }
 
-    public string StartButtonText => IsRenameAction
-        ? Rename.RenameButtonText
-        : IsOrderAction && !Order.HasOutputName ? "先填寫檔名"
-        : IsSplitAction ? (Split.BlockingText.Length > 0 ? Split.BlockingText : Split.StartText)
-        : Options.BlockingText.Length > 0 ? Options.BlockingText
-        : SelectedAction is not null ? $"開始{SelectedAction.Name}" : "開始";
+    public string StartButtonText => GetStartButtonText();
+
+    private string GetStartButtonText()
+    {
+        if (IsRenameAction) return Rename.RenameButtonText;
+        if (IsOrderAction && !Order.HasOutputName) return "先填寫檔名";
+        if (IsSplitAction)
+        {
+            return Split.BlockingText.Length > 0 ? Split.BlockingText : Split.StartText;
+        }
+        if (Options.BlockingText.Length > 0) return Options.BlockingText;
+        return SelectedAction is not null ? $"開始{SelectedAction.Name}" : "開始";
+    }
 
     /// <summary>The options card of the open action (spec 4.9).</summary>
     public ActionOptionsViewModel Options { get; } = new();
@@ -371,8 +378,20 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         {
             if (SelectedFiles.Count == 0) return "file";
             // Mixed types (PDF + 圖片) are just 「N 個檔案」, not named after the first file.
-            var domains = SelectedFiles.Select(f => DomainOf(f.Extension)).Distinct().ToList();
-            return domains.Count == 1 ? domains[0] : "file";
+            string? firstDomain = null;
+            foreach (var f in SelectedFiles)
+            {
+                var domain = DomainOf(f.Extension);
+                if (firstDomain is null)
+                {
+                    firstDomain = domain;
+                }
+                else if (firstDomain != domain)
+                {
+                    return "file";
+                }
+            }
+            return firstDomain ?? "file";
         }
     }
 
@@ -709,7 +728,10 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             int at = -1;
             for (int i = 0; i < runFiles.Count; i++)
                 if (string.Equals(runFiles[i], row.Path, StringComparison.OrdinalIgnoreCase)) { at = i; break; }
-            row.StatusText = at < 0 ? "不用處理" : at < current ? "完成" : at == current ? "處理中" : "等待中";
+            if (at < 0) row.StatusText = "不用處理";
+            else if (at < current) row.StatusText = "完成";
+            else if (at == current) row.StatusText = "處理中";
+            else row.StatusText = "等待中";
         }
     }
 
@@ -733,7 +755,9 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             foreach (var (newName, oldName) in renamed)
             {
                 bool fileOk = done.Contains(newName);
-                ResultItems.Add(new ExecutionResultItemViewModel(newName, fileOk, fileOk ? $"原本是 {oldName}" : (error.Length > 0 ? error : "沒有改名")));
+                string fallback = error.Length > 0 ? error : "沒有改名";
+                string detail = fileOk ? $"原本是 {oldName}" : fallback;
+                ResultItems.Add(new ExecutionResultItemViewModel(newName, fileOk, detail));
             }
             int count = ResultItems.Count(r => r.Succeeded);
             ResultSummary = ok ? $"重新命名好 {count} 個檔案" : $"重新命名好 {count} 個，{renamed.Count - count} 個沒有改";
@@ -748,12 +772,15 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             if (ResultItems.Any(r => string.Equals(r.FullPath, file, StringComparison.OrdinalIgnoreCase))) continue;
             bool fileOk = ok || (perFile && File.Exists(plannedOutputs[i]) && result.Outputs.Contains(plannedOutputs[i], StringComparer.OrdinalIgnoreCase));
             if (fileOk) succeeded++;
-            ResultItems.Add(new ExecutionResultItemViewModel(file, fileOk, fileOk ? "處理完成" : (error.Length > 0 ? error : "沒有完成")));
+            string fallback = error.Length > 0 ? error : "沒有完成";
+            string detail = fileOk ? "處理完成" : fallback;
+            ResultItems.Add(new ExecutionResultItemViewModel(file, fileOk, detail));
         }
         int failed = files.Count - succeeded;
+        string actionName = SelectedAction?.Name ?? "";
         ResultSummary = ok && failed == 0
-            ? $"{SelectedAction?.Name}好 {files.Count} 個檔案"
-            : $"{SelectedAction?.Name}好 {succeeded} 個，{failed} 個需要處理";
+            ? $"{actionName}好 {files.Count} 個檔案"
+            : $"{actionName}好 {succeeded} 個，{failed} 個需要處理";
     }
 
     private static string FirstLine(string? text) =>
@@ -954,9 +981,18 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
                 PdfProtection protection;
                 try
                 {
-                    protection = !PdfEncryptionQuery.IsEncrypted(path) ? PdfProtection.None
-                        : PdfEncryptionQuery.NeedsOpenPassword(path) ? PdfProtection.OpenPassword
-                        : PdfProtection.Restricted;
+                    if (!PdfEncryptionQuery.IsEncrypted(path))
+                    {
+                        protection = PdfProtection.None;
+                    }
+                    else if (PdfEncryptionQuery.NeedsOpenPassword(path))
+                    {
+                        protection = PdfProtection.OpenPassword;
+                    }
+                    else
+                    {
+                        protection = PdfProtection.Restricted;
+                    }
                 }
                 catch
                 {

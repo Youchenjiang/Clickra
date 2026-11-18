@@ -122,11 +122,13 @@ public sealed class RenameWorkspaceViewModel : ViewModelBase
                 Position: _numberPosition == 0 ? InsertPosition.Prefix : InsertPosition.Suffix);
         }
 
-        TimestampOptions? timestamp = _useDate
-            ? new TimestampOptions(
-                Source: _dateSource == 1 ? TimestampSource.CreatedTime : TimestampSource.ModifiedTime,
-                Position: _datePosition == 0 ? InsertPosition.Prefix : InsertPosition.Suffix)
-            : null;
+        TimestampOptions? timestamp = null;
+        if (_useDate)
+        {
+            var dateSource = _dateSource == 1 ? TimestampSource.CreatedTime : TimestampSource.ModifiedTime;
+            var datePosition = _datePosition == 0 ? InsertPosition.Prefix : InsertPosition.Suffix;
+            timestamp = new TimestampOptions(Source: dateSource, Position: datePosition);
+        }
 
         return new BatchRenameOptions(
             Prefix: _useAffix && _prefix.Length > 0 ? _prefix : null,

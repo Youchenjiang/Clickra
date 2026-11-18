@@ -133,14 +133,19 @@ public sealed class ActionOptionsViewModel : ViewModelBase
 
     /// <summary>Actions whose card has values with a feature default (decrypt and image format have none).</summary>
     public bool HasDefaults => IsCompressPdf || IsImageCompress || IsPdfToImage || IsTranslate || IsMarkdown || IsPrint;
-    public bool AllAtDefault =>
-        IsCompressPdf ? PdfLevelIsDefault
-        : IsImageCompress ? ImageLevelIsDefault
-        : IsPdfToImage ? PdfImageIsDefault
-        : IsTranslate ? TranslateIsDefault
-        : IsMarkdown ? MarkdownThemeIsDefault
-        : IsPrint ? PrintIsDefault
-        : true;
+    public bool AllAtDefault => GetAllAtDefault();
+
+    private bool GetAllAtDefault()
+    {
+        if (IsCompressPdf) return PdfLevelIsDefault;
+        if (IsImageCompress) return ImageLevelIsDefault;
+        if (IsPdfToImage) return PdfImageIsDefault;
+        if (IsTranslate) return TranslateIsDefault;
+        if (IsMarkdown) return MarkdownThemeIsDefault;
+        if (IsPrint) return PrintIsDefault;
+        return true;
+    }
+
     public bool ShowSaveDefault => HasDefaults && (IsMarkdown ? CanSaveMarkdownDefault : !AllAtDefault) && !(IsPrint && !HasPrinters);
     public bool ShowSavedNote => HasDefaults && _justSavedDefault && AllAtDefault;
 
@@ -556,8 +561,23 @@ public sealed class ActionOptionsViewModel : ViewModelBase
             string saved = SettingsController.PrintPrinter;
             string? fallback = saved.Length > 0 && _printers.Any(p => p.Equals(saved, StringComparison.OrdinalIgnoreCase))
                 ? saved : PrinterDiscovery.GetDefaultPrinter();
-            _printerIndex = fallback is null ? (_printers.Count > 0 ? 0 : -1)
-                : Math.Max(0, _printers.ToList().FindIndex(p => p.Equals(fallback, StringComparison.OrdinalIgnoreCase)));
+            if (fallback is null)
+            {
+                _printerIndex = _printers.Count > 0 ? 0 : -1;
+            }
+            else
+            {
+                int matchedIndex = -1;
+                for (int i = 0; i < _printers.Count; i++)
+                {
+                    if (_printers[i].Equals(fallback, StringComparison.OrdinalIgnoreCase))
+                    {
+                        matchedIndex = i;
+                        break;
+                    }
+                }
+                _printerIndex = Math.Max(0, matchedIndex);
+            }
         }
         catch
         {
@@ -596,13 +616,17 @@ public sealed class ActionOptionsViewModel : ViewModelBase
     public bool IsReady => !(IsMarkdown && UsesWordTemplate && HasTemplateError) && !(IsDecrypt && _decryptNeedsPassword && _password.Length == 0) && !(IsImageFormat && _imageFormat < 0) && !(IsPrint && _printerIndex < 0) && !(IsTranslate && AiIncomplete);
 
     /// <summary>What the start button says while it is disabled.</summary>
-    public string BlockingText =>
-        IsMarkdown && UsesWordTemplate && HasTemplateError ? "先換一個能用的範本"
-        : IsDecrypt && _decryptNeedsPassword && _password.Length == 0 ? "先輸入密碼"
-        : IsImageFormat && _imageFormat < 0 ? "先選要轉成的格式"
-        : IsPrint && _printerIndex < 0 ? (HasPrinters ? "先選印表機" : "找不到印表機")
-        : IsTranslate && AiIncomplete ? "先填好 AI 服務的網址、模型與金鑰"
-        : "";
+    public string BlockingText => GetBlockingText();
+
+    private string GetBlockingText()
+    {
+        if (IsMarkdown && UsesWordTemplate && HasTemplateError) return "先換一個能用的範本";
+        if (IsDecrypt && _decryptNeedsPassword && _password.Length == 0) return "先輸入密碼";
+        if (IsImageFormat && _imageFormat < 0) return "先選要轉成的格式";
+        if (IsPrint && _printerIndex < 0) return HasPrinters ? "先選印表機" : "找不到印表機";
+        if (IsTranslate && AiIncomplete) return "先填好 AI 服務的網址、模型與金鑰";
+        return "";
+    }
 
     /// <summary>The command to run: the image format card picks one of the img-to-* commands.</summary>
     public string ResolveCommand(string command) =>

@@ -250,10 +250,15 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
     public double PreviewPageWidth => Math.Max(1, WholePageWidth * _zoom);
     public double PreviewPageHeight => Math.Max(1, WholePageWidth * _zoom * PageAspect);
 
-    public string PreviewZoomText =>
-        Math.Abs(_zoom - 1) < 0.01 ? "整頁"
-        : Math.Abs(_zoom - FitWidthZoom) < 0.01 ? "符合寬度"
-        : $"{Math.Round(_zoom * 100)}%";
+    public string PreviewZoomText
+    {
+        get
+        {
+            if (Math.Abs(_zoom - 1) < 0.01) return "整頁";
+            if (Math.Abs(_zoom - FitWidthZoom) < 0.01) return "符合寬度";
+            return $"{Math.Round(_zoom * 100)}%";
+        }
+    }
 
     /// <summary>The middle zoom button: 整頁 ⇄ 符合寬度.</summary>
     public void TogglePreviewFit() => SetZoom(Math.Abs(_zoom - 1) < 0.01 ? FitWidthZoom : 1);
