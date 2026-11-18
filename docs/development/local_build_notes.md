@@ -109,7 +109,7 @@ Use `scripts/build_msix.ps1` for the actual current Main package so the CLI, Lau
 
 當在本機使用 `dotnet run` 或 `dotnet build` 且**未帶 `-r`**（RuntimeIdentifier）參數時：
 - 專案評估為通用 `net8.0` 目標，不會定義 `WINDOWS` 編譯符號。
-- 此時 PDF 預覽、PDF 轉圖片、列印僅透過 PdfPig 繪製文字版面疊圖（照片、表格框線、背景色塊與向量圖形不會繪製），此為純 `net8.0` 跨平台環境之**正常降級行為**。
+- 此時 PDF 預覽、PDF 轉圖片、列印透過 PdfPig 繪製文字版面疊圖並嘗試繪製可解碼之內嵌點陣圖，但無法完整光柵化複雜向量圖形、表格框線與背景色塊，此為純 `net8.0` 跨平台環境之**正常降級行為**。
 - 若要在本機測試或使用 Windows 系統內建的 PDF 渲染引擎（`Windows.Data.Pdf`）與 WIC 圖片解碼器，請加上 `-r win-x64`：
 
 ```powershell
