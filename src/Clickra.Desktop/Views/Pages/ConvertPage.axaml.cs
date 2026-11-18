@@ -411,6 +411,7 @@ public partial class ConvertPage : UserControl
             case Key.OemMinus or Key.Subtract when e.KeyModifiers.HasFlag(KeyModifiers.Control):
                 vm.Split.ZoomOutPreview(); e.Handled = true; break;
             default:
+                // Unhandled keys pass through to standard navigation
                 break;
         }
     }
