@@ -102,6 +102,7 @@ git clone https://github.com/Youchenjiang/Clickra.git
 cd Clickra
 powershell -File scripts/build_msix.ps1
 ```
+> **Note**: For local development, running `dotnet run` without `-r` defaults to universal `net8.0` (using text-layer PDF fallback). To run or preview with the full Windows built-in PDF engine and WIC decoders, pass `-r win-x64` (e.g. `dotnet run --project src/Clickra.Desktop/Clickra.Desktop.csproj -r win-x64`).
 
 ### Test
 ```bash

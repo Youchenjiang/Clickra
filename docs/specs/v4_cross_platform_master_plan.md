@@ -151,6 +151,11 @@ flowchart LR
   10. `refactor(core): discard unused fallback parameters in platform stubs`
   11. `test(core): extract project name constant in universal package guard`
 
+##### Core／CLI 平台目標與 Windows 原生渲染演進 (Core & CLI Target Delivery)
+- **6399398c 回歸與影響版本**：在 `6399398c` 中，為了支援 .NET 全域工具打包（`dotnet pack`）並消除 MSIX 原生發佈時的多目標評估歧義（NETSDK1129），CLI 被改為單一 `net8.0` 目標。然而，`Clickra.Core` 中的 WinRT 與 WIC 僅在 `WINDOWS` 前置編譯符號下生效，導致 Windows 原生發佈版本缺少 `WINDOWS` 定義，PDF 轉圖片、列印與分割預覽退化為僅繪製文字層（照片、色塊、表格框線消失），此回歸影響 `v3.20.0.0` 與 `v3.20.1.0`。
+- **現行做法 (v3.20.2.0)**：於 `Clickra.CLI` 與 `Clickra.Desktop` 專案檔中採用條件式覆寫：當 `-r win-*` 時將 `TargetFramework` 改為 `net8.0-windows10.0.19041.0`，完整恢復 Windows 內建 `Windows.Data.Pdf` 向量渲染與 WIC 圖片解碼；通用發佈（Linux、macOS、.NET 全域工具及未帶 `-r` 的本機建置）維持純 `net8.0`。CI 亦在 Windows 矩陣中增補帶有 `-r win-x64` 的 `Clickra.Desktop` 建置 step，確保 Windows 目標於 CI 常態編譯。
+- **未來收斂目標**：後續改用跨平台 PDF 引擎（PDFium）與跨平台圖片處理後回到單一 `net8.0` 並移除條件式覆寫。
+
 ---
 
 ### 階段三：Avalonia 跨平台桌面介面 (`v4.0.0`)

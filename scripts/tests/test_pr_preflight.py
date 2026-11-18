@@ -178,6 +178,32 @@ class PrPreflightTests(unittest.TestCase):
         errors = validate_pr_body(body)
         self.assertIn("placeholder in review checklist prompt: Behavior", errors)
 
+    def test_rejects_cjk_characters_in_pr_body_prose(self):
+        body = ("## Summary\n修正回歸問題\n## Changes\n修復錯誤\n## Validation\n本地測試通過\n"
+                "## Review Checklist\n" + self.VALID_CHECKLIST)
+        errors = validate_pr_body(body)
+        self.assertIn("PR body must be written in English", errors)
+
+    def test_allows_cjk_characters_inside_inline_code_or_html_comments(self):
+        body = ("<!-- 中文註解說明 -->\n"
+                "## Summary\nFix regression when handling `企業網路報告.pdf` file.\n"
+                "## Changes\nSupport CJK file names.\n## Validation\nTested with `測試.pdf`.\n"
+                "## Review Checklist\n" + self.VALID_CHECKLIST)
+        errors = validate_pr_body(body)
+        self.assertEqual([], errors)
+
+    def test_rejects_raw_commit_hashes_in_pr_body(self):
+        body = ("## Summary\nFix regression from 6399398c in CLI.\n## Changes\nRestore TFM.\n## Validation\nPassed.\n"
+                "## Review Checklist\n" + self.VALID_CHECKLIST)
+        errors = validate_pr_body(body)
+        self.assertIn("PR body must not contain internal commit hashes; describe changes in public-facing terms", errors)
+
+    def test_allows_commit_hashes_inside_code_blocks(self):
+        body = ("## Summary\nFix regression in CLI.\n## Changes\nRestore TFM.\n## Validation\n```\ncommit 6399398c passed\n```\n"
+                "## Review Checklist\n" + self.VALID_CHECKLIST)
+        errors = validate_pr_body(body)
+        self.assertEqual([], errors)
+
     def test_real_github_metadata_is_checked_without_self_reported_checkboxes(self):
         body = ("## Summary\nA\n## Changes\nB\n## Validation\nC\n"
                 "## Review Checklist\n" + self.VALID_CHECKLIST)

@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.20.1.0.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.20.2.0.
 
 ---
 
@@ -15,8 +15,9 @@ Core document operations run completely offline on your local PC to keep your da
 Source Code: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
+- Fixed PDF to image, print, and split preview rendering: Resolved an issue where only text was rendered, fully restoring images, tables, and diagrams.
 - Universal CLI & Cross-Platform Packaging: Clickra CLI is now available as a universal .NET Global Tool (dotnet tool install -g Clickra) and standalone NativeAOT binaries for Windows, Linux, and macOS.
-- Multi-Target Architecture: Full net8.0 multi-targeting and platform decoupling across Core and CLI with preprocessor guards.
+- Multi-Target Architecture: Core supports multi-targeting, CLI targets net8.0 for cross-platform tool packaging.
 - Headless Execution & ANSI Progress: Headless mode (--headless), platform and engine diagnostics (--diagnostics), and interactive ANSI terminal progress.
 - Dual-Channel Distribution: Standalone NativeAOT release assets and official GitHub Packages NuGet registry distribution.
 

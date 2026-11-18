@@ -31,6 +31,10 @@ static partial class TestSuite
 
             Assert.True(cliProjText.Contains("<TargetFramework>net8.0</TargetFramework>", StringComparison.Ordinal),
                 "Clickra.CLI must target universal net8.0 for tool packaging and standalone NativeAOT compilation.");
+            int baseTfmIndex = cliProjText.IndexOf("<TargetFramework>net8.0</TargetFramework>", StringComparison.Ordinal);
+            int winTfmIndex = cliProjText.IndexOf("<TargetFramework Condition=\"$(RuntimeIdentifier.StartsWith('win'))\">net8.0-windows10.0.19041.0</TargetFramework>", StringComparison.Ordinal);
+            Assert.True(baseTfmIndex >= 0 && winTfmIndex > baseTfmIndex,
+                "Clickra.CLI must declare the Windows TargetFramework override after the universal net8.0 target so MSBuild evaluates it correctly.");
             Assert.True(cliProjText.Contains("<PackAsTool>true</PackAsTool>", StringComparison.Ordinal),
                 "Clickra.CLI must configure PackAsTool for net8.0 tool creation.");
             Assert.True(cliProjText.Contains("<ToolCommandName>clickra</ToolCommandName>", StringComparison.Ordinal),
@@ -68,6 +72,9 @@ static partial class TestSuite
                 "ci.yml must validate .NET tool packaging.");
             Assert.True(ciText.Contains("needs: [build-components, cross-platform]", StringComparison.Ordinal),
                 "ci.yml build gate must require both component builds and cross-platform verification.");
+            Assert.True(ciText.Contains("Build Clickra.Desktop (Windows target)", StringComparison.Ordinal) &&
+                        ciText.Contains("dotnet build \"${{ matrix.project }}\" -c Release -r win-x64", StringComparison.Ordinal),
+                "ci.yml must validate Clickra.Desktop build with Windows target (-r win-x64).");
 
             // 2. Verify Release workflow distribution channels
             string releasePath = Path.Combine(root, ".github", "workflows", "release.yml");

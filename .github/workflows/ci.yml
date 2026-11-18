@@ -37,6 +37,9 @@ jobs:
           - name: Build Clickra.Desktop
             kind: build
             project: src/Clickra.Desktop/Clickra.Desktop.csproj
+          - name: Build Clickra.Desktop (Windows target)
+            kind: build-win
+            project: src/Clickra.Desktop/Clickra.Desktop.csproj
           - name: Publish CLI (NativeAOT)
             kind: publish
             project: src/Clickra.CLI/Clickra.csproj
@@ -64,6 +67,10 @@ jobs:
       - name: Build managed project
         if: matrix.kind == 'build'
         run: dotnet build "${{ matrix.project }}" -c Release -warnaserror
+
+      - name: Build Windows-targeted desktop project
+        if: matrix.kind == 'build-win'
+        run: dotnet build "${{ matrix.project }}" -c Release -r win-x64 -warnaserror
 
       # NativeAOT publish resolves the MSVC toolchain through vswhere.exe;
       # the same helper that scripts/build_msix.ps1 uses keeps that on PATH so
