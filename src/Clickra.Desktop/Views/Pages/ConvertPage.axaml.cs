@@ -84,6 +84,8 @@ public partial class ConvertPage : UserControl
         OrderList.AddHandler(PointerCaptureLostEvent, (_, _) => _dragItem = null);
         CatalogItems.LayoutUpdated += (_, _) => FitCatalog();
         AddHandler(KeyDownEvent, OnSplitPreviewKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        SplitPreviewScroll.SizeChanged += (_, _) => UpdateSplitPreviewViewport();
+        SplitPreviewScroll.AddHandler(PointerWheelChangedEvent, OnSplitPreviewWheel, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         OptionsScroller.SizeChanged += (_, _) => QueueFitOptionGap();
         OptionsCard.SizeChanged += (_, _) => QueueFitOptionGap();
 
@@ -403,7 +405,29 @@ public partial class ConvertPage : UserControl
             case Key.Left: vm.Split.PreviousPage(); e.Handled = true; break;
             case Key.Right: vm.Split.NextPage(); e.Handled = true; break;
             case Key.Escape: vm.Split.ClosePreview(); e.Handled = true; break;
+            case Key.OemPlus or Key.Add when e.KeyModifiers.HasFlag(KeyModifiers.Control):
+                vm.Split.ZoomInPreview(); e.Handled = true; break;
+            case Key.OemMinus or Key.Subtract when e.KeyModifiers.HasFlag(KeyModifiers.Control):
+                vm.Split.ZoomOutPreview(); e.Handled = true; break;
         }
+    }
+
+    /// <summary>Ctrl+wheel zooms the preview; a plain wheel still scrolls the page.</summary>
+    private void OnSplitPreviewWheel(object? sender, PointerWheelEventArgs e)
+    {
+        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control) || GetViewModel() is not { } vm || !vm.Split.IsPreviewOpen) return;
+        if (e.Delta.Y > 0) vm.Split.ZoomInPreview();
+        else if (e.Delta.Y < 0) vm.Split.ZoomOutPreview();
+        e.Handled = true;
+    }
+
+    /// <summary>The page is sized from the preview area (minus the 16 px margin on each side) and drawn sharp for
+    /// the screen's scaling.</summary>
+    private void UpdateSplitPreviewViewport()
+    {
+        if (GetViewModel() is not { } vm) return;
+        Size size = SplitPreviewScroll.Bounds.Size;
+        vm.Split.SetPreviewViewport(size.Width - 32, size.Height - 32, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1);
     }
 
     // ===== State D: files dragged over the window (spec 4.1) =====

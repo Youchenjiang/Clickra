@@ -141,6 +141,7 @@
         </Style>
     </UserControl.Styles>
 
+    <Panel>
     <Grid Name="PageGrid" Margin="0,0,0,24">
         <Grid.RowDefinitions>
             <!-- Top Area: Drop Zone (State A) or File Narrow Row (State B-F) -->
@@ -531,54 +532,6 @@
                             </Panel>
                         </Border>
                     </Grid>
-
-                    <!-- 分割的放大預覽: a sibling of the workspace (not inside its rows, so a tall page cannot stretch them);
-                         ← → turn pages, Esc closes (handled in code-behind). -->
-                    <Border Grid.Row="1" CornerRadius="12"
-                            Background="{DynamicResource Clk.Card}" BorderThickness="1" BorderBrush="{DynamicResource Clk.CardBorder}">
-                        <Border.IsVisible>
-                            <MultiBinding Converter="{x:Static BoolConverters.And}">
-                                <Binding Path="IsSplitAction" />
-                                <Binding Path="Split.IsPreviewOpen" />
-                            </MultiBinding>
-                        </Border.IsVisible>
-                        <Grid RowDefinitions="*,Auto" Margin="16">
-                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
-                                <Button Classes="secondary" Content="‹" FontSize="20" Width="44" Height="44" VerticalAlignment="Center"
-                                        Command="{Binding Split.PreviousPage}" ToolTip.Tip="上一頁（←）" />
-                                <!-- 符合寬度: the page fills the width and scrolls, so text can be read; 整頁: the whole page fits. -->
-                            <Panel Grid.Column="1">
-                                <ScrollViewer IsVisible="{Binding Split.PreviewFitWidth}" HorizontalScrollBarVisibility="Disabled">
-                                    <Border Background="#FFFFFF" CornerRadius="4" BorderThickness="1" BorderBrush="{DynamicResource Clk.CardBorder}">
-                                        <Panel>
-                                            <Image Source="{Binding Split.PreviewImage}" Stretch="Uniform" IsVisible="{Binding Split.HasPreviewImage}" />
-                                            <TextBlock Text="{Binding Split.PreviewTitle}" Foreground="#9AA0A6" Margin="40,160"
-                                                       HorizontalAlignment="Center" IsVisible="{Binding !Split.HasPreviewImage}" />
-                                        </Panel>
-                                    </Border>
-                                </ScrollViewer>
-                                <Border IsVisible="{Binding Split.PreviewWholePage}" Background="#FFFFFF" CornerRadius="4" BorderThickness="1" MinWidth="280"
-                                        BorderBrush="{DynamicResource Clk.CardBorder}" HorizontalAlignment="Center">
-                                    <Panel>
-                                        <Image Source="{Binding Split.PreviewImage}" Stretch="Uniform" IsVisible="{Binding Split.HasPreviewImage}" />
-                                        <TextBlock Text="{Binding Split.PreviewTitle}" Foreground="#9AA0A6" Margin="40"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !Split.HasPreviewImage}" />
-                                    </Panel>
-                                </Border>
-                            </Panel>
-                                <Button Grid.Column="2" Classes="secondary" Content="›" FontSize="20" Width="44" Height="44" VerticalAlignment="Center"
-                                        Command="{Binding Split.NextPage}" ToolTip.Tip="下一頁（→）" />
-                            </Grid>
-                            <WrapPanel Grid.Row="1" HorizontalAlignment="Center" Margin="0,12,0,0">
-                                <TextBlock Text="{Binding Split.PreviewTitle}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                <TextBlock Text="{Binding Split.PreviewPartText}" Classes="secondary" VerticalAlignment="Center" Margin="0,0,16,0" />
-                                <Button Classes="secondary" Content="{Binding Split.PreviewCutText}" Command="{Binding Split.TogglePreviewCut}"
-                                        IsVisible="{Binding Split.PreviewHasGap}" Margin="0,0,8,0" />
-                                <Button Classes="secondary" Content="{Binding Split.PreviewFitText}" Command="{Binding Split.TogglePreviewFit}" Margin="0,0,8,0" />
-                            <Button Classes="secondary" Content="關閉" Command="{Binding Split.ClosePreview}" ToolTip.Tip="Esc" />
-                            </WrapPanel>
-                        </Grid>
-                    </Border>
 
                     <!-- 合併與拼接 (spec 4.6): the order list is the only part that scrolls. Rows are dragged by the
                          handle or moved with ↑ ↓; the small title row is left-aligned with its buttons right after it. -->
@@ -1057,4 +1010,72 @@
             </StackPanel>
         </Panel>
     </Grid>
+
+    <!-- 分割的放大預覽 (spec 4.6, canvas ZoomFull): covers the file row, the title and the bottom bar so the page gets
+         the whole content area; 開始分割 is pressed after 回到所有頁面, so the part count is in the toolbar. A sibling of
+         PageGrid, not inside its rows, so a tall page cannot stretch them. ← → turn pages, Esc closes, Ctrl+wheel zooms
+         (code-behind). The white page is sized from the page itself, so A4 portrait stays portrait. -->
+    <Border Name="SplitPreviewOverlay" Margin="0,0,0,24" Padding="12,8,12,12" CornerRadius="16"
+            Background="{DynamicResource Clk.Surface}" BorderThickness="1" BorderBrush="{DynamicResource Clk.CardBorder}">
+        <Border.IsVisible>
+            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                <Binding Path="IsSplitAction" />
+                <Binding Path="Split.IsPreviewOpen" />
+            </MultiBinding>
+        </Border.IsVisible>
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+            <Grid ColumnDefinitions="Auto,*,Auto,*,Auto,Auto" ColumnSpacing="12">
+                <Button Grid.Column="0" Classes="link" Content="‹ 回到所有頁面" FontSize="15" VerticalAlignment="Center"
+                        Command="{Binding Split.ClosePreview}" ToolTip.Tip="Esc" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Button Classes="secondary" Content="‹" FontSize="20" Width="44" Height="44"
+                            Command="{Binding Split.PreviousPage}" ToolTip.Tip="上一頁（←）" />
+                    <TextBlock Text="{Binding Split.PreviewTitle}" MinWidth="112" TextAlignment="Center" VerticalAlignment="Center" />
+                    <Button Classes="secondary" Content="›" FontSize="20" Width="44" Height="44"
+                            Command="{Binding Split.NextPage}" ToolTip.Tip="下一頁（→）" />
+                </StackPanel>
+                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                    <Button Classes="secondary" Content="−" FontSize="18" Width="40" Height="40"
+                            Command="{Binding Split.ZoomOutPreview}" ToolTip.Tip="縮小（Ctrl＋滾輪）" />
+                    <Button Classes="secondary" Content="{Binding Split.PreviewZoomText}" MinWidth="88" Height="40"
+                            HorizontalContentAlignment="Center"
+                            Command="{Binding Split.TogglePreviewFit}" ToolTip.Tip="在整頁與符合寬度之間切換" />
+                    <Button Classes="secondary" Content="＋" FontSize="18" Width="40" Height="40"
+                            Command="{Binding Split.ZoomInPreview}" ToolTip.Tip="放大（Ctrl＋滾輪）" />
+                </StackPanel>
+                <Panel Grid.Column="5" IsVisible="{Binding Split.PreviewHasGap}" VerticalAlignment="Center">
+                    <Button Classes="secondary" Content="在這頁後面切開" MinHeight="44" Padding="16,0"
+                            IsVisible="{Binding !Split.PreviewIsCut}" Command="{Binding Split.TogglePreviewCut}" />
+                    <Button Classes="primary" Content="✓ 這頁後面已切開" MinHeight="44" Padding="16,0"
+                            IsVisible="{Binding Split.PreviewIsCut}" Command="{Binding Split.TogglePreviewCut}"
+                            ToolTip.Tip="再按一次取消切點" />
+                </Panel>
+            </Grid>
+            <Border Grid.Row="1" CornerRadius="12" Background="{DynamicResource Clk.Card}" ClipToBounds="True">
+                <ScrollViewer Name="SplitPreviewScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <Border Background="#FFFFFF" Margin="16" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            BorderThickness="1" BorderBrush="{DynamicResource Clk.CardBorder}"
+                            Width="{Binding Split.PreviewPageWidth}" Height="{Binding Split.PreviewPageHeight}">
+                        <Panel>
+                            <Image Source="{Binding Split.PreviewImage}" Stretch="Fill" IsVisible="{Binding Split.HasPreviewImage}" />
+                            <TextBlock Text="{Binding Split.PreviewTitle}" Foreground="#9AA0A6"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !Split.HasPreviewImage}" />
+                        </Panel>
+                    </Border>
+                </ScrollViewer>
+            </Border>
+            <!-- Which part this page goes to, and how many parts in all (the start button is under the preview). -->
+            <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
+                <Border Background="{DynamicResource Clk.ChipOn}" CornerRadius="10" Padding="10,3" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Split.PreviewPartText}" FontSize="13" />
+                </Border>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                    <TextBlock Text="← → 換頁" Classes="secondary" FontSize="12" />
+                    <TextBlock Text="Esc 回到所有頁面" Classes="secondary" FontSize="12" />
+                    <TextBlock Text="Ctrl＋滾輪 縮放" Classes="secondary" FontSize="12" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+    </Panel>
 </UserControl>

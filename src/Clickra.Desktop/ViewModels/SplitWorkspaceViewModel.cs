@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Clickra.Core.Modules.Pdf.Split.Application;
@@ -165,51 +166,144 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
         }
         if (!_cuts.Remove(page.Number)) _cuts.Add(page.Number);
         Recompute();
-        OnPropertyChanged(nameof(PreviewCutText));
-        OnPropertyChanged(nameof(PreviewPartText));
+        RefreshPreviewTexts();
     }
 
     private bool _convertedToCustom;
     /// <summary>Shown once after a gap click switched from 每 N 頁 to custom cuts.</summary>
     public bool ConvertedToCustom { get => _convertedToCustom; private set { _convertedToCustom = value; OnPropertyChanged(); } }
 
-    // ----- 放大預覽 (spec 4.6): double-click a page; ← → turn pages, Esc closes -----
+    // ----- 放大預覽 (spec 4.6, canvas ZoomFull): double-click a page; it covers the whole content area -----
+    // ← → turn pages, Esc closes, Ctrl+wheel zooms. Zoom 1 = 整頁 (the whole page fits, the default); the steps are
+    // ×1.25 like the 3.x preview, up to ×8; 符合寬度 is the zoom where the page fills the width.
     private string _file = "";
     private SplitPageViewModel? _preview;
     private IImage? _previewImage;
     private CancellationTokenSource? _previewCts;
+    private double _zoom = 1;
+    private double _viewportWidth, _viewportHeight, _renderScaling = 1;
+    private int _renderedWidth;
+    private const int PreviewBaseRenderWidth = 1600;
+    private const int PreviewMaxRenderWidth = 4800;
+    private const double ZoomStep = 1.25, ZoomMax = 8;
 
     public bool IsPreviewOpen => _preview is not null;
-    public IImage? PreviewImage { get => _previewImage; private set { _previewImage = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasPreviewImage)); } }
+    public IImage? PreviewImage
+    {
+        get => _previewImage;
+        private set { _previewImage = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasPreviewImage)); RefreshPreviewSize(); }
+    }
     public bool HasPreviewImage => _previewImage is not null;
     public string PreviewTitle => _preview is null ? "" : $"第 {_preview.Number} 頁，共 {_totalPages} 頁";
-    public string PreviewPartText => _preview is null ? "" : $"屬於第 {_preview.Part} 份";
+    /// <summary>The start button is hidden under the preview, so the part count is said here.</summary>
+    public string PreviewPartText => _preview is null ? "" : $"屬於第 {_preview.Part} 份，共 {PartCount} 份";
     public bool PreviewHasGap => _preview?.HasGap == true;
-    public string PreviewCutText => _preview?.CutAfter == true ? "取消這頁後面的切點" : "在這頁後面切開";
+    public bool PreviewIsCut => _preview?.CutAfter == true;
 
-    private bool _previewWholePage;
-    /// <summary>符合寬度 (default, scroll to read) or 整頁 (see the whole layout).</summary>
-    public bool PreviewWholePage { get => _previewWholePage; private set { _previewWholePage = value; OnPropertyChanged(); OnPropertyChanged(nameof(PreviewFitWidth)); OnPropertyChanged(nameof(PreviewFitText)); } }
-    public bool PreviewFitWidth => !_previewWholePage;
-    public string PreviewFitText => _previewWholePage ? "符合寬度" : "顯示整頁";
-    public void TogglePreviewFit() => PreviewWholePage = !PreviewWholePage;
+    /// <summary>Height ÷ width of the page; taken from the image so a landscape slide stays landscape.</summary>
+    private double PageAspect
+    {
+        get
+        {
+            Size size = _previewImage?.Size ?? _preview?.Thumbnail?.Size ?? default;
+            return size.Width > 0 && size.Height > 0 ? size.Height / size.Width : 297.0 / 210.0;
+        }
+    }
+
+    /// <summary>Width of the page at zoom 1: the whole page fits the viewport.</summary>
+    private double WholePageWidth =>
+        _viewportWidth <= 0 || _viewportHeight <= 0 ? 0 : Math.Min(_viewportWidth, _viewportHeight / PageAspect);
+    private double FitWidthZoom => WholePageWidth <= 0 ? 1 : Math.Max(1, _viewportWidth / WholePageWidth);
+
+    /// <summary>The white page is exactly the size of the page (no minimum width), so A4 portrait stays portrait.</summary>
+    public double PreviewPageWidth => Math.Max(1, WholePageWidth * _zoom);
+    public double PreviewPageHeight => Math.Max(1, WholePageWidth * _zoom * PageAspect);
+
+    public string PreviewZoomText =>
+        Math.Abs(_zoom - 1) < 0.01 ? "整頁"
+        : Math.Abs(_zoom - FitWidthZoom) < 0.01 ? "符合寬度"
+        : $"{Math.Round(_zoom * 100)}%";
+
+    /// <summary>The middle zoom button: 整頁 ⇄ 符合寬度.</summary>
+    public void TogglePreviewFit() => SetZoom(Math.Abs(_zoom - 1) < 0.01 ? FitWidthZoom : 1);
+    public void ZoomInPreview() => SetZoom(StepZoom(+1));
+    public void ZoomOutPreview() => SetZoom(StepZoom(-1));
+
+    /// <summary>×1.25 per step, stopping at 符合寬度 on the way when it lies between two steps.</summary>
+    private double StepZoom(int direction)
+    {
+        double next = direction > 0 ? _zoom * ZoomStep : _zoom / ZoomStep;
+        double fit = FitWidthZoom;
+        if (direction > 0 && _zoom < fit - 0.01 && next > fit + 0.01) next = fit;
+        if (direction < 0 && _zoom > fit + 0.01 && next < fit - 0.01) next = fit;
+        return Math.Clamp(next, 1, ZoomMax);
+    }
+
+    private void SetZoom(double zoom)
+    {
+        _zoom = Math.Clamp(zoom, 1, ZoomMax);
+        RefreshPreviewSize();
+    }
+
+    /// <summary>Called by the view when the preview area is resized (size without the page margin, in DIP).</summary>
+    internal void SetPreviewViewport(double width, double height, double renderScaling)
+    {
+        bool wasFit = Math.Abs(_zoom - FitWidthZoom) < 0.01 && Math.Abs(_zoom - 1) >= 0.01;
+        _viewportWidth = Math.Max(0, width);
+        _viewportHeight = Math.Max(0, height);
+        _renderScaling = renderScaling > 0 ? renderScaling : 1;
+        if (wasFit) _zoom = FitWidthZoom; // 符合寬度 stays 符合寬度 when the window is resized
+        RefreshPreviewSize();
+    }
+
+    private void RefreshPreviewSize()
+    {
+        OnPropertyChanged(nameof(PreviewPageWidth));
+        OnPropertyChanged(nameof(PreviewPageHeight));
+        OnPropertyChanged(nameof(PreviewZoomText));
+        EnsurePreviewResolution();
+    }
 
     internal void OpenPreview(SplitPageViewModel page)
     {
+        bool wasOpen = _preview is not null;
         _preview = page;
-        PreviewImage = page.Thumbnail; // the small one at once, the large one when it is ready
+        if (!wasOpen) _zoom = 1; // opens at 整頁; turning pages keeps the zoom
+        _renderedWidth = 0;
+        PreviewImage = page.Thumbnail; // the small one at once, the sharp one when it is ready
         OnPropertyChanged(nameof(IsPreviewOpen));
         RefreshPreviewTexts();
+        RenderPreview(PreviewBaseRenderWidth);
+    }
+
+    /// <summary>Renders again, larger, when zooming in would show the current image blurred.</summary>
+    private void EnsurePreviewResolution()
+    {
+        if (_preview is null || _renderedWidth <= 0) return;
+        double needed = PreviewPageWidth * _renderScaling;
+        if (needed <= _renderedWidth * 1.05 || _renderedWidth >= PreviewMaxRenderWidth) return;
+        int width = (int)Math.Min(PreviewMaxRenderWidth, Math.Ceiling(needed / 400) * 400);
+        RenderPreview(width);
+    }
+
+    private void RenderPreview(int width)
+    {
+        if (_preview is null) return;
         _previewCts?.Cancel();
         var cts = new CancellationTokenSource();
         _previewCts = cts;
         string file = _file;
-        int number = page.Number;
+        int number = _preview.Number;
         _ = Task.Run(() =>
         {
-            IImage? image = Render(file, number, 1600, null); // sharp at full width on high-DPI screens
+            IImage? image = Render(file, number, width, null);
             if (image is null || cts.IsCancellationRequested) return;
-            Dispatcher.UIThread.Post(() => { if (!cts.IsCancellationRequested && _preview?.Number == number) PreviewImage = image; });
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (cts.IsCancellationRequested || _preview?.Number != number) return;
+                _renderedWidth = width;
+                PreviewImage = image;
+            });
         });
     }
 
@@ -219,6 +313,7 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
     {
         _previewCts?.Cancel();
         _preview = null;
+        _renderedWidth = 0;
         PreviewImage = null;
         OnPropertyChanged(nameof(IsPreviewOpen));
     }
@@ -240,7 +335,7 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
         OnPropertyChanged(nameof(PreviewTitle));
         OnPropertyChanged(nameof(PreviewPartText));
         OnPropertyChanged(nameof(PreviewHasGap));
-        OnPropertyChanged(nameof(PreviewCutText));
+        OnPropertyChanged(nameof(PreviewIsCut));
     }
 
     public Dictionary<string, object> BuildOptions() => new(StringComparer.Ordinal)
