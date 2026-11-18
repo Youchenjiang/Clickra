@@ -200,6 +200,24 @@
       </ControlTemplate>
     </Setter>
   </Style>
+  <!-- Back link (‹ 所有動作, ‹ 回到所有頁面): the chevron is a line icon, not the ‹ glyph, which sits low and small
+       next to CJK text. -->
+  <Style Selector="Button.link.back">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <StackPanel Orientation="Horizontal" Spacing="4" Background="Transparent">
+          <Viewbox Classes="ic" Width="14" Height="14" VerticalAlignment="Center">
+            <Canvas Width="24" Height="24">
+              <Path Data="M15,5 L8,12 L15,19" />
+            </Canvas>
+          </Viewbox>
+          <TextBlock Text="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}"
+                     FontSize="{TemplateBinding FontSize}" TextDecorations="Underline"
+                     VerticalAlignment="Center" />
+        </StackPanel>
+      </ControlTemplate>
+    </Setter>
+  </Style>
   <Style Selector="Button.link:pointerover">
     <Setter Property="Foreground" Value="{DynamicResource Clk.Text}" />
   </Style>

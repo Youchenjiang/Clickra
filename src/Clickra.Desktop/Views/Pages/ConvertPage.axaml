@@ -324,8 +324,8 @@
                 <Grid Name="ActionPagePanel" RowDefinitions="Auto,*,Auto" IsVisible="{Binding IsActionPage}">
                     <!-- Title Row: Back button + Icon + Name -->
                     <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,0,0,16">
-                        <Button Grid.Column="0" Classes="link" Name="BackToCatalogButton"
-                                Content="‹ 所有動作" FontSize="15" Margin="0,0,16,0" VerticalAlignment="Center" />
+                        <Button Grid.Column="0" Classes="link back" Name="BackToCatalogButton"
+                                Content="所有動作" FontSize="15" Margin="0,0,16,0" VerticalAlignment="Center" />
                         <!-- The feature icon is its own coloured tile, so it gets no extra plate (spec 7). -->
                         <Image Grid.Column="1" Name="ActionIcon" Width="32" Height="32" Margin="0,0,10,0"
                                VerticalAlignment="Center" Source="{Binding SelectedAction.Icon}" />
@@ -1026,28 +1026,38 @@
         </Border.IsVisible>
         <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
             <Grid ColumnDefinitions="Auto,*,Auto,*,Auto,Auto" ColumnSpacing="12">
-                <Button Grid.Column="0" Classes="link" Content="‹ 回到所有頁面" FontSize="15" VerticalAlignment="Center"
+                <Button Grid.Column="0" Classes="link back" Content="回到所有頁面" FontSize="15" VerticalAlignment="Center"
                         Command="{Binding Split.ClosePreview}" ToolTip.Tip="Esc" />
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                    <Button Classes="secondary" Content="‹" FontSize="20" Width="44" Height="44"
-                            Command="{Binding Split.PreviousPage}" ToolTip.Tip="上一頁（←）" />
+                    <!-- Every toolbar button is 40 high with line icons on the 24 grid (spec 7), not ‹ › − ＋ glyphs, whose
+                         sizes and baselines differ from font to font. -->
+                    <Button Classes="secondary" Width="40" Height="40" Padding="0" HorizontalContentAlignment="Center"
+                            Command="{Binding Split.PreviousPage}" ToolTip.Tip="上一頁（←）">
+                        <Viewbox Classes="ic" Width="16" Height="16"><Canvas Width="24" Height="24"><Path Data="M15,5 L8,12 L15,19" /></Canvas></Viewbox>
+                    </Button>
                     <TextBlock Text="{Binding Split.PreviewTitle}" MinWidth="112" TextAlignment="Center" VerticalAlignment="Center" />
-                    <Button Classes="secondary" Content="›" FontSize="20" Width="44" Height="44"
-                            Command="{Binding Split.NextPage}" ToolTip.Tip="下一頁（→）" />
+                    <Button Classes="secondary" Width="40" Height="40" Padding="0" HorizontalContentAlignment="Center"
+                            Command="{Binding Split.NextPage}" ToolTip.Tip="下一頁（→）">
+                        <Viewbox Classes="ic" Width="16" Height="16"><Canvas Width="24" Height="24"><Path Data="M9,5 L16,12 L9,19" /></Canvas></Viewbox>
+                    </Button>
                 </StackPanel>
-                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                    <Button Classes="secondary" Content="−" FontSize="18" Width="40" Height="40"
-                            Command="{Binding Split.ZoomOutPreview}" ToolTip.Tip="縮小（Ctrl＋滾輪）" />
+                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Button Classes="secondary" Width="40" Height="40" Padding="0" HorizontalContentAlignment="Center"
+                            Command="{Binding Split.ZoomOutPreview}" ToolTip.Tip="縮小（Ctrl＋滾輪）">
+                        <Viewbox Classes="ic" Width="16" Height="16"><Canvas Width="24" Height="24"><Path Data="M6,12 H18" /></Canvas></Viewbox>
+                    </Button>
                     <Button Classes="secondary" Content="{Binding Split.PreviewZoomText}" MinWidth="88" Height="40"
-                            HorizontalContentAlignment="Center"
+                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                             Command="{Binding Split.TogglePreviewFit}" ToolTip.Tip="在整頁與符合寬度之間切換" />
-                    <Button Classes="secondary" Content="＋" FontSize="18" Width="40" Height="40"
-                            Command="{Binding Split.ZoomInPreview}" ToolTip.Tip="放大（Ctrl＋滾輪）" />
+                    <Button Classes="secondary" Width="40" Height="40" Padding="0" HorizontalContentAlignment="Center"
+                            Command="{Binding Split.ZoomInPreview}" ToolTip.Tip="放大（Ctrl＋滾輪）">
+                        <Viewbox Classes="ic" Width="16" Height="16"><Canvas Width="24" Height="24"><Path Data="M12,6 V18 M6,12 H18" /></Canvas></Viewbox>
+                    </Button>
                 </StackPanel>
                 <Panel Grid.Column="5" IsVisible="{Binding Split.PreviewHasGap}" VerticalAlignment="Center">
-                    <Button Classes="secondary" Content="在這頁後面切開" MinHeight="44" Padding="16,0"
+                    <Button Classes="secondary" Content="在這頁後面切開" Height="40" Padding="16,0" VerticalContentAlignment="Center"
                             IsVisible="{Binding !Split.PreviewIsCut}" Command="{Binding Split.TogglePreviewCut}" />
-                    <Button Classes="primary" Content="✓ 這頁後面已切開" MinHeight="44" Padding="16,0"
+                    <Button Classes="primary" Content="✓ 這頁後面已切開" Height="40" Padding="16,0" VerticalContentAlignment="Center"
                             IsVisible="{Binding Split.PreviewIsCut}" Command="{Binding Split.TogglePreviewCut}"
                             ToolTip.Tip="再按一次取消切點" />
                 </Panel>
