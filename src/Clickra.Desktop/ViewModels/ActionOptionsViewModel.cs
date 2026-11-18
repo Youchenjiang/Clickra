@@ -331,6 +331,17 @@ public sealed class ActionOptionsViewModel : ViewModelBase
     }
     public bool DecryptNoPassword => !_decryptNeedsPassword;
 
+    private bool _decryptSingleFile = true;
+    public bool DecryptSingleFile
+    {
+        get => _decryptSingleFile;
+        set { _decryptSingleFile = value; Changed(nameof(DecryptSingleFile), nameof(DecryptNoPasswordText)); }
+    }
+    /// <summary>Restriction-only PDFs: what they are and what decrypting gives, in plain words (spec 4.9).</summary>
+    public string DecryptNoPasswordText => _decryptSingleFile
+        ? "這個 PDF 打開不用密碼，但設了使用限制（例如不能列印或複製文字）。解密會另存一份沒有限制的檔案，不用輸入密碼。"
+        : "這些 PDF 打開不用密碼，但設了使用限制（例如不能列印或複製文字）。解密會各自另存一份沒有限制的檔案，不用輸入密碼。";
+
     // ----- image format -----
     private bool[] _imageFormatAllowed = [true, true, true, true, true];
     /// <summary>Formats the selected files can be converted to (a PNG cannot become PNG); others are disabled.</summary>

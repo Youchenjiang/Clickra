@@ -499,7 +499,11 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         if (string.Equals(action.Command, ConvertWorkspaceController.BatchRenameCommand, StringComparison.OrdinalIgnoreCase))
             Rename.SetFiles(SelectedFiles.Select(f => f.Path));
         Options.Reset(action.Command);
-        if (action.Command == DecryptCommand) Options.DecryptNeedsPassword = ProtectedNeedsPassword;
+        if (action.Command == DecryptCommand)
+        {
+            Options.DecryptNeedsPassword = ProtectedNeedsPassword;
+            Options.DecryptSingleFile = (HasProtectedPdf ? ProtectedFiles.Count : SelectedFiles.Count) <= 1;
+        }
         if (action.Command is "merge-pdf" or "img-merge" or "img-stitch")
             Order.SetFiles(action.Command, SelectedFiles.Select(f => f.Path));
         if (action.Command == "split-pdf")
@@ -906,7 +910,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             if (SelectedFiles.Count == 1)
             {
                 return onlyRestricted
-                    ? $"這個 PDF 限制了列印或複製。{blocked}，不用密碼。"
+                    ? $"這個 PDF 打開不用密碼，但設了使用限制（例如不能列印或複製文字）。{blocked}，解密不用密碼。"
                     : $"這個 PDF 要密碼才能開啟。{blocked}；分割、轉成圖片會在執行時問密碼。";
             }
             string names = files.Count <= 2

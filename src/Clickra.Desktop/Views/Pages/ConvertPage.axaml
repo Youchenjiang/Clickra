@@ -746,7 +746,7 @@
                                             <TextBlock Text="多個檔案會先用同一組密碼試；密碼只用這一次，不會儲存" Classes="secondary" FontSize="13" />
                                         </StackPanel>
                                         <TextBlock IsVisible="{Binding Options.DecryptNoPassword}" TextWrapping="Wrap" FontSize="14"
-                                                   Text="這些 PDF 開啟不用密碼，只是限制了列印或複製；解密會移除這些限制，不用輸入密碼。" />
+                                                   Text="{Binding Options.DecryptNoPasswordText}" />
                                     </StackPanel>
 
                                     <!-- 圖片轉換格式（必選，沒有預設） -->
