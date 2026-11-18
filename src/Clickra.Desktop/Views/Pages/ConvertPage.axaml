@@ -496,9 +496,10 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:SplitPageViewModel">
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                                    <StackPanel Width="84" Spacing="4">
-                                                        <!-- Double-click: a large preview over the workspace (spec 4.6). -->
-                                                        <Border Width="84" Height="108" CornerRadius="4" BorderThickness="1"
+                                                    <StackPanel Width="{Binding TileWidth}" Spacing="4">
+                                                        <!-- Double-click: a large preview over the workspace (spec 4.6). The tile is as wide as the
+                                                             page's shape at a fixed height, so landscape slides are not boxed into a portrait tile. -->
+                                                        <Border Height="108" CornerRadius="4" BorderThickness="1"
                                                                 BorderBrush="{DynamicResource Clk.CardBorder}" Background="#FFFFFF" ClipToBounds="True"
                                                                 Cursor="Hand" ToolTip.Tip="點兩下放大" DoubleTapped="OnSplitPageDoubleTapped">
                                                             <Panel>

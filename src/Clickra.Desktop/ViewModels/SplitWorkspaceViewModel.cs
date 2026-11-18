@@ -18,9 +18,35 @@ public sealed class SplitPageViewModel(SplitWorkspaceViewModel owner, int number
     private IImage? _thumbnail;
     private int _part;
     private bool _cutAfter;
+    private double _aspect = 297.0 / 210.0; // height ÷ width; A4 portrait until the page is drawn
+
+    /// <summary>Every tile is 108 high and as wide as the page's shape (spec 4.6): A4 portrait about 76, a 16:9 slide
+    /// 192, so a landscape slide is not shrunk into a portrait box. Rows stay level because the height is fixed.</summary>
+    public const double TileHeight = 108;
+    public double TileWidth => Math.Clamp(Math.Round(TileHeight / _aspect), 60, 192);
 
     public int Number { get; } = number;
-    public IImage? Thumbnail { get => _thumbnail; set { _thumbnail = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasThumbnail)); } }
+    public IImage? Thumbnail
+    {
+        get => _thumbnail;
+        set
+        {
+            _thumbnail = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasThumbnail));
+            if (value is { Size: { Width: > 0, Height: > 0 } size })
+            {
+                Aspect = size.Height / size.Width;
+                owner.AdoptAspect(this); // pages not drawn yet take this shape, so the row does not jump page by page
+            }
+        }
+    }
+
+    internal double Aspect
+    {
+        get => _aspect;
+        set { if (Math.Abs(_aspect - value) < 0.001) return; _aspect = value; OnPropertyChanged(nameof(TileWidth)); }
+    }
     public bool HasThumbnail => _thumbnail is not null;
     /// <summary>1-based part number; bands alternate two colours so neighbouring parts are told apart.</summary>
     public int Part { get => _part; set { _part = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsOddPart)); OnPropertyChanged(nameof(PartText)); } }
@@ -385,6 +411,13 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
         OnPropertyChanged(nameof(StartText));
     }
 
+    /// <summary>Gives the shape of a drawn page to the following pages that are not drawn yet.</summary>
+    internal void AdoptAspect(SplitPageViewModel drawn)
+    {
+        for (int i = drawn.Number; i < Pages.Count; i++)
+            if (!Pages[i].HasThumbnail) Pages[i].Aspect = drawn.Aspect;
+    }
+
     /// <summary>Thumbnails are rendered one by one in the background (spec 4.6: only this area scrolls).</summary>
     private void LoadThumbnails(string file)
     {
@@ -398,7 +431,7 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
                 if (cts.IsCancellationRequested) return;
                 // Like the 3.x splitter: draw at 660 px (the word overlay needs room for readable text, at 160 px
             // the words shrink to 3 px and run into each other), then scale down to the tile.
-            IImage? image = Render(file, page.Number, ThumbnailRenderWidth, ThumbnailDisplayWidth);
+            IImage? image = Render(file, page.Number, ThumbnailRenderWidth, ThumbnailDecodeHeight);
                 if (image is null) return; // rendering is not available here: keep the numbered tiles
                 Dispatcher.UIThread.Post(() => page.Thumbnail = image);
             }
@@ -406,17 +439,21 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
     }
 
     private const int ThumbnailRenderWidth = 660;
-    private const int ThumbnailDisplayWidth = 168; // the 84 px tile at 200 % scaling
+    private const int ThumbnailDecodeHeight = 216; // the 108 px tile at 200 % scaling
 
-    /// <summary>Renders a page at <paramref name="size"/> px and, when <paramref name="decodeWidth"/> is given, keeps a
-    /// high-quality downscaled copy so two dozen tiles do not hold full-size bitmaps.</summary>
-    private static IImage? Render(string file, int pageNumber, int size, int? decodeWidth)
+    /// <summary>Renders a page at <paramref name="size"/> px wide and, when <paramref name="decodeHeight"/> is given, keeps
+    /// a high-quality copy scaled to that height (the tile's), so dozens of tiles do not hold full-size bitmaps and a
+    /// landscape slide keeps enough pixels for its wider tile.</summary>
+    private static IImage? Render(string file, int pageNumber, int size, int? decodeHeight)
     {
         try
         {
 #pragma warning disable CA1416 // thumbnails use System.Drawing, available on Windows; elsewhere the tiles stay numbered
             using System.Drawing.Bitmap? bitmap = PdfPageThumbnailQuery.RenderPageFromFile(file, pageNumber, size);
             if (bitmap is null) return null;
+            int? decodeWidth = decodeHeight is int h && bitmap.Height > 0
+                ? Math.Min(bitmap.Width, (int)Math.Ceiling((double)h * bitmap.Width / bitmap.Height))
+                : null;
             using var stream = new MemoryStream();
             bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
 #pragma warning restore CA1416
