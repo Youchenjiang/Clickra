@@ -586,7 +586,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             .ToArray();
         MarkFileSteps(files, resumeStartIndex);
 
-        Dictionary<string, object> options;
+        Dictionary<string, object> options = new(StringComparer.Ordinal);
         Dictionary<string, string>? renamed = null;
         if (IsRenameAction)
         {
@@ -978,7 +978,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             foreach (string path in pending)
             {
                 if (cts.IsCancellationRequested) return;
-                PdfProtection protection;
+                PdfProtection protection = PdfProtection.None;
                 try
                 {
                     if (!PdfEncryptionQuery.IsEncrypted(path))
@@ -1027,7 +1027,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             }
             else if (Directory.Exists(path))
             {
-                IEnumerable<string> inside;
+                IEnumerable<string> inside = Array.Empty<string>();
                 try
                 {
                     inside = Directory.GetFiles(path, "*", SearchOption.TopDirectoryOnly)
@@ -1050,20 +1050,19 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     public bool OnlyRename => AvailableActions.Count == 1 && AvailableActions[0].Command == ConvertWorkspaceController.BatchRenameCommand;
 
     /// <summary>One plain sentence above the lone 重新命名 card, naming the kind of file rather than its extension.</summary>
-    public string OnlyRenameText
+    public string OnlyRenameText => GetOnlyRenameText();
+
+    private string GetOnlyRenameText()
     {
-        get
-        {
-            if (!OnlyRename) return "";
-            List<string> unknown = SelectedFiles.Select(f => f.Extension).Where(e => DomainOf(e) == "file").Distinct().ToList();
-            if (unknown.Count == 0)
-                return "這些檔案的種類不同，沒有能一起做的轉換，所以只能一起重新命名。";
-            string kind = KindName(unknown);
-            bool mixed = unknown.Count < SelectedFiles.Select(f => f.Extension).Distinct().Count();
-            return mixed
-                ? $"這些檔案裡有{kind}，Clickra 還沒有處理{kind}的功能，所以只能一起重新命名。"
-                : $"Clickra 還沒有處理{kind}的功能，目前只能重新命名。";
-        }
+        if (!OnlyRename) return "";
+        List<string> unknown = SelectedFiles.Select(f => f.Extension).Where(e => DomainOf(e) == "file").Distinct().ToList();
+        if (unknown.Count == 0)
+            return "這些檔案的種類不同，沒有能一起做的轉換，所以只能一起重新命名。";
+        string kind = KindName(unknown);
+        bool mixed = unknown.Count < SelectedFiles.Select(f => f.Extension).Distinct().Count();
+        return mixed
+            ? $"這些檔案裡有{kind}，Clickra 還沒有處理{kind}的功能，所以只能一起重新命名。"
+            : $"Clickra 還沒有處理{kind}的功能，目前只能重新命名。";
     }
 
     /// <summary>影片／音訊／壓縮檔 when all unknown extensions are one such kind; otherwise 「這種檔案（.xyz）」.</summary>

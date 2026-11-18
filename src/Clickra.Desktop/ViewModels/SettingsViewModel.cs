@@ -244,8 +244,14 @@ public sealed class SettingsViewModel : ViewModelBase
         {
             string saved = SettingsController.PrintPrinter;
             if (saved.Length == 0) return 0;
-            int i = PrinterChoices.ToList().FindIndex(p => p.Equals(saved, StringComparison.OrdinalIgnoreCase));
-            return i > 0 ? i : 0;
+            for (int idx = 0; idx < PrinterChoices.Count; idx++)
+            {
+                if (PrinterChoices[idx].Equals(saved, StringComparison.OrdinalIgnoreCase))
+                {
+                    return idx;
+                }
+            }
+            return 0;
         }
         set
         {
@@ -370,7 +376,7 @@ public sealed class SettingsViewModel : ViewModelBase
     {
         try
         {
-            string timeText = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            string timeText = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
             var (subjectText, bodyText) = Localization.BuildDiagnosticsEmail(ExternalOpen.AppVersion, timeText);
             ExternalOpen.Mail(subjectText, bodyText);
         }

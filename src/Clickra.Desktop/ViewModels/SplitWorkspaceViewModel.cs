@@ -55,7 +55,7 @@ public sealed class SplitPageViewModel(SplitWorkspaceViewModel owner, int number
     public bool HasThumbnail => _thumbnail is not null;
     /// <summary>1-based part number; bands alternate two colours so neighbouring parts are told apart.</summary>
     public int Part { get => _part; set { _part = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsOddPart)); OnPropertyChanged(nameof(PartText)); } }
-    public bool IsOddPart => _part % 2 == 1;
+    public bool IsOddPart => _part % 2 != 0;
     public string PartText => $"第 {_part} 份";
     public bool CutAfter { get => _cutAfter; set { _cutAfter = value; OnPropertyChanged(); OnPropertyChanged(nameof(GapTip)); } }
     public bool HasGap => Number < owner.TotalPages;

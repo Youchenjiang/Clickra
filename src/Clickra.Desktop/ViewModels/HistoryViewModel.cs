@@ -269,7 +269,9 @@ public sealed class HistoryViewModel : HistoryRowHostBase
         row.RefreshButtons();
     }
 
-    public override async void Stop(HistoryRowViewModel row)
+    public override void Stop(HistoryRowViewModel row) => _ = StopAsync(row);
+
+    private async Task StopAsync(HistoryRowViewModel row)
     {
         DismissNoticeExcept(row);
         if (row.IsRunning)
@@ -281,7 +283,7 @@ public sealed class HistoryViewModel : HistoryRowHostBase
 
         // Stopping a parked task cannot be undone, so ask first.
         if (Confirm is not null &&
-            !await Confirm("停止這個工作？", $"剩下的檔案不會處理，這筆會移到下方的紀錄。", "停止", false))
+            !await Confirm("停止這個工作？", "剩下的檔案不會處理，這筆會移到下方的紀錄。", "停止", false))
             return;
         try { _presentation.CancelParked(row.Id); }
         catch { /* best effort */ }

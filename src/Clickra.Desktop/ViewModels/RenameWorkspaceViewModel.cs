@@ -49,33 +49,33 @@ public sealed class RenameWorkspaceViewModel : ViewModelBase
     }
 
     // ----- rules (each checkbox opens its fields) -----
-    public bool UseReplace { get => _useReplace; set => Set(ref _useReplace, value); }
-    public string FindText { get => _findText; set => Set(ref _findText, value ?? ""); }
-    public string ReplaceWith { get => _replaceWith; set => Set(ref _replaceWith, value ?? ""); }
+    public bool UseReplace { get => _useReplace; set => Set(value, ref _useReplace); }
+    public string FindText { get => _findText; set => Set(value ?? "", ref _findText); }
+    public string ReplaceWith { get => _replaceWith; set => Set(value ?? "", ref _replaceWith); }
 
-    public bool UseNumbering { get => _useNumbering; set => Set(ref _useNumbering, value); }
+    public bool UseNumbering { get => _useNumbering; set => Set(value, ref _useNumbering); }
     /// <summary>The digit count follows how the start is written: 「01」 gives two digits.</summary>
-    public string StartNumber { get => _startNumber; set => Set(ref _startNumber, value ?? ""); }
+    public string StartNumber { get => _startNumber; set => Set(value ?? "", ref _startNumber); }
     /// <summary>0 = 檔名前面, 1 = 檔名後面.</summary>
-    public int NumberPosition { get => _numberPosition; set => Set(ref _numberPosition, value); }
+    public int NumberPosition { get => _numberPosition; set => Set(value, ref _numberPosition); }
 
-    public bool UseDate { get => _useDate; set => Set(ref _useDate, value); }
+    public bool UseDate { get => _useDate; set => Set(value, ref _useDate); }
     /// <summary>0 = 修改日期, 1 = 建立日期.</summary>
-    public int DateSource { get => _dateSource; set => Set(ref _dateSource, value); }
-    public int DatePosition { get => _datePosition; set => Set(ref _datePosition, value); }
+    public int DateSource { get => _dateSource; set => Set(value, ref _dateSource); }
+    public int DatePosition { get => _datePosition; set => Set(value, ref _datePosition); }
 
-    public bool UseAffix { get => _useAffix; set => Set(ref _useAffix, value); }
-    public string Prefix { get => _prefix; set => Set(ref _prefix, value ?? ""); }
-    public string Suffix { get => _suffix; set => Set(ref _suffix, value ?? ""); }
+    public bool UseAffix { get => _useAffix; set => Set(value, ref _useAffix); }
+    public string Prefix { get => _prefix; set => Set(value ?? "", ref _prefix); }
+    public string Suffix { get => _suffix; set => Set(value ?? "", ref _suffix); }
 
     /// <summary>0 = 不變, 1 = 全部小寫, 2 = 全部大寫, 3 = 每個字首大寫.</summary>
-    public int CaseIndex { get => _caseIndex; set => Set(ref _caseIndex, value); }
+    public int CaseIndex { get => _caseIndex; set => Set(value, ref _caseIndex); }
     /// <summary>0 = 保持原樣, 1 = 小寫, 2 = 大寫, 3 = 改成….</summary>
-    public int ExtensionIndex { get => _extensionIndex; set { Set(ref _extensionIndex, value); OnPropertyChanged(nameof(IsCustomExtension)); } }
+    public int ExtensionIndex { get => _extensionIndex; set { Set(value, ref _extensionIndex); OnPropertyChanged(nameof(IsCustomExtension)); } }
     public bool IsCustomExtension => _extensionIndex == 3;
-    public string CustomExtension { get => _customExtension; set => Set(ref _customExtension, value ?? ""); }
-    public bool UseRegex { get => _useRegex; set => Set(ref _useRegex, value); }
-    public bool MatchCase { get => _matchCase; set => Set(ref _matchCase, value); }
+    public string CustomExtension { get => _customExtension; set => Set(value ?? "", ref _customExtension); }
+    public bool UseRegex { get => _useRegex; set => Set(value, ref _useRegex); }
+    public bool MatchCase { get => _matchCase; set => Set(value, ref _matchCase); }
 
     // ----- result of the preview -----
     public int ChangeCount => _plan?.ValidCount ?? 0;
@@ -176,7 +176,7 @@ public sealed class RenameWorkspaceViewModel : ViewModelBase
         OnPropertyChanged(nameof(RenameButtonText));
     }
 
-    private void Set<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? name = null)
+    private void Set<T>(T value, ref T field, [System.Runtime.CompilerServices.CallerMemberName] string? name = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value)) return;
         field = value;

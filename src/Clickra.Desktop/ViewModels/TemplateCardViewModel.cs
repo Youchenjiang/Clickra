@@ -106,7 +106,7 @@ public sealed class TemplateCardViewModel : ViewModelBase
             case MarkdownPdfOptions.ThemeMinimal:
             {
                 Color title = Color.Parse("#555555"), body = Color.Parse("#B5B5B5");
-                return (new SketchLine[]
+                return (new[]
                 {
                     new SketchLine(0.48, 4, 0, title),
                     new SketchLine(1.00, 2, 9, body),
@@ -117,7 +117,7 @@ public sealed class TemplateCardViewModel : ViewModelBase
                 }, new Thickness(18, 12, 18, 0));
             }
             case MarkdownPdfOptions.ThemeAcademic:
-                return (new SketchLine[]
+                return (new[]
                 {
                     new SketchLine(0.70, 5, 0, Title, true),
                     new SketchLine(0.40, 2, 4, Color.Parse("#777777"), true),
@@ -131,7 +131,7 @@ public sealed class TemplateCardViewModel : ViewModelBase
             default:
             {
                 Color title = Color.Parse("#2B2B2B"), body = Color.Parse("#9A9A9A");
-                return (new SketchLine[]
+                return (new[]
                 {
                     new SketchLine(0.62, 6, 0, title),
                     new SketchLine(1.00, 3, 7, body),

@@ -111,7 +111,7 @@ public partial class MainWindow : Window
     /// </summary>
     private bool RestoreBounds()
     {
-        string saved;
+        string saved = "";
         try { saved = Clickra.Core.Modules.Sys.Settings.Application.SettingsController.DesktopWindowBounds; }
         catch { return false; }
         string[] parts = saved.Split(',');

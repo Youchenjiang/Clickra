@@ -410,6 +410,8 @@ public partial class ConvertPage : UserControl
                 vm.Split.ZoomInPreview(); e.Handled = true; break;
             case Key.OemMinus or Key.Subtract when e.KeyModifiers.HasFlag(KeyModifiers.Control):
                 vm.Split.ZoomOutPreview(); e.Handled = true; break;
+            default:
+                break;
         }
     }
 
