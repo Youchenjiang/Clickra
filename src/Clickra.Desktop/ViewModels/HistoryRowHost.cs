@@ -192,12 +192,12 @@ public abstract class HistoryRowHostBase : ViewModelBase, IHistoryRowHost
         {
             if (OperatingSystem.IsWindows())
             {
-                Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{file}\"") { UseShellExecute = true })?.Dispose();
+                Process.Start(new ProcessStartInfo(Clickra.Core.SystemPaths.Explorer, $"/select,\"{file}\"") { UseShellExecute = true })?.Dispose();
                 return;
             }
             if (OperatingSystem.IsMacOS())
             {
-                Process.Start("open", $"-R \"{file}\"")?.Dispose();
+                Process.Start(Clickra.Core.SystemPaths.MacOpen, $"-R \"{file}\"")?.Dispose();
                 return;
             }
         }
@@ -208,20 +208,5 @@ public abstract class HistoryRowHostBase : ViewModelBase, IHistoryRowHost
         if (Path.GetDirectoryName(file) is { } dir) OpenPath(dir);
     }
 
-    protected static void OpenPath(string path)
-    {
-        try
-        {
-            if (OperatingSystem.IsWindows())
-                Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true })?.Dispose();
-            else if (OperatingSystem.IsMacOS())
-                Process.Start("open", $"\"{path}\"")?.Dispose();
-            else if (OperatingSystem.IsLinux())
-                Process.Start("xdg-open", $"\"{path}\"")?.Dispose();
-        }
-        catch
-        {
-            // Best effort
-        }
-    }
+    protected static void OpenPath(string path) => ExternalOpen.Path(path);
 }

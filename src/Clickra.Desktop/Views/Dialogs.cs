@@ -58,9 +58,9 @@ public static class Dialogs
         ToolTip.SetTip(remember, "之後可以在「設定 › 行為」更改");
 
         Button background = ChoiceButton("在背景繼續",
-            "M3,5 H21 V16 H3 Z M8,20 H16 M12,16 V20", filled: false, accent: true);
+            "M3,5 H21 V16 H3 Z M8,20 H16 M12,16 V20", accent: true);
         Button stop = ChoiceButton(remaining > 0 ? $"停止（剩下 {remaining} 個不處理）" : "停止",
-            "M12,3 A9,9 0 1 1 11.99,3 Z M9,9 H15 V15 H9 Z", filled: false, accent: false);
+            "M12,3 A9,9 0 1 1 11.99,3 Z M9,9 H15 V15 H9 Z", accent: false);
         background.Click += (_, _) => dialog.Close(new CloseChoice(CloseWhileRunning.Background, remember.IsChecked == true));
         stop.Click += (_, _) => dialog.Close(new CloseChoice(CloseWhileRunning.Stop, remember.IsChecked == true));
 
@@ -79,7 +79,7 @@ public static class Dialogs
         return dialog.ShowDialog<CloseChoice?>(owner);
     }
 
-    private static Button ChoiceButton(string text, string icon, bool filled, bool accent)
+    private static Button ChoiceButton(string text, string icon, bool accent)
     {
         // Same 24 × 24 grid and stroke as every other line icon (Styles/Controls.axaml, Viewbox.ic).
         var path = new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse(icon) };

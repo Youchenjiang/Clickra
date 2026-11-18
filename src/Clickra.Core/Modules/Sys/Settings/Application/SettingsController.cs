@@ -69,7 +69,7 @@ public static class SettingsController
     {
         get => int.TryParse(ReadText(ClickraSettings.PdfToImageDpi), out int dpi)
             ? ClickraSettings.ClampNumericSetting(ClickraSettings.PdfToImageDpi, dpi)
-            : int.Parse(ClickraSettings.DefaultPdfToImageDpi);
+            : ClickraSettings.GetDefaultInt(ClickraSettings.PdfToImageDpi);
         set => WriteText(ClickraSettings.PdfToImageDpi, ClickraSettings.ClampNumericSetting(ClickraSettings.PdfToImageDpi, value).ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 
@@ -89,7 +89,7 @@ public static class SettingsController
     {
         get => int.TryParse(ReadText(ClickraSettings.PrintCopies), out int copies)
             ? ClickraSettings.ClampNumericSetting(ClickraSettings.PrintCopies, copies)
-            : int.Parse(ClickraSettings.DefaultPrintCopies);
+            : ClickraSettings.GetDefaultInt(ClickraSettings.PrintCopies);
         set => WriteText(ClickraSettings.PrintCopies, ClickraSettings.ClampNumericSetting(ClickraSettings.PrintCopies, value).ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 

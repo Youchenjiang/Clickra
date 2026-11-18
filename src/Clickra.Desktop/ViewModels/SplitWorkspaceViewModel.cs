@@ -45,7 +45,12 @@ public sealed class SplitPageViewModel(SplitWorkspaceViewModel owner, int number
     internal double Aspect
     {
         get => _aspect;
-        set { if (Math.Abs(_aspect - value) < 0.001) return; _aspect = value; OnPropertyChanged(nameof(TileWidth)); }
+        set
+        {
+            if (Math.Abs(_aspect - value) < 0.001) return;
+            _aspect = value;
+            OnPropertyChanged(nameof(TileWidth));
+        }
     }
     public bool HasThumbnail => _thumbnail is not null;
     /// <summary>1-based part number; bands alternate two colours so neighbouring parts are told apart.</summary>
@@ -330,7 +335,7 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
                 _renderedWidth = width;
                 PreviewImage = image;
             });
-        });
+        }, cts.Token);
     }
 
     public void PreviousPage() => MovePreview(-1);
@@ -430,12 +435,12 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
             {
                 if (cts.IsCancellationRequested) return;
                 // Like the 3.x splitter: draw at 660 px (the word overlay needs room for readable text, at 160 px
-            // the words shrink to 3 px and run into each other), then scale down to the tile.
-            IImage? image = Render(file, page.Number, ThumbnailRenderWidth, ThumbnailDecodeHeight);
+                // the words shrink to 3 px and run into each other), then scale down to the tile.
+                IImage? image = Render(file, page.Number, ThumbnailRenderWidth, ThumbnailDecodeHeight);
                 if (image is null) return; // rendering is not available here: keep the numbered tiles
                 Dispatcher.UIThread.Post(() => page.Thumbnail = image);
             }
-        });
+        }, cts.Token);
     }
 
     private const int ThumbnailRenderWidth = 660;

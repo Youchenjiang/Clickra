@@ -132,7 +132,7 @@ public sealed class HistoryViewModel : HistoryRowHostBase
     /// rebuilt after <paramref name="notBefore"/> (so it never lands in the middle of the tab transition)
     /// and only when something changed.
     /// </summary>
-    public async void RefreshInBackground(TimeSpan notBefore)
+    public async Task RefreshInBackground(TimeSpan notBefore)
     {
         int version = ++_refreshVersion;
         Task delay = Task.Delay(notBefore);
@@ -235,7 +235,7 @@ public sealed class HistoryViewModel : HistoryRowHostBase
         if (running is null)
         {
             // Core just recorded the task: load it so 進行中 shows it.
-            if (sender is not null) RefreshInBackground(TimeSpan.Zero);
+            if (sender is not null) _ = RefreshInBackground(TimeSpan.Zero);
             return;
         }
         running.UpdateRunning(_session.Percent, _session.FileIndex, _session.FileCount);
@@ -309,7 +309,7 @@ public sealed class HistoryViewModel : HistoryRowHostBase
     }
 
     /// <summary>⋯ › 清除歷史…, after the confirm dialog. Converted files are kept.</summary>
-    public async void ClearHistory()
+    public async Task ClearHistory()
     {
         if (Confirm is not null && !await Confirm("清除全部歷史？", "轉好的檔案不會被刪除。", "清除", true))
             return;

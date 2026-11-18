@@ -82,28 +82,7 @@ public partial class SettingsPage : UserControl
         SubscribeToViewModel((TopLevel.GetTopLevel(this) as Window)?.DataContext as MainWindowViewModel ?? DataContext as MainWindowViewModel);
     }
 
-    private static void OpenExternalUri(string uri)
-    {
-        try
-        {
-            if (OperatingSystem.IsWindows())
-            {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = uri, UseShellExecute = true })?.Dispose();
-            }
-            else if (OperatingSystem.IsMacOS())
-            {
-                System.Diagnostics.Process.Start("open", $"\"{uri}\"")?.Dispose();
-            }
-            else if (OperatingSystem.IsLinux())
-            {
-                System.Diagnostics.Process.Start("xdg-open", $"\"{uri}\"")?.Dispose();
-            }
-        }
-        catch
-        {
-            // Best effort
-        }
-    }
+    private static void OpenExternalUri(string uri) => Clickra.Desktop.ViewModels.ExternalOpen.Path(uri);
 
     private void SubscribeToViewModel(MainWindowViewModel? vm)
     {

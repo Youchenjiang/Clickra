@@ -144,7 +144,7 @@ public sealed class ExecutionResultItemViewModel : ViewModelBase
     public string FullPath { get; }
     public bool Succeeded { get; set; }
     public bool NeedsPassword { get; set; }
-    public string DetailText { get; set; } = "";
+    public string DetailText { get; set; }
     public string PasswordInput { get; set; } = "";
 
     public ExecutionResultItemViewModel(string path, bool succeeded, string detail = "", bool needsPassword = false)
@@ -502,7 +502,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         if (action.Command == DecryptCommand)
         {
             Options.DecryptNeedsPassword = ProtectedNeedsPassword;
-            Options.DecryptSingleFile = (HasProtectedPdf ? ProtectedFiles.Count : SelectedFiles.Count) <= 1;
+            Options.DecryptSingleFile = (HasProtectedPdf ? GetProtectedFiles().Count : SelectedFiles.Count) <= 1;
         }
         if (action.Command is "merge-pdf" or "img-merge" or "img-stitch")
             Order.SetFiles(action.Command, SelectedFiles.Select(f => f.Path));
@@ -547,7 +547,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         _runningIndex = resumeStartIndex;
         // 解密 runs only on the protected files; the others are left as they are (Core refuses unprotected ones).
         var decryptFiles = SelectedAction.Command == DecryptCommand && HasProtectedPdf
-            ? ProtectedFiles.Select(f => f.Path).ToHashSet(StringComparer.OrdinalIgnoreCase)
+            ? GetProtectedFiles().Select(f => f.Path).ToHashSet(StringComparer.OrdinalIgnoreCase)
             : null;
         _runningTotal = decryptFiles?.Count ?? SelectedFiles.Count;
         _pauseRequested = false;
@@ -562,12 +562,12 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         var controller = new ConversionExecutionController();
         string command = SelectedAction.Command;
         // Merge and stitch run in the order shown in the workspace.
-        var files = (IsOrderAction ? Order.OrderedFiles : SelectedFiles.Select(f => f.Path))
+        var files = (IsOrderAction ? Order.GetOrderedFiles() : SelectedFiles.Select(f => f.Path))
             .Where(f => decryptFiles is null || decryptFiles.Contains(f))
             .ToArray();
         MarkFileSteps(files, resumeStartIndex);
 
-        var options = new Dictionary<string, object>();
+        Dictionary<string, object> options;
         Dictionary<string, string>? renamed = null;
         if (IsRenameAction)
         {
@@ -654,7 +654,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
                     });
                 });
 
-            var result = await Task.Run(() => controller.ExecutePreparedAsync(callbacks, progress, _conversionCts.Token));
+            var result = await Task.Run(() => controller.ExecutePreparedAsync(callbacks, progress, _conversionCts.Token), _conversionCts.Token);
 
             if (result.Status == ConversionExecutionPresentationStatus.Canceled)
             {
@@ -692,6 +692,8 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         finally
         {
             _pauseRequested = false;
+            _conversionCts?.Dispose();
+            _conversionCts = null;
             RefreshRecentHistory();
             Finished?.Invoke(this, EventArgs.Empty);
         }
@@ -889,7 +891,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     private PdfProtection ProtectionOf(string path) =>
         _protection.TryGetValue(path, out PdfProtection value) ? value : PdfProtection.None;
 
-    private List<FileItemViewModel> ProtectedFiles =>
+    private List<FileItemViewModel> GetProtectedFiles() =>
         SelectedFiles.Where(f => ProtectionOf(f.Path) != PdfProtection.None).ToList();
 
     public bool HasProtectedPdf => SelectedFiles.Any(f => ProtectionOf(f.Path) != PdfProtection.None);
@@ -902,7 +904,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     {
         get
         {
-            List<FileItemViewModel> files = ProtectedFiles;
+            List<FileItemViewModel> files = GetProtectedFiles();
             if (files.Count == 0) return "";
             bool open = files.Any(f => ProtectionOf(f.Path) == PdfProtection.OpenPassword);
             bool onlyRestricted = !open;
@@ -972,7 +974,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
                     if (SelectedAction?.Command == DecryptCommand) Options.DecryptNeedsPassword = ProtectedNeedsPassword;
                 }
             });
-        });
+        }, cts.Token);
     }
 
     /// <summary>

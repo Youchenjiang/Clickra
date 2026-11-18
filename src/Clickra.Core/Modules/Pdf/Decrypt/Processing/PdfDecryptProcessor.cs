@@ -42,8 +42,10 @@ public class PdfDecryptProcessor : SingleFileProcessorBase
         if (!System.IO.File.Exists(filePath)) return false;
         try
         {
-            using var doc = PdfReader.Open(filePath, PdfDocumentOpenMode.Import);
-            return false;
+            using (PdfReader.Open(filePath, PdfDocumentOpenMode.Import))
+            {
+                return false;
+            }
         }
         catch (PdfReaderException ex) when (ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase))
         {

@@ -51,7 +51,7 @@ public partial class MainWindow : Window
                 if (index == 1 && DataContext is MainWindowViewModel vm)
                 {
                     // Off the UI thread, applied after the slide-in, so the transition stays smooth.
-                    vm.History.RefreshInBackground(Motion.Normal);
+                    _ = vm.History.RefreshInBackground(Motion.Normal);
                 }
             };
         }

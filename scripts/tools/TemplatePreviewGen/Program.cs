@@ -63,7 +63,7 @@ public static class Program
                 var result = await controller.ExecutePreparedAsync();
                 if (result.Status != ConversionExecutionPresentationStatus.Succeeded)
                 {
-                    Console.Error.WriteLine($"[{theme}] conversion failed: {result.Error}");
+                    await Console.Error.WriteLineAsync($"[{theme}] conversion failed: {result.Error}");
                     return 1;
                 }
 
@@ -71,12 +71,12 @@ public static class Program
                 using var page = PdfPageThumbnailQuery.RenderPageFromFile(pdf, 1, PreviewWidth);
                 if (page is null)
                 {
-                    Console.Error.WriteLine($"[{theme}] could not render {pdf}");
+                    await Console.Error.WriteLineAsync($"[{theme}] could not render {pdf}");
                     return 1;
                 }
                 string png = Path.Combine(outputDir, theme + ".png");
                 page.Save(png, ImageFormat.Png);
-                Console.WriteLine($"[{theme}] {png}");
+                await Console.Out.WriteLineAsync($"[{theme}] {png}");
             }
             return 0;
         }

@@ -21,7 +21,10 @@ public partial class HistoryPage : UserControl
 
         // ⋯ menu: 清除歷史… (confirmed in a dialog).
         var clear = new MenuItem { Header = "清除歷史…" };
-        clear.Click += (_, _) => GetViewModel()?.ClearHistory();
+        clear.Click += async (_, _) =>
+        {
+            if (GetViewModel() is { } vm) await vm.ClearHistory();
+        };
         MoreButton.Flyout = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight, Items = { clear } };
     }
 

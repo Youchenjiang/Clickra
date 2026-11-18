@@ -175,7 +175,7 @@ public sealed class ActionOptionsViewModel : ViewModelBase
             Changed(nameof(PdfLevel), nameof(PdfLevelHint), nameof(PdfLevelIsDefault));
         }
     }
-    public string PdfLevelHint => $"{PdfLevelNames[_pdfLevel]}　{PdfLevelHints[_pdfLevel]}";
+    public string PdfLevelHint => $"{PdfLevelNames[_pdfLevel]}\u3000{PdfLevelHints[_pdfLevel]}";
     public bool StripFonts { get => _stripFonts; set { _stripFonts = value; Changed(nameof(StripFonts), nameof(PdfLevelIsDefault)); } }
     public bool MinifyContent { get => _minifyContent; set { _minifyContent = value; Changed(nameof(MinifyContent), nameof(PdfLevelIsDefault)); } }
     public bool PdfLevelIsDefault =>

@@ -97,7 +97,7 @@ public sealed class OrderWorkspaceViewModel : ViewModelBase
         ClearSort();
     }
 
-    public IReadOnlyList<string> OrderedFiles => Items.Select(i => i.Path).ToList();
+    public IReadOnlyList<string> GetOrderedFiles() => Items.Select(i => i.Path).ToList();
 
     public Dictionary<string, object> BuildOptions() => new(StringComparer.Ordinal)
     {

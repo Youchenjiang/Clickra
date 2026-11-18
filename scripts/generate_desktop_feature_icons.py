@@ -17,7 +17,7 @@ fill / fill-opacity / stroke / stroke-width / stroke-linecap / stroke-linejoin /
 from __future__ import annotations
 
 import sys
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET  # skipcq: PTC-W0017, BAN-B314
 from pathlib import Path
 from xml.sax.saxutils import quoteattr
 
@@ -29,7 +29,7 @@ SVG_NS = "{http://www.w3.org/2000/svg}"
 
 
 def num(value: str | None, default: float = 0.0) -> float:
-    return float(value) if value not in (None, "") else default
+    return float(value) if value is not None and value != "" else default
 
 
 def fmt(value: float) -> str:
@@ -46,7 +46,7 @@ def color(value: str | None, opacity: str | None = None) -> str | None:
         value = named.get(value.lower(), value)
     if len(value) == 4:  # #RGB
         value = "#" + "".join(c * 2 for c in value[1:])
-    if opacity not in (None, "", "1"):
+    if opacity is not None and opacity not in ("", "1"):
         alpha = max(0, min(255, round(float(opacity) * 255)))
         value = f"#{alpha:02X}{value[1:]}"
     return value.upper()
@@ -71,19 +71,22 @@ def circle(cx: float, cy: float, r: float) -> str:
     )
 
 
-_font = None
+_font_cache: dict[str, object] = {}
+
+
+def get_font():
+    if "font" not in _font_cache:
+        from fontTools.ttLib import TTFont
+        _font_cache["font"] = TTFont(str(FONT))
+    return _font_cache["font"]
 
 
 def text_outline(el: ET.Element) -> str:
     """Outlines of a <text> element (Latin labels such as PNG / HEIC), positioned like the SVG."""
-    global _font
     from fontTools.pens.svgPathPen import SVGPathPen
     from fontTools.pens.transformPen import TransformPen
-    from fontTools.ttLib import TTFont
 
-    if _font is None:
-        _font = TTFont(str(FONT))
-    font = _font
+    font = get_font()
     glyph_set = font.getGlyphSet()
     cmap = font.getBestCmap()
     units = font["head"].unitsPerEm
@@ -158,7 +161,7 @@ def drawing(el: ET.Element) -> str | None:
 
 
 def convert(svg: Path) -> str:
-    root = ET.parse(svg).getroot()
+    root = ET.parse(svg).getroot()  # skipcq: PTC-W0017, BAN-B314
     view = (root.get("viewBox") or f"0 0 {root.get('width', '256')} {root.get('height', '256')}").split()
     w, h = float(view[2]), float(view[3])
     items = [d for el in root if (d := drawing(el))]

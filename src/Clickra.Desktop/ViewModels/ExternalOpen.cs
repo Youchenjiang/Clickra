@@ -34,11 +34,11 @@ public static class ExternalOpen
             }
             else if (OperatingSystem.IsMacOS())
             {
-                Process.Start("open", $"\"{path}\"")?.Dispose();
+                Process.Start(Clickra.Core.SystemPaths.MacOpen, $"\"{path}\"")?.Dispose();
             }
             else if (OperatingSystem.IsLinux())
             {
-                Process.Start("xdg-open", $"\"{path}\"")?.Dispose();
+                Process.Start(Clickra.Core.SystemPaths.LinuxXdgOpen, $"\"{path}\"")?.Dispose();
             }
         }
         catch
