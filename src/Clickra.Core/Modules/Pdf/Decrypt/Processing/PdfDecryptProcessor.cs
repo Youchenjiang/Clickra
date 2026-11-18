@@ -33,6 +33,28 @@ public class PdfDecryptProcessor : SingleFileProcessorBase
         }
     }
 
+    /// <summary>
+    /// True when the file cannot be opened without a password (an open password). A PDF that only restricts
+    /// printing or copying opens without one, so it needs no password to decrypt.
+    /// </summary>
+    public static bool NeedsOpenPassword(string filePath)
+    {
+        if (!System.IO.File.Exists(filePath)) return false;
+        try
+        {
+            using var doc = PdfReader.Open(filePath, PdfDocumentOpenMode.Import);
+            return false;
+        }
+        catch (PdfReaderException ex) when (ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     protected override string GetOutputSuffix() => "_decrypted.pdf";
 
     protected override void ProcessSingleFile(string fullPath, string targetOutputPath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)

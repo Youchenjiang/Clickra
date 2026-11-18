@@ -10,6 +10,8 @@ namespace Clickra.Core.Modules.Pdf.Decrypt.Application;
 public sealed class DecryptPdfUseCase : PerFileConversionUseCaseBase
 {
     public const string CommandName = "decrypt-pdf";
+    /// <summary>Password typed on the decrypt card; tried before asking.</summary>
+    public const string PasswordOptionKey = "password";
 
     public override string Command => CommandName;
 
@@ -56,11 +58,19 @@ public sealed class DecryptPdfUseCase : PerFileConversionUseCaseBase
         object? executionState,
         CancellationToken cancellationToken)
     {
+        // The password typed on the decrypt card is tried first; only a file it does not open asks again. A file
+        // that only restricts printing or copying opens without a password, so the typed one is not used for it.
+        string? initialPassword = plan.NormalizedOptions.TryGetValue(PasswordOptionKey, out object? supplied) &&
+                                  supplied is string text && text.Length > 0 &&
+                                  PdfDecryptProcessor.NeedsOpenPassword(plan.Inputs[index])
+            ? text
+            : null;
+
         await ExecuteWithPasswordRetryAsync(
             index,
             plan,
             interaction,
-            null,
+            initialPassword,
             async password =>
             {
                 var processor = new PdfDecryptProcessor();
@@ -68,7 +78,7 @@ public sealed class DecryptPdfUseCase : PerFileConversionUseCaseBase
                 {
                     [ExecutionLocalizationOptions.LanguageKey] = plan.NormalizedOptions[ExecutionLocalizationOptions.LanguageKey].ToString() ?? ClickraSettings.DefaultEmpty
                 };
-                if (!string.IsNullOrEmpty(password)) options["password"] = password;
+                if (!string.IsNullOrEmpty(password)) options[PasswordOptionKey] = password;
 
                 await Task.Run(
                     () => processor.Process(
