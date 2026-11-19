@@ -49,9 +49,11 @@ def color(value: str | None, opacity: str | None = None) -> str | None:
         value = named.get(value.lower(), value)
     if len(value) == 4:  # #RGB
         value = "#" + "".join(c * 2 for c in value[1:])
-    if opacity is not None and opacity not in ("", "1"):
-        alpha = max(0, min(255, round(float(opacity) * 255)))
-        value = f"#{alpha:02X}{value[1:]}"
+    if opacity:
+        opacity_str = opacity.strip()
+        if opacity_str not in ("", "1"):
+            alpha = max(0, min(255, round(float(opacity_str) * 255)))
+            value = f"#{alpha:02X}{value[1:]}"
     return value.upper()
 
 
