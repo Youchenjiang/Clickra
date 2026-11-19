@@ -19,6 +19,8 @@ namespace Clickra.Desktop.ViewModels;
 /// </summary>
 public sealed class ActionOptionsViewModel : ViewModelBase
 {
+    private const string ImageFormatPrefix = "img-to-";
+
     private string _command = "";
 
     // PDF compression (3 steps) and image compression (4 steps).
@@ -53,10 +55,14 @@ public sealed class ActionOptionsViewModel : ViewModelBase
     private static readonly string[] MarkdownTextSizes = [MarkdownPdfOptions.TextSmall, MarkdownPdfOptions.TextStandard, MarkdownPdfOptions.TextLarge];
     private static readonly string[] MarkdownCodeThemes = [MarkdownPdfOptions.CodeDark, MarkdownPdfOptions.CodeLight];
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S2325:Methods and properties that don't access instance data should be static", Justification = "Required for XAML compiled binding")]
     public IReadOnlyList<string> PdfLevelSteps => PdfLevelNames;
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S2325:Methods and properties that don't access instance data should be static", Justification = "Required for XAML compiled binding")]
     public IReadOnlyList<string> ImageLevelSteps => ImageLevelNames;
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S2325:Methods and properties that don't access instance data should be static", Justification = "Required for XAML compiled binding")]
     public IReadOnlyList<string> DpiChoices => DpiLabels;
     public static IReadOnlyList<string> DpiLabelsPublic => DpiLabels;
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S2325:Methods and properties that don't access instance data should be static", Justification = "Required for XAML compiled binding")]
     public IReadOnlyList<string> TranslateChoices => TranslateLanguageNames;
 
     /// <summary>Called when an action is opened: loads the feature defaults for it.</summary>
@@ -96,8 +102,8 @@ public sealed class ActionOptionsViewModel : ViewModelBase
     /// <summary>Selects the image target format from a command such as img-to-jpg (再轉一次, 繼續).</summary>
     public void SetImageFormatFromCommand(string command)
     {
-        if (!command.StartsWith("img-to-", StringComparison.OrdinalIgnoreCase)) return;
-        string format = command["img-to-".Length..];
+        if (!command.StartsWith(ImageFormatPrefix, StringComparison.OrdinalIgnoreCase)) return;
+        string format = command[ImageFormatPrefix.Length..];
         ImageFormatIndex = Array.FindIndex(ImageFormats, f => f.Equals(format, StringComparison.OrdinalIgnoreCase));
     }
 
@@ -107,7 +113,7 @@ public sealed class ActionOptionsViewModel : ViewModelBase
     public bool IsTranslate => _command == "translate-pdf";
     public bool IsDecrypt => _command == "decrypt-pdf";
     public bool IsImageCompress => _command == "img-compress";
-    public bool IsImageFormat => _command.StartsWith("img-to-", StringComparison.OrdinalIgnoreCase);
+    public bool IsImageFormat => _command.StartsWith(ImageFormatPrefix, StringComparison.OrdinalIgnoreCase);
     public bool IsMarkdown => _command is "md2pdf" or "md2word";
     public bool IsMarkdownPdf => _command == "md2pdf";
     public bool IsPrint => _command == "print-pdf";
@@ -221,6 +227,7 @@ public sealed class ActionOptionsViewModel : ViewModelBase
     /// <summary>最大邊長: 0 keeps the size; smaller images are never enlarged.</summary>
     public static readonly int[] MaxDimValues = [0, 3840, 2560, 1920, 1280];
     public static readonly string[] MaxDimLabels = ["不縮小尺寸", "3840 px（4K）", "2560 px", "1920 px（Full HD）", "1280 px"];
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S2325:Methods and properties that don't access instance data should be static", Justification = "Required for XAML compiled binding")]
     public IReadOnlyList<string> MaxDimChoices => MaxDimLabels;
     private int _imageMaxDim;
     public int ImageMaxDimIndex
@@ -353,7 +360,7 @@ public sealed class ActionOptionsViewModel : ViewModelBase
     public IReadOnlyList<bool> ImageFormatAllowed => _imageFormatAllowed;
     public void SetAllowedImageFormats(Func<string, bool> isCompatible)
     {
-        _imageFormatAllowed = ImageFormats.Select(f => isCompatible("img-to-" + f.ToLowerInvariant())).ToArray();
+        _imageFormatAllowed = ImageFormats.Select(f => isCompatible(ImageFormatPrefix + f.ToLowerInvariant())).ToArray();
         OnPropertyChanged(nameof(ImageFormatAllowed));
     }
 
@@ -415,46 +422,68 @@ public sealed class ActionOptionsViewModel : ViewModelBase
     public void SetTemplate(string path)
     {
         _templatePath = path ?? "";
-        _templateSummary = "";
-        _templateError = "";
         bool centerTitle = false;
         double lineMultiple = 1.15, marginCm = 2.54;
         if (_templatePath.Length > 0)
         {
-            try
-            {
-                if (!System.IO.File.Exists(_templatePath)) throw new System.IO.FileNotFoundException();
-                var template = MarkdownTemplateSource.Load(_templatePath);
-                var t = template.Typography;
-                var l = template.Layout;
-                string fonts = t.CjkFont.Equals(t.LatinFont, StringComparison.OrdinalIgnoreCase) ? t.CjkFont : $"{t.CjkFont}／{t.LatinFont}";
-                lineMultiple = t.BodySizePoints > 0 ? t.LineHeightPoints / t.BodySizePoints : 1.15;
-                marginCm = l.MarginPoints / 28.3465;
-                centerTitle = l.CenterH1;
-                // Canvas MarkdownWordB: one line of what was read.
-                _templateSummary = $"讀到：{fonts} {t.BodySizePoints:0.#} pt、{lineMultiple:0.##} 倍行距、邊界 {marginCm:0.##} cm"
-                                   + (centerTitle ? "、標題置中" : "");
-            }
-            catch (System.IO.FileNotFoundException)
-            {
-                _templateError = $"找不到範本「{TemplateFileName}」，可能已被移動或刪除";
-            }
-            catch (System.IO.InvalidDataException ex) when (ex.Message.Contains("East Asian", StringComparison.OrdinalIgnoreCase))
-            {
-                // Core needs the template to name a Chinese/Japanese/Korean font (English Word files often don't).
-                _templateError = $"「{TemplateFileName}」沒有指定中文字型，請在 Word 的字型設定裡選一個中文字型後再試";
-            }
-            catch
-            {
-                _templateError = $"「{TemplateFileName}」不是能用的 Word 範本（格式不對或檔案損毀）";
-            }
+            LoadTemplateSummary(_templatePath, TemplateFileName, out _templateSummary, out _templateError,
+                out centerTitle, out lineMultiple, out marginCm);
             _markdownTheme = WordTemplateIndex;
+        }
+        else
+        {
+            _templateSummary = "";
+            _templateError = "";
         }
         Changed(nameof(MarkdownThemeIndex), nameof(UsesWordTemplate), nameof(TemplateFileName), nameof(TemplateSummary),
             nameof(TemplateError), nameof(HasTemplateError), nameof(IsReady), nameof(BlockingText),
             nameof(MarkdownThemeIsDefault), nameof(CanSaveMarkdownDefault), nameof(ShowTemplateButtons), nameof(ShowTemplateSummary));
         TemplateCards[WordTemplateIndex].SetWordTemplate(_templatePath.Length == 0 ? null : TemplateFileName, !HasTemplateError,
             centerTitle, lineMultiple, marginCm);
+    }
+
+    private static void LoadTemplateSummary(
+        string path,
+        string fileName,
+        out string summary,
+        out string error,
+        out bool centerTitle,
+        out double lineMultiple,
+        out double marginCm)
+    {
+        summary = "";
+        error = "";
+        centerTitle = false;
+        lineMultiple = 1.15;
+        marginCm = 2.54;
+
+        try
+        {
+            if (!System.IO.File.Exists(path)) throw new System.IO.FileNotFoundException();
+            var template = MarkdownTemplateSource.Load(path);
+            var t = template.Typography;
+            var l = template.Layout;
+            string fonts = t.CjkFont.Equals(t.LatinFont, StringComparison.OrdinalIgnoreCase) ? t.CjkFont : $"{t.CjkFont}／{t.LatinFont}";
+            lineMultiple = t.BodySizePoints > 0 ? t.LineHeightPoints / t.BodySizePoints : 1.15;
+            marginCm = l.MarginPoints / 28.3465;
+            centerTitle = l.CenterH1;
+            // Canvas MarkdownWordB: one line of what was read.
+            summary = $"讀到：{fonts} {t.BodySizePoints:0.#} pt、{lineMultiple:0.##} 倍行距、邊界 {marginCm:0.##} cm"
+                      + (centerTitle ? "、標題置中" : "");
+        }
+        catch (System.IO.FileNotFoundException)
+        {
+            error = $"找不到範本「{fileName}」，可能已被移動或刪除";
+        }
+        catch (System.IO.InvalidDataException ex) when (ex.Message.Contains("East Asian", StringComparison.OrdinalIgnoreCase))
+        {
+            // Core needs the template to name a Chinese/Japanese/Korean font (English Word files often don't).
+            error = $"「{fileName}」沒有指定中文字型，請在 Word 的字型設定裡選一個中文字型後再試";
+        }
+        catch (Exception)
+        {
+            error = $"「{fileName}」不是能用的 Word 範本（格式不對或檔案損毀）";
+        }
     }
 
     public void CancelTemplatePick() => OnPropertyChanged(nameof(MarkdownThemeIndex));
@@ -545,7 +574,14 @@ public sealed class ActionOptionsViewModel : ViewModelBase
         if (_printerIndex < 0) return SettingsController.PrintPrinter;
         string name = _printers[_printerIndex];
         string? system = null;
-        try { system = PrinterDiscovery.GetDefaultPrinter(); } catch { }
+        try
+        {
+            system = PrinterDiscovery.GetDefaultPrinter();
+        }
+        catch (Exception)
+        {
+            // Spooler or default printer query unavailable
+        }
         return string.Equals(name, system, StringComparison.OrdinalIgnoreCase) && SettingsController.PrintPrinter.Length == 0 ? "" : name;
     }
     private string PaperForSave() => _paperIndex <= 0 ? "" : _paperSizes[_paperIndex];
@@ -579,7 +615,7 @@ public sealed class ActionOptionsViewModel : ViewModelBase
                 _printerIndex = Math.Max(0, matchedIndex);
             }
         }
-        catch
+        catch (Exception)
         {
             _printers = Array.Empty<string>(); // no printing support on this system
             _printerIndex = -1;
@@ -600,9 +636,9 @@ public sealed class ActionOptionsViewModel : ViewModelBase
         {
             if (_printerIndex >= 0) sizes.AddRange(PrinterDiscovery.GetSupportedPaperSizes(_printers[_printerIndex]));
         }
-        catch
+        catch (Exception)
         {
-            // keep 印表機預設 only
+            // Spooler paper size query unavailable, keep 印表機預設 only
         }
         _paperSizes = sizes;
         string savedPaper = SettingsController.PrintPaper;
@@ -630,7 +666,7 @@ public sealed class ActionOptionsViewModel : ViewModelBase
 
     /// <summary>The command to run: the image format card picks one of the img-to-* commands.</summary>
     public string ResolveCommand(string command) =>
-        IsImageFormat && _imageFormat >= 0 ? "img-to-" + ImageFormats[_imageFormat].ToLowerInvariant() : command;
+        IsImageFormat && _imageFormat >= 0 ? ImageFormatPrefix + ImageFormats[_imageFormat].ToLowerInvariant() : command;
 
     /// <summary>Options for Core, matching each use case's option keys.</summary>
     public Dictionary<string, object> Build()
@@ -638,52 +674,23 @@ public sealed class ActionOptionsViewModel : ViewModelBase
         var options = new Dictionary<string, object>(StringComparer.Ordinal);
         if (IsCompressPdf)
         {
-            options[CompressPdfUseCase.LevelOptionKey] = PdfCompressionOptions.ToOptionName(PdfCompressionOptions.FromSliderLevel(_pdfLevel));
-            options["strip_fonts"] = _stripFonts;
-            options["minify_content"] = _minifyContent;
+            BuildCompressPdfOptions(options);
         }
         else if (IsImageCompress)
         {
-            ImageCompressionLevel level = ImageCompressionOptions.FromSliderLevel(_imageLevel);
-            options["level"] = ImageCompressionOptions.ToOptionName(level);
-            options["quality"] = ImageCompressionOptions.GetQuality(level);
-            options["max_dimension"] = MaxDimValues[_imageMaxDim];
+            BuildImageCompressOptions(options);
         }
         else if (IsPdfToImage)
         {
-            options[PdfToImageOptions.FormatOptionKey] = PdfImageFormats[_pdfImageFormat];
-            options[PdfToImageOptions.DpiOptionKey] = DpiValues[_pdfImageDpi];
-            options[PdfToImageOptions.PagesOptionKey] = string.IsNullOrWhiteSpace(_pdfImagePages) ? PdfToImageOptions.DefaultPages : _pdfImagePages.Trim();
-            options[PdfToImageOptions.StitchOptionKey] = _pdfImageStitch;
+            BuildPdfToImageOptions(options);
         }
         else if (IsTranslate)
         {
-            options[TranslatePdfUseCase.TargetLanguageOptionKey] = TranslateLanguageCodes[_translateLanguage];
-            options[TranslatePdfUseCase.EngineOptionKey] = TranslateEngines[_translateEngine];
-            if (IsCustomAi)
-            {
-                options[TranslatePdfUseCase.AiEndpointOptionKey] = _aiEndpoint.Trim();
-                options[TranslatePdfUseCase.AiModelOptionKey] = _aiModel.Trim();
-                options[TranslatePdfUseCase.AiApiKeyOptionKey] = _aiApiKey.Trim();
-                // 「記住這個服務」: kept for next time when the run starts; unticked, nothing is stored.
-                if (_aiEditing && _rememberAi)
-                {
-                    SettingsController.TranslateAiEndpoint = _aiEndpoint.Trim();
-                    SettingsController.TranslateAiModel = _aiModel.Trim();
-                    SettingsController.TranslateAiApiKey = _aiApiKey.Trim();
-                }
-            }
+            BuildTranslateOptions(options);
         }
         else if (IsPrint)
         {
-            options[PrintPdfOptions.PrinterNameKey] = _printers[_printerIndex];
-            options[PrintPdfOptions.CopiesKey] = _copies;
-            if (!string.IsNullOrWhiteSpace(_printPages)) options[PrintPdfOptions.PageRangeKey] = _printPages.Trim();
-            options[PrintPdfOptions.DuplexKey] = ((PrintDuplexMode)_duplex).ToString();
-            options[PrintPdfOptions.OrientationKey] = ((PrintOrientation)_orientation).ToString();
-            options[PrintPdfOptions.FitToPageKey] = _fitToPage;
-            options[PrintPdfOptions.DarkenTextKey] = _darkenText;
-            if (_paperIndex > 0) options[PrintPdfOptions.PaperSizeKey] = _paperSizes[_paperIndex];
+            BuildPrintOptions(options);
         }
         else if (IsDecrypt)
         {
@@ -691,20 +698,79 @@ public sealed class ActionOptionsViewModel : ViewModelBase
         }
         else if (IsMarkdown)
         {
-            if (UsesWordTemplate)
-            {
-                options[MarkdownPdfOptions.ThemeKey] = MarkdownPdfOptions.ThemeDefault;
-                options[MarkdownPdfOptions.TemplatePathKey] = _templatePath;
-            }
-            else
-            {
-                options[MarkdownPdfOptions.ThemeKey] = MarkdownThemes[_markdownTheme];
-            }
-            if (IsMarkdownPdf) options[MarkdownPdfOptions.PaperKey] = MarkdownPapers[_markdownPaper];
-            options[MarkdownPdfOptions.TextSizeKey] = MarkdownTextSizes[_markdownTextSize];
-            options[MarkdownPdfOptions.CodeThemeKey] = MarkdownCodeThemes[_markdownCode];
+            BuildMarkdownOptions(options);
         }
         return options;
+    }
+
+    private void BuildCompressPdfOptions(Dictionary<string, object> options)
+    {
+        options[CompressPdfUseCase.LevelOptionKey] = PdfCompressionOptions.ToOptionName(PdfCompressionOptions.FromSliderLevel(_pdfLevel));
+        options["strip_fonts"] = _stripFonts;
+        options["minify_content"] = _minifyContent;
+    }
+
+    private void BuildImageCompressOptions(Dictionary<string, object> options)
+    {
+        ImageCompressionLevel level = ImageCompressionOptions.FromSliderLevel(_imageLevel);
+        options["level"] = ImageCompressionOptions.ToOptionName(level);
+        options["quality"] = ImageCompressionOptions.GetQuality(level);
+        options["max_dimension"] = MaxDimValues[_imageMaxDim];
+    }
+
+    private void BuildPdfToImageOptions(Dictionary<string, object> options)
+    {
+        options[PdfToImageOptions.FormatOptionKey] = PdfImageFormats[_pdfImageFormat];
+        options[PdfToImageOptions.DpiOptionKey] = DpiValues[_pdfImageDpi];
+        options[PdfToImageOptions.PagesOptionKey] = string.IsNullOrWhiteSpace(_pdfImagePages) ? PdfToImageOptions.DefaultPages : _pdfImagePages.Trim();
+        options[PdfToImageOptions.StitchOptionKey] = _pdfImageStitch;
+    }
+
+    private void BuildTranslateOptions(Dictionary<string, object> options)
+    {
+        options[TranslatePdfUseCase.TargetLanguageOptionKey] = TranslateLanguageCodes[_translateLanguage];
+        options[TranslatePdfUseCase.EngineOptionKey] = TranslateEngines[_translateEngine];
+        if (IsCustomAi)
+        {
+            options[TranslatePdfUseCase.AiEndpointOptionKey] = _aiEndpoint.Trim();
+            options[TranslatePdfUseCase.AiModelOptionKey] = _aiModel.Trim();
+            options[TranslatePdfUseCase.AiApiKeyOptionKey] = _aiApiKey.Trim();
+            // 「記住這個服務」: kept for next time when the run starts; unticked, nothing is stored.
+            if (_aiEditing && _rememberAi)
+            {
+                SettingsController.TranslateAiEndpoint = _aiEndpoint.Trim();
+                SettingsController.TranslateAiModel = _aiModel.Trim();
+                SettingsController.TranslateAiApiKey = _aiApiKey.Trim();
+            }
+        }
+    }
+
+    private void BuildPrintOptions(Dictionary<string, object> options)
+    {
+        options[PrintPdfOptions.PrinterNameKey] = _printers[_printerIndex];
+        options[PrintPdfOptions.CopiesKey] = _copies;
+        if (!string.IsNullOrWhiteSpace(_printPages)) options[PrintPdfOptions.PageRangeKey] = _printPages.Trim();
+        options[PrintPdfOptions.DuplexKey] = ((PrintDuplexMode)_duplex).ToString();
+        options[PrintPdfOptions.OrientationKey] = ((PrintOrientation)_orientation).ToString();
+        options[PrintPdfOptions.FitToPageKey] = _fitToPage;
+        options[PrintPdfOptions.DarkenTextKey] = _darkenText;
+        if (_paperIndex > 0) options[PrintPdfOptions.PaperSizeKey] = _paperSizes[_paperIndex];
+    }
+
+    private void BuildMarkdownOptions(Dictionary<string, object> options)
+    {
+        if (UsesWordTemplate)
+        {
+            options[MarkdownPdfOptions.ThemeKey] = MarkdownPdfOptions.ThemeDefault;
+            options[MarkdownPdfOptions.TemplatePathKey] = _templatePath;
+        }
+        else
+        {
+            options[MarkdownPdfOptions.ThemeKey] = MarkdownThemes[_markdownTheme];
+        }
+        if (IsMarkdownPdf) options[MarkdownPdfOptions.PaperKey] = MarkdownPapers[_markdownPaper];
+        options[MarkdownPdfOptions.TextSizeKey] = MarkdownTextSizes[_markdownTextSize];
+        options[MarkdownPdfOptions.CodeThemeKey] = MarkdownCodeThemes[_markdownCode];
     }
 
     private void Changed(params string[] names)

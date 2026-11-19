@@ -64,13 +64,8 @@ public sealed class HistoryRowViewModel : ViewModelBase
         FullName = first;
         MoreText = item.FileCount > 1 ? $"等 {item.FileCount} 個" : "";
 
-        (FeatureName, FeatureColor, FeatureGeometry) = HistoryFeatures.Describe(item.Entry.Command ?? "");
-        if (FeatureName == (item.Entry.Command ?? "") && !string.IsNullOrEmpty(item.CommandLabelKey))
-        {
-            // Not in the 4.0 action catalog (an older or right-click-only action): use Core's label.
-            string label = Clickra.Core.Localization.T(item.CommandLabelKey);
-            if (!string.IsNullOrWhiteSpace(label) && label != item.CommandLabelKey) FeatureName = label;
-        }
+        (string baseName, FeatureColor, FeatureGeometry) = HistoryFeatures.Describe(item.Entry.Command ?? "");
+        FeatureName = DetermineFeatureName(baseName, item.Entry.Command, item.CommandLabelKey);
         Started = ParseTime(item.Entry.Time);
         Finished = ParseTime(string.IsNullOrEmpty(item.Entry.EndTime) ? item.Entry.Time : item.Entry.EndTime);
 
@@ -80,19 +75,32 @@ public sealed class HistoryRowViewModel : ViewModelBase
             HistoryRowKind.Active => "",
             _ => Started?.ToString("HH:mm", CultureInfo.InvariantCulture) ?? item.Time,
         };
-        Reason = Kind switch
-        {
-            HistoryRowKind.Parked => FirstLine(item.ErrorMessage),
-            HistoryRowKind.Active => item.FileCount > 1 ? $"第 {Math.Min(item.Entry.CurrentIndex + 1, item.FileCount)}/{item.FileCount} 個" : "",
-            _ when State == HistoryRowState.Canceled => "已取消",
-            _ when State == HistoryRowState.Failed => string.Equals(item.Entry.ErrorMessage, "Abandoned", StringComparison.OrdinalIgnoreCase)
-                ? "沒有做完就中斷了"
-                : FirstLine(item.ErrorMessage),
-            _ => "",
-        };
+        Reason = DetermineReason(Kind, State, item);
         if (Kind == HistoryRowKind.Active && item.FileCount > 0)
             _progressPercent = Math.Clamp(item.Entry.CurrentIndex * 100.0 / item.FileCount, 0, 100);
     }
+
+    private static string DetermineFeatureName(string baseName, string? command, string? commandLabelKey)
+    {
+        if (baseName == (command ?? "") && !string.IsNullOrEmpty(commandLabelKey))
+        {
+            // Not in the 4.0 action catalog (an older or right-click-only action): use Core's label.
+            string label = Clickra.Core.Localization.T(commandLabelKey);
+            if (!string.IsNullOrWhiteSpace(label) && label != commandLabelKey) return label;
+        }
+        return baseName;
+    }
+
+    private static string DetermineReason(HistoryRowKind kind, HistoryRowState state, HistoryItem item) => kind switch
+    {
+        HistoryRowKind.Parked => FirstLine(item.ErrorMessage),
+        HistoryRowKind.Active => item.FileCount > 1 ? $"第 {Math.Min(item.Entry.CurrentIndex + 1, item.FileCount)}/{item.FileCount} 個" : "",
+        _ when state == HistoryRowState.Canceled => "已取消",
+        _ when state == HistoryRowState.Failed => string.Equals(item.Entry.ErrorMessage, "Abandoned", StringComparison.OrdinalIgnoreCase)
+            ? "沒有做完就中斷了"
+            : FirstLine(item.ErrorMessage),
+        _ => "",
+    };
 
     public HistoryItem Item { get; }
     public IHistoryRowHost Host { get; }

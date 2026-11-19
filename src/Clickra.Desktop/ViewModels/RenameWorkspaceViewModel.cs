@@ -105,37 +105,37 @@ public sealed class RenameWorkspaceViewModel : ViewModelBase
         return new Dictionary<string, object> { ["options"] = options, ["plan"] = plan };
     }
 
+    private NumberingOptions? BuildNumberingOptions()
+    {
+        if (!_useNumbering) return null;
+        string digits = new(_startNumber.Where(char.IsDigit).ToArray());
+        int start = int.TryParse(digits, out int n) ? n : 1;
+        return new NumberingOptions(
+            StartIndex: start,
+            PaddingDigits: Math.Max(1, digits.Length),
+            Position: _numberPosition == 0 ? InsertPosition.Prefix : InsertPosition.Suffix);
+    }
+
+    private TimestampOptions? BuildTimestampOptions()
+    {
+        if (!_useDate) return null;
+        var dateSource = _dateSource == 1 ? TimestampSource.CreatedTime : TimestampSource.ModifiedTime;
+        var datePosition = _datePosition == 0 ? InsertPosition.Prefix : InsertPosition.Suffix;
+        return new TimestampOptions(Source: dateSource, Position: datePosition);
+    }
+
     private BatchRenameOptions BuildOptions()
     {
         ReplaceOptions? replace = _useReplace && _findText.Length > 0
             ? new ReplaceOptions(_findText, _replaceWith, IgnoreCase: !_matchCase, UseRegex: _useRegex)
             : null;
 
-        NumberingOptions? numbering = null;
-        if (_useNumbering)
-        {
-            string digits = new(_startNumber.Where(char.IsDigit).ToArray());
-            int start = int.TryParse(digits, out int n) ? n : 1;
-            numbering = new NumberingOptions(
-                StartIndex: start,
-                PaddingDigits: Math.Max(1, digits.Length),
-                Position: _numberPosition == 0 ? InsertPosition.Prefix : InsertPosition.Suffix);
-        }
-
-        TimestampOptions? timestamp = null;
-        if (_useDate)
-        {
-            var dateSource = _dateSource == 1 ? TimestampSource.CreatedTime : TimestampSource.ModifiedTime;
-            var datePosition = _datePosition == 0 ? InsertPosition.Prefix : InsertPosition.Suffix;
-            timestamp = new TimestampOptions(Source: dateSource, Position: datePosition);
-        }
-
         return new BatchRenameOptions(
             Prefix: _useAffix && _prefix.Length > 0 ? _prefix : null,
             Suffix: _useAffix && _suffix.Length > 0 ? _suffix : null,
-            Numbering: numbering,
+            Numbering: BuildNumberingOptions(),
             Replace: replace,
-            Timestamp: timestamp,
+            Timestamp: BuildTimestampOptions(),
             CaseTransform: _caseIndex switch
             {
                 1 => CaseTransformMode.LowerCase,

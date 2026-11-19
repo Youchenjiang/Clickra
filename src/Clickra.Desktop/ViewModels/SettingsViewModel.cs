@@ -182,6 +182,7 @@ public sealed class SettingsViewModel : ViewModelBase
     public string AiModel { get => SettingsController.TranslateAiModel; set { SettingsController.TranslateAiModel = value ?? ""; OnPropertyChanged(); } }
     public string AiApiKey { get => SettingsController.TranslateAiApiKey; set { SettingsController.TranslateAiApiKey = value ?? ""; OnPropertyChanged(); } }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S2325", Justification = "Avalonia XAML compiled bindings require instance properties on ViewModel DataContext.")]
     public IReadOnlyList<string> DpiChoices => ActionOptionsViewModel.DpiLabelsPublic;
     public int PdfImageDpiIndex
     {
@@ -204,6 +205,7 @@ public sealed class SettingsViewModel : ViewModelBase
         set { SettingsController.PdfToImageStitch = value; OnPropertyChanged(); }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S2325", Justification = "Avalonia XAML compiled bindings require instance properties on ViewModel DataContext.")]
     public IReadOnlyList<string> MaxDimChoices => ActionOptionsViewModel.MaxDimLabels;
     public int ImageMaxDimIndex
     {
@@ -355,7 +357,7 @@ public sealed class SettingsViewModel : ViewModelBase
         }
     }
 
-    public void OpenLogsFolder()
+    public static void OpenLogsFolder()
     {
         try
         {
@@ -372,7 +374,7 @@ public sealed class SettingsViewModel : ViewModelBase
         }
     }
 
-    public void SendDiagnosticsEmail()
+    public static void SendDiagnosticsEmail()
     {
         try
         {

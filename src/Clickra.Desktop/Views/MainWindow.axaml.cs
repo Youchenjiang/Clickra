@@ -42,7 +42,7 @@ public partial class MainWindow : Window
         for (int i = 0; i < pages.Length; i++)
         {
             int index = i;
-            pages[i].PropertyChanged += (_, e) =>
+            pages[i].PropertyChanged += (s, e) =>
             {
                 if (_prewarming || e.Property != IsVisibleProperty || e.NewValue is not true) return;
                 double fromX = ComputeSlideOffset(current, index);

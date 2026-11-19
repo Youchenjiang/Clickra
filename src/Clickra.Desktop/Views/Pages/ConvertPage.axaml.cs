@@ -393,6 +393,7 @@ public partial class ConvertPage : UserControl
 
     // ===== 分割：放大預覽 (spec 4.6) =====
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S2325:Methods and properties that don't access instance data should be static", Justification = "XAML event handler")]
     private void OnSplitPageDoubleTapped(object? sender, TappedEventArgs e)
     {
         if ((sender as Control)?.DataContext is SplitPageViewModel page) page.OpenPreview();
@@ -457,31 +458,50 @@ public partial class ConvertPage : UserControl
     {
         List<string> folders = paths.Where(System.IO.Directory.Exists).ToList();
         List<string> files = ConvertViewModel.ExpandFolders(paths).ToList();
-        string sub = "";
+        (string text, string sub) = BuildDragOverlayTexts(vm.IsDropZone, paths.Count, folders, files);
         bool nothing = files.Count == 0;
-        if (nothing)
-        {
-            DragOverlayText.Text = folders.Count == 1 ? $"「{System.IO.Path.GetFileName(folders[0].TrimEnd('\\', '/'))}」裡沒有檔案" : "這些資料夾裡沒有檔案";
-            sub = "只會加入資料夾這一層的檔案，不含子資料夾";
-        }
-        else
-        {
-            if (folders.Count == 1 && paths.Count == 1)
-                DragOverlayText.Text = $"放開以加入「{System.IO.Path.GetFileName(folders[0].TrimEnd('\\', '/'))}」裡的 {files.Count} 個檔案";
-            else
-                DragOverlayText.Text = vm.IsDropZone && folders.Count == 0 ? "放開以開始" : $"放開以加入 {files.Count} 個檔案";
-            List<string> extensions = files.Select(f => System.IO.Path.GetExtension(f).ToLowerInvariant()).Distinct().ToList();
-            List<string> unknown = extensions.Where(x => !ConvertViewModel.HasConversions(x)).ToList();
-            if (unknown.Count > 0 && unknown.Count == extensions.Count)
-                sub = $"Clickra 還沒有處理{ConvertViewModel.KindName(unknown)}的功能，放開後只能重新命名";
-            else if (folders.Count > 0)
-                sub = "只加入資料夾這一層的檔案，不含子資料夾";
-        }
+
+        DragOverlayText.Text = text;
         DragOverlaySub.Text = sub;
         DragOverlaySub.IsVisible = sub.Length > 0;
         DragOverlayFrame.Stroke = nothing
             ? (Avalonia.Media.IBrush?)this.FindResource("Clk.ControlBorder")
             : (Avalonia.Media.IBrush?)this.FindResource("Clk.Accent");
+    }
+
+    private static (string text, string sub) BuildDragOverlayTexts(bool isDropZone, int rawPathsCount, List<string> folders, List<string> files)
+    {
+        if (files.Count == 0)
+        {
+            string emptyTitle = folders.Count == 1
+                ? $"「{System.IO.Path.GetFileName(folders[0].TrimEnd('\\', '/'))}」裡沒有檔案"
+                : "這些資料夾裡沒有檔案";
+            return (emptyTitle, "只會加入資料夾這一層的檔案，不含子資料夾");
+        }
+
+        string title;
+        if (folders.Count == 1 && rawPathsCount == 1)
+        {
+            title = $"放開以加入「{System.IO.Path.GetFileName(folders[0].TrimEnd('\\', '/'))}」裡的 {files.Count} 個檔案";
+        }
+        else
+        {
+            title = isDropZone && folders.Count == 0 ? "放開以開始" : $"放開以加入 {files.Count} 個檔案";
+        }
+
+        List<string> extensions = files.Select(f => System.IO.Path.GetExtension(f).ToLowerInvariant()).Distinct().ToList();
+        List<string> unknown = extensions.Where(x => !ConvertViewModel.HasConversions(x)).ToList();
+        string subText = "";
+        if (unknown.Count > 0 && unknown.Count == extensions.Count)
+        {
+            subText = $"Clickra 還沒有處理{ConvertViewModel.KindName(unknown)}的功能，放開後只能重新命名";
+        }
+        else if (folders.Count > 0)
+        {
+            subText = "只加入資料夾這一層的檔案，不含子資料夾";
+        }
+
+        return (title, subText);
     }
 
     private void OnDragLeave(object? sender, DragEventArgs e)

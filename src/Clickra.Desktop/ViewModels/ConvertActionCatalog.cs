@@ -16,6 +16,8 @@ public static class ConvertActionCatalog
     private const string PrintGeometry = "M6,9 V3 H18 V9 M6,18 H18 V21 H6 Z M4,9 H20 V17 H4 Z";
     private const string RenameGeometry = "M3,17.25 V21 H6.75 L17.81,9.94 L14.06,6.19 Z";
 
+    private const string ToPdfTitle = "轉成 PDF";
+
     public static IReadOnlyList<ActionItemViewModel> GetActions()
     {
         return
@@ -27,10 +29,10 @@ public static class ConvertActionCatalog
             CreateAction("translate-pdf", "翻譯", "把內容翻譯成其他語言", "翻譯 PDF", TranslateGeometry),
             CreateAction("decrypt-pdf", "解密", "把檔案的密碼移除", "解密 PDF", DecryptGeometry),
             CreateAction("print-pdf", "列印", "把檔案送到印表機列印", "列印 PDF", PrintGeometry),
-            CreateAction("word2pdf", "轉成 PDF", "把文件轉成 PDF", "Word → PDF", DocGeometry),
-            CreateAction("excel2pdf", "轉成 PDF", "把試算表轉成 PDF", "Excel → PDF", DocGeometry),
-            CreateAction("ppt2pdf", "轉成 PDF", "把簡報轉成 PDF", "PPT → PDF", DocGeometry),
-            CreateAction("md2pdf", "轉成 PDF", "把 Markdown 轉成 PDF", "MD → PDF", DocGeometry),
+            CreateAction("word2pdf", ToPdfTitle, "把文件轉成 PDF", "Word → PDF", DocGeometry),
+            CreateAction("excel2pdf", ToPdfTitle, "把試算表轉成 PDF", "Excel → PDF", DocGeometry),
+            CreateAction("ppt2pdf", ToPdfTitle, "把簡報轉成 PDF", "PPT → PDF", DocGeometry),
+            CreateAction("md2pdf", ToPdfTitle, "把 Markdown 轉成 PDF", "MD → PDF", DocGeometry),
             CreateAction("md2word", "轉成 Word", "把 Markdown 轉成 Word", "MD → Word", DocGeometry),
             CreateAction("img2pdf", "分別轉成 PDF", "把每張圖片各轉成一個 PDF", "圖片 → PDF", DocGeometry),
             CreateAction("img-merge", "合成一份 PDF", "把這些圖片合成一份 PDF", "合併圖片", MergeGeometry),

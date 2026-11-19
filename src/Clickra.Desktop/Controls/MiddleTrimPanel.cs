@@ -35,8 +35,24 @@ public sealed class MiddleTrimPanel : Panel
     {
         int n = Children.Count;
         _widths = new double[n];
+        (double height, double rest) = MeasureTrailing(availableSize);
+
+        double width = availableSize.Width;
+        if (n > 0)
+        {
+            height = Math.Max(height, MeasureHead(width, ref rest, availableSize));
+        }
+
+        double total = 0;
+        for (int i = 0; i < n; i++)
+            if (Children[i].IsVisible) total += _widths[i] + (i >= 2 ? Gap : 0);
+        return new Size(double.IsInfinity(width) ? total : Math.Min(total, width), height);
+    }
+
+    private (double height, double rest) MeasureTrailing(Size availableSize)
+    {
         double height = 0, rest = 0;
-        for (int i = 1; i < n; i++)
+        for (int i = 1; i < Children.Count; i++)
         {
             Control c = Children[i];
             c.Measure(new Size(double.PositiveInfinity, availableSize.Height));
@@ -45,36 +61,31 @@ public sealed class MiddleTrimPanel : Panel
             rest += _widths[i] + (i >= 2 ? Gap : 0);
             height = Math.Max(height, c.DesiredSize.Height);
         }
+        return (height, rest);
+    }
 
-        double width = availableSize.Width;
-        if (n > 0)
+    private double MeasureHead(double width, ref double rest, Size availableSize)
+    {
+        Control head = Children[0];
+        head.Measure(new Size(double.PositiveInfinity, availableSize.Height));
+        double headWant = head.DesiredSize.Width;
+        if (!double.IsInfinity(width))
         {
-            Control head = Children[0];
-            head.Measure(new Size(double.PositiveInfinity, availableSize.Height));
-            double headWant = head.DesiredSize.Width;
-            if (!double.IsInfinity(width))
+            // Not enough room: narrow the last piece first, keeping a minimum for the head.
+            double over = headWant + rest - width;
+            int last = Children.Count - 1;
+            if (over > 0 && last >= 2 && Children[last].IsVisible)
             {
-                // Not enough room: narrow the last piece first, keeping a minimum for the head.
-                double over = headWant + rest - width;
-                int last = n - 1;
-                if (over > 0 && last >= 2 && Children[last].IsVisible)
-                {
-                    double cut = Math.Min(over, Math.Max(0, _widths[last] - 60));
-                    _widths[last] -= cut;
-                    rest -= cut;
-                    Children[last].Measure(new Size(_widths[last], availableSize.Height));
-                }
-                headWant = Math.Max(Math.Min(headWant, width - rest), Math.Min(MinHeadWidth, headWant));
+                double cut = Math.Min(over, Math.Max(0, _widths[last] - 60));
+                _widths[last] -= cut;
+                rest -= cut;
+                Children[last].Measure(new Size(_widths[last], availableSize.Height));
             }
-            _widths[0] = Math.Max(0, headWant);
-            head.Measure(new Size(_widths[0], availableSize.Height));
-            height = Math.Max(height, head.DesiredSize.Height);
+            headWant = Math.Max(Math.Min(headWant, width - rest), Math.Min(MinHeadWidth, headWant));
         }
-
-        double total = 0;
-        for (int i = 0; i < n; i++)
-            if (Children[i].IsVisible) total += _widths[i] + (i >= 2 ? Gap : 0);
-        return new Size(double.IsInfinity(width) ? total : Math.Min(total, width), height);
+        _widths[0] = Math.Max(0, headWant);
+        head.Measure(new Size(_widths[0], availableSize.Height));
+        return head.DesiredSize.Height;
     }
 
     protected override Size ArrangeOverride(Size finalSize)

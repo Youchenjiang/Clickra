@@ -165,6 +165,9 @@ public sealed class ShowTaskEventArgs(string taskId) : EventArgs
 
 public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
 {
+    private const string ImageDomain = "image";
+    private const string ImageFormatPrefix = "img-to-";
+
     private readonly ConvertWorkspaceController _workspace = new();
     private ConvertWorkflowState _state = ConvertWorkflowState.DropZone;
     private ActionItemViewModel? _selectedAction;
@@ -348,10 +351,10 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
                 "excel" => "Excel 試算表",
                 "ppt" => "PPT 簡報",
                 "markdown" => "Markdown 文件",
-                "image" => "張圖片",
+                ImageDomain => "張圖片",
                 _ => FileKindName()
             };
-            return domain == "image" ? $"{count} {typeName}" : $"{count} 個 {typeName}";
+            return domain == ImageDomain ? $"{count} {typeName}" : $"{count} 個 {typeName}";
         }
     }
 
@@ -402,7 +405,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         ".xls" or ".xlsx" => "excel",
         ".ppt" or ".pptx" => "ppt",
         ".md" or ".markdown" => "markdown",
-        ".png" or ".jpg" or ".jpeg" or ".webp" or ".gif" or ".heic" or ".bmp" => "image",
+        ".png" or ".jpg" or ".jpeg" or ".webp" or ".gif" or ".heic" or ".bmp" => ImageDomain,
         _ => "file",
     };
 
@@ -412,7 +415,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         "excel" => "#107C41",
         "ppt" => "#D83B01",
         "markdown" => "#6048A4",
-        "image" => "#00828C",
+        ImageDomain => "#00828C",
         "pdf" => "#475569",
         _ => "#5C5C5C"
     };
@@ -511,7 +514,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     {
         // 轉換格式 is one card for the five img-to-* commands: select one that fits these files (a PNG
         // cannot be converted to PNG); the options card picks the real target.
-        string selectCommand = action.Command.StartsWith("img-to-", StringComparison.OrdinalIgnoreCase)
+        string selectCommand = action.Command.StartsWith(ImageFormatPrefix, StringComparison.OrdinalIgnoreCase)
             ? Clickra.Shared.ContextMenuVisibility.ImageFormatCommands.FirstOrDefault(_workspace.IsCommandCompatible) ?? action.Command
             : action.Command;
         if (!_workspace.TrySelectCommand(selectCommand)) return;
@@ -586,7 +589,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             .ToArray();
         MarkFileSteps(files, resumeStartIndex);
 
-        Dictionary<string, object> options = new(StringComparer.Ordinal);
+        Dictionary<string, object> options;
         Dictionary<string, string>? renamed = null;
         if (IsRenameAction)
         {
@@ -745,25 +748,14 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         IReadOnlyList<string> plannedOutputs,
         Dictionary<string, string>? renamed)
     {
-        bool ok = result.Status == ConversionExecutionPresentationStatus.Succeeded;
         string error = FirstLine(result.Error);
-
         if (renamed is not null)
         {
-            // Rename: list the files that got a new name.
-            var done = result.Outputs.Select(Path.GetFileName).Where(n => n is not null).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            foreach (var (newName, oldName) in renamed)
-            {
-                bool fileOk = done.Contains(newName);
-                string fallback = error.Length > 0 ? error : "沒有改名";
-                string detail = fileOk ? $"原本是 {oldName}" : fallback;
-                ResultItems.Add(new ExecutionResultItemViewModel(newName, fileOk, detail));
-            }
-            int count = ResultItems.Count(r => r.Succeeded);
-            ResultSummary = ok ? $"重新命名好 {count} 個檔案" : $"重新命名好 {count} 個，{renamed.Count - count} 個沒有改";
+            ShowRenameResults(result, renamed, error);
             return;
         }
 
+        bool ok = result.Status == ConversionExecutionPresentationStatus.Succeeded;
         bool perFile = plannedOutputs.Count == files.Count;
         int succeeded = 0;
         for (int i = 0; i < files.Count; i++)
@@ -781,6 +773,21 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         ResultSummary = ok && failed == 0
             ? $"{actionName}好 {files.Count} 個檔案"
             : $"{actionName}好 {succeeded} 個，{failed} 個需要處理";
+    }
+
+    private void ShowRenameResults(ConversionExecutionPresentationResult result, Dictionary<string, string> renamed, string error)
+    {
+        bool ok = result.Status == ConversionExecutionPresentationStatus.Succeeded;
+        var done = result.Outputs.Select(Path.GetFileName).Where(n => n is not null).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var (newName, oldName) in renamed)
+        {
+            bool fileOk = done.Contains(newName);
+            string fallback = error.Length > 0 ? error : "沒有改名";
+            string detail = fileOk ? $"原本是 {oldName}" : fallback;
+            ResultItems.Add(new ExecutionResultItemViewModel(newName, fileOk, detail));
+        }
+        int count = ResultItems.Count(r => r.Succeeded);
+        ResultSummary = ok ? $"重新命名好 {count} 個檔案" : $"重新命名好 {count} 個，{renamed.Count - count} 個沒有改";
     }
 
     private static string FirstLine(string? text) =>
@@ -819,8 +826,8 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     private ActionItemViewModel? FindAction(string command)
     {
         ActionItemViewModel? action = AvailableActions.FirstOrDefault(a => string.Equals(a.Command, command, StringComparison.OrdinalIgnoreCase));
-        if (action is null && command.StartsWith("img-to-", StringComparison.OrdinalIgnoreCase))
-            action = AvailableActions.FirstOrDefault(a => a.Command.StartsWith("img-to-", StringComparison.OrdinalIgnoreCase));
+        if (action is null && command.StartsWith(ImageFormatPrefix, StringComparison.OrdinalIgnoreCase))
+            action = AvailableActions.FirstOrDefault(a => a.Command.StartsWith(ImageFormatPrefix, StringComparison.OrdinalIgnoreCase));
         return action;
     }
 
@@ -866,12 +873,9 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         if (SelectedFiles.Count == 0) return;
 
         var catalog = ConvertActionCatalog.GetActions();
-        foreach (var action in catalog)
+        foreach (var action in catalog.Where(action => IsActionCompatible(action.Command)))
         {
-            if (IsActionCompatible(action.Command))
-            {
-                AvailableActions.Add(action);
-            }
+            AvailableActions.Add(action);
         }
 
         // Section 4.1 rule: 重新命名 (batch-rename) 永遠排在最後一張
@@ -978,27 +982,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             foreach (string path in pending)
             {
                 if (cts.IsCancellationRequested) return;
-                PdfProtection protection = PdfProtection.None;
-                try
-                {
-                    if (!PdfEncryptionQuery.IsEncrypted(path))
-                    {
-                        protection = PdfProtection.None;
-                    }
-                    else if (PdfEncryptionQuery.NeedsOpenPassword(path))
-                    {
-                        protection = PdfProtection.OpenPassword;
-                    }
-                    else
-                    {
-                        protection = PdfProtection.Restricted;
-                    }
-                }
-                catch
-                {
-                    protection = PdfProtection.None;
-                }
-                found[path] = protection;
+                found[path] = ClassifyPdfProtection(path);
             }
             Dispatcher.UIThread.Post(() =>
             {
@@ -1011,6 +995,26 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
                 }
             });
         }, cts.Token);
+    }
+
+    private static PdfProtection ClassifyPdfProtection(string path)
+    {
+        try
+        {
+            if (!PdfEncryptionQuery.IsEncrypted(path))
+            {
+                return PdfProtection.None;
+            }
+            if (PdfEncryptionQuery.NeedsOpenPassword(path))
+            {
+                return PdfProtection.OpenPassword;
+            }
+            return PdfProtection.Restricted;
+        }
+        catch (Exception)
+        {
+            return PdfProtection.None;
+        }
     }
 
     /// <summary>
@@ -1027,7 +1031,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             }
             else if (Directory.Exists(path))
             {
-                IEnumerable<string> inside = Array.Empty<string>();
+                List<string> inside;
                 try
                 {
                     inside = Directory.GetFiles(path, "*", SearchOption.TopDirectoryOnly)

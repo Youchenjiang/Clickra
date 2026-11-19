@@ -19,6 +19,9 @@ namespace Clickra.Desktop.Views.Pages;
 
 public partial class SettingsPage : UserControl
 {
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S1075", Justification = "Project homepage URI is fixed and documented.")]
+    private const string RepositoryUrl = "https://github.com/Youchenjiang/Clickra";
+
     public SettingsPage()
     {
         InitializeComponent();
@@ -56,9 +59,9 @@ public partial class SettingsPage : UserControl
             vm.CustomOutputDir = path;
             vm.OutputDirKind = 3;
         };
-        ViewLogsButton.Click += (_, _) => (DataContext as SettingsViewModel)?.OpenLogsFolder();
-        SendReportButton.Click += (_, _) => (DataContext as SettingsViewModel)?.SendDiagnosticsEmail();
-        GitHubButton.Click += (_, _) => OpenExternalUri("https://github.com/Youchenjiang/Clickra");
+        ViewLogsButton.Click += (_, _) => SettingsViewModel.OpenLogsFolder();
+        SendReportButton.Click += (_, _) => SettingsViewModel.SendDiagnosticsEmail();
+        GitHubButton.Click += (_, _) => OpenExternalUri(RepositoryUrl);
         BuildContextMenuChecklist();
     }
 
