@@ -430,6 +430,10 @@
 
     - **NativeAOT 合規**：優先整合 Windows Media Foundation (MF) COM 原生 API，維持二進位體積精簡；重度轉換可選取本機 FFmpeg / 備援引擎調度。
 
+- [ ] **[F2-38] Image & PDF Page Collage onto a Sized Canvas**：拼貼。把圖片與 PDF 頁面（可混合）排到同一張可調大小的畫布上：紙張（A4、A3、Letter，直／橫）或自訂尺寸（px、mm），格狀或自動排法（自由排之後再議），預設完整放入、可改填滿裁切，間距、邊界、背景可調，預設輸出多頁 PDF（PDF 頁面保留向量），可改成圖片；只在動作頁使用，不提供右鍵直接執行。排在 4.0 之後。
+
+    - 規範詳見：[collage_layout_plan.md](specs/collage_layout_plan.md)。與 F2-13 掃描件拼合共用排版邏輯；頁面縮圖與放大預覽沿用 4.0 共用預覽元件。
+
 - [ ] **[F2-37] E-book & Universal Document Formats (EPUB / TXT / DOCX / RTF)**：電子書與通用文件擴充。
 
     - **EPUB 雙向互轉**：解析 EPUB 結構（ZIP + OPF + XHTML），支援將電子書轉為純文字 (TXT)、PDF 或 Word (DOCX)；支援由 Markdown / TXT 打包輸出符合標準的 EPUB 電子書。
