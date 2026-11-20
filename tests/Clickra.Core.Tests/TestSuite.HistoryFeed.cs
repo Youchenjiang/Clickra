@@ -175,6 +175,8 @@ static partial class TestSuite
                 && parked.Subtitle.Contains(stoppedOn, StringComparison.Ordinal)
                 && parked.Subtitle.Contains(FeedParkReason, StringComparison.Ordinal),
                 $"The parked subtitle must carry the file, the stopped-on index and the reason, got '{parked.Subtitle}'.");
+            Assert.True(parked.Subtitle.Contains(" \u00B7 ", StringComparison.Ordinal),
+                $"The parked subtitle parts are separated by a middle dot, got '{parked.Subtitle}'.");
             Assert.True(parked.FileCountText.StartsWith("one.pdf + 2 ", StringComparison.Ordinal),
                 $"A multi-file row shows the first file plus the remainder, got '{parked.FileCountText}'.");
             Assert.True(parked.RetentionText.Length > 0, "Every parked row carries its own remaining retention.");
