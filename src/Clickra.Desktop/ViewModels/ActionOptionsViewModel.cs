@@ -442,6 +442,7 @@ public sealed class ActionOptionsViewModel : ViewModelBase
             centerTitle, lineMultiple, marginCm);
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("DeepSource", "CS-R1008", Justification = "Gracefully handles template load and parsing failures")]
     private static void LoadTemplateSummary(
         string path,
         string fileName,
@@ -569,6 +570,7 @@ public sealed class ActionOptionsViewModel : ViewModelBase
         OnPropertyChanged(nameof(PrintIsDefault));
     }
     /// <summary>The system default printer is saved as empty, so the default follows Windows when it changes.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("DeepSource", "CS-R1008", Justification = "Gracefully handles spooler query failures")]
     private string PrinterNameForSave()
     {
         if (_printerIndex < 0) return SettingsController.PrintPrinter;
@@ -588,6 +590,7 @@ public sealed class ActionOptionsViewModel : ViewModelBase
 
     private static readonly IPrinterDiscoveryService PrinterDiscovery = new SystemPrinterDiscoveryService();
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("DeepSource", "CS-R1008", Justification = "Gracefully handles spooler discovery failures")]
     private void LoadPrinters()
     {
         try
@@ -629,6 +632,7 @@ public sealed class ActionOptionsViewModel : ViewModelBase
         LoadPaperSizes();
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("DeepSource", "CS-R1008", Justification = "Gracefully handles spooler paper query failures")]
     private void LoadPaperSizes()
     {
         var sizes = new List<string> { "印表機預設" };

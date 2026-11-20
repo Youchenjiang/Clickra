@@ -40,7 +40,7 @@ public sealed class MiddleTrimPanel : Panel
         double width = availableSize.Width;
         if (n > 0)
         {
-            height = Math.Max(height, MeasureHead(width, ref rest, availableSize));
+            height = Math.Max(height, MeasureHead(width, availableSize, ref rest));
         }
 
         double total = 0;
@@ -64,7 +64,7 @@ public sealed class MiddleTrimPanel : Panel
         return (height, rest);
     }
 
-    private double MeasureHead(double width, ref double rest, Size availableSize)
+    private double MeasureHead(double width, Size availableSize, ref double rest)
     {
         Control head = Children[0];
         head.Measure(new Size(double.PositiveInfinity, availableSize.Height));

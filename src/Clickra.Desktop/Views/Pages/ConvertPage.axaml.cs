@@ -68,7 +68,7 @@ public partial class ConvertPage : UserControl
     {
         InitializeComponent();
 
-        SizeChanged += (_, e) => LimitBottom(e.NewSize.Height, _startRows);
+        SizeChanged += (_, e) => LimitBottom(BottomSection, e.NewSize.Height, _startRows);
         CatalogScroll.SizeChanged += (_, _) => FitCatalog();
         DataContextChanged += (_, _) =>
         {
@@ -203,9 +203,9 @@ public partial class ConvertPage : UserControl
         if (needCompact != compact) CatalogItems.Classes.Set("compact", needCompact);
     }
 
-    private void LimitBottom(double pageHeight, bool start)
+    private static void LimitBottom(Border bottomSection, double pageHeight, bool start)
     {
-        BottomSection.MaxHeight = start
+        bottomSection.MaxHeight = start
             ? Math.Max(0, pageHeight - PageBottomMargin - RowGap - DropZoneMin)
             : double.PositiveInfinity;
     }
@@ -222,7 +222,7 @@ public partial class ConvertPage : UserControl
         bottom.Height = start ? GridLength.Auto : new GridLength(1, GridUnitType.Star);
         TopArea.VerticalAlignment = start ? Avalonia.Layout.VerticalAlignment.Stretch : Avalonia.Layout.VerticalAlignment.Top;
         _startRows = start;
-        LimitBottom(Bounds.Height, start);
+        LimitBottom(BottomSection, Bounds.Height, start);
     }
 
     private ConvertViewModel? GetViewModel() => DataContext as ConvertViewModel;
@@ -320,6 +320,7 @@ public partial class ConvertPage : UserControl
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S2325:Methods and properties that don't access instance data should be static", Justification = "Accesses generated XAML controls")]
     private Control? BottomPanelFor(ConvertWorkflowState state) => state switch
     {
         ConvertWorkflowState.DropZone => StartBottom,

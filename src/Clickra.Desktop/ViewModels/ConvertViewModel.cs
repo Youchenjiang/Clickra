@@ -567,7 +567,6 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
 
         _runningTaskId = existingTaskId;
         _runningIndex = resumeStartIndex;
-        // 解密 runs only on the protected files; the others are left as they are (Core refuses unprotected ones).
         var decryptFiles = SelectedAction.Command == DecryptCommand && HasProtectedPdf
             ? GetProtectedFiles().Select(f => f.Path).ToHashSet(StringComparer.OrdinalIgnoreCase)
             : null;
@@ -582,123 +581,23 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
 
         _conversionCts = new CancellationTokenSource();
         var controller = new ConversionExecutionController();
-        string command = SelectedAction.Command;
-        // Merge and stitch run in the order shown in the workspace.
         var files = (IsOrderAction ? Order.GetOrderedFiles() : SelectedFiles.Select(f => f.Path))
             .Where(f => decryptFiles is null || decryptFiles.Contains(f))
             .ToArray();
         MarkFileSteps(files, resumeStartIndex);
 
-        Dictionary<string, object> options;
-        Dictionary<string, string>? renamed = null;
-        if (IsRenameAction)
-        {
-            // Run exactly the plan shown in the preview.
-            options = Rename.BuildExecutionOptions();
-            renamed = Rename.Preview.Where(r => r.IsChanged).ToDictionary(r => r.NewName, r => r.OldName, StringComparer.OrdinalIgnoreCase);
-        }
-        else if (IsOrderAction)
-        {
-            options = Order.BuildOptions();
-        }
-        else if (IsSplitAction)
-        {
-            options = Split.BuildOptions();
-        }
-        else
-        {
-            options = Options.Build();
-            command = Options.ResolveCommand(command);
-        }
+        var (command, options, renamed) = ResolveExecutionParameters(SelectedAction.Command);
 
         try
         {
             IReadOnlyList<string> plannedOutputs = controller.Prepare(command, files, options, existingTaskId, resumeStartIndex).Outputs;
             Changed?.Invoke(this, EventArgs.Empty);
 
-            var progress = new Progress<TaskProgressReport>(report =>
-            {
-                Dispatcher.UIThread.Post(() =>
-                {
-                    if (report.Total > 0)
-                    {
-                        ProgressPercent = Math.Clamp((double)report.Current / report.Total * 100.0, 0.0, 100.0);
-                    }
-                    ProgressMessage = string.IsNullOrWhiteSpace(report.Message)
-                        ? $"正在處理 ({report.Current}/{report.Total})..."
-                        : report.Message;
-                    Changed?.Invoke(this, EventArgs.Empty);
-                });
-            });
-
-            var callbacks = new ConversionExecutionCallbacks(
-                PasswordPrompt: async (index, file, isWrong, ct) =>
-                {
-                    // A password typed for one file is tried on the next ones first (spec 4.1); only files it
-                    // does not open ask again. It is kept for this run only.
-                    if (!isWrong && _lastPassword is { } known) return known;
-                    string unlock = $"解鎖並{SelectedAction?.Name ?? "繼續"}";
-                    using (ct.Register(() => Dispatcher.UIThread.Post(() =>
-                    {
-                        foreach (FileItemViewModel f in SelectedFiles.Where(f => f.NeedsPassword)) f.SkipPassword();
-                    })))
-                    {
-                        // The row shows the field; the returned task finishes when 解鎖 or 略過 is pressed.
-                        string? password = await Dispatcher.UIThread.InvokeAsync(() =>
-                        {
-                            FileItemViewModel? row = SelectedFiles.FirstOrDefault(f => string.Equals(f.Path, file, StringComparison.OrdinalIgnoreCase))
-                                                     ?? (index >= 0 && index < SelectedFiles.Count ? SelectedFiles[index] : null);
-                            return row is null ? Task.FromResult<string?>(null) : row.AskPasswordAsync(isWrong, unlock);
-                        });
-                        if (password is not null) _lastPassword = password;
-                        return password;
-                    }
-                },
-                TaskStarted: taskId => Dispatcher.UIThread.Post(() =>
-                {
-                    _runningTaskId = taskId;
-                    Changed?.Invoke(this, EventArgs.Empty);
-                }),
-                FileStarting: index =>
-                {
-                    // ⏸: stop cleanly before the next file; Core records the task as parked (待繼續).
-                    if (_pauseRequested && index > resumeStartIndex)
-                    {
-                        _parkedAt = index;
-                        throw ConversionExecutionController.CreateParkSignal("已暫停", index);
-                    }
-                    Dispatcher.UIThread.Post(() =>
-                    {
-                        _runningIndex = index;
-                        _fileStepsReported = true;
-                        MarkFileSteps(files, index);
-                        Changed?.Invoke(this, EventArgs.Empty);
-                    });
-                });
-
+            var progress = CreateProgressReporter();
+            var callbacks = CreateExecutionCallbacks(files, resumeStartIndex);
             var result = await Task.Run(() => controller.ExecutePreparedAsync(callbacks, progress, _conversionCts.Token), _conversionCts.Token);
 
-            if (result.Status == ConversionExecutionPresentationStatus.Canceled)
-            {
-                State = ConvertWorkflowState.ActionPage;
-                ProgressMessage = "已停止";
-                return;
-            }
-            if (result.Status == ConversionExecutionPresentationStatus.Parked)
-            {
-                State = ConvertWorkflowState.Completed;
-                int left = Math.Max(0, files.Length - _parkedAt);
-                ResultSummary = $"已暫停，剩下 {left} 個可在「歷史」繼續";
-                foreach (string file in files.Take(_parkedAt).Skip(resumeStartIndex))
-                    ResultItems.Add(new ExecutionResultItemViewModel(file, true, "處理完成"));
-                return;
-            }
-
-            State = ConvertWorkflowState.Completed;
-            ShowResults(result, files, plannedOutputs, renamed);
-            if (decryptFiles is not null)
-                foreach (FileItemViewModel f in SelectedFiles.Where(f => !decryptFiles.Contains(f.Path)))
-                    ResultItems.Add(new ExecutionResultItemViewModel(f.Path, true, "沒有密碼或限制，不用解密"));
+            HandleExecutionResult(result, files, plannedOutputs, renamed, decryptFiles, resumeStartIndex);
         }
         catch (OperationCanceledException)
         {
@@ -718,6 +617,125 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             _conversionCts = null;
             RefreshRecentHistory();
             Finished?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private (string command, Dictionary<string, object> options, Dictionary<string, string>? renamed)
+        ResolveExecutionParameters(string initialCommand)
+    {
+        if (IsRenameAction)
+        {
+            return (
+                initialCommand,
+                Rename.BuildExecutionOptions(),
+                Rename.Preview.Where(r => r.IsChanged).ToDictionary(r => r.NewName, r => r.OldName, StringComparer.OrdinalIgnoreCase)
+            );
+        }
+        if (IsOrderAction)
+        {
+            return (initialCommand, Order.BuildOptions(), null);
+        }
+        if (IsSplitAction)
+        {
+            return (initialCommand, Split.BuildOptions(), null);
+        }
+        return (Options.ResolveCommand(initialCommand), Options.Build(), null);
+    }
+
+    private IProgress<TaskProgressReport> CreateProgressReporter()
+    {
+        return new Progress<TaskProgressReport>(report =>
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (report.Total > 0)
+                {
+                    ProgressPercent = Math.Clamp((double)report.Current / report.Total * 100.0, 0.0, 100.0);
+                }
+                ProgressMessage = string.IsNullOrWhiteSpace(report.Message)
+                    ? $"正在處理 ({report.Current}/{report.Total})..."
+                    : report.Message;
+                Changed?.Invoke(this, EventArgs.Empty);
+            });
+        });
+    }
+
+    private ConversionExecutionCallbacks CreateExecutionCallbacks(string[] files, int resumeStartIndex)
+    {
+        return new ConversionExecutionCallbacks(
+            PasswordPrompt: async (index, file, isWrong, ct) => await PromptPasswordAsync(index, file, isWrong, ct),
+            TaskStarted: taskId => Dispatcher.UIThread.Post(() =>
+            {
+                _runningTaskId = taskId;
+                Changed?.Invoke(this, EventArgs.Empty);
+            }),
+            FileStarting: index =>
+            {
+                if (_pauseRequested && index > resumeStartIndex)
+                {
+                    _parkedAt = index;
+                    throw ConversionExecutionController.CreateParkSignal("已暫停", index);
+                }
+                Dispatcher.UIThread.Post(() =>
+                {
+                    _runningIndex = index;
+                    _fileStepsReported = true;
+                    MarkFileSteps(files, index);
+                    Changed?.Invoke(this, EventArgs.Empty);
+                });
+            });
+    }
+
+    private async Task<string?> PromptPasswordAsync(int index, string file, bool isWrong, CancellationToken ct)
+    {
+        if (!isWrong && _lastPassword is { } known) return known;
+        string unlock = $"解鎖並{SelectedAction?.Name ?? "繼續"}";
+        using (ct.Register(() => Dispatcher.UIThread.Post(() =>
+        {
+            foreach (FileItemViewModel f in SelectedFiles.Where(f => f.NeedsPassword)) f.SkipPassword();
+        })))
+        {
+            string? password = await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                FileItemViewModel? row = SelectedFiles.FirstOrDefault(f => string.Equals(f.Path, file, StringComparison.OrdinalIgnoreCase))
+                                         ?? (index >= 0 && index < SelectedFiles.Count ? SelectedFiles[index] : null);
+                return row is null ? Task.FromResult<string?>(null) : row.AskPasswordAsync(isWrong, unlock);
+            });
+            if (password is not null) _lastPassword = password;
+            return password;
+        }
+    }
+
+    private void HandleExecutionResult(
+        ConversionExecutionPresentationResult result,
+        string[] files,
+        IReadOnlyList<string> plannedOutputs,
+        Dictionary<string, string>? renamed,
+        HashSet<string>? decryptFiles,
+        int resumeStartIndex)
+    {
+        if (result.Status == ConversionExecutionPresentationStatus.Canceled)
+        {
+            State = ConvertWorkflowState.ActionPage;
+            ProgressMessage = "已停止";
+            return;
+        }
+        if (result.Status == ConversionExecutionPresentationStatus.Parked)
+        {
+            State = ConvertWorkflowState.Completed;
+            int left = Math.Max(0, files.Length - _parkedAt);
+            ResultSummary = $"已暫停，剩下 {left} 個可在「歷史」繼續";
+            foreach (string file in files.Take(_parkedAt).Skip(resumeStartIndex))
+                ResultItems.Add(new ExecutionResultItemViewModel(file, true, "處理完成"));
+            return;
+        }
+
+        State = ConvertWorkflowState.Completed;
+        ShowResults(result, files, plannedOutputs, renamed);
+        if (decryptFiles is not null)
+        {
+            foreach (FileItemViewModel f in SelectedFiles.Where(f => !decryptFiles.Contains(f.Path)))
+                ResultItems.Add(new ExecutionResultItemViewModel(f.Path, true, "沒有密碼或限制，不用解密"));
         }
     }
 
@@ -976,27 +994,32 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         if (pending.Count == 0) return;
         var cts = new CancellationTokenSource();
         _protectionCts = cts;
-        _ = Task.Run(() =>
-        {
-            var found = new Dictionary<string, PdfProtection>(StringComparer.OrdinalIgnoreCase);
-            foreach (string path in pending)
-            {
-                if (cts.IsCancellationRequested) return;
-                found[path] = ClassifyPdfProtection(path);
-            }
-            Dispatcher.UIThread.Post(() =>
-            {
-                if (cts.IsCancellationRequested) return;
-                foreach (var (path, protection) in found) _protection[path] = protection;
-                if (found.Values.Any(p => p != PdfProtection.None))
-                {
-                    UpdateAvailableActions();
-                    if (SelectedAction?.Command == DecryptCommand) Options.DecryptNeedsPassword = ProtectedNeedsPassword;
-                }
-            });
-        }, cts.Token);
+        _ = Task.Run(() => ScanPendingProtections(pending, cts), cts.Token);
     }
 
+    private void ScanPendingProtections(List<string> pending, CancellationTokenSource cts)
+    {
+        var found = new Dictionary<string, PdfProtection>(StringComparer.OrdinalIgnoreCase);
+        foreach (string path in pending)
+        {
+            if (cts.IsCancellationRequested) return;
+            found[path] = ClassifyPdfProtection(path);
+        }
+        Dispatcher.UIThread.Post(() => ApplyScannedProtections(found, cts));
+    }
+
+    private void ApplyScannedProtections(Dictionary<string, PdfProtection> found, CancellationTokenSource cts)
+    {
+        if (cts.IsCancellationRequested) return;
+        foreach (var (path, protection) in found) _protection[path] = protection;
+        if (found.Values.Any(p => p != PdfProtection.None))
+        {
+            UpdateAvailableActions();
+            if (SelectedAction?.Command == DecryptCommand) Options.DecryptNeedsPassword = ProtectedNeedsPassword;
+        }
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("DeepSource", "CS-R1008", Justification = "Gracefully handles corrupted or unreadable PDF encryption")]
     private static PdfProtection ClassifyPdfProtection(string path)
     {
         try
@@ -1031,20 +1054,24 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             }
             else if (Directory.Exists(path))
             {
-                List<string> inside;
-                try
-                {
-                    inside = Directory.GetFiles(path, "*", SearchOption.TopDirectoryOnly)
-                        .Where(f => (File.GetAttributes(f) & (FileAttributes.Hidden | FileAttributes.System)) == 0)
-                        .OrderBy(f => Path.GetFileName(f), StringComparer.CurrentCultureIgnoreCase)
-                        .ToList();
-                }
-                catch
-                {
-                    continue; // no permission: skip the folder
-                }
-                foreach (string file in inside) yield return file;
+                foreach (string file in SafeEnumerateFiles(path)) yield return file;
             }
+        }
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("DeepSource", "CS-R1008", Justification = "Gracefully handles directory access/permission errors")]
+    private static IEnumerable<string> SafeEnumerateFiles(string dir)
+    {
+        try
+        {
+            return Directory.GetFiles(dir, "*", SearchOption.TopDirectoryOnly)
+                .Where(f => (File.GetAttributes(f) & (FileAttributes.Hidden | FileAttributes.System)) == 0)
+                .OrderBy(f => Path.GetFileName(f), StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+        }
+        catch (Exception)
+        {
+            return Array.Empty<string>();
         }
     }
 
