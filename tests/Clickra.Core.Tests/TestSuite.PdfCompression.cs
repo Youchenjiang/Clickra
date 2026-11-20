@@ -26,6 +26,7 @@ static partial class TestSuite
     {
         RegisterPdfCompressionOptionAndProcessorTests(runner);
         RegisterPdfCompressionOptimizationTests(runner);
+        RegisterPdfCompressionPresetTests(runner);
         RegisterPdfCompressionUseCaseTests(runner);
     }
 
@@ -107,6 +108,22 @@ static partial class TestSuite
         Assert.True(outputBytes < inputBytes, $"{failureMessage} Input: {inputBytes}, output: {outputBytes}.");
     }
 
+    private static void AssertAllEmbeddedFontsPreserved(string pdfPath)
+    {
+        using var doc = PdfSharp.Pdf.IO.PdfReader.Open(pdfPath, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
+        int descriptors = 0;
+        foreach (var obj in doc.Internals.GetAllObjects())
+        {
+            if (obj is PdfDictionary dict && dict.Elements.GetName("/Type") == "/FontDescriptor")
+            {
+                descriptors++;
+                Assert.True(dict.Elements.ContainsKey("/FontFile2"),
+                    $"Font {dict.Elements.GetName("/FontName")} lost its embedded font file.");
+            }
+        }
+        Assert.True(descriptors == 2, $"Expected both font descriptors to remain, found {descriptors}.");
+    }
+
     private static void RegisterPdfCompressionOptimizationTests(TestRunner runner)
     {
         runner.Run("PDF compression minifies verbose page content streams", () => RunWithTempFiles((input, output) =>
@@ -131,18 +148,7 @@ static partial class TestSuite
                 output,
                 new Dictionary<string, object> { { LevelKey, LevelSmall }, { "strip_fonts", true } });
 
-            using var doc = PdfSharp.Pdf.IO.PdfReader.Open(output, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
-            int descriptors = 0;
-            foreach (var obj in doc.Internals.GetAllObjects())
-            {
-                if (obj is PdfDictionary dict && dict.Elements.GetName("/Type") == "/FontDescriptor")
-                {
-                    descriptors++;
-                    Assert.True(dict.Elements.ContainsKey("/FontFile2"),
-                        $"Font {dict.Elements.GetName("/FontName")} lost its embedded font file.");
-                }
-            }
-            Assert.True(descriptors == 2, $"Expected both font descriptors to remain, found {descriptors}.");
+            AssertAllEmbeddedFontsPreserved(output);
         }));
 
         runner.Run("PDF compression downsamples high-DPI images", () => RunWithTempFiles((input, output) =>
@@ -172,6 +178,10 @@ static partial class TestSuite
             Assert.True(foundImage, "Expected to find compressed image in output PDF.");
         }));
 
+    }
+
+    private static void RegisterPdfCompressionPresetTests(TestRunner runner)
+    {
         runner.Run("PDF compression presets live in one table shared by the processor and the UIs", () =>
         {
             // The 0-2 slider maps onto the three levels.
