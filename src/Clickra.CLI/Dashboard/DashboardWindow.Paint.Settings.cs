@@ -284,8 +284,8 @@ namespace Clickra.UI
 
             if (_subFont != null)
             {
-                Color statusColor = Color.Empty;
-                string statusText = string.Empty;
+                Color statusColor;
+                string statusText;
 
                 if (isMicrosoftEngine)
                 {
@@ -671,9 +671,9 @@ namespace Clickra.UI
         {
             float s = _dpiScale;
             bool isHovered = _hoveredElement == elementId;
-            Color btnBg = Color.Empty;
-            Color btnBorder = Color.Empty;
-            Color textColor = Color.Empty;
+            Color btnBg;
+            Color btnBorder;
+            Color textColor;
 
             if (selected)
             {
