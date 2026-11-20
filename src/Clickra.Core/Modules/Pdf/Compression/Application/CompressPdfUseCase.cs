@@ -54,16 +54,6 @@ public sealed class CompressPdfUseCase : PerFileConversionUseCaseBase
                 SettingsController.PdfCompressionImageLevel);
             PdfCompressionLevel level = PdfCompressionOptions.FromSliderLevel(sliderLevel);
             options[LevelOptionKey] = PdfCompressionOptions.ToOptionName(level);
-
-            if (!options.ContainsKey("strip_fonts"))
-            {
-                options["strip_fonts"] = SettingsController.PdfCompressionStripFonts;
-            }
-
-            if (!options.ContainsKey("minify_content"))
-            {
-                options["minify_content"] = SettingsController.PdfCompressionMinifyContent;
-            }
         }
 
         return options;

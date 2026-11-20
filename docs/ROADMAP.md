@@ -142,7 +142,7 @@
 
 - [ ] **[F1-17] v4.0.0 Unified Cross-Platform Modern GUI**：統一跨平台現代 XAML 介面。
 
-    - 規範詳見：[4.0 跨平台總計畫 (v4_cross_platform_master_plan.md)](specs/v4_cross_platform_master_plan.md)、[4.0 桌面端版面規格 (v4_desktop_ui_layout.md)](specs/v4_desktop_ui_layout.md)、[PDF 當場解鎖計畫 (pdf_password_unlock_plan.md)](specs/pdf_password_unlock_plan.md)、[功能圖示識別度計畫 (feature_icon_recognition_plan.md)](specs/feature_icon_recognition_plan.md) 與 [Office COM 直調計畫 (office_com_direct_plan.md)](specs/office_com_direct_plan.md)。
+    - 規範詳見：[4.0 跨平台總計畫 (v4_cross_platform_master_plan.md)](specs/v4_cross_platform_master_plan.md)、[4.0 桌面端版面規格 (v4_desktop_ui_layout.md)](specs/v4_desktop_ui_layout.md)、[4.0 桌面多語系計畫 (v4_localization_plan.md)](specs/v4_localization_plan.md)、[文案指南 (ui_writing_guide.md)](specs/ui_writing_guide.md)、[PDF 當場解鎖計畫 (pdf_password_unlock_plan.md)](specs/pdf_password_unlock_plan.md)、[功能圖示識別度計畫 (feature_icon_recognition_plan.md)](specs/feature_icon_recognition_plan.md) 與 [Office COM 直調計畫 (office_com_direct_plan.md)](specs/office_com_direct_plan.md)。
 
     - 版本節奏（2026-11-19）：`feat/avalonia-views` 以 v3.21.0.0 合併，新介面維持預覽（不進正式套件）；新介面成為預設介面時才是 v4.0.0.0，前置工作見總計畫〈4.0 上線前清單〉（多語系、實機驗收、密碼當場解鎖、右鍵精簡視窗、設定沿用、發佈流程、體積、舊介面退場、測試、商店素材、文件）。
 
@@ -220,7 +220,9 @@
 
 - [ ] **[F2-9] Advanced PDF Deep Compression**：PDF 進階極限壓縮。
 
-    - **階段一：結構可達性垃圾回收 (DFS GC)**：實作 Catalog 物件樹遍歷，徹底清理編輯殘留的孤立無用物件（Orphan Objects）；優化字型剝離機制，移除字型時保留度量屬性 (Font Metrics) 以防閱讀器渲染跑版。
+    - 規範詳見：[PDF 壓縮未來演進路線圖 (pdf_compression_future_roadmap.md)](specs/pdf_compression_future_roadmap.md)。
+
+    - **階段一：結構可達性垃圾回收 (DFS GC)**：實作 Catalog 物件樹遍歷，徹底清理編輯殘留的孤立無用物件（Orphan Objects）；（2026-11-20 決定：不再剝離字型，壓縮一律保留內嵌字型，見 v3.22.0.0。）
 
     - **階段二：二進位物件壓縮流 (Object Streams) [PDF 1.5+]**：引入物件壓縮流 (`ObjStm`) 與交叉引用流 (Cross-Reference Streams)，將大量散落的明文 Dictionary 與 Array 物件打包進行整體 `/FlateDecode` 壓縮。
 

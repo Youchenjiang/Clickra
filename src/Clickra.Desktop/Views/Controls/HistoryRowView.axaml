@@ -2,6 +2,7 @@
      status icon → time → coloured feature label → file name (middle-trimmed) → reason; two outlined icon
      buttons at the right; a one-line notice and the details expand under the row. -->
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Clickra.Desktop.L10n"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Clickra.Desktop.ViewModels"
              xmlns:controls="using:Clickra.Desktop.Controls"
@@ -52,10 +53,10 @@
                         <!-- Status: shape tells the outcome; only failure uses colour. -->
                         <Panel Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center">
                             <!-- All line icons: one 24 × 24 grid, scaled as a whole, same stroke (spec 7). -->
-                            <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding IsSuccess}" ToolTip.Tip="成功"><Canvas Width="24" Height="24"><Path Data="M5,12.5 L9.5,17 L19,7.5" Stroke="{DynamicResource Clk.TextTertiary}" /></Canvas></Viewbox>
-                            <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding IsFailed}" ToolTip.Tip="失敗"><Canvas Width="24" Height="24"><Path Data="M6,6 L18,18 M18,6 L6,18" Stroke="{DynamicResource Clk.Danger}" /></Canvas></Viewbox>
-                            <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding IsCanceled}" ToolTip.Tip="已取消"><Canvas Width="24" Height="24"><Path Data="M12,4 A8,8 0 1 1 11.99,4 Z M6.5,17.5 L17.5,6.5" Stroke="{DynamicResource Clk.TextTertiary}" /></Canvas></Viewbox>
-                            <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding IsParked}" ToolTip.Tip="暫停中"><Canvas Width="24" Height="24"><Path Data="M9,6 V18 M15,6 V18" Stroke="{DynamicResource Clk.TextTertiary}" /></Canvas></Viewbox>
+                            <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding IsSuccess}" ToolTip.Tip="{l:T ui_history_done}"><Canvas Width="24" Height="24"><Path Data="M5,12.5 L9.5,17 L19,7.5" Stroke="{DynamicResource Clk.TextTertiary}" /></Canvas></Viewbox>
+                            <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding IsFailed}" ToolTip.Tip="{l:T ui_history_not_completed}"><Canvas Width="24" Height="24"><Path Data="M6,6 L18,18 M18,6 L6,18" Stroke="{DynamicResource Clk.Danger}" /></Canvas></Viewbox>
+                            <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding IsCanceled}" ToolTip.Tip="{l:T ui_history_row_stopped}"><Canvas Width="24" Height="24"><Path Data="M12,4 A8,8 0 1 1 11.99,4 Z M6.5,17.5 L17.5,6.5" Stroke="{DynamicResource Clk.TextTertiary}" /></Canvas></Viewbox>
+                            <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding IsParked}" ToolTip.Tip="{l:T ui_history_parked_paused_2}"><Canvas Width="24" Height="24"><Path Data="M9,6 V18 M15,6 V18" Stroke="{DynamicResource Clk.TextTertiary}" /></Canvas></Viewbox>
                         </Panel>
                         <Panel Grid.Column="1" Width="44" VerticalAlignment="Center">
                             <TextBlock Text="{Binding TimeText}" FontSize="13" IsVisible="{Binding !IsRunning}"
@@ -98,23 +99,23 @@
                         <Viewbox Classes="ic" Width="20" Height="20"><Canvas Width="24" Height="24"><Path Data="M3,7 A2,2 0 0 1 5,5 H9 L11,7 H19 A2,2 0 0 1 21,9 V17 A2,2 0 0 1 19,19 H5 A2,2 0 0 1 3,17 Z" /></Canvas></Viewbox>
                     </Button>
                     <Button Classes="rowIcon" IsVisible="{Binding IsCompleted}" Command="{Binding Rerun}"
-                            ToolTip.Tip="再轉一次" AutomationProperties.Name="再轉一次">
+                            ToolTip.Tip="{l:T ui_history_row_run_again}" AutomationProperties.Name="{l:T ui_history_row_run_again}">
                         <Viewbox Classes="ic" Width="20" Height="20"><Canvas Width="24" Height="24"><Path Data="M20,12 A8,8 0 1 1 17.66,6.34 M20,4 V9 H15" /></Canvas></Viewbox>
                     </Button>
                     <Button Classes="rowIcon" IsVisible="{Binding IsParked}" Command="{Binding Resume}"
-                            ToolTip.Tip="繼續" AutomationProperties.Name="繼續">
+                            ToolTip.Tip="{l:T ui_history_parked_resume}" AutomationProperties.Name="{l:T ui_history_parked_resume}">
                         <Viewbox Classes="ic" Width="20" Height="20"><Canvas Width="24" Height="24"><Path Data="M8,5.5 V18.5 L18.5,12 Z" /></Canvas></Viewbox>
                     </Button>
                     <Button Classes="rowIcon" IsVisible="{Binding CanPause}" Command="{Binding Pause}"
-                            ToolTip.Tip="做完這個檔案後暫停" AutomationProperties.Name="做完這個檔案後暫停">
+                            ToolTip.Tip="{l:T ui_history_parked_pause_after_this_file}" AutomationProperties.Name="{l:T ui_history_parked_pause_after_this_file}">
                         <Viewbox Classes="ic" Width="20" Height="20"><Canvas Width="24" Height="24"><Path Data="M9,6 V18 M15,6 V18" /></Canvas></Viewbox>
                     </Button>
                     <Button Classes="rowIcon" IsVisible="{Binding IsParked}" Command="{Binding Stop}"
-                            ToolTip.Tip="停止，不再繼續" AutomationProperties.Name="停止，不再繼續">
+                            ToolTip.Tip="{l:T ui_history_parked_stop}" AutomationProperties.Name="{l:T ui_history_parked_stop}">
                         <Viewbox Classes="ic" Width="20" Height="20"><Canvas Width="24" Height="24"><Path Data="M6,6 H18 V18 H6 Z" /></Canvas></Viewbox>
                     </Button>
                     <Button Classes="rowIcon" IsVisible="{Binding CanStopRunning}" Command="{Binding Stop}"
-                            ToolTip.Tip="停止，不再繼續" AutomationProperties.Name="停止，不再繼續">
+                            ToolTip.Tip="{l:T ui_history_parked_stop}" AutomationProperties.Name="{l:T ui_history_parked_stop}">
                         <Viewbox Classes="ic" Width="20" Height="20"><Canvas Width="24" Height="24"><Path Data="M6,6 H18 V18 H6 Z" /></Canvas></Viewbox>
                     </Button>
                 </StackPanel>
@@ -134,11 +135,11 @@
             <!-- Details, opened by clicking the row. -->
             <Grid IsVisible="{Binding IsExpanded}" Margin="72,0,16,16" ColumnDefinitions="48,*" RowDefinitions="Auto,Auto,Auto"
                   ColumnSpacing="14" RowSpacing="6">
-                <TextBlock Grid.Row="0" Classes="detailLabel" Text="輸入" />
+                <TextBlock Grid.Row="0" Classes="detailLabel" Text="{l:T ui_history_row_original_files}" />
                 <TextBlock Grid.Row="0" Grid.Column="1" Classes="detailValue" Text="{Binding InputText}" />
-                <TextBlock Grid.Row="1" Classes="detailLabel" Text="輸出" IsVisible="{Binding HasOutput}" />
+                <TextBlock Grid.Row="1" Classes="detailLabel" Text="{l:T ui_result_output_files}" IsVisible="{Binding HasOutput}" />
                 <TextBlock Grid.Row="1" Grid.Column="1" Classes="detailValue" Text="{Binding OutputText}" IsVisible="{Binding HasOutput}" />
-                <TextBlock Grid.Row="2" Classes="detailLabel" Text="時間" />
+                <TextBlock Grid.Row="2" Classes="detailLabel" Text="{l:T ui_history_row_time}" />
                 <TextBlock Grid.Row="2" Grid.Column="1" Classes="detailValue" Text="{Binding TimeDetail}" />
             </Grid>
         </StackPanel>

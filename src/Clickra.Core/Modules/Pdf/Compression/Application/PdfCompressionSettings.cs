@@ -6,9 +6,11 @@ namespace Clickra.Core.Modules.Pdf.Compression.Application;
 public class PdfCompressionSettings
 {
     public PdfCompressionLevel Level { get; set; } = PdfCompressionLevel.Balanced;
-    public bool MinifyContent { get; set; } = true;
+    /// <summary>Content-stream minification is lossless and always on; there is no option to turn it off.</summary>
+    public bool MinifyContent { get; } = true;
     public bool DeduplicateFonts { get; set; } = true;
-    public bool StripFonts { get; set; } = false;
+    /// <summary>Drops XMP metadata, page thumbnails and PieceInfo (Small only). Fonts are never removed.</summary>
+    public bool RemoveMetadata { get; set; }
     public int TargetDpi { get; set; } = 150; // 0 means no downsampling
     public int JpegQuality { get; set; } = 80;
 
@@ -32,20 +34,14 @@ public class PdfCompressionSettings
         settings.Level = parsedLevel;
 
         // Preset numbers come from one table so the UI mapping and the processor cannot drift.
-        var (targetDpi, jpegQuality, stripFonts, minifyContent) = PdfCompressionOptions.GetPreset(parsedLevel);
+        var (targetDpi, jpegQuality, removeMetadata) = PdfCompressionOptions.GetPreset(parsedLevel);
         settings.TargetDpi = targetDpi;
         settings.JpegQuality = jpegQuality;
-        settings.StripFonts = stripFonts;
-        settings.MinifyContent = minifyContent;
+        settings.RemoveMetadata = removeMetadata;
         settings.DeduplicateFonts = true;
 
-        // 2. Individual custom options overrides
-        if (options.TryGetValue("strip_fonts", out var sf))
-            settings.StripFonts = (sf?.ToString() ?? string.Empty).Equals("true", StringComparison.OrdinalIgnoreCase);
-
-        if (options.TryGetValue("minify_content", out var mc))
-            settings.MinifyContent = (mc?.ToString() ?? string.Empty).Equals("true", StringComparison.OrdinalIgnoreCase);
-
+        // 2. Individual custom options overrides. The old "strip_fonts" and "minify_content"
+        // keys are ignored on purpose: fonts are never removed and minification is always on.
         if (options.TryGetValue("target_dpi", out var dpi) && int.TryParse(dpi?.ToString(), out int d))
             settings.TargetDpi = Math.Max(0, d);
 

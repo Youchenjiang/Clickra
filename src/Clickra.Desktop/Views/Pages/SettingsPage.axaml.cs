@@ -12,6 +12,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Clickra.Desktop.ViewModels;
+using Clickra.Desktop.L10n;
 
 using Clickra.Desktop.Controls;
 
@@ -25,9 +26,9 @@ public partial class SettingsPage : UserControl
     public SettingsPage()
     {
         InitializeComponent();
-        PdfCompressSlider.Steps = ["小檔案", "平衡", "高品質"];
-        ImageCompressSlider.Steps = ["最小檔案", "小檔案", "標準", "高品質"];
-        TextScaleSlider.Steps = ["0.9 倍", "1 倍", "1.12 倍"];
+        PdfCompressSlider.Steps = [Strings.T("ui_pdf_compress_small_file"), Strings.T("ui_pdf_compress_balanced"), Strings.T("ui_pdf_compress_high_quality")];
+        ImageCompressSlider.Steps = [Strings.T("ui_img_compress_smallest"), Strings.T("ui_pdf_compress_small_file"), Strings.T("ui_img_compress_standard"), Strings.T("ui_pdf_compress_high_quality")];
+        TextScaleSlider.Steps = [Strings.T("ui_markdown_0_9"), Strings.T("ui_markdown_1"), Strings.T("ui_markdown_1_12")];
 
         TabSwitch.SelectionChanged += (_, _) =>
         {
@@ -47,7 +48,7 @@ public partial class SettingsPage : UserControl
             if (TopLevel.GetTopLevel(this) is not { } top) return;
             var folders = await top.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
             {
-                Title = "選擇轉好的檔案要存到哪裡",
+                Title = Strings.T("ui_settings_general_choose_a_save_folder"),
                 AllowMultiple = false,
             });
             string? path = folders.Count > 0 ? Avalonia.Platform.Storage.StorageProviderExtensions.TryGetLocalPath(folders[0]) : null;
@@ -129,14 +130,14 @@ public partial class SettingsPage : UserControl
 
     private static readonly (string Group, (string Label, string[] Commands)[] Items)[] MenuItems =
     [
-        ("文件", [("Word → PDF", ["word2pdf"]), ("Excel → PDF", ["excel2pdf"]), ("PPT → PDF", ["ppt2pdf"]),
+        (Strings.T("ui_settings_menu_documents"), [("Word → PDF", ["word2pdf"]), ("Excel → PDF", ["excel2pdf"]), ("PPT → PDF", ["ppt2pdf"]),
                   ("MD → PDF", ["md2pdf"]), ("MD → Word", ["md2word"])]),
-        ("PDF", [("合併 PDF", ["merge-pdf"]), ("分割 PDF", ["split-pdf"]), ("壓縮 PDF", ["compress-pdf"]),
-                 ("PDF → 圖片", ["pdf2img"]), ("翻譯 PDF", ["translate-pdf"]), ("解密 PDF", ["decrypt-pdf"]),
-                 ("列印 PDF", ["print-pdf"])]),
-        ("圖片", [("圖片 → PDF", ["img2pdf"]), ("轉換圖片格式", ImageFormats), ("壓縮圖片", ["img-compress"]),
-                 ("合併圖片", ["img-merge"]), ("拼接圖片", ["img-stitch"])]),
-        ("整理", [("批次重新命名", ["batch-rename"])]),
+        ("PDF", [(Strings.T("ui_feature_merge_pdf"), ["merge-pdf"]), (Strings.T("ui_feature_split_pdf"), ["split-pdf"]), (Strings.T("ui_feature_compress_pdf"), ["compress-pdf"]),
+                 (Strings.T("ui_feature_pdf_to_images"), ["pdf2img"]), (Strings.T("ui_feature_translate_pdf"), ["translate-pdf"]), (Strings.T("ui_feature_decrypt_pdf"), ["decrypt-pdf"]),
+                 (Strings.T("ui_feature_print_pdf"), ["print-pdf"])]),
+        (Strings.T("ui_settings_menu_images"), [(Strings.T("ui_feature_images_to_pdf"), ["img2pdf"]), (Strings.T("ui_feature_convert_image_format"), ImageFormats), (Strings.T("ui_feature_compress_images"), ["img-compress"]),
+                 (Strings.T("ui_feature_merge_images"), ["img-merge"]), (Strings.T("ui_feature_stitch_images"), ["img-stitch"])]),
+        (Strings.T("ui_settings_menu_organize"), [(Strings.T("ui_feature_batch_rename"), ["batch-rename"])]),
     ];
 
     private readonly List<(CheckBox Group, List<ToggleButton> Items)> _menuGroups = [];
@@ -173,7 +174,7 @@ public partial class SettingsPage : UserControl
                 MinHeight = 36,
                 VerticalAlignment = VerticalAlignment.Top,
             };
-            ToolTip.SetTip(groupBox, "全選；已全選時再點一下全部取消");
+            ToolTip.SetTip(groupBox, Strings.T("ui_settings_menu_select_or_clear_all"));
 
             var chips = new WrapPanel { Orientation = Orientation.Horizontal };
             var toggles = new List<ToggleButton>();
@@ -297,9 +298,9 @@ public partial class SettingsPage : UserControl
 
     private static string FormatMenuSummary(bool enabled, int shown, int total)
     {
-        if (!enabled) return "已關閉";
-        if (shown == total) return $"{total} 項全部顯示（預設）";
-        if (shown == 0) return "沒有勾選任何功能，右鍵選單不會出現 Clickra";
-        return $"顯示 {shown} 項，已隱藏 {total - shown} 項";
+        if (!enabled) return Strings.T("ui_settings_menu_off");
+        if (shown == total) return Strings.F("ui_settings_menu_all_shown", ("count", total));
+        if (shown == 0) return Strings.T("ui_settings_menu_nothing_is_selected_so_clickra");
+        return Strings.F("ui_settings_menu_some_shown", ("shown", shown), ("hidden", total - shown));
     }
 }

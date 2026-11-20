@@ -46,6 +46,8 @@ static partial class TestSuite
             TestParkingMovesTaskToParkedWithIndex);
         runner.Run("Task queue: resuming a parked task reuses its identity and index",
             TestResumingParkedTaskReusesIdentity);
+        runner.Run("Task queue: claimed parked task is returned to parked when execution cannot proceed",
+            TestClaimedParkedTaskReturnedToParkedWhenExecutionCannotProceed);
         runner.Run("Task queue: parked retention days come from the setting (0 = unlimited)",
             TestParkedRetentionDaysFromSetting);
         runner.Run("Task queue: resume claim refreshes the owning pid",
@@ -984,6 +986,26 @@ static partial class TestSuite
             var history = ClickraStorage.GetHistory(10);
             Assert.True(history.Count(h => h.Command == CmdDecryptPdf) == 1,
                 $"Resume+complete must write exactly one history line, got {history.Count(h => h.Command == CmdDecryptPdf)}.");
+        }
+        finally { ClickraStorage.DeleteTask(a); }
+    }
+
+    private static void TestClaimedParkedTaskReturnedToParkedWhenExecutionCannotProceed()
+    {
+        string a = ClickraStorage.StartTask(CmdDecryptPdf, 2, TestInDir + FileA1 + TestInDir + FileA2);
+        try
+        {
+            ClickraStorage.SetTaskInProgress(a);
+            ClickraStorage.ParkTask(a, ParkReason, 1);
+            var claim = ParkedTaskController.ClaimForResume(a);
+            Assert.True(claim != null, "Parked task must be claimed before it resumes.");
+            Assert.True(ClickraStorage.GetParkedTasks().All(t => t.Id != a), "Claimed task is no longer in parked list.");
+
+            ParkedTaskController.ReturnToParked(a, "Busy with other files", 1);
+            var returned = ClickraStorage.GetParkedTasks().FirstOrDefault(t => t.Id == a);
+            Assert.True(returned.Id == a, "Returned task must be present in parked tasks.");
+            Assert.True(returned.Status == ConversionStatus.Parked, $"Expected status Parked, got {returned.Status}.");
+            Assert.Equal(1, returned.CurrentIndex);
         }
         finally { ClickraStorage.DeleteTask(a); }
     }

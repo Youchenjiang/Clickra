@@ -9,6 +9,7 @@ using Avalonia;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Clickra.Core.Modules.Pdf.Split.Application;
+using Clickra.Desktop.L10n;
 
 namespace Clickra.Desktop.ViewModels;
 
@@ -56,12 +57,12 @@ public sealed class SplitPageViewModel(SplitWorkspaceViewModel owner, int number
     /// <summary>1-based part number; bands alternate two colours so neighbouring parts are told apart.</summary>
     public int Part { get => _part; set { _part = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsOddPart)); OnPropertyChanged(nameof(PartText)); } }
     public bool IsOddPart => _part % 2 != 0;
-    public string PartText => $"第 {_part} 份";
+    public string PartText => Strings.F("ui_split_part", ("part", _part));
     public bool CutAfter { get => _cutAfter; set { _cutAfter = value; OnPropertyChanged(); OnPropertyChanged(nameof(GapTip)); } }
     public bool HasGap => Number < owner.TotalPages;
     /// <summary>Every gap can be clicked on a single file; in 每一頁／每 N 頁 that switches to custom cuts first.</summary>
     public bool CanEditGap => owner.IsSingleFile;
-    public string GapTip => CutAfter ? $"取消第 {Number} 頁後面的切點" : $"在第 {Number} 頁後面切開";
+    public string GapTip => Strings.F(CutAfter ? "ui_split_gap_remove" : "ui_split_gap_add", ("page", Number));
 
     public void ToggleCut() => owner.ToggleCut(this);
     public void OpenPreview() => owner.OpenPreview(this);
@@ -82,6 +83,7 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
     private string _message = "";
     private CancellationTokenSource? _thumbnailsCts;
     private readonly SortedSet<int> _cuts = []; // cut after these page numbers
+    private readonly (string Before, string After) _everyPagesAround = Strings.Around("ui_split_every_n_pages_sentence", "n");
 
     public ObservableCollection<SplitPageViewModel> Pages { get; } = [];
 
@@ -124,9 +126,9 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
 
     public string Hint => _mode switch
     {
-        0 => "點兩頁之間的縫隙加上或取消切點；點兩下頁面放大",
-        1 => IsSingleFile ? "每一頁存成一個 PDF；點縫隙可以增減切點，點兩下頁面放大" : $"{_fileCount} 個檔案的每一頁各存成一個 PDF",
-        _ => IsSingleFile ? "點縫隙可以增減切點，點兩下頁面放大" : $"{_fileCount} 個檔案都照這個頁數分割",
+        0 => Strings.T("ui_split_click_between_pages_to_add"),
+        1 => IsSingleFile ? Strings.T("ui_split_each_page_becomes_its_own") : Strings.F("ui_split_hint_each_page_many", ("count", _fileCount)),
+        _ => IsSingleFile ? Strings.T("ui_split_click_between_pages_to_change") : Strings.F("ui_split_hint_fixed_many", ("count", _fileCount)),
     };
 
     /// <summary>Shown instead of the thumbnails (several files, or the PDF cannot be read).</summary>
@@ -137,8 +139,12 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
 
     /// <summary>Custom mode with no cut yet would give one part, the same file again.</summary>
     public bool IsReady => !(IsCustom && _cuts.Count == 0);
-    public string BlockingText => IsCustom && _cuts.Count == 0 ? "先在頁面之間加上切點" : "";
-    public string StartText => IsSingleFile && PartCount > 0 ? $"開始分割成 {PartCount} 份" : "開始分割";
+    public string BlockingText => IsCustom && _cuts.Count == 0 ? Strings.T("ui_split_add_a_split_between_pages") : "";
+    /// <summary>「每」 and 「頁一份」 around the page-count box, from one sentence 「每 {n} 頁一份」.</summary>
+    public string EveryPagesBefore => _everyPagesAround.Before;
+    public string EveryPagesAfter => _everyPagesAround.After;
+
+    public string StartText => IsSingleFile && PartCount > 0 ? Strings.Count("ui_split_start_parts", PartCount) : Strings.T("ui_split_split");
 
     public void SetFiles(IReadOnlyList<string> files)
     {
@@ -161,8 +167,8 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
             if (_totalPages <= 0)
             {
                 Message = PdfPageCountQuery.IsPasswordProtected(files[0])
-                    ? "這個 PDF 有密碼，無法預覽頁面；仍可用「每一頁一份」或「每 N 頁一份」"
-                    : "讀不到這個 PDF 的頁面";
+                    ? Strings.T("ui_split_this_pdf_has_a_password")
+                    : Strings.T("ui_split_cant_read_the_pages_of");
                 _mode = 1;
             }
             for (int i = 1; i <= _totalPages; i++) Pages.Add(new SplitPageViewModel(this, i));
@@ -170,7 +176,7 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
         }
         else
         {
-            Message = $"放入了 {files.Count} 個 PDF，每個檔案各自分割；自訂切點一次只能用在一個檔案";
+            Message = Strings.F("ui_split_many_files", ("count", files.Count));
         }
 
         OnPropertyChanged(string.Empty);
@@ -225,9 +231,9 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
         private set { _previewImage = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasPreviewImage)); RefreshPreviewSize(); }
     }
     public bool HasPreviewImage => _previewImage is not null;
-    public string PreviewTitle => _preview is null ? "" : $"第 {_preview.Number} 頁，共 {_totalPages} 頁";
+    public string PreviewTitle => _preview is null ? "" : Strings.F("ui_preview_page_of", ("page", _preview.Number), ("total", _totalPages));
     /// <summary>The start button is hidden under the preview, so the part count is said here.</summary>
-    public string PreviewPartText => _preview is null ? "" : $"屬於第 {_preview.Part} 份，共 {PartCount} 份";
+    public string PreviewPartText => _preview is null ? "" : Strings.F("ui_preview_part_of", ("part", _preview.Part), ("total", PartCount));
     public bool PreviewHasGap => _preview?.HasGap == true;
     public bool PreviewIsCut => _preview?.CutAfter == true;
 
@@ -254,8 +260,8 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
     {
         get
         {
-            if (Math.Abs(_zoom - 1) < 0.01) return "整頁";
-            if (Math.Abs(_zoom - FitWidthZoom) < 0.01) return "符合寬度";
+            if (Math.Abs(_zoom - 1) < 0.01) return Strings.T("ui_preview_whole_page");
+            if (Math.Abs(_zoom - FitWidthZoom) < 0.01) return Strings.T("ui_preview_fit_width");
             return $"{Math.Round(_zoom * 100)}%";
         }
     }

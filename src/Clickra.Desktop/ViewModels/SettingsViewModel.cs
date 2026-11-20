@@ -7,6 +7,7 @@ using Avalonia.Styling;
 using Clickra.Core;
 using Clickra.Core.Modules.Sys.Settings.Application;
 using Clickra.Core.Storage;
+using Clickra.Desktop.L10n;
 
 namespace Clickra.Desktop.ViewModels;
 
@@ -17,10 +18,10 @@ public sealed class SettingsViewModel : ViewModelBase
     private int _imageCompressionLevel = 2;
     private int _outputDirKind = 0;
     private string _customOutputDir = "";
+    private readonly string _startupLanguage = Strings.Language;
 
     private static readonly string[] Themes = [ClickraSettings.DesktopThemeLight, ClickraSettings.DesktopThemeDark, ClickraSettings.DesktopThemeSystem];
     private static readonly string[] Languages = ["", "zh-TW", "zh-CN", "en-US", "ja-JP", "ko-KR"];
-    private static readonly int[] RetentionDays = [1, 3, 7, 14, 30, 0];
     private static readonly string[] PdfImageFormats = ["png", "jpg", "webp"];
     private static readonly string[] MarkdownThemes = ["default", "minimal", "academic", ClickraSettings.MarkdownThemeWordTemplate];
     private static readonly string[] MarkdownPapers = ["a4", "letter"];
@@ -58,7 +59,33 @@ public sealed class SettingsViewModel : ViewModelBase
             if (value < 0 || value >= Languages.Length) return;
             SettingsController.Language = Languages[value];
             OnPropertyChanged();
+            OnPropertyChanged(nameof(LanguageNeedsRestart));
+            OnPropertyChanged(nameof(CanRestartNow));
         }
+    }
+
+    /// <summary>
+    /// The chosen language differs from the one this window opened in. Text is read once at start-up, so the
+    /// change applies after Clickra reopens (localization plan 3.2).
+    /// </summary>
+    public bool LanguageNeedsRestart =>
+        !string.Equals(Clickra.Core.Localization.NormalizeLanguageCode(SettingsController.Language), _startupLanguage, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Set by the window: true while files are being processed, so reopening waits until they finish.</summary>
+    public Func<bool>? IsBusy { get; set; }
+
+    public bool CanRestartNow => IsBusy?.Invoke() != true;
+
+    public string RestartHint => Strings.T(CanRestartNow ? "ui_settings_language_restart_hint" : "ui_settings_language_restart_busy");
+
+    /// <summary>Raised by 立即重新開啟; the window starts a new Clickra and closes this one.</summary>
+    public event EventHandler? RestartRequested;
+
+    public void RestartNow()
+    {
+        OnPropertyChanged(nameof(CanRestartNow));
+        OnPropertyChanged(nameof(RestartHint));
+        if (CanRestartNow) RestartRequested?.Invoke(this, EventArgs.Empty);
     }
 
     // ----- 行為 -----
@@ -75,35 +102,7 @@ public sealed class SettingsViewModel : ViewModelBase
         set { SettingsController.NotificationsEnabled = value; OnPropertyChanged(); }
     }
 
-    /// <summary>暫停的工作保留: 1, 3, 7, 14, 30 天, 不自動刪除.</summary>
-    public int RetentionIndex
-    {
-        get
-        {
-            int index = Array.IndexOf(RetentionDays, SettingsController.ParkedTaskRetentionDays);
-            return index >= 0 ? index : 2;
-        }
-        set
-        {
-            if (value < 0 || value >= RetentionDays.Length) return;
-            SettingsController.ParkedTaskRetentionDays = RetentionDays[value];
-            OnPropertyChanged();
-        }
-    }
-
     // ----- 功能預設值 -----
-
-    public bool PdfStripFonts
-    {
-        get => SettingsController.PdfCompressionStripFonts;
-        set { SettingsController.PdfCompressionStripFonts = value; OnPropertyChanged(); }
-    }
-
-    public bool PdfMinifyContent
-    {
-        get => SettingsController.PdfCompressionMinifyContent;
-        set { SettingsController.PdfCompressionMinifyContent = value; OnPropertyChanged(); }
-    }
 
     public int TranslateLanguageIndex
     {
@@ -235,7 +234,7 @@ public sealed class SettingsViewModel : ViewModelBase
     public IReadOnlyList<string> PrinterChoices => _printerChoices ??= LoadPrinterChoices();
     private static IReadOnlyList<string> LoadPrinterChoices()
     {
-        var list = new List<string> { "系統預設印表機" };
+        var list = new List<string> { Strings.T("ui_settings_defaults_system_default_printer") };
         try { list.AddRange(new Clickra.Core.Modules.Pdf.Print.Ports.SystemPrinterDiscoveryService().GetInstalledPrinters()); }
         catch { /* no printing support */ }
         return list;

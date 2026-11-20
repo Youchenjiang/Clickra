@@ -1622,7 +1622,8 @@ static partial class TestSuite
             "AdjustParkedRetention",
             "SetParkedRetentionOverride",
             "CancelParkedTask",
-            "ClaimParkedTaskForResume"
+            "ClaimParkedTaskForResume",
+            "ParkTask"
         };
 
     private static void TestParkedTaskActionsHaveSingleApplicationGateway()

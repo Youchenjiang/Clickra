@@ -201,7 +201,7 @@ flowchart LR
 
 新介面成為使用者預設介面的那一版才是 `v4.0.0.0`。以下全部完成並經 Windows 實機驗收後，才切換啟動器與發佈流程。每項各自一個 PR（分支名稱另定），完成後在此打勾並註明 PR 與版本。
 
-1. [ ] **多語系**：`Clickra.Desktop` 的介面文字目前幾乎都直接寫成繁體中文（2026-11-19 檢查，只有少數地方讀取 `Localization`）。全部改走 Core 語系檔，補齊繁中、簡中、英、日、韓五種語言（介面用語依 [v4_desktop_ui_layout.md](v4_desktop_ui_layout.md) 4.10，改前改後須經使用者確認）；檢查英文等較長文字在 760 寬度下不截斷、不換出版面。
+1. [ ] **多語系**：`Clickra.Desktop` 的介面文字目前幾乎都直接寫成繁體中文（2026-11-19 檢查，只有少數地方讀取 `Localization`）。全部改走 Core 語系檔，補齊繁中、簡中、英、日、韓五種語言（介面用語依 [v4_desktop_ui_layout.md](v4_desktop_ui_layout.md) 4.10，改前改後須經使用者確認）；檢查英文等較長文字在 760 寬度下不截斷、不換出版面。計畫見 [v4_localization_plan.md](v4_localization_plan.md)。
 2. [ ] **Windows 實機驗收 `feat/avalonia-views`**：轉檔各動作、分割縮圖與放大預覽、列印、PDF → 圖片、有密碼的 PDF（`tmp/enc/` 測試檔）、自訂 AI 服務、拖曳資料夾、設為預設值、歷史、設定、760 × 600 最小視窗、深淺色主題、高 DPI。
 3. [ ] **有密碼的 PDF 當場解鎖**：[pdf_password_unlock_plan.md](pdf_password_unlock_plan.md)。完成後拿掉目錄「要先解密」的過渡停用。
 4. [ ] **右鍵執行的精簡視窗**：依介面規格 4.x 與畫布「右鍵執行」一列（處理中、全部成功、需要密碼、有檔案沒成功、沒有 Office 轉檔工具），由 4.0 介面取代 3.x 進度視窗；安靜模式行為不變。
@@ -212,6 +212,18 @@ flowchart LR
    - [ ] macOS／Linux 桌面套件（App Bundle／AppImage）與 CI 矩陣；若延後，4.0 先只發 Windows 並在此註明。
 7. [ ] **體積**：`Clickra.Desktop.exe` 目前約 64 MB（2026-11-18，`-r win-x64` NativeAOT），超過第 5 節 35～40 MB 的目標。依第 6 節裁剪後重新量測，或修訂目標並記錄理由。
 8. [ ] **舊介面退場**：決定 Fluent（WinUI 3）可選套件與 Win32 Dashboard 的退場時間；商店上的 Fluent 可選套件如何處理；在 4.0 CHANGELOG 與商店說明公告。
+   - **要移除的範圍**（2026-11-20 盤點）：
+     - 專案與程式：`src/Clickra.Fluent`、`Clickra.CLI/Dashboard`；`Clickra.CLI/Progress`（右鍵進度視窗）等清單 4 的精簡視窗取代後才移除；`ClickraLauncher` 的 Fluent 啟動路徑。CLI 本身（右鍵執行、無介面模式、.NET 全域工具）保留。
+     - 封裝與發佈：`packaging/msix/AppxManifest.Fluent.xml`、`build_store.ps1` 的可選套件、`release.yml` 與 `ci.yml` 中只為 Fluent／Dashboard 存在的步驟。
+     - 語系鍵：550 個鍵中約 334 個只被舊介面引用（Fluent 95、Dashboard 52、兩者共用 43、右鍵進度視窗 108、Fluent 與進度視窗共用 36），另有 21 個沒有直接字面引用（多為由命令登錄表動態查詢的 `cmd_*`）。
+     - 設定鍵、測試、文件中只屬於舊介面的部分。
+   - **怎麼確保沒有漏**：先刪專案，再讓編譯與架構測試找出殘留，不靠人工清單：
+     1. 語系鍵必須被用到：五個語系檔中的每個鍵，都要在 `src/` 有字面引用，或由命令登錄表等已知來源動態取得（白名單只列來源，不列個別鍵）。舊介面刪掉後，只屬於它的鍵立刻變成未使用，測試失敗直到移除。
+     2. 禁用名稱：`src/`、`scripts/`、`packaging/`、`.github/workflows/` 不得再出現 `Clickra.Fluent`、`Clickra_Fluent.msix`、`AppxManifest.Fluent`、`DashboardWindow`、`ProgressWindow` 等名稱（比照現有禁止 `Clickra.App` 回流的守衛）；`CHANGELOG.md` 與 `docs/history/` 例外。
+     3. 設定鍵必須被讀取：`ClickraSettings` 登錄的每個鍵，都要有程式讀取，避免留下只有舊介面用的設定。
+     4. 建置與封裝腳本只引用存在的專案與檔案（建置失敗即可發現），並以 `-warnaserror` 建置確保沒有未使用的程式碼警告被忽略。
+     5. 文件：以同一組禁用名稱搜尋 `docs/`（歷史文件例外），README、ROADMAP、商店說明不再提到舊介面。
+   - 多語系（清單 1）只新增 `ui_*` 鍵並共用 `cmd_*` 等功能名稱鍵，不引用舊介面專用的鍵，讓這一步的刪除不會影響新介面。
 9. [ ] **測試**：ViewModel 測試（轉檔流程、分割、合併順序、重新命名預覽、設為預設值、密碼列）與架構測試（桌面端不得直接引用 `Processing` 命名空間等）。
 10. [ ] **商店素材**：五種語言的商店說明改寫為 4.0 介面；截圖重拍（深淺色各一套）。
 11. [ ] **文件**：README、ROADMAP、`v4_desktop_ui_layout.md` 狀態改為已實作；本計畫書階段三標為完成。
@@ -220,6 +232,29 @@ flowchart LR
 14. [ ] **合併的縮圖與預覽**：合併順序清單每列加第一頁縮圖，點兩下開放大預覽並可翻頁，讓檔名相似的檔案分得出來；圖片合併、拼接長圖同樣套用。頁面層級的順序調整仍屬之後的「整理頁面」功能。
 
 完成 1～14 後的 `v4.0.0.0` PR 只做：切換啟動器與發佈流程（6 的前兩項若尚未合併）、升版號、CHANGELOG、商店文件。
+
+#### 從 3.21 到 4.0 的順序 (Sequence to 4.0)
+
+上面的清單依「做什麼」編號；實際依下表的順序做。排序原則：越晚做越貴的先做（多語系）、影響現有 3.x 使用者的修正先做（Office COM、密碼）、有相依的照相依排、退場放最後。每一步各自一個 PR、各自升一個次版號；版號為預估，以實際合併順序為準。
+
+| 步驟 | 版本（預估） | 內容 | 清單項目／計畫 | 相依 |
+| :--- | :--- | :--- | :--- | :--- |
+| 0 | 3.22（與第 1 步同一個分支、同一版） | 修正：壓縮 PDF 不再移除內嵌字型，Fluent、經典儀表板、新介面都拿掉「精簡內容串流」與「移除內嵌字型」開關；處理途中找不到的輸入檔記為失敗，不再算成功。只改新介面（舊介面 4.0 退場，不另改）：繼續暫停的工作前先檢查檔案、拿掉「暫停的工作保留」設定改顯示「暫停了 N 天」、建議信不附數量。Core 依保留天數自動刪除暫停工作的邏輯，等第 12 步舊介面退場時一起拿掉 | 見 [v4_desktop_ui_layout.md](v4_desktop_ui_layout.md) 決策紀錄 2026-11-20 | — |
+| 1 | 3.22 | 桌面端多語系：字串移入語系檔、五種語言、依語言選字型、日期格式、禁止寫死文字的測試 | 1；[v4_localization_plan.md](v4_localization_plan.md) | — |
+| 2 | 3.22.x | Core 進度與錯誤訊息多語系（3.x 也受益） | 1；同上 3.6 | 1 |
+| 3 | 3.23 | Office 轉檔改走 COM，不再用會被防毒軟體攔下的 PowerShell 指令（影響現有使用者，優先） | [office_com_direct_plan.md](office_com_direct_plan.md) | — |
+| 4 | 3.24 | 有密碼的 PDF 當場解鎖、真正的「略過這個檔案」、右鍵執行遇到密碼改為略過；拿掉目錄的過渡停用 | 3；[pdf_password_unlock_plan.md](pdf_password_unlock_plan.md) | 1（新字串直接進語系檔） |
+| 5 | 3.25 | 共用頁面預覽元件（從分割抽出）→ 列印預覽與新列印選項（含 Core 每張多頁等）→ 合併、圖片合併、拼接長圖的縮圖與預覽 | 12、13、14 | 1 |
+| 6 | 3.26 | 右鍵精簡視窗：由新介面取代 3.x 右鍵進度視窗（處理中、成功、需要密碼、失敗、沒有 Office 工具）；安靜模式不變 | 4 | 4（需要密碼的流程）、1 |
+| 7 | 3.26 | 功能圖示辨識度（16 px 與深色背景） | [feature_icon_recognition_plan.md](feature_icon_recognition_plan.md) | — |
+| 8 | 3.27 | 設定沿用（3.x 的設定、歷史、待繼續任務、右鍵勾選在新介面原樣可用）與 ViewModel 測試補齊 | 5、9 | 1～6 |
+| 9 | 3.27 | 體積裁剪（目標見第 5、6 節）；發佈流程先把 `Clickra.Desktop` 打包進正式套件但**不設為預設**，讓 `--desktop` 在正式版也能試用 | 7、6 的第二項 | 8 |
+| 10 | — | Windows 全面實機驗收（五種語言、深淺色、高 DPI、最小視窗）、商店截圖與說明、文件 | 2、10、11 | 1～9 |
+| 11 | **4.0.0.0** | 啟動器改為優先開新介面；CHANGELOG 與商店公告舊介面退場時程 | 6 的第一項、8 的公告 | 10 |
+| 12 | 4.0.x／4.1 | 移除 Fluent、Dashboard、右鍵進度視窗與只屬於它們的語系鍵、設定、封裝、CI 步驟（依 8 的四道檢查） | 8 | 11 後觀察一段時間無回報問題 |
+| 13 | 4.0 之後 | macOS／Linux 桌面套件 | 6 的第三項 | 12 |
+
+4.0 之後再排（不在上線前清單內）：拼貼（[collage_layout_plan.md](collage_layout_plan.md)）、整理頁面（排序、刪頁、旋轉，另寫計畫）、改用 PDFium 與跨平台圖片處理以回到單一 `net8.0`（見前文〈Core／CLI 平台目標〉）、PDF 極限壓縮後續階段（[pdf_compression_future_roadmap.md](pdf_compression_future_roadmap.md)）。
 
 ---
 

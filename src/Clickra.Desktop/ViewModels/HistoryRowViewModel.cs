@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using Clickra.Core.Modules.Sys.HistoryTasks.Application;
 using Clickra.Core.Modules.Sys.HistoryTasks.Presentation;
+using Clickra.Desktop.L10n;
 
 namespace Clickra.Desktop.ViewModels;
 
@@ -62,7 +63,7 @@ public sealed class HistoryRowViewModel : ViewModelBase
         string first = InputPaths.Count > 0 ? Path.GetFileName(InputPaths[0]) : item.FirstFileName;
         (NameHead, NameTail) = SplitForMiddleTrim(first);
         FullName = first;
-        MoreText = item.FileCount > 1 ? $"等 {item.FileCount} 個" : "";
+        MoreText = item.FileCount > 1 ? Strings.F("ui_history_row_more_files", ("count", item.FileCount)) : "";
 
         (string baseName, FeatureColor, FeatureGeometry) = HistoryFeatures.Describe(item.Entry.Command ?? "");
         FeatureName = DetermineFeatureName(baseName, item.Entry.Command, item.CommandLabelKey);
@@ -71,7 +72,7 @@ public sealed class HistoryRowViewModel : ViewModelBase
 
         TimeText = Kind switch
         {
-            HistoryRowKind.Parked => DescribeRemaining(item.Retention),
+            HistoryRowKind.Parked => DescribeParked(item.Entry.ParkedSince),
             HistoryRowKind.Active => "",
             _ => Started?.ToString("HH:mm", CultureInfo.InvariantCulture) ?? item.Time,
         };
@@ -85,7 +86,7 @@ public sealed class HistoryRowViewModel : ViewModelBase
         if (baseName == (command ?? "") && !string.IsNullOrEmpty(commandLabelKey))
         {
             // Not in the 4.0 action catalog (an older or right-click-only action): use Core's label.
-            string label = Clickra.Core.Localization.T(commandLabelKey);
+            string label = Clickra.Core.Localization.T(commandLabelKey, Strings.Language);
             if (!string.IsNullOrWhiteSpace(label) && label != commandLabelKey) return label;
         }
         return baseName;
@@ -94,10 +95,10 @@ public sealed class HistoryRowViewModel : ViewModelBase
     private static string DetermineReason(HistoryRowKind kind, HistoryRowState state, HistoryItem item) => kind switch
     {
         HistoryRowKind.Parked => FirstLine(item.ErrorMessage),
-        HistoryRowKind.Active => item.FileCount > 1 ? $"第 {Math.Min(item.Entry.CurrentIndex + 1, item.FileCount)}/{item.FileCount} 個" : "",
-        _ when state == HistoryRowState.Canceled => "已取消",
+        HistoryRowKind.Active => item.FileCount > 1 ? Strings.F("ui_history_row_n_of_total", ("current", Math.Min(item.Entry.CurrentIndex + 1, item.FileCount)), ("total", item.FileCount)) : "",
+        _ when state == HistoryRowState.Canceled => Strings.T("ui_history_row_stopped"),
         _ when state == HistoryRowState.Failed => string.Equals(item.Entry.ErrorMessage, "Abandoned", StringComparison.OrdinalIgnoreCase)
-            ? "沒有做完就中斷了"
+            ? Strings.T("ui_history_row_interrupted_before_finishing")
             : FirstLine(item.ErrorMessage),
         _ => "",
     };
@@ -150,12 +151,11 @@ public sealed class HistoryRowViewModel : ViewModelBase
     {
         get
         {
-            string when = Started is { } s ? DescribeDay(s) + " " + s.ToString("HH:mm:ss", CultureInfo.InvariantCulture) : Item.Time;
-            if (Finished is { } f && Started is { } st && f > st)
-                when += " → " + f.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
-            if (Item.ElapsedMs > 0)
-                when += $"，花了 {Item.ElapsedMs / 1000.0:0.#} 秒";
-            return when;
+            // 「今天 14:02，花了 3 秒」: the start to the minute and how long it took; the end time adds nothing.
+            string when = Started is { } s ? DescribeDay(s) + " " + s.ToString("HH:mm", CultureInfo.InvariantCulture) : Item.Time;
+            return Item.ElapsedMs > 0
+                ? Strings.F("ui_history_row_time_took", ("when", when), ("duration", DescribeDuration(Item.ElapsedMs)))
+                : when;
         }
     }
 
@@ -174,7 +174,7 @@ public sealed class HistoryRowViewModel : ViewModelBase
     public void UpdateRunning(double percent, int fileIndex, int fileCount)
     {
         ProgressPercent = Math.Clamp(percent, 0, 100);
-        Reason = fileCount > 1 ? $"第 {Math.Min(fileIndex + 1, fileCount)}/{fileCount} 個" : "";
+        Reason = fileCount > 1 ? Strings.F("ui_history_row_n_of_total", ("current", Math.Min(fileIndex + 1, fileCount)), ("total", fileCount)) : "";
         RefreshButtons();
     }
 
@@ -185,7 +185,7 @@ public sealed class HistoryRowViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanStopRunning));
     }
 
-    public string FolderButtonLabel => IsSuccess ? "開啟所在資料夾" : "開啟來源資料夾";
+    public string FolderButtonLabel => IsSuccess ? Strings.T("ui_result_show_in_folder") : Strings.T("ui_history_row_open_original_folder");
 
     public bool IsExpanded
     {
@@ -236,20 +236,34 @@ public sealed class HistoryRowViewModel : ViewModelBase
     internal static string DescribeDay(DateTime when)
     {
         DateTime today = DateTime.Today;
-        if (when.Date == today) return "今天";
-        if (when.Date == today.AddDays(-1)) return "昨天";
+        if (when.Date == today) return Strings.T("ui_history_row_today");
+        if (when.Date == today.AddDays(-1)) return Strings.T("ui_history_row_yesterday");
         return when.Year == today.Year
             ? when.ToString("M/d", CultureInfo.InvariantCulture)
             : when.ToString("yyyy/M/d", CultureInfo.InvariantCulture);
     }
 
-    private static string DescribeRemaining(ParkedRetentionQueryState? retention)
+    /// <summary>「不到 1 秒」, 「3 秒」, 「2 分 15 秒」.</summary>
+    internal static string DescribeDuration(long elapsedMs)
     {
-        if (retention is not { } r) return "";
-        if (r.IsUnlimited) return "永久";
-        if (r.HasExpired) return "已過期";
-        if (r.IsExpiringSoon) return "不到 1 天";
-        return $"剩 {r.RemainingDays} 天";
+        if (elapsedMs < 1000) return Strings.T("ui_duration_under_second");
+        long seconds = (long)Math.Round(elapsedMs / 1000.0);
+        return seconds < 60
+            ? Strings.F("ui_duration_seconds", ("seconds", seconds))
+            : Strings.F("ui_duration_minutes", ("minutes", seconds / 60), ("seconds", seconds % 60));
+    }
+
+    /// <summary>
+    /// How long the task has waited (「暫停了 3 天」). The 4.0 window has no retention setting: a paused
+    /// task stays until it is continued or stopped (spec 4.2, 2026-11-20).
+    /// </summary>
+    internal static string DescribeParked(string? parkedSinceUtc, DateTime? nowUtc = null)
+    {
+        if (!DateTime.TryParseExact(parkedSinceUtc, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out DateTime since))
+            return "";
+        int days = (int)Math.Floor(((nowUtc ?? DateTime.UtcNow) - since).TotalDays);
+        return days < 1 ? Strings.T("ui_history_parked_paused_under_day") : Strings.Count("ui_history_parked_paused_days", days);
     }
 
     private static DateTime? ParseTime(string? text) =>

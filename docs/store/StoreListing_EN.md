@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.21.0.0.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.22.0.0.
 
 ---
 
@@ -15,10 +15,10 @@ Core document operations run completely offline on your local PC to keep your da
 Source Code: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- Protection-Aware PDF Decryption: Intelligently detects password-protected or print/copy-restricted PDFs; tries card-entered passwords first and unlocks restricted PDFs without requiring credentials.
-- Enhanced Visual PDF Split Workspace: Renders thumbnails according to true page aspect ratios and introduces full-area double-click zoom preview with line icon toolbars and interactive cut adjustments in all split modes.
-- Modern Desktop App Preview (Clickra.Desktop): Avalonia-powered cross-platform desktop interface featuring file drag-and-drop, action catalog, stitch/merge reordering workspaces, accessible via the --desktop flag.
-- Specialized Workspaces & UX Improvements: Adds live batch rename previews, visual Markdown template selection cards, window geometry persistence, and background processing on window close.
+- The new desktop interface preview is now available in five languages: Traditional Chinese, Simplified Chinese, English, Japanese, and Korean. A new language applies after Clickra reopens.
+- PDF compression keeps embedded fonts: even the Small level no longer removes fonts, so compressed files look the same on every computer; the font and structure toggles that are no longer needed have been removed.
+- If a file is moved or deleted while it is being processed, Clickra now reports a failure instead of claiming the batch finished.
+- New desktop interface preview: before continuing a paused task, Clickra checks that its files still exist and offers to process only the ones that are left.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*

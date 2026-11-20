@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Platform;
 using Clickra.Desktop.Controls;
 using Clickra.Desktop.ViewModels;
+using Clickra.Desktop.L10n;
 
 namespace Clickra.Desktop.Views;
 
@@ -34,6 +35,9 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        // The interface language picks the font: Noto Sans TC for Traditional Chinese, the system UI font
+        // elsewhere so kanji, Simplified hanzi and Hangul get their own shapes (localization plan 3.4).
+        FontFamily = Avalonia.Media.FontFamily.Parse(Strings.FontFamily);
 
         // Switching tabs: the new page fades in and slides 16 px sideways, from the side of the tab it came
         // from (tab to the right -> enters from the right), matching the left-right tab row (spec section 7).
@@ -252,6 +256,33 @@ public partial class MainWindow : Window
     private TrayIcon? _tray;
     private NativeMenuItem? _trayProgress;
 
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.Settings.RestartRequested -= OnRestartRequested;
+            vm.Settings.RestartRequested += OnRestartRequested;
+        }
+    }
+
+    /// <summary>立即重新開啟 after a language change: start a fresh Clickra, then close this one.</summary>
+    private void OnRestartRequested(object? sender, EventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm && vm.Convert.IsExecuting) return;
+        string? exe = Environment.ProcessPath;
+        if (string.IsNullOrEmpty(exe)) return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = false })?.Dispose();
+        }
+        catch
+        {
+            return; // could not start a new one: keep this window
+        }
+        CloseForGood();
+    }
+
     protected override async void OnClosing(WindowClosingEventArgs e)
     {
         base.OnClosing(e);
@@ -318,9 +349,9 @@ public partial class MainWindow : Window
     private void ContinueInBackground(ConvertViewModel session)
     {
         _trayProgress = new NativeMenuItem { IsEnabled = false };
-        var show = new NativeMenuItem("顯示視窗");
+        var show = new NativeMenuItem(Strings.T("ui_tray_show_window"));
         show.Click += (_, _) => RestoreFromTray();
-        var stop = new NativeMenuItem("停止");
+        var stop = new NativeMenuItem(Strings.T("ui_common_stop"));
         stop.Click += (_, _) => session.Stop();
         _tray = new TrayIcon
         {
@@ -347,11 +378,13 @@ public partial class MainWindow : Window
     private void UpdateTray(ConvertViewModel session)
     {
         if (_tray is null || _trayProgress is null) return;
+        string percent = session.Percent.ToString("0", Strings.Culture);
         string text = session.FileCount > 1
-            ? $"處理中 {session.Percent:0}%（第 {Math.Min(session.FileIndex + 1, session.FileCount)}/{session.FileCount} 個）"
-            : $"處理中 {session.Percent:0}%";
+            ? Strings.F("ui_tray_processing_n_of_total", ("percent", percent),
+                ("current", Math.Min(session.FileIndex + 1, session.FileCount)), ("total", session.FileCount))
+            : Strings.F("ui_tray_processing", ("percent", percent));
         _trayProgress.Header = text;
-        _tray.ToolTipText = "Clickra：" + text;
+        _tray.ToolTipText = Strings.F("ui_tray_tooltip", ("text", text));
     }
 
     private void RestoreFromTray()

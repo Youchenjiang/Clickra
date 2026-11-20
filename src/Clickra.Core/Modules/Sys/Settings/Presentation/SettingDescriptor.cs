@@ -136,22 +136,6 @@ namespace Clickra.Core.Modules.Sys.Settings.Presentation;
                 SliderLabels: new[] { "setting_pdf_compress_level_small", "setting_pdf_compress_level_std", "setting_pdf_compress_level_high" },
                 Order: 10
             ),
-            new(
-                SettingsContract.PdfCompressionStripFonts,
-                GroupPdfCompression,
-                SettingEditorKind.Toggle,
-                "setting_pdf_compress_strip_fonts",
-                null,
-                Order: 20
-            ),
-            new(
-                SettingsContract.PdfCompressionMinifyContent,
-                GroupPdfCompression,
-                SettingEditorKind.Toggle,
-                "setting_pdf_compress_minify_content",
-                null,
-                Order: 30
-            ),
 
             // Image Compression: 圖片壓縮品質等級、長邊像素限制
             new(
@@ -304,8 +288,6 @@ namespace Clickra.Core.Modules.Sys.Settings.Presentation;
             SettingsContract.QuietMode,
             SettingsContract.Notifications,
             SettingsContract.PdfCompressionImageLevel,
-            SettingsContract.PdfCompressionStripFonts,
-            SettingsContract.PdfCompressionMinifyContent,
             SettingsContract.ParkedTaskRetention,
         };
 

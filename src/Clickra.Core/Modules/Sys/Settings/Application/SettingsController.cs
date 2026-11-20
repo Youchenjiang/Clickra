@@ -201,18 +201,6 @@ public static class SettingsController
         set => WriteInt(ClickraSettings.PdfCompressImageLevel, ClickraSettings.NormalizePdfCompressLevel(value));
     }
 
-    public static bool PdfCompressionStripFonts
-    {
-        get => ReadBool(ClickraSettings.PdfCompressStripFonts);
-        set => WriteBool(ClickraSettings.PdfCompressStripFonts, value);
-    }
-
-    public static bool PdfCompressionMinifyContent
-    {
-        get => ReadBool(ClickraSettings.PdfCompressMinifyContent);
-        set => WriteBool(ClickraSettings.PdfCompressMinifyContent, value);
-    }
-
     public static int ImageCompressionLevel
     {
         get => ReadClampedInt(ClickraSettings.ImageCompressLevel);

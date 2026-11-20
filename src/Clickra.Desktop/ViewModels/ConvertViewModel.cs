@@ -14,6 +14,7 @@ using Clickra.Core.Modules.Sys.HistoryTasks.Presentation;
 using Clickra.Core.Modules.Sys.Settings.Application;
 using Clickra.Core.Presentation.Convert;
 using Clickra.Shared;
+using Clickra.Desktop.L10n;
 
 namespace Clickra.Desktop.ViewModels;
 
@@ -38,7 +39,7 @@ public sealed class FileItemViewModel(string path) : ViewModelBase
     private bool _needsPassword;
     private string _passwordInput = "";
     private string _passwordError = "";
-    private string _unlockText = "解鎖並繼續";
+    private string _unlockText = Strings.T("ui_password_unlock_and_continue");
     private System.Threading.Tasks.TaskCompletionSource<string?>? _passwordWait;
 
     public string StatusText { get => _status; set { _status = value; OnPropertyChanged(); } }
@@ -54,9 +55,9 @@ public sealed class FileItemViewModel(string path) : ViewModelBase
         _passwordWait?.TrySetResult(null);
         _passwordWait = new System.Threading.Tasks.TaskCompletionSource<string?>();
         UnlockText = unlockText;
-        PasswordError = wrong ? "密碼不正確，請再輸入一次" : "";
+        PasswordError = wrong ? Strings.T("ui_password_wrong_password_try_again") : "";
         PasswordInput = "";
-        StatusText = "需要密碼";
+        StatusText = Strings.T("ui_password_password_needed");
         NeedsPassword = true;
         return _passwordWait.Task;
     }
@@ -65,14 +66,14 @@ public sealed class FileItemViewModel(string path) : ViewModelBase
     {
         if (_passwordInput.Length == 0) return;
         NeedsPassword = false;
-        StatusText = "處理中";
+        StatusText = Strings.T("ui_run_processing");
         _passwordWait?.TrySetResult(_passwordInput);
     }
 
     public void SkipPassword()
     {
         NeedsPassword = false;
-        StatusText = "已停止";
+        StatusText = Strings.T("ui_run_stopped_2");
         _passwordWait?.TrySetResult(null);
     }
 
@@ -114,7 +115,7 @@ public sealed class ActionItemViewModel : ViewModelBase
     /// <summary>Core refuses PDFs with a password or print/copy restrictions for this action (spec 4.1): the card
     /// stays in place, disabled, and its tooltip says why.</summary>
     public bool NeedsDecryptFirst { get => _needsDecryptFirst; set { _needsDecryptFirst = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsAvailable)); OnPropertyChanged(nameof(CardTip)); } }
-    public string CardTip => _needsDecryptFirst ? $"有密碼或使用限制的 PDF 要先解密才能{Name}" : ToolTip;
+    public string CardTip => _needsDecryptFirst ? Strings.F("ui_catalog_decrypt_before", ("action", Name)) : ToolTip;
     public bool IsAvailable => !_needsDecryptFirst;
     /// <summary>解密 when some files are protected: first and outlined.</summary>
     public bool IsSuggested { get => _isSuggested; set { _isSuggested = value; OnPropertyChanged(); } }
@@ -307,13 +308,13 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     private string GetStartButtonText()
     {
         if (IsRenameAction) return Rename.RenameButtonText;
-        if (IsOrderAction && !Order.HasOutputName) return "先填寫檔名";
+        if (IsOrderAction && !Order.HasOutputName) return Strings.T("ui_start_bar_enter_a_file_name_first");
         if (IsSplitAction)
         {
             return Split.BlockingText.Length > 0 ? Split.BlockingText : Split.StartText;
         }
         if (Options.BlockingText.Length > 0) return Options.BlockingText;
-        return SelectedAction is not null ? $"開始{SelectedAction.Name}" : "開始";
+        return SelectedAction is not null ? Strings.F("ui_start_bar_start_action", ("action", SelectedAction.Name)) : Strings.T("ui_start_bar_start");
     }
 
     /// <summary>The options card of the open action (spec 4.9).</summary>
@@ -337,32 +338,28 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     public OrderWorkspaceViewModel Order { get; } = new();
     public bool IsOrderAction => SelectedAction?.Command is "merge-pdf" or "img-merge" or "img-stitch";
 
-    public string FileSummaryHeader
-    {
-        get
-        {
-            int count = SelectedFiles.Count;
-            if (count == 0) return "";
-            string domain = PrimaryDomain;
-            string typeName = domain switch
-            {
-                "pdf" => "PDF 檔案",
-                "word" => "Word 文件",
-                "excel" => "Excel 試算表",
-                "ppt" => "PPT 簡報",
-                "markdown" => "Markdown 文件",
-                ImageDomain => "張圖片",
-                _ => FileKindName()
-            };
-            return domain == ImageDomain ? $"{count} {typeName}" : $"{count} 個 {typeName}";
-        }
-    }
+    public string FileSummaryHeader => BuildFileSummaryHeader();
 
-    /// <summary>「影片」 when every file is one kind Clickra knows by name, else 「檔案」 (2 個影片, 3 個檔案).</summary>
-    private string FileKindName()
+    private string BuildFileSummaryHeader()
     {
+        int count = SelectedFiles.Count;
+        if (count == 0) return "";
+        string? key = PrimaryDomain switch
+        {
+            "pdf" => "ui_files_count_pdf",
+            "word" => "ui_files_count_word",
+            "excel" => "ui_files_count_excel",
+            "ppt" => "ui_files_count_ppt",
+            "markdown" => "ui_files_count_markdown",
+            ImageDomain => "ui_files_count_images",
+            _ => null
+        };
+        if (key is not null) return Strings.Count(key, count);
+        // 「2 個影片」 when every file is one kind Clickra knows by name, else 「3 個檔案」.
         var kinds = SelectedFiles.Select(f => KindOf(f.Extension)).Distinct().ToList();
-        return kinds.Count == 1 && kinds[0] is not null ? kinds[0]! : "檔案";
+        return kinds.Count == 1 && kinds[0] is not null
+            ? Strings.Count("ui_files_count_kind", count, ("kind", kinds[0]!))
+            : Strings.Count("ui_files_count_files", count);
     }
 
     public string FileSummarySubtext
@@ -371,7 +368,9 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         {
             if (SelectedFiles.Count == 0) return "";
             if (SelectedFiles.Count == 1) return SelectedFiles[0].Name;
-            return string.Join("、", SelectedFiles.Take(3).Select(f => f.Name)) + (SelectedFiles.Count > 3 ? " 等" : "");
+            return SelectedFiles.Count > 3
+                ? Strings.F("ui_list_and_more", ("names", Strings.List(SelectedFiles.Take(3).Select(f => f.Name))))
+                : Strings.List(SelectedFiles.Select(f => f.Name));
         }
     }
 
@@ -458,15 +457,15 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         get
         {
             if (_isCustomOutput && !string.IsNullOrWhiteSpace(_customOutputPath))
-                return $"這次存到 {TruncatePath(_customOutputPath)}";
+                return Strings.F("ui_start_bar_save_this_time", ("path", TruncatePath(_customOutputPath)));
 
             var pref = SettingsController.OutputDirectory;
             return pref.Kind switch
             {
-                OutputDirectoryKind.Desktop => "存到桌面",
-                OutputDirectoryKind.Downloads => "存到下載",
-                OutputDirectoryKind.Custom when !string.IsNullOrWhiteSpace(pref.CustomPath) => $"存到 {TruncatePath(pref.CustomPath)}",
-                _ => "存到原本的資料夾"
+                OutputDirectoryKind.Desktop => Strings.T("ui_start_bar_save_to_desktop"),
+                OutputDirectoryKind.Downloads => Strings.T("ui_start_bar_save_to_downloads"),
+                OutputDirectoryKind.Custom when !string.IsNullOrWhiteSpace(pref.CustomPath) => Strings.F("ui_start_bar_save_to_path", ("path", TruncatePath(pref.CustomPath))),
+                _ => Strings.T("ui_start_bar_save_to_the_original_folder")
             };
         }
     }
@@ -576,7 +575,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         _lastPassword = null;
         State = ConvertWorkflowState.Executing;
         ProgressPercent = 0;
-        ProgressMessage = "準備轉換中...";
+        ProgressMessage = Strings.T("ui_run_preparing");
         ResultItems.Clear();
 
         _conversionCts = new CancellationTokenSource();
@@ -602,12 +601,12 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         catch (OperationCanceledException)
         {
             State = ConvertWorkflowState.ActionPage;
-            ProgressMessage = "已取消操作";
+            ProgressMessage = Strings.T("ui_run_stopped");
         }
         catch (Exception ex)
         {
             State = ConvertWorkflowState.Completed;
-            ResultSummary = "轉檔未完成";
+            ResultSummary = Strings.T("ui_result_not_completed_2");
             ResultItems.Add(new ExecutionResultItemViewModel(files.FirstOrDefault() ?? "", false, ex.Message));
         }
         finally
@@ -653,7 +652,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
                     ProgressPercent = Math.Clamp((double)report.Current / report.Total * 100.0, 0.0, 100.0);
                 }
                 ProgressMessage = string.IsNullOrWhiteSpace(report.Message)
-                    ? $"正在處理 ({report.Current}/{report.Total})..."
+                    ? Strings.F("ui_run_processing_n_of_total", ("current", report.Current), ("total", report.Total))
                     : report.Message;
                 Changed?.Invoke(this, EventArgs.Empty);
             });
@@ -674,7 +673,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
                 if (_pauseRequested && index > resumeStartIndex)
                 {
                     _parkedAt = index;
-                    throw ConversionExecutionController.CreateParkSignal("已暫停", index);
+                    throw ConversionExecutionController.CreateParkSignal(Strings.T("ui_run_paused"), index);
                 }
                 Dispatcher.UIThread.Post(() =>
                 {
@@ -689,7 +688,9 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     private async Task<string?> PromptPasswordAsync(int index, string file, bool isWrong, CancellationToken ct)
     {
         if (!isWrong && _lastPassword is { } known) return known;
-        string unlock = $"解鎖並{SelectedAction?.Name ?? "繼續"}";
+        string unlock = SelectedAction is null
+            ? Strings.T("ui_password_unlock_and_continue")
+            : Strings.F("ui_password_unlock_and_action", ("action", SelectedAction.Name));
         using (ct.Register(() => Dispatcher.UIThread.Post(() =>
         {
             foreach (FileItemViewModel f in SelectedFiles.Where(f => f.NeedsPassword)) f.SkipPassword();
@@ -717,16 +718,16 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         if (result.Status == ConversionExecutionPresentationStatus.Canceled)
         {
             State = ConvertWorkflowState.ActionPage;
-            ProgressMessage = "已停止";
+            ProgressMessage = Strings.T("ui_run_stopped_2");
             return;
         }
         if (result.Status == ConversionExecutionPresentationStatus.Parked)
         {
             State = ConvertWorkflowState.Completed;
             int left = Math.Max(0, files.Length - _parkedAt);
-            ResultSummary = $"已暫停，剩下 {left} 個可在「歷史」繼續";
+            ResultSummary = Strings.F("ui_run_paused_remaining", ("count", left));
             foreach (string file in files.Take(_parkedAt).Skip(resumeStartIndex))
-                ResultItems.Add(new ExecutionResultItemViewModel(file, true, "處理完成"));
+                ResultItems.Add(new ExecutionResultItemViewModel(file, true, Strings.T("ui_result_done")));
             return;
         }
 
@@ -735,7 +736,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         if (decryptFiles is not null)
         {
             foreach (FileItemViewModel f in SelectedFiles.Where(f => !decryptFiles.Contains(f.Path)))
-                ResultItems.Add(new ExecutionResultItemViewModel(f.Path, true, "沒有密碼或限制，不用解密"));
+                ResultItems.Add(new ExecutionResultItemViewModel(f.Path, true, Strings.T("ui_result_no_password_or_restrictions_skipped")));
         }
     }
 
@@ -749,10 +750,10 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             int at = -1;
             for (int i = 0; i < runFiles.Count; i++)
                 if (string.Equals(runFiles[i], row.Path, StringComparison.OrdinalIgnoreCase)) { at = i; break; }
-            if (at < 0) row.StatusText = "不用處理";
-            else if (at < current) row.StatusText = "完成";
-            else if (at == current) row.StatusText = "處理中";
-            else row.StatusText = "等待中";
+            if (at < 0) row.StatusText = Strings.T("ui_run_will_be_skipped");
+            else if (at < current) row.StatusText = Strings.T("ui_result_done_2");
+            else if (at == current) row.StatusText = Strings.T("ui_run_processing");
+            else row.StatusText = Strings.T("ui_run_waiting");
         }
     }
 
@@ -782,15 +783,14 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             if (ResultItems.Any(r => string.Equals(r.FullPath, file, StringComparison.OrdinalIgnoreCase))) continue;
             bool fileOk = ok || (perFile && File.Exists(plannedOutputs[i]) && result.Outputs.Contains(plannedOutputs[i], StringComparer.OrdinalIgnoreCase));
             if (fileOk) succeeded++;
-            string fallback = error.Length > 0 ? error : "沒有完成";
-            string detail = fileOk ? "處理完成" : fallback;
+            string fallback = error.Length > 0 ? error : Strings.T("ui_result_not_completed");
+            string detail = fileOk ? Strings.T("ui_result_done") : fallback;
             ResultItems.Add(new ExecutionResultItemViewModel(file, fileOk, detail));
         }
         int failed = files.Count - succeeded;
-        string actionName = SelectedAction?.Name ?? "";
         ResultSummary = ok && failed == 0
-            ? $"{actionName}好 {files.Count} 個檔案"
-            : $"{actionName}好 {succeeded} 個，{failed} 個需要處理";
+            ? Strings.Count("ui_result_done_count", files.Count)
+            : Strings.F("ui_result_done_some_failed", ("done", succeeded), ("failed", failed));
     }
 
     private void ShowRenameResults(ConversionExecutionPresentationResult result, Dictionary<string, string> renamed, string error)
@@ -800,12 +800,14 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         foreach (var (newName, oldName) in renamed)
         {
             bool fileOk = done.Contains(newName);
-            string fallback = error.Length > 0 ? error : "沒有改名";
-            string detail = fileOk ? $"原本是 {oldName}" : fallback;
+            string fallback = error.Length > 0 ? error : Strings.T("ui_result_not_renamed");
+            string detail = fileOk ? Strings.F("ui_result_was_name", ("name", oldName)) : fallback;
             ResultItems.Add(new ExecutionResultItemViewModel(newName, fileOk, detail));
         }
         int count = ResultItems.Count(r => r.Succeeded);
-        ResultSummary = ok ? $"重新命名好 {count} 個檔案" : $"重新命名好 {count} 個，{renamed.Count - count} 個沒有改";
+        ResultSummary = ok
+            ? Strings.Count("ui_result_renamed_count", count)
+            : Strings.F("ui_result_renamed_some", ("done", count), ("unchanged", renamed.Count - count));
     }
 
     private static string FirstLine(string? text) =>
@@ -828,14 +830,27 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     /// <summary>▶ 繼續: runs a parked task again from the first file that was not done.</summary>
     public async Task ResumeParkedAsync(ParkedTaskResumePresentation task)
     {
-        if (IsExecuting) return;
+        if (IsExecuting)
+        {
+            // The task was claimed; return it to parked rather than losing it when another conversion runs.
+            try { new HistoryPresentationController().ReturnToParked(task.TaskId, Strings.T("ui_history_parked_busy_with_other_files_resume"), task.StartIndex); }
+            catch { /* best effort: the history page shows whatever storage holds */ }
+            return;
+        }
         ResetToStart();
         _workspace.AddFiles(task.Files);
         SyncFilesFromWorkspace();
         UpdateAvailableActions();
         State = ConvertWorkflowState.ActionCatalog;
         ActionItemViewModel? action = FindAction(task.Command);
-        if (action is null) return;
+        if (action is null)
+        {
+            // The task is already out of 待繼續; put it back rather than lose it silently.
+            ResetToStart();
+            try { new HistoryPresentationController().ReturnToParked(task.TaskId, Strings.T("ui_history_parked_cannot_run_here"), task.StartIndex); }
+            catch { /* best effort: the history page shows whatever storage holds */ }
+            return;
+        }
         SelectAction(action);
         Options.SetImageFormatFromCommand(task.Command); // after SelectAction, which loads the defaults
         await StartConversionAsync(task.TaskId, task.StartIndex);
@@ -949,28 +964,24 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     public bool ProtectedNeedsPassword => SelectedFiles.Any(f => ProtectionOf(f.Path) == PdfProtection.OpenPassword);
 
     /// <summary>One sentence above the cards: what is protected and what has to wait for 解密.</summary>
-    public string ProtectedPdfText
+    public string ProtectedPdfText => BuildProtectedPdfText();
+
+    private string BuildProtectedPdfText()
     {
-        get
+        List<FileItemViewModel> files = GetProtectedFiles();
+        if (files.Count == 0) return "";
+        bool open = files.Any(f => ProtectionOf(f.Path) == PdfProtection.OpenPassword);
+        bool onlyRestricted = !open;
+        if (SelectedFiles.Count == 1)
         {
-            List<FileItemViewModel> files = GetProtectedFiles();
-            if (files.Count == 0) return "";
-            bool open = files.Any(f => ProtectionOf(f.Path) == PdfProtection.OpenPassword);
-            bool onlyRestricted = !open;
-            const string blocked = "合併、壓縮、翻譯、列印要先解密";
-            if (SelectedFiles.Count == 1)
-            {
-                return onlyRestricted
-                    ? $"這個 PDF 打開不用密碼，但設了使用限制（例如不能列印或複製文字）。{blocked}，解密不用密碼。"
-                    : $"這個 PDF 要密碼才能開啟。{blocked}；分割、轉成圖片會在執行時問密碼。";
-            }
-            string names = files.Count <= 2
-                ? string.Join("、", files.Select(f => f.Name))
-                : string.Join("、", files.Take(2).Select(f => f.Name)) + " 等";
-            if (files.Count == SelectedFiles.Count)
-                return $"這 {files.Count} 個 PDF 都有密碼或使用限制。{blocked}。";
-            return $"{SelectedFiles.Count} 個 PDF 中有 {files.Count} 個有密碼或使用限制（{names}）。解密只會處理{(files.Count == 1 ? "這個檔案" : "這些檔案")}；{blocked}。";
+            return Strings.T(onlyRestricted ? "ui_notice_protected_one_restricted" : "ui_notice_protected_one_password");
         }
+        if (files.Count == SelectedFiles.Count)
+            return Strings.F("ui_notice_protected_all", ("count", files.Count));
+        return Strings.F("ui_notice_protected_some",
+            ("total", SelectedFiles.Count),
+            ("count", files.Count),
+            ("names", Strings.ShortList(files.Select(f => f.Name).ToList())));
     }
 
     /// <summary>「先解密」 in the note above the cards.</summary>
@@ -1086,12 +1097,10 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         if (!OnlyRename) return "";
         List<string> unknown = SelectedFiles.Select(f => f.Extension).Where(e => DomainOf(e) == "file").Distinct().ToList();
         if (unknown.Count == 0)
-            return "這些檔案的種類不同，沒有能一起做的轉換，所以只能一起重新命名。";
+            return Strings.T("ui_notice_these_files_are_different_types");
         string kind = KindName(unknown);
         bool mixed = unknown.Count < SelectedFiles.Select(f => f.Extension).Distinct().Count();
-        return mixed
-            ? $"這些檔案裡有{kind}，Clickra 還沒有處理{kind}的功能，所以只能一起重新命名。"
-            : $"Clickra 還沒有處理{kind}的功能，目前只能重新命名。";
+        return Strings.F(mixed ? "ui_notice_some_unsupported" : "ui_notice_all_unsupported", ("kind", kind));
     }
 
     /// <summary>影片／音訊／壓縮檔 when all unknown extensions are one such kind; otherwise 「這種檔案（.xyz）」.</summary>
@@ -1099,14 +1108,16 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     {
         var kinds = extensions.Select(KindOf).Distinct().ToList();
         if (kinds.Count == 1 && kinds[0] is not null) return kinds[0]!;
-        return extensions.Count == 1 ? $"這種檔案（{extensions.First()}）" : $"這幾種檔案（{string.Join("、", extensions)}）";
+        return extensions.Count == 1
+            ? Strings.F("ui_notice_kind_single", ("ext", extensions.First()))
+            : Strings.F("ui_notice_kind_many", ("exts", Strings.List(extensions)));
     }
 
     private static string? KindOf(string ext) => ext.ToLowerInvariant() switch
     {
-        ".mp4" or ".mov" or ".avi" or ".mkv" or ".wmv" or ".m4v" or ".webm" or ".flv" => "影片",
-        ".mp3" or ".wav" or ".m4a" or ".flac" or ".aac" or ".ogg" or ".wma" => "音訊",
-        ".zip" or ".rar" or ".7z" or ".tar" or ".gz" => "壓縮檔",
+        ".mp4" or ".mov" or ".avi" or ".mkv" or ".wmv" or ".m4v" or ".webm" or ".flv" => Strings.T("ui_notice_videos"),
+        ".mp3" or ".wav" or ".m4a" or ".flac" or ".aac" or ".ogg" or ".wma" => Strings.T("ui_notice_audio"),
+        ".zip" or ".rar" or ".7z" or ".tar" or ".gz" => Strings.T("ui_notice_archives"),
         _ => null,
     };
 
@@ -1119,12 +1130,15 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     /// </summary>
     public void SuggestFeature()
     {
-        var groups = SelectedFiles.GroupBy(f => f.Extension.Length > 0 ? f.Extension : "（沒有副檔名）")
-            .Select(g => $"{g.Key}（{g.Count()} 個）").ToList();
-        string types = groups.Count > 0 ? string.Join("、", groups) : "（還沒放檔案）";
-        string subjectTypes = SelectedFiles.Count > 0 ? string.Join("、", SelectedFiles.Select(f => f.Extension).Where(e => e.Length > 0).Distinct()) : "";
-        string subject = subjectTypes.Length > 0 ? $"Clickra 功能建議：{subjectTypes}" : "Clickra 功能建議";
-        string body = $"我想做的是：\n\n\n──\n檔案類型：{types}\nClickra 版本：{ExternalOpen.AppVersion}\n（不會附上檔名或檔案）";
+        // Only the kinds of file; how many of each says nothing about the feature (2026-11-20).
+        var groups = SelectedFiles.Select(f => f.Extension.Length > 0 ? f.Extension : Strings.T("ui_suggest_no_extension"))
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        string types = groups.Count > 0 ? Strings.List(groups) : Strings.T("ui_suggest_no_files");
+        var subjectTypes = SelectedFiles.Select(f => f.Extension).Where(e => e.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        string subject = subjectTypes.Count > 0
+            ? Strings.F("ui_suggest_subject_types", ("types", Strings.List(subjectTypes)))
+            : Strings.T("ui_suggest_subject");
+        string body = Strings.F("ui_suggest_body", ("types", types), ("version", ExternalOpen.AppVersion));
         ExternalOpen.Mail(subject, body);
     }
 
@@ -1138,7 +1152,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         RecentItems.Clear();
         try
         {
-            var feed = HistoryFeed.Load(SettingsController.Language, completedLimit: 3);
+            var feed = HistoryFeed.Load(Strings.Language, completedLimit: 3);
             foreach (var item in feed.OfKind(HistoryItemKind.Completed).Take(3))
             {
                 RecentItems.Add(new HistoryRowViewModel(item, this));

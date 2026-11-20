@@ -228,9 +228,9 @@ namespace Clickra.UI
             bool isMicrosoftEngine = engineMode == OfficeEnginePreference.Microsoft;
             bool isLibreOfficeEngine = engineMode == OfficeEnginePreference.LibreOffice;
 
-            bool isLibreOfficeSetupRunning;
-            int downloadProgress;
-            string downloadStatus;
+            bool isLibreOfficeSetupRunning = false;
+            int downloadProgress = 0;
+            string downloadStatus = string.Empty;
             lock (_libreOfficeDownloadLock)
             {
                 isLibreOfficeSetupRunning = _libreOfficeDownloadInProgress;
@@ -284,49 +284,12 @@ namespace Clickra.UI
 
             if (_subFont != null)
             {
-                Color statusColor;
-                string statusText;
-
-                if (isMicrosoftEngine)
+                (Color statusColor, string statusText) = isMicrosoftEngine switch
                 {
-                    statusColor = officeReady ? Color.FromArgb(100, 220, 100) : Color.FromArgb(255, 90, 70);
-                    statusText = GetText(officeReady ? "setting_microsoft_ready" : "setting_microsoft_missing");
-                }
-                else if (isAutoEngine)
-                {
-                    if (officeReady)
-                    {
-                        statusColor = Color.FromArgb(100, 220, 100);
-                        statusText = string.Format(GetText("setting_engine_auto_using"), GetText("setting_engine_microsoft"));
-                    }
-                    else if (libreOfficeReady)
-                    {
-                        statusColor = Color.FromArgb(100, 220, 100);
-                        statusText = string.Format(GetText("setting_engine_auto_using"), GetText("setting_engine_libreoffice"));
-                    }
-                    else
-                    {
-                        statusColor = Color.FromArgb(255, 90, 70);
-                        statusText = GetText("setting_engine_none_available");
-                    }
-                }
-                else
-                {
-                    statusColor = isLibreOfficeSetupRunning
-                        ? Color.FromArgb(190, 190, 190)
-                        : removalPendingRestart
-                            ? Color.FromArgb(255, 190, 90)
-                        : libreOfficeReady
-                            ? Color.FromArgb(100, 220, 100)
-                            : Color.FromArgb(255, 90, 70);
-                    statusText = isLibreOfficeSetupRunning
-                        ? downloadStatus
-                        : removalPendingRestart
-                            ? GetText("setting_libreoffice_removal_pending")
-                        : libreOfficeReady
-                        ? $"{GetText("setting_libreoffice_ready")}: {ShortPath(resolvedLibreOffice, 62)}"
-                        : GetText("setting_libreoffice_missing");
-                }
+                    true => ResolveMicrosoftEngineStatus(officeReady),
+                    false when isAutoEngine => ResolveAutoEngineStatus(officeReady, libreOfficeReady),
+                    _ => ResolveLibreOfficeStatus(isLibreOfficeSetupRunning, removalPendingRestart, libreOfficeReady, downloadStatus, resolvedLibreOffice)
+                };
 
                 if (!(isLibreOfficeEngine && isLibreOfficeSetupRunning))
                 {
@@ -481,8 +444,6 @@ namespace Clickra.UI
             }
 
             SettingDescriptor pdfLevelDescriptor = SettingsPresentationController.Shared.PdfCompressionLevelDescriptor;
-            SettingDescriptor stripFontsDescriptor = SettingsPresentationController.Shared.PdfCompressionStripFontsDescriptor;
-            SettingDescriptor minifyContentDescriptor = SettingsPresentationController.Shared.PdfCompressionMinifyContentDescriptor;
             if (wideSettings)
             {
                 int cardY = (int)y;
@@ -512,16 +473,6 @@ namespace Clickra.UI
                 DrawCompressSlider(g, pdfX, pdfSliderY, sliderWidth, pdfLevelDescriptor, compressLevel, pdfLevelRange);
                 AddLayoutHitRect(83, SettingsLayout.SliderHitRect(pdfX, pdfSliderY, sliderWidth));
 
-                bool stripFonts = SettingsPresentationController.Shared.ReadBool(stripFontsDescriptor);
-                bool minifyContent = SettingsPresentationController.Shared.ReadBool(minifyContentDescriptor);
-                int pdfSecondaryX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1)
-                    + SettingsLayout.CardPadding;
-                int pdfSecondaryY = pdfCard.Y + SettingsLayout.CompressionSecondaryTop;
-                DrawCompactToggleRow(stripFontsDescriptor.TitleKey, stripFonts, 81,
-                    pdfSecondaryX, pdfSecondaryY, columnInnerWidth);
-                DrawCompactToggleRow(minifyContentDescriptor.TitleKey, minifyContent, 82,
-                    pdfSecondaryX, pdfSecondaryY + SettingsLayout.OverviewRowGap, columnInnerWidth);
-
                 y += SettingsLayout.CompressionCardHeight + SettingsLayout.CardGap;
             }
             else
@@ -544,15 +495,6 @@ namespace Clickra.UI
                 DrawCompressSlider(g, pdfCompressionX, pdfCompressionY, sliderW, pdfLevelDescriptor, compressLevel, pdfLevelRange);
                 AddLayoutHitRect(83, SettingsLayout.SliderHitRect((int)pdfCompressionX, (int)pdfCompressionY, (int)sliderW));
                 pdfCompressionY += SettingsLayout.SliderSectionHeight;
-                DrawGroupSubheader("setting_pdf_compress_group_other", pdfCompressionY);
-                pdfCompressionY += 24f;
-
-                bool stripFonts = SettingsPresentationController.Shared.ReadBool(stripFontsDescriptor);
-                DrawToggleSection(stripFontsDescriptor.TitleKey, stripFontsDescriptor.DescriptionKey ?? string.Empty, stripFonts, 81, pdfCompressionY);
-                pdfCompressionY += SettingsLayout.CompactToggleSectionHeight;
-                bool minifyContent = SettingsPresentationController.Shared.ReadBool(minifyContentDescriptor);
-                DrawToggleSection(minifyContentDescriptor.TitleKey, minifyContentDescriptor.DescriptionKey ?? string.Empty, minifyContent, 82, pdfCompressionY);
-                pdfCompressionY += SettingsLayout.CompactToggleSectionHeight;
                 y = pdfCompressionY + SettingsLayout.CardGap;
             }
 
@@ -692,23 +634,12 @@ namespace Clickra.UI
         {
             float s = _dpiScale;
             bool isHovered = _hoveredElement == elementId;
-            Color btnBg;
-            Color btnBorder;
-            Color textColor;
-
-            if (selected)
-            {
-                btnBg = UIHelper.GetSystemColorizationColor();
-                if (isHovered) btnBg = UIHelper.Lighten(btnBg, 0.15f);
-                btnBorder = btnBg;
-                textColor = Color.White;
-            }
-            else
-            {
-                btnBg = isHovered ? Color.FromArgb(55, 55, 55) : Color.FromArgb(40, 40, 40);
-                btnBorder = isHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(60, 60, 60);
-                textColor = isHovered ? Color.White : Color.FromArgb(200, 200, 200);
-            }
+            Color selectedBg = isHovered ? UIHelper.Lighten(UIHelper.GetSystemColorizationColor(), 0.15f) : UIHelper.GetSystemColorizationColor();
+            Color unselectedBg = isHovered ? Color.FromArgb(55, 55, 55) : Color.FromArgb(40, 40, 40);
+            Color unselectedBorder = isHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(60, 60, 60);
+            Color btnBg = selected ? selectedBg : unselectedBg;
+            Color btnBorder = selected ? selectedBg : unselectedBorder;
+            Color textColor = selected || isHovered ? Color.White : Color.FromArgb(200, 200, 200);
 
             int h = 30;
             using var path = UIHelper.GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, h * s), 4 * s);
@@ -835,6 +766,41 @@ namespace Clickra.UI
                 (stopX - dotRadius) * s, (trackY + trackHeight / 2f - dotRadius) * s,
                 dotRadius * 2f * s, dotRadius * 2f * s);
             return dotRadius;
+        }
+
+        private static (Color Color, string Text) ResolveMicrosoftEngineStatus(bool officeReady) =>
+            (officeReady ? Color.FromArgb(100, 220, 100) : Color.FromArgb(255, 90, 70),
+             GetText(officeReady ? "setting_microsoft_ready" : "setting_microsoft_missing"));
+
+        private static (Color Color, string Text) ResolveAutoEngineStatus(bool officeReady, bool libreOfficeReady)
+        {
+            if (officeReady)
+            {
+                return (Color.FromArgb(100, 220, 100), string.Format(GetText("setting_engine_auto_using"), GetText("setting_engine_microsoft")));
+            }
+            if (libreOfficeReady)
+            {
+                return (Color.FromArgb(100, 220, 100), string.Format(GetText("setting_engine_auto_using"), GetText("setting_engine_libreoffice")));
+            }
+            return (Color.FromArgb(255, 90, 70), GetText("setting_engine_none_available"));
+        }
+
+        private static (Color Color, string Text) ResolveLibreOfficeStatus(
+            bool isSetupRunning, bool isRemovalPending, bool ready, string downloadStatus, string resolvedPath)
+        {
+            if (isSetupRunning)
+            {
+                return (Color.FromArgb(190, 190, 190), downloadStatus);
+            }
+            if (isRemovalPending)
+            {
+                return (Color.FromArgb(255, 190, 90), GetText("setting_libreoffice_removal_pending"));
+            }
+            if (ready)
+            {
+                return (Color.FromArgb(100, 220, 100), $"{GetText("setting_libreoffice_ready")}: {ShortPath(resolvedPath, 62)}");
+            }
+            return (Color.FromArgb(255, 90, 70), GetText("setting_libreoffice_missing"));
         }
     }
 }

@@ -197,31 +197,27 @@ static partial class TestSuite
             Assert.Equal(SettingsController.Language, (string)defaultPlan.NormalizedOptions[ExecutionLocalizationOptions.LanguageKey]);
         });
 
-        runner.Run("Use case options injection: PdfCompression honors caller level, strip_fonts, and minify_content", () =>
+        runner.Run("Use case options injection: PdfCompression honors caller level and saved level", () =>
         {
             var useCase = new CompressPdfUseCase();
-            bool targetStripFonts = !SettingsController.PdfCompressionStripFonts;
-            bool targetMinify = !SettingsController.PdfCompressionMinifyContent;
             var requestWithOptions = new ConversionRequest(
                 CompressPdfUseCase.CommandName,
                 new[] { SamplePdfFile },
                 new Dictionary<string, object>
                 {
-                    [CompressPdfUseCase.LevelOptionKey] = "high",
-                    ["strip_fonts"] = targetStripFonts,
-                    ["minify_content"] = targetMinify
+                    [CompressPdfUseCase.LevelOptionKey] = "high"
                 });
             ConversionPlan plan = useCase.Plan(requestWithOptions);
             Assert.Equal("high", (string)plan.NormalizedOptions[CompressPdfUseCase.LevelOptionKey]);
-            Assert.True((bool)plan.NormalizedOptions["strip_fonts"] == targetStripFonts, $"strip_fonts should be {targetStripFonts}");
-            Assert.True((bool)plan.NormalizedOptions["minify_content"] == targetMinify, $"minify_content should be {targetMinify}");
 
             var requestWithoutOptions = new ConversionRequest(
                 CompressPdfUseCase.CommandName,
                 new[] { SamplePdfFile });
             ConversionPlan defaultPlan = useCase.Plan(requestWithoutOptions);
-            Assert.True((bool)defaultPlan.NormalizedOptions["strip_fonts"] == SettingsController.PdfCompressionStripFonts, "Default strip_fonts should match SettingsController");
-            Assert.True((bool)defaultPlan.NormalizedOptions["minify_content"] == SettingsController.PdfCompressionMinifyContent, "Default minify_content should match SettingsController");
+            Assert.True(defaultPlan.NormalizedOptions.ContainsKey(CompressPdfUseCase.LevelOptionKey),
+                "Without a caller level the saved level must be injected.");
+            Assert.False(defaultPlan.NormalizedOptions.ContainsKey("strip_fonts"),
+                "Fonts are never removed, so no strip_fonts option is injected.");
         });
 
         runner.Run("Use case options injection: PdfTranslation honors caller target_language, language, and data_dir", () =>

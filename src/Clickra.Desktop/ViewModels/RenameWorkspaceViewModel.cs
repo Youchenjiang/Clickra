@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using Clickra.Core.Modules.File.BatchRename.Application;
 using Clickra.Core.Modules.File.BatchRename.Domain;
+using Clickra.Desktop.L10n;
 
 namespace Clickra.Desktop.ViewModels;
 
@@ -18,10 +19,10 @@ public sealed class RenamePreviewRow(RenameItem item)
     public bool IsProblem => !IsChanged && !IsUnchanged;
     public string Problem { get; } = item.Status switch
     {
-        RenameItemStatus.ConflictExistingFile => "資料夾裡已經有同名檔案",
-        RenameItemStatus.ConflictDuplicateTarget => "和清單中另一個檔案同名",
-        RenameItemStatus.InvalidFilename => "含有不允許的字元",
-        RenameItemStatus.MissingSourceFile => "找不到這個檔案",
+        RenameItemStatus.ConflictExistingFile => Strings.T("ui_rename_a_file_with_this_name"),
+        RenameItemStatus.ConflictDuplicateTarget => Strings.T("ui_rename_same_name_as_another_file"),
+        RenameItemStatus.InvalidFilename => Strings.T("ui_rename_contains_characters_that_arent_allowed"),
+        RenameItemStatus.MissingSourceFile => Strings.T("ui_rename_cant_find_this_file"),
         _ => "",
     };
 }
@@ -88,14 +89,14 @@ public sealed class RenameWorkspaceViewModel : ViewModelBase
         get
         {
             if (_plan is null || _files.Count == 0) return "";
-            if (ProblemCount > 0) return $"{ProblemCount} 個有問題，請修改規則";
-            if (ChangeCount == 0) return "檔名都還沒有改變";
-            if (ChangeCount == _files.Count) return $"{ChangeCount} 個都會改名";
-            return $"{ChangeCount} 個會改名，{_files.Count - ChangeCount} 個不變";
+            if (ProblemCount > 0) return Strings.F("ui_rename_problems", ("count", ProblemCount));
+            if (ChangeCount == 0) return Strings.T("ui_rename_no_names_have_changed_yet");
+            if (ChangeCount == _files.Count) return Strings.F("ui_rename_all_change", ("count", ChangeCount));
+            return Strings.F("ui_rename_some_change", ("count", ChangeCount), ("unchanged", _files.Count - ChangeCount));
         }
     }
 
-    public string RenameButtonText => ChangeCount > 0 ? $"重新命名 {ChangeCount} 個檔案" : "重新命名";
+    public string RenameButtonText => ChangeCount > 0 ? Strings.Count("ui_rename_button", ChangeCount) : Strings.T("ui_catalog_rename");
 
     /// <summary>Options and the exact plan for Core, so the run matches the preview.</summary>
     public Dictionary<string, object> BuildExecutionOptions()

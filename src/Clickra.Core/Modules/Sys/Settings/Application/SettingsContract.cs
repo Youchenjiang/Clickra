@@ -19,8 +19,6 @@ public static class SettingsContract
     public const string QuietMode = ClickraSettings.QuietMode;
     public const string Notifications = ClickraSettings.Notification;
     public const string PdfCompressionImageLevel = ClickraSettings.PdfCompressImageLevel;
-    public const string PdfCompressionStripFonts = ClickraSettings.PdfCompressStripFonts;
-    public const string PdfCompressionMinifyContent = ClickraSettings.PdfCompressMinifyContent;
     public const string ImageCompressionLevel = ClickraSettings.ImageCompressLevel;
     public const string ImageCompressionMaxDimension = ClickraSettings.ImageCompressMaxDimension;
     public const string ParkedTaskRetention = ClickraSettings.ParkedTaskRetention;

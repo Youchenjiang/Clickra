@@ -153,12 +153,10 @@ namespace Clickra.UI;
             }
         }
 
-        /// <summary>Handles PDF compression settings: slider drag start and option toggles.</summary>
+        /// <summary>Handles the PDF compression level slider (fonts are never removed, so there are no other toggles).</summary>
         static void HandleCompressSettingsClick(IntPtr hwnd, int element, int adjMouseX)
         {
             SettingDescriptor levelDescriptor = SettingsPresentationController.Shared.PdfCompressionLevelDescriptor;
-            SettingDescriptor stripFontsDescriptor = SettingsPresentationController.Shared.PdfCompressionStripFontsDescriptor;
-            SettingDescriptor minifyContentDescriptor = SettingsPresentationController.Shared.PdfCompressionMinifyContentDescriptor;
             if (element == 83)
             {
                 // PDF compress slider clicked — snap to nearest stop via equal-width segments + enable drag
@@ -173,18 +171,6 @@ namespace Clickra.UI;
                 ApplyPdfCompressLevel(hwnd, newLevel);
                 _isDraggingPdfSlider = true;
                 SetCapture(hwnd);
-            }
-            else if (element == 81)
-            {
-                bool current = SettingsPresentationController.Shared.ReadBool(stripFontsDescriptor);
-                SettingsPresentationController.Shared.WriteBool(stripFontsDescriptor, !current);
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            else if (element == 82)
-            {
-                bool current = SettingsPresentationController.Shared.ReadBool(minifyContentDescriptor);
-                SettingsPresentationController.Shared.WriteBool(minifyContentDescriptor, !current);
-                InvalidateRect(hwnd, IntPtr.Zero, false);
             }
         }
 

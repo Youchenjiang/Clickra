@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Clickra.Shared;
+using Clickra.Desktop.L10n;
 
 namespace Clickra.Desktop.ViewModels;
 
@@ -16,30 +17,30 @@ public static class ConvertActionCatalog
     private const string PrintGeometry = "M6,9 V3 H18 V9 M6,18 H18 V21 H6 Z M4,9 H20 V17 H4 Z";
     private const string RenameGeometry = "M3,17.25 V21 H6.75 L17.81,9.94 L14.06,6.19 Z";
 
-    private const string ToPdfTitle = "轉成 PDF";
+    private static string ToPdfTitle => Strings.T("ui_catalog_convert_to_pdf");
 
     public static IReadOnlyList<ActionItemViewModel> GetActions()
     {
         return
         [
-            CreateAction("compress-pdf", "壓縮", "把檔案壓縮成較小的 PDF", "壓縮 PDF", CompressGeometry),
-            CreateAction("merge-pdf", "合併", "把這些檔案合併成一份 PDF", "合併 PDF", MergeGeometry),
-            CreateAction("split-pdf", "分割", "把每個檔案拆成多份 PDF", "分割 PDF", SplitGeometry),
-            CreateAction("pdf2img", "轉成圖片", "把每一頁轉成一張圖片", "PDF → 圖片", ImgGeometry),
-            CreateAction("translate-pdf", "翻譯", "把內容翻譯成其他語言", "翻譯 PDF", TranslateGeometry),
-            CreateAction("decrypt-pdf", "解密", "把檔案的密碼移除", "解密 PDF", DecryptGeometry),
-            CreateAction("print-pdf", "列印", "把檔案送到印表機列印", "列印 PDF", PrintGeometry),
-            CreateAction("word2pdf", ToPdfTitle, "把文件轉成 PDF", "Word → PDF", DocGeometry),
-            CreateAction("excel2pdf", ToPdfTitle, "把試算表轉成 PDF", "Excel → PDF", DocGeometry),
-            CreateAction("ppt2pdf", ToPdfTitle, "把簡報轉成 PDF", "PPT → PDF", DocGeometry),
-            CreateAction("md2pdf", ToPdfTitle, "把 Markdown 轉成 PDF", "MD → PDF", DocGeometry),
-            CreateAction("md2word", "轉成 Word", "把 Markdown 轉成 Word", "MD → Word", DocGeometry),
-            CreateAction("img2pdf", "分別轉成 PDF", "把每張圖片各轉成一個 PDF", "圖片 → PDF", DocGeometry),
-            CreateAction("img-merge", "合成一份 PDF", "把這些圖片合成一份 PDF", "合併圖片", MergeGeometry),
-            CreateAction("img-stitch", "拼成長圖", "把圖片上下接成一張長圖", "拼接圖片", ImgGeometry),
-            CreateAction("img-compress", "壓縮圖片", "把圖片壓縮成較小的檔案", "壓縮圖片", CompressGeometry),
-            CreateAction("img-to-png", "轉換格式", "把圖片轉成其他格式", "轉換圖片格式", ImgGeometry),
-            CreateAction("batch-rename", "重新命名", "把檔案改成新的名稱", "批次重新命名", RenameGeometry),
+            CreateAction("compress-pdf", Strings.T("ui_catalog_compress"), Strings.T("ui_catalog_make_pdfs_smaller"), Strings.T("ui_feature_compress_pdf"), CompressGeometry),
+            CreateAction("merge-pdf", Strings.T("ui_catalog_merge"), Strings.T("ui_catalog_combine_these_files_into_one"), Strings.T("ui_feature_merge_pdf"), MergeGeometry),
+            CreateAction("split-pdf", Strings.T("ui_catalog_split"), Strings.T("ui_catalog_split_each_file_into_several"), Strings.T("ui_feature_split_pdf"), SplitGeometry),
+            CreateAction("pdf2img", Strings.T("ui_catalog_convert_to_images"), Strings.T("ui_catalog_turn_each_page_into_an"), Strings.T("ui_feature_pdf_to_images"), ImgGeometry),
+            CreateAction("translate-pdf", Strings.T("ui_catalog_translate"), Strings.T("ui_catalog_translate_the_text_into_another"), Strings.T("ui_feature_translate_pdf"), TranslateGeometry),
+            CreateAction("decrypt-pdf", Strings.T("ui_catalog_decrypt"), Strings.T("ui_catalog_remove_the_password_or_usage"), Strings.T("ui_feature_decrypt_pdf"), DecryptGeometry),
+            CreateAction("print-pdf", Strings.T("ui_catalog_print"), Strings.T("ui_catalog_send_files_to_a_printer"), Strings.T("ui_feature_print_pdf"), PrintGeometry),
+            CreateAction("word2pdf", ToPdfTitle, Strings.T("ui_catalog_turn_documents_into_pdfs"), "Word → PDF", DocGeometry),
+            CreateAction("excel2pdf", ToPdfTitle, Strings.T("ui_catalog_turn_spreadsheets_into_pdfs"), "Excel → PDF", DocGeometry),
+            CreateAction("ppt2pdf", ToPdfTitle, Strings.T("ui_catalog_turn_presentations_into_pdfs"), "PPT → PDF", DocGeometry),
+            CreateAction("md2pdf", ToPdfTitle, Strings.T("ui_catalog_turn_markdown_into_pdf"), "MD → PDF", DocGeometry),
+            CreateAction("md2word", Strings.T("ui_catalog_convert_to_word"), Strings.T("ui_catalog_turn_markdown_into_word"), "MD → Word", DocGeometry),
+            CreateAction("img2pdf", Strings.T("ui_catalog_convert_each_to_pdf"), Strings.T("ui_catalog_turn_each_image_into_its"), Strings.T("ui_feature_images_to_pdf"), DocGeometry),
+            CreateAction("img-merge", Strings.T("ui_catalog_combine_into_one_pdf"), Strings.T("ui_catalog_put_these_images_into_one"), Strings.T("ui_feature_merge_images"), MergeGeometry),
+            CreateAction("img-stitch", Strings.T("ui_catalog_stitch_into_a_long_image"), Strings.T("ui_catalog_join_images_top_to_bottom"), Strings.T("ui_feature_stitch_images"), ImgGeometry),
+            CreateAction("img-compress", Strings.T("ui_feature_compress_images"), Strings.T("ui_catalog_make_images_smaller"), Strings.T("ui_feature_compress_images"), CompressGeometry),
+            CreateAction("img-to-png", Strings.T("ui_catalog_change_format"), Strings.T("ui_catalog_convert_images_to_another_format"), Strings.T("ui_feature_convert_image_format"), ImgGeometry),
+            CreateAction("batch-rename", Strings.T("ui_catalog_rename"), Strings.T("ui_catalog_give_files_new_names"), Strings.T("ui_feature_batch_rename"), RenameGeometry),
         ];
     }
 

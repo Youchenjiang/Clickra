@@ -2,6 +2,7 @@
      inside itself. Three columns: group name | setting name | control (decision log 2026-11-15).
      Values are not wired to Core yet (branch 7); only 外觀 takes effect so the tokens can be checked. -->
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Clickra.Desktop.L10n"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:Clickra.Desktop.Controls"
              xmlns:vm="using:Clickra.Desktop.ViewModels"
@@ -67,10 +68,10 @@
 
     <Grid RowDefinitions="Auto,12,*" Margin="0,0,0,24">
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-            <TextBlock Classes="h1" Text="設定" VerticalAlignment="Center" />
+            <TextBlock Classes="h1" Text="{l:T ui_settings_general_settings}" VerticalAlignment="Center" />
             <ListBox Grid.Column="1" Name="TabSwitch" Classes="segmented" SelectedIndex="0" Width="260">
-                <ListBoxItem Content="一般" FontSize="15" />
-                <ListBoxItem Content="功能預設值" FontSize="15" />
+                <ListBoxItem Content="{l:T ui_settings_general_general}" FontSize="15" />
+                <ListBoxItem Content="{l:T ui_settings_defaults_defaults}" FontSize="15" />
             </ListBox>
         </Grid>
 
@@ -81,40 +82,46 @@
                     <!-- ===== 一般 ===== -->
                     <StackPanel Name="GeneralPanel">
                         <Grid Classes="group" ColumnDefinitions="170,*">
-                            <TextBlock Classes="groupName" Text="一般" />
+                            <TextBlock Classes="groupName" Text="{l:T ui_settings_general_general}" />
                             <StackPanel Grid.Column="1">
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
                                     <StackPanel VerticalAlignment="Center" Spacing="2">
-                                        <TextBlock Text="轉好的檔案存到" />
+                                        <TextBlock Text="{l:T ui_settings_general_save_output_files_to}" />
                                         <TextBlock Classes="caption" Text="{Binding CustomOutputDirText}" IsVisible="{Binding HasCustomOutputDir}"
                                                    TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding CustomOutputDirText}" />
                                     </StackPanel>
                                     <ComboBox Grid.Column="1" Name="OutputDirBox" SelectedIndex="{Binding OutputDirKind, Mode=OneWay}">
-                                        <ComboBoxItem Content="原本的資料夾" />
-                                        <ComboBoxItem Content="桌面" />
-                                        <ComboBoxItem Content="下載" />
-                                        <ComboBoxItem Content="自訂…" />
+                                        <ComboBoxItem Content="{l:T ui_settings_general_original_folder}" />
+                                        <ComboBoxItem Content="{l:T ui_settings_general_desktop}" />
+                                        <ComboBoxItem Content="{l:T ui_settings_general_downloads}" />
+                                        <ComboBoxItem Content="{l:T ui_settings_general_custom}" />
                                     </ComboBox>
                                 </Grid>
                                 <Border Classes="rowLine" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="介面語言" />
+                                    <TextBlock Text="{l:T ui_settings_general_interface_language}" />
                                     <ComboBox Grid.Column="1" SelectedIndex="{Binding LanguageIndex, Mode=TwoWay}">
-                                        <ComboBoxItem Content="跟隨系統" />
-                                        <ComboBoxItem Content="繁體中文" />
-                                        <ComboBoxItem Content="简体中文" />
+                                        <ComboBoxItem Content="{l:T ui_settings_general_use_system_setting}" />
+                                        <ComboBoxItem Content="{l:T ui_lang_zh_tw}" />
+                                        <ComboBoxItem Content="{l:T ui_lang_zh_cn}" />
                                         <ComboBoxItem Content="English" />
-                                        <ComboBoxItem Content="日本語" />
-                                        <ComboBoxItem Content="한국어" />
+                                        <ComboBoxItem Content="{l:T ui_lang_ja}" />
+                                        <ComboBoxItem Content="{l:T ui_lang_ko}" />
                                     </ComboBox>
+                                </Grid>
+                                <!-- Text is read once at start-up, so a new language applies after reopening (localization plan 3.2). -->
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" IsVisible="{Binding LanguageNeedsRestart}">
+                                    <TextBlock Classes="secondary" Text="{Binding RestartHint}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                    <Button Grid.Column="1" Classes="secondary" Content="{l:T ui_settings_language_restart_now}"
+                                            Command="{Binding RestartNow}" />
                                 </Grid>
                                 <Border Classes="rowLine" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="外觀" />
+                                    <TextBlock Text="{l:T ui_settings_general_appearance}" />
                                     <ComboBox Grid.Column="1" Name="AppearanceBox" SelectedIndex="{Binding ThemeIndex, Mode=TwoWay}">
-                                        <ComboBoxItem Content="淺色" />
-                                        <ComboBoxItem Content="深色" />
-                                        <ComboBoxItem Content="跟隨系統" />
+                                        <ComboBoxItem Content="{l:T ui_settings_general_light}" />
+                                        <ComboBoxItem Content="{l:T ui_settings_general_dark}" />
+                                        <ComboBoxItem Content="{l:T ui_settings_general_use_system_setting}" />
                                     </ComboBox>
                                 </Grid>
                             </StackPanel>
@@ -122,36 +129,24 @@
 
                         <Border Classes="groupLine" />
                         <Grid Classes="group" ColumnDefinitions="170,*">
-                            <TextBlock Classes="groupName" Text="行為" />
+                            <TextBlock Classes="groupName" Text="{l:T ui_settings_behavior_behavior}" />
                             <StackPanel Grid.Column="1">
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="從右鍵選單執行時不顯示視窗" />
+                                    <TextBlock Text="{l:T ui_settings_behavior_dont_show_a_window_when}" />
                                     <CheckBox Grid.Column="1" IsChecked="{Binding QuietMode}" />
                                 </Grid>
                                 <Border Classes="rowLine" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="處理完成時通知我" />
+                                    <TextBlock Text="{l:T ui_settings_behavior_notify_me_when_processing_is}" />
                                     <CheckBox Grid.Column="1" IsChecked="{Binding NotifyWhenDone}" />
                                 </Grid>
                                 <Border Classes="rowLine" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="處理中關閉視窗時" />
+                                    <TextBlock Text="{l:T ui_settings_behavior_when_closing_during_processing}" />
                                     <ComboBox Grid.Column="1" SelectedIndex="{Binding CloseRunningIndex, Mode=TwoWay}">
-                                        <ComboBoxItem Content="每次詢問（預設）" />
-                                        <ComboBoxItem Content="在背景繼續" />
-                                        <ComboBoxItem Content="停止處理" />
-                                    </ComboBox>
-                                </Grid>
-                                <Border Classes="rowLine" />
-                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="暫停的工作保留" />
-                                    <ComboBox Grid.Column="1" SelectedIndex="{Binding RetentionIndex, Mode=TwoWay}">
-                                        <ComboBoxItem Content="1 天" />
-                                        <ComboBoxItem Content="3 天" />
-                                        <ComboBoxItem Content="7 天（預設）" />
-                                        <ComboBoxItem Content="14 天" />
-                                        <ComboBoxItem Content="30 天" />
-                                        <ComboBoxItem Content="不自動刪除" />
+                                        <ComboBoxItem Content="{l:T ui_settings_behavior_ask_every_time_default}" />
+                                        <ComboBoxItem Content="{l:T ui_close_continue_in_background}" />
+                                        <ComboBoxItem Content="{l:T ui_settings_behavior_stop}" />
                                     </ComboBox>
                                 </Grid>
                             </StackPanel>
@@ -162,19 +157,19 @@
                         <Panel Name="ContextMenuGroup">
                         <Border Name="ContextMenuHighlight" Classes="linkHighlight" />
                         <Grid Classes="group" ColumnDefinitions="170,*">
-                            <TextBlock Classes="groupName" Text="右鍵選單" />
+                            <TextBlock Classes="groupName" Text="{l:T ui_settings_menu_right_click_menu}" />
                             <StackPanel Grid.Column="1">
                                 <!-- Spec 4.4: one row = name + live summary, master switch, then a chevron that
                                      expands the checklist in place. Changes apply at once; no save step. -->
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto,Auto">
                                     <StackPanel VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
-                                        <TextBlock Text="在檔案總管右鍵選單顯示 Clickra" FontSize="16" TextWrapping="Wrap" />
-                                        <TextBlock Classes="caption" Name="MenuSummary" Text="18 項全部顯示（預設）" />
+                                        <TextBlock Text="{l:T ui_settings_menu_show_clickra_in_the_file}" FontSize="16" TextWrapping="Wrap" />
+                                        <TextBlock Classes="caption" Name="MenuSummary" />
                                     </StackPanel>
                                     <CheckBox Grid.Column="1" Name="MenuEnabledBox" IsChecked="True" />
                                     <Button Grid.Column="2" Classes="subtle" Name="MenuExpandButton" Width="44" Height="44"
                                             Padding="0" Margin="4,0,-12,0" HorizontalContentAlignment="Center"
-                                            ToolTip.Tip="選擇要顯示的功能" AutomationProperties.Name="選擇要顯示的功能">
+                                            ToolTip.Tip="{l:T ui_settings_menu_choose_what_to_show}" AutomationProperties.Name="{l:T ui_settings_menu_choose_what_to_show}">
                                         <Viewbox Name="MenuChevron" Classes="ic" Width="20" Height="20" RenderTransformOrigin="50%,50%">
                                             <Canvas Width="24" Height="24">
                                                 <Path Data="M6,9 L12,15 L18,9" Stroke="{DynamicResource Clk.TextSecondary}" />
@@ -195,24 +190,24 @@
 
                         <Border Classes="groupLine" />
                         <Grid Classes="group" ColumnDefinitions="170,*">
-                            <TextBlock Classes="groupName" Text="關於" />
+                            <TextBlock Classes="groupName" Text="{l:T ui_settings_about_about}" />
                             <!-- One row: version on the left, three icon buttons on the right (decision log 2026-11-15). -->
                             <Grid Grid.Column="1" Classes="settingRow" ColumnDefinitions="Auto,*,Auto" MinHeight="72">
                                 <Image Source="avares://Clickra.Desktop/Assets/clickra-64.png" Width="36" Height="36"
                                        VerticalAlignment="Center" />
                                 <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Spacing="2">
                                     <TextBlock Text="Clickra 4.0.0-preview.1" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Classes="caption" Text="所有處理都在這台電腦上完成" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Classes="caption" Text="{l:T ui_settings_about_everything_except_translation_runs_on}" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                     <!-- Generic code icon, not the GitHub logo. -->
-                                    <Button Classes="icon" Name="GitHubButton" ToolTip.Tip="GitHub 專案頁" AutomationProperties.Name="GitHub 專案頁">
+                                    <Button Classes="icon" Name="GitHubButton" ToolTip.Tip="{l:T ui_settings_about_github_project}" AutomationProperties.Name="{l:T ui_settings_about_github_project}">
                                         <Viewbox><Canvas Width="24" Height="24"><Path Data="M8.5,7 L3.5,12 L8.5,17 M15.5,7 L20.5,12 L15.5,17 M13.5,4.5 L10.5,19.5" /></Canvas></Viewbox>
                                     </Button>
-                                    <Button Classes="icon" Name="ViewLogsButton" ToolTip.Tip="檢視日誌" AutomationProperties.Name="檢視日誌">
+                                    <Button Classes="icon" Name="ViewLogsButton" ToolTip.Tip="{l:T ui_settings_about_view_log}" AutomationProperties.Name="{l:T ui_settings_about_view_log}">
                                         <Viewbox><Canvas Width="24" Height="24"><Path Data="M6.5,3.5 H14 L18.5,8 V20.5 H6.5 Z M14,3.5 V8 H18.5 M9.5,13 H15.5 M9.5,16.5 H13.5" /></Canvas></Viewbox>
                                     </Button>
-                                    <Button Classes="icon" Name="SendReportButton" ToolTip.Tip="寄送問題回報" AutomationProperties.Name="寄送問題回報">
+                                    <Button Classes="icon" Name="SendReportButton" ToolTip.Tip="{l:T ui_settings_about_send_a_problem_report}" AutomationProperties.Name="{l:T ui_settings_about_send_a_problem_report}">
                                         <Viewbox><Canvas Width="24" Height="24"><Path Data="M5.5,6 H18.5 A1.5,1.5 0 0 1 20,7.5 V16.5 A1.5,1.5 0 0 1 18.5,18 H5.5 A1.5,1.5 0 0 1 4,16.5 V7.5 A1.5,1.5 0 0 1 5.5,6 Z M4.5,7 L12,12.5 L19.5,7" /></Canvas></Viewbox>
                                     </Button>
                                 </StackPanel>
@@ -223,57 +218,47 @@
                     <!-- ===== 功能預設值：以功能名稱分組，選項名稱與控制項和動作頁相同（spec 4.10） ===== -->
                     <StackPanel Name="DefaultsPanel" IsVisible="False">
                         <Grid Classes="group" ColumnDefinitions="170,*">
-                            <TextBlock Classes="groupName" Text="壓縮 PDF" />
+                            <TextBlock Classes="groupName" Text="{l:T ui_feature_compress_pdf}" />
                             <StackPanel Grid.Column="1">
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto" MinHeight="68">
-                                    <TextBlock Text="壓縮程度" />
+                                    <TextBlock Text="{l:T ui_pdf_compress_compression}" />
                                     <controls:StepSlider Grid.Column="1" Name="PdfCompressSlider" SelectedIndex="{Binding PdfCompressionLevel, Mode=TwoWay}" />
-                                </Grid>
-                                <Border Classes="rowLine" />
-                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="精簡內容串流" />
-                                    <CheckBox Grid.Column="1" IsChecked="{Binding PdfMinifyContent}" />
-                                </Grid>
-                                <Border Classes="rowLine" />
-                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="移除內嵌字型" />
-                                    <CheckBox Grid.Column="1" IsChecked="{Binding PdfStripFonts}" />
                                 </Grid>
                             </StackPanel>
                         </Grid>
 
                         <Border Classes="groupLine" />
                         <Grid Classes="group" ColumnDefinitions="170,*">
-                            <TextBlock Classes="groupName" Text="翻譯 PDF" />
+                            <TextBlock Classes="groupName" Text="{l:T ui_feature_translate_pdf}" />
                             <StackPanel Grid.Column="1">
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="翻譯成" />
+                                    <TextBlock Text="{l:T ui_translate_translate_to}" />
                                     <ComboBox Grid.Column="1" SelectedIndex="{Binding TranslateLanguageIndex, Mode=TwoWay}">
-                                        <ComboBoxItem Content="繁體中文" />
-                                        <ComboBoxItem Content="简体中文" />
+                                        <ComboBoxItem Content="{l:T ui_lang_zh_tw}" />
+                                        <ComboBoxItem Content="{l:T ui_lang_zh_cn}" />
                                         <ComboBoxItem Content="English" />
-                                        <ComboBoxItem Content="日本語" />
-                                        <ComboBoxItem Content="한국어" />
+                                        <ComboBoxItem Content="{l:T ui_lang_ja}" />
+                                        <ComboBoxItem Content="{l:T ui_lang_ko}" />
                                     </ComboBox>
                                 </Grid>
                                 <Border Classes="rowLine" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="翻譯服務" />
-                                    <ComboBox Grid.Column="1" SelectedIndex="{Binding TranslateEngineIndex, Mode=TwoWay}"><ComboBoxItem Content="Google 翻譯" /><ComboBoxItem Content="自訂 AI 服務" /></ComboBox>
+                                    <TextBlock Text="{l:T ui_translate_translation_service}" />
+                                    <ComboBox Grid.Column="1" SelectedIndex="{Binding TranslateEngineIndex, Mode=TwoWay}"><ComboBoxItem Content="{l:T ui_translate_google_translate}" /><ComboBoxItem Content="{l:T ui_translate_custom_ai_service}" /></ComboBox>
                                 </Grid>
                                 <Border Classes="rowLine" IsVisible="{Binding IsCustomAi}" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto" IsVisible="{Binding IsCustomAi}">
-                                    <TextBlock Text="服務網址" />
+                                    <TextBlock Text="{l:T ui_translate_service_url}" />
                                     <TextBox Grid.Column="1" Text="{Binding AiEndpoint}" Width="260" PlaceholderText="https://api.openai.com/v1" />
                                 </Grid>
                                 <Border Classes="rowLine" IsVisible="{Binding IsCustomAi}" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto" IsVisible="{Binding IsCustomAi}">
-                                    <TextBlock Text="模型" />
-                                    <TextBox Grid.Column="1" Text="{Binding AiModel}" Width="260" PlaceholderText="例如 gpt-4o-mini" />
+                                    <TextBlock Text="{l:T ui_translate_model}" />
+                                    <TextBox Grid.Column="1" Text="{Binding AiModel}" Width="260" PlaceholderText="{l:T ui_translate_e_g_gpt_4o_mini}" />
                                 </Grid>
                                 <Border Classes="rowLine" IsVisible="{Binding IsCustomAi}" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto" IsVisible="{Binding IsCustomAi}">
-                                    <TextBlock Text="API 金鑰" />
+                                    <TextBlock Text="{l:T ui_translate_api_key}" />
                                     <TextBox Grid.Column="1" Text="{Binding AiApiKey}" Width="260" PasswordChar="●" RevealPassword="False" />
                                 </Grid>
                             </StackPanel>
@@ -281,20 +266,20 @@
 
                         <Border Classes="groupLine" />
                         <Grid Classes="group" ColumnDefinitions="170,*">
-                            <TextBlock Classes="groupName" Text="PDF → 圖片" />
+                            <TextBlock Classes="groupName" Text="{l:T ui_feature_pdf_to_images}" />
                             <StackPanel Grid.Column="1">
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="格式" />
+                                    <TextBlock Text="{l:T ui_pdf2img_format}" />
                                     <ComboBox Grid.Column="1" SelectedIndex="{Binding PdfImageFormatIndex, Mode=TwoWay}"><ComboBoxItem Content="PNG" /><ComboBoxItem Content="JPG" /><ComboBoxItem Content="WebP" /></ComboBox>
                                 </Grid>
                                 <Border Classes="rowLine" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="解析度" />
+                                    <TextBlock Text="{l:T ui_pdf2img_resolution}" />
                                     <ComboBox Grid.Column="1" ItemsSource="{Binding DpiChoices}" SelectedIndex="{Binding PdfImageDpiIndex, Mode=TwoWay}" />
                                 </Grid>
                                 <Border Classes="rowLine" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="所有頁面接成一張長圖" />
+                                    <TextBlock Text="{l:T ui_pdf2img_join_all_pages_into_one}" />
                                     <CheckBox Grid.Column="1" IsChecked="{Binding PdfImageStitch}" />
                                 </Grid>
                             </StackPanel>
@@ -302,15 +287,15 @@
 
                         <Border Classes="groupLine" />
                         <Grid Classes="group" ColumnDefinitions="170,*">
-                            <TextBlock Classes="groupName" Text="壓縮圖片" />
+                            <TextBlock Classes="groupName" Text="{l:T ui_feature_compress_images}" />
                             <StackPanel Grid.Column="1">
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto" MinHeight="68">
-                                    <TextBlock Text="壓縮程度" />
+                                    <TextBlock Text="{l:T ui_pdf_compress_compression}" />
                                     <controls:StepSlider Grid.Column="1" Name="ImageCompressSlider" SelectedIndex="{Binding ImageCompressionLevel, Mode=TwoWay}" />
                                 </Grid>
                                 <Border Classes="rowLine" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="最大邊長" />
+                                    <TextBlock Text="{l:T ui_img_compress_longest_side}" />
                                     <ComboBox Grid.Column="1" ItemsSource="{Binding MaxDimChoices}" SelectedIndex="{Binding ImageMaxDimIndex, Mode=TwoWay}" />
                                 </Grid>
                             </StackPanel>
@@ -321,17 +306,17 @@
                             <TextBlock Classes="groupName" Text="Markdown" />
                             <StackPanel Grid.Column="1">
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="文件範本" />
+                                    <TextBlock Text="{l:T ui_markdown_document_template}" />
                                     <ComboBox Grid.Column="1" SelectedIndex="{Binding MarkdownThemeIndex, Mode=TwoWay}">
-                                        <ComboBoxItem Content="預設" />
-                                        <ComboBoxItem Content="極簡" />
-                                        <ComboBoxItem Content="學術" />
-                                        <ComboBoxItem Content="Word 範本" ToolTip.Tip="在轉檔頁的 Markdown 動作選擇範本並按「設為預設值」" />
+                                        <ComboBoxItem Content="{l:T ui_markdown_default}" />
+                                        <ComboBoxItem Content="{l:T ui_markdown_minimal}" />
+                                        <ComboBoxItem Content="{l:T ui_markdown_academic}" />
+                                        <ComboBoxItem Content="{l:T ui_markdown_word_template}" ToolTip.Tip="{l:T ui_settings_defaults_choose_a_template_in_a}" />
                                     </ComboBox>
                                 </Grid>
                                 <Border Classes="rowLine" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="紙張" />
+                                    <TextBlock Text="{l:T ui_markdown_paper}" />
                                     <ComboBox Grid.Column="1" SelectedIndex="{Binding MarkdownPaperIndex, Mode=TwoWay}">
                                         <ComboBoxItem Content="A4" />
                                         <ComboBoxItem Content="Letter" />
@@ -339,48 +324,48 @@
                                 </Grid>
                                 <Border Classes="rowLine" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto" MinHeight="68">
-                                    <TextBlock Text="文字縮放" />
+                                    <TextBlock Text="{l:T ui_markdown_text_scale}" />
                                     <controls:StepSlider Grid.Column="1" Name="TextScaleSlider" SelectedIndex="{Binding MarkdownTextSizeIndex, Mode=TwoWay}" />
                                 </Grid>
                                 <Border Classes="rowLine" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="程式碼區塊配色" />
-                                    <ComboBox Grid.Column="1" SelectedIndex="{Binding MarkdownCodeIndex, Mode=TwoWay}"><ComboBoxItem Content="深色底" /><ComboBoxItem Content="淺色底" /></ComboBox>
+                                    <TextBlock Text="{l:T ui_markdown_code_block_colors}" />
+                                    <ComboBox Grid.Column="1" SelectedIndex="{Binding MarkdownCodeIndex, Mode=TwoWay}"><ComboBoxItem Content="{l:T ui_markdown_dark}" /><ComboBoxItem Content="{l:T ui_markdown_light}" /></ComboBox>
                                 </Grid>
                             </StackPanel>
                         </Grid>
 
                         <Border Classes="groupLine" />
                         <Grid Classes="group" ColumnDefinitions="170,*">
-                            <TextBlock Classes="groupName" Text="列印" />
+                            <TextBlock Classes="groupName" Text="{l:T ui_catalog_print}" />
                             <StackPanel Grid.Column="1">
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="印表機" />
+                                    <TextBlock Text="{l:T ui_print_printer}" />
                                     <ComboBox Grid.Column="1" ItemsSource="{Binding PrinterChoices}" SelectedIndex="{Binding PrintPrinterIndex, Mode=TwoWay}" MaxWidth="260" />
                                 </Grid>
                                 <Border Classes="rowLine" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="份數" />
+                                    <TextBlock Text="{l:T ui_print_copies}" />
                                     <NumericUpDown Grid.Column="1" Value="{Binding PrintCopies, Mode=TwoWay}" Minimum="1" Maximum="99" Increment="1" FormatString="0" Width="140" />
                                 </Grid>
                                 <Border Classes="rowLine" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="雙面" />
-                                    <ComboBox Grid.Column="1" SelectedIndex="{Binding PrintDuplexIndex, Mode=TwoWay}"><ComboBoxItem Content="單面" /><ComboBoxItem Content="雙面（長邊翻頁）" /><ComboBoxItem Content="雙面（短邊翻頁）" /></ComboBox>
+                                    <TextBlock Text="{l:T ui_print_two_sided}" />
+                                    <ComboBox Grid.Column="1" SelectedIndex="{Binding PrintDuplexIndex, Mode=TwoWay}"><ComboBoxItem Content="{l:T ui_print_one_sided}" /><ComboBoxItem Content="{l:T ui_print_two_sided_flip_on_long}" /><ComboBoxItem Content="{l:T ui_print_two_sided_flip_on_short}" /></ComboBox>
                                 </Grid>
                                 <Border Classes="rowLine" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="方向" />
-                                    <ComboBox Grid.Column="1" SelectedIndex="{Binding PrintOrientationIndex, Mode=TwoWay}"><ComboBoxItem Content="自動" /><ComboBoxItem Content="直向" /><ComboBoxItem Content="橫向" /></ComboBox>
+                                    <TextBlock Text="{l:T ui_print_orientation}" />
+                                    <ComboBox Grid.Column="1" SelectedIndex="{Binding PrintOrientationIndex, Mode=TwoWay}"><ComboBoxItem Content="{l:T ui_print_auto}" /><ComboBoxItem Content="{l:T ui_print_portrait}" /><ComboBoxItem Content="{l:T ui_print_landscape}" /></ComboBox>
                                 </Grid>
                                 <Border Classes="rowLine" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="縮放至紙張大小" />
+                                    <TextBlock Text="{l:T ui_print_fit_to_paper}" />
                                     <CheckBox Grid.Column="1" IsChecked="{Binding PrintFitToPage}" />
                                 </Grid>
                                 <Border Classes="rowLine" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="加深淺色文字" />
+                                    <TextBlock Text="{l:T ui_print_darken_light_text}" />
                                     <CheckBox Grid.Column="1" IsChecked="{Binding PrintDarkenText}" />
                                 </Grid>
                             </StackPanel>

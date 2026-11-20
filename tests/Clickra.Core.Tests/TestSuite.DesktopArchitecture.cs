@@ -13,6 +13,7 @@ static partial class TestSuite
         runner.RunGuard("Universal desktop: build script and manifest enforce standalone execution contracts", GuardDesktopBuildAndManifest);
         runner.RunGuard("Universal desktop: launcher preserves packaged fluent priority and isolates desktop preview contracts", GuardDesktopLauncherRouting);
         runner.RunGuard("Universal desktop: motion and shell navigation wire destination highlighting and dynamic motion preference contracts", GuardDesktopMotionAndNavigation);
+        runner.RunGuard("Universal desktop: history resume guards busy state and returns claimed tasks on concurrency", GuardDesktopResumeConcurrencyContracts);
     }
 
     private static void GuardDesktopProjectContracts()
@@ -128,5 +129,23 @@ static partial class TestSuite
         string noticesText = File.ReadAllText(noticesPath);
         Assert.True(noticesText.Contains("SIL OPEN FONT LICENSE Version 1.1", StringComparison.Ordinal),
             "THIRD-PARTY-NOTICES.txt must include full SIL OFL 1.1 text.");
+    }
+
+    private static void GuardDesktopResumeConcurrencyContracts()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string hostPath = Path.Combine(root, "src", DesktopProjectDir, "ViewModels", "HistoryRowHost.cs");
+        Assert.True(File.Exists(hostPath), "HistoryRowHost.cs must exist.");
+        string hostText = File.ReadAllText(hostPath);
+        Assert.True(hostText.Contains("if (IsBusy?.Invoke() == true)", StringComparison.Ordinal),
+            "HistoryRowHost must recheck busy state in deferred resume callbacks.");
+
+        string convertPath = Path.Combine(root, "src", DesktopProjectDir, "ViewModels", "ConvertViewModel.cs");
+        Assert.True(File.Exists(convertPath), "ConvertViewModel.cs must exist.");
+        string convertText = File.ReadAllText(convertPath);
+        Assert.True(convertText.Contains("ReturnToParked(task.TaskId", StringComparison.Ordinal),
+            "ConvertViewModel must return claimed tasks to parked when execution cannot proceed.");
     }
 }

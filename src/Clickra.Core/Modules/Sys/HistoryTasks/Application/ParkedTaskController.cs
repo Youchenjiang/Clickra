@@ -24,6 +24,13 @@ public static class ParkedTaskController
     public static void ResetRetention(string taskId) =>
         ClickraStorage.SetParkedRetentionOverride(taskId, null);
 
+    /// <summary>
+    /// Puts a task that was claimed for resume back into 待繼續 when the window cannot run it after all,
+    /// so the claim never loses the task.
+    /// </summary>
+    public static void ReturnToParked(string taskId, string reason, int nextIndex) =>
+        ClickraStorage.ParkTask(taskId, reason, nextIndex);
+
     /// <summary>Cancels one parked task using the storage-owned atomic bookkeeping transition.</summary>
     public static void Cancel(string taskId) => ClickraStorage.CancelParkedTask(taskId);
 
