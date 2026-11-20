@@ -1019,7 +1019,6 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         }
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("DeepSource", "CS-R1008", Justification = "Gracefully handles corrupted or unreadable PDF encryption")]
     private static PdfProtection ClassifyPdfProtection(string path)
     {
         try
@@ -1034,7 +1033,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             }
             return PdfProtection.Restricted;
         }
-        catch (Exception)
+        catch (Exception) // skipcq: CS-R1008
         {
             return PdfProtection.None;
         }
@@ -1059,7 +1058,6 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         }
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("DeepSource", "CS-R1008", Justification = "Gracefully handles directory access/permission errors")]
     private static IEnumerable<string> SafeEnumerateFiles(string dir)
     {
         try
@@ -1069,7 +1067,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
                 .OrderBy(f => Path.GetFileName(f), StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
         }
-        catch (Exception)
+        catch (Exception) // skipcq: CS-R1008
         {
             return Array.Empty<string>();
         }
