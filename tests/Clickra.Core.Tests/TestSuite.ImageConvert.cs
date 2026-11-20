@@ -188,7 +188,7 @@ static partial class TestSuite
                 string collision = Localization.T("error_image_output_collision", lang);
                 Assert.False(heic.Equals("error_heic_codec_missing", StringComparison.Ordinal), $"heic error message missing for {lang}.");
                 Assert.False(heicDecoder.Equals("error_heic_decoder_missing", StringComparison.Ordinal), $"heic decoder error message missing for {lang}.");
-                Assert.True(collision.Contains("{0}"), $"image output collision message for {lang} lost its path placeholder.");
+                Assert.True(collision.Contains("{name}"), $"image output collision message for {lang} lost its file name placeholder.");
                 string prompt = Localization.T("codec_missing_store_prompt", lang);
                 Assert.True(prompt.Contains("{0}") && prompt.Contains("{1}"), $"store prompt for {lang} lost its format placeholders.");
             }

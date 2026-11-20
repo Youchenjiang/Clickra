@@ -55,8 +55,9 @@ public sealed class NativePdfCompressionEngine : IPdfCompressionEngine
             catch { /* Ignored: font resolver setup is best-effort; default fonts still render. */ }
 
             var settings = PdfCompressionSettings.Parse(options);
+            string language = ExecutionLocalizationOptions.ReadLanguage(options);
 
-            onProgress?.Invoke(15, 100, "正在讀取 PDF...");
+            onProgress?.Invoke(15, 100, ExecutionLocalizationOptions.Text(language, "core_progress_reading_pdf"));
             using var source = OpenSourceDocument(inputPath, options);
             using var output = new PdfDocument();
 
@@ -69,15 +70,15 @@ public sealed class NativePdfCompressionEngine : IPdfCompressionEngine
                 output.AddPage(source.Pages[i]);
 
                 int progress = 20 + (int)((i + 1) * 65.0 / pageCount);
-                onProgress?.Invoke(progress, 100, $"正在最佳化第 {i + 1}/{pageCount} 頁...");
+                onProgress?.Invoke(progress, 100, ExecutionLocalizationOptions.Text(language, "core_compress_progress_page", ("current", i + 1), ("total", pageCount)));
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            onProgress?.Invoke(88, 100, "正在最佳化文字與字型資料...");
+            onProgress?.Invoke(88, 100, ExecutionLocalizationOptions.Text(language, "core_compress_progress_tidying"));
             PdfStructuralCompressionOptimizer.Optimize(output, settings, inputPath);
 
             cancellationToken.ThrowIfCancellationRequested();
-            onProgress?.Invoke(93, 100, "正在重新封裝 PDF...");
+            onProgress?.Invoke(93, 100, ExecutionLocalizationOptions.Text(language, "core_progress_saving"));
             output.Save(tempOutput);
 
             if (!System.IO.File.Exists(tempOutput) || new FileInfo(tempOutput).Length <= 0)
@@ -85,7 +86,7 @@ public sealed class NativePdfCompressionEngine : IPdfCompressionEngine
 
             long outputBytes = new FileInfo(tempOutput).Length;
             ReplaceOutput(tempOutput, outputPath);
-            onProgress?.Invoke(100, 100, FormatCompressionSummary(inputBytes, outputBytes));
+            onProgress?.Invoke(100, 100, FormatCompressionSummary(inputBytes, outputBytes, language));
         }
         finally
         {
@@ -121,21 +122,21 @@ public sealed class NativePdfCompressionEngine : IPdfCompressionEngine
         System.IO.File.Move(tempOutput, outputPath);
     }
 
-    public static string FormatCompressionSummary(long inputBytes, long outputBytes)
+    public static string FormatCompressionSummary(long inputBytes, long outputBytes, string language = "")
     {
         string before = FormatFileSize(inputBytes);
         string after = FormatFileSize(outputBytes);
 
         if (inputBytes <= 0)
-            return $"PDF 最佳化完成：{after}。";
+            return ExecutionLocalizationOptions.Text(language, "core_compress_done_size_only", ("after", after));
 
         long savedBytes = inputBytes - outputBytes;
         if (savedBytes <= 0)
-            return $"PDF 已接近最佳化：{before} -> {after}，檔案大小未明顯下降。";
+            return ExecutionLocalizationOptions.Text(language, "core_compress_done_not_smaller", ("before", before), ("after", after));
 
-        double savedPercent = savedBytes * 100.0 / inputBytes;
-        string percentStr = savedPercent.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
-        return $"PDF 最佳化完成：{before} -> {after}，減少 {percentStr}%。";
+        // Whole percent; anything that did shrink reads as at least 1%.
+        int savedPercent = Math.Max(1, (int)Math.Round(savedBytes * 100.0 / inputBytes, MidpointRounding.AwayFromZero));
+        return ExecutionLocalizationOptions.Text(language, "core_compress_done", ("before", before), ("after", after), ("percent", savedPercent));
     }
 
     private static string FormatFileSize(long bytes)

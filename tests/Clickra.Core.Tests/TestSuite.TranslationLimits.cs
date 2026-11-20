@@ -190,7 +190,7 @@ static partial class TestSuite
                 new PdfTranslationBatchContext(0, 1, (prog, max, msg) => progressMessages.Add(msg), TargetLanguageZhTw),
                 cancellationToken: CancellationToken.None);
 
-            Assert.True(progressMessages.Any(m => m.Contains("限流") || m.Contains("等待")),
+            Assert.True(progressMessages.Any(m => m.Contains("再試") || m.Contains("忙碌") || m.Contains("等待")),
                 $"Expected countdown progress message during wait, got: {string.Join("; ", progressMessages)}");
         });
     }

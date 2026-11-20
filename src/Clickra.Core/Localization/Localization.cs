@@ -114,6 +114,22 @@ namespace Clickra.Core
         public static string T(string key, params object[] args) =>
             args is { Length: > 0 } ? string.Format(T(key), args) : T(key);
 
+        /// <summary>
+        /// Translates <paramref name="key"/> for <paramref name="langCode"/> and fills its named
+        /// placeholders, such as <c>{name}</c> or <c>{count}</c>. Values are formatted with the
+        /// invariant culture; a placeholder with no matching argument is left as written.
+        /// </summary>
+        public static string Format(string key, string langCode, params (string Name, object? Value)[] args)
+        {
+            string text = T(key, langCode);
+            foreach (var (name, value) in args)
+            {
+                string replacement = Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? "";
+                text = text.Replace("{" + name + "}", replacement, StringComparison.Ordinal);
+            }
+            return text;
+        }
+
         /// <summary>Canonical list of the 5 supported language codes.</summary>
         public static IReadOnlyList<string> SupportedLanguages => new[] { LangTw, LangCn, LangEn, LangJa, LangKo };
 

@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Drawing.Printing;
 using Clickra.Core.Modules.Pdf.Print.Application;
 using Clickra.Core.Modules.Pdf.Split.Application;
+using Clickra.Core.Processors;
 using Clickra.Core.Rendering;
 
 namespace Clickra.Core.Modules.Pdf.Print.Processing;
@@ -28,7 +29,7 @@ public static class PdfPrintProcessor
 
         List<int> pagesToPrint = ResolvePageNumbers(options.PageRange, totalDocPages);
         if (pagesToPrint.Count == 0)
-            throw new InvalidOperationException("No valid pages selected for printing.");
+            throw new InvalidOperationException(ExecutionLocalizationOptions.Text(options.Language ?? "", "core_print_no_pages"));
 
         string docName = Path.GetFileNameWithoutExtension(pdfPath);
         using var printDoc = new PrintDocument
@@ -104,7 +105,7 @@ public static class PdfPrintProcessor
 
         if (!printDoc.PrinterSettings.IsValid)
         {
-            throw new InvalidOperationException($"Printer '{printDoc.PrinterSettings.PrinterName}' is not valid or not installed.");
+            throw new InvalidOperationException(ExecutionLocalizationOptions.Text(options.Language ?? "", "core_print_printer_unavailable", ("printer", printDoc.PrinterSettings.PrinterName)));
         }
 
         printDoc.PrinterSettings.Copies = (short)Math.Clamp(options.Copies, 1, 999);

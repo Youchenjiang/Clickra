@@ -17,13 +17,15 @@ public class ImageStitchProcessor : MultiFileProcessorBase
     private Graphics? _gfx;
     private int _currentY = 0;
     private int _totalWidth = 0;
+    private string _language = "";
 
     public new void Process(List<string> files, string? outputPath, Dictionary<string, object>? options = null, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
     {
         if (files == null || files.Count == 0) throw new ArgumentException("The files list cannot be null or empty.", nameof(files));
         if (string.IsNullOrEmpty(outputPath)) throw new ArgumentException("Output path is required for image stitching.");
 
-        onProgress?.Invoke(10, files.Count * 100, "正在分析圖片尺寸...");
+        _language = ExecutionLocalizationOptions.ReadLanguage(options);
+        onProgress?.Invoke(10, files.Count * 100, ExecutionLocalizationOptions.Text(_language, "core_stitch_progress_reading"));
         cancellationToken.ThrowIfCancellationRequested();
 
         try
@@ -57,7 +59,7 @@ public class ImageStitchProcessor : MultiFileProcessorBase
     protected override void ProcessFile(string filePath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
     {
         var img = _images[fileIndex];
-        onProgress?.Invoke((fileIndex * 100) + 50, totalFiles * 100, $"正在拼接圖片 ({fileIndex + 1}/{totalFiles})...");
+        onProgress?.Invoke((fileIndex * 100) + 50, totalFiles * 100, ExecutionLocalizationOptions.Text(_language, "core_stitch_progress_image", ("current", fileIndex + 1), ("total", totalFiles)));
         int x = (_totalWidth - img.Width) / 2;
         _gfx!.DrawImage(img, x, _currentY, img.Width, img.Height);
         _currentY += img.Height;
@@ -66,7 +68,7 @@ public class ImageStitchProcessor : MultiFileProcessorBase
     protected override void OnAllFilesProcessed(string? outputPath, int totalFiles, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        onProgress?.Invoke(totalFiles * 100, totalFiles * 100, "拼接完成，正在儲存圖片...");
+        onProgress?.Invoke(totalFiles * 100, totalFiles * 100, ExecutionLocalizationOptions.Text(_language, "core_stitch_progress_saving"));
         _stitched!.Save(outputPath!, System.Drawing.Imaging.ImageFormat.Png);
     }
 }

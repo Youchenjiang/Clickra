@@ -63,33 +63,33 @@ public class PdfDecryptProcessor : SingleFileProcessorBase
     {
         int progressBase = ProgressCalculator.GetProgressBase(fileIndex);
         int totalProgressMax = ProgressCalculator.GetProgressMax(totalFiles);
+        string lang = ExecutionLocalizationOptions.ReadLanguage(options);
 
-        onProgress?.Invoke(progressBase + 20, totalProgressMax, "正在讀取 PDF 檔案...");
+        onProgress?.Invoke(progressBase + 20, totalProgressMax, ExecutionLocalizationOptions.Text(lang, "core_progress_reading_pdf"));
 
         using var inDoc = OpenInputDocument(fullPath, options);
 
         if (inDoc.SecurityHandler == null || inDoc.SecurityHandler.Elements.Count == 0)
         {
-            string lang = ExecutionLocalizationOptions.ReadLanguage(options);
             throw new InvalidOperationException(Localization.T("pdf_not_encrypted", lang));
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        onProgress?.Invoke(progressBase + 50, totalProgressMax, "正在去除密碼與限制...");
+        onProgress?.Invoke(progressBase + 50, totalProgressMax, ExecutionLocalizationOptions.Text(lang, "core_decrypt_progress_removing"));
 
         using var outDoc = new PdfDocument();
         int pageCount = inDoc.PageCount;
         for (int i = 0; i < pageCount; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            onProgress?.Invoke(progressBase + 50 + (int)(i * 40.0 / pageCount), totalProgressMax, $"正在處理第 {i + 1}/{pageCount} 頁...");
+            onProgress?.Invoke(progressBase + 50 + (int)(i * 40.0 / pageCount), totalProgressMax, ExecutionLocalizationOptions.Text(lang, "core_progress_page", ("current", i + 1), ("total", pageCount)));
             outDoc.AddPage(inDoc.Pages[i]);
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        onProgress?.Invoke(progressBase + 95, totalProgressMax, "正在儲存檔案...");
+        onProgress?.Invoke(progressBase + 95, totalProgressMax, ExecutionLocalizationOptions.Text(lang, "core_progress_saving"));
         outDoc.Save(targetOutputPath);
-        onProgress?.Invoke(progressBase + 100, totalProgressMax, "密碼已成功移除！");
+        onProgress?.Invoke(progressBase + 100, totalProgressMax, ExecutionLocalizationOptions.Text(lang, "core_decrypt_done"));
     }
 
     private static PdfDocument OpenInputDocument(string fullPath, Dictionary<string, object>? options)

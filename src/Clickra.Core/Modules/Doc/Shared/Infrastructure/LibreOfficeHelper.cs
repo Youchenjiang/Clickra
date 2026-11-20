@@ -177,7 +177,7 @@ public static class LibreOfficeHelper
     private static string GetValidatedExecutablePath(string appType, OfficeConversionSettings settings)
     {
         if (!CanConvert(appType))
-            throw new NotSupportedException(string.Format(Localization.T("error_libreoffice_unsupported", settings.Language), appType));
+            throw new NotSupportedException(Localization.Format("error_libreoffice_unsupported", settings.Language, ("app", appType)));
 
         if (settings.LibreOfficeRemovalPendingRestart ||
             !TryResolveExecutable(settings.LibreOfficePath, out string executablePath))
@@ -201,10 +201,12 @@ public static class LibreOfficeHelper
         progress.Callback?.Invoke(
             progress.FileIndex * 100 + 20,
             progress.TotalFiles * 100,
-            string.Format(
-                Localization.T("status_libreoffice_starting", language),
-                progress.FileIndex + 1,
-                progress.TotalFiles));
+            Localization.Format(
+                "status_office_starting",
+                language,
+                ("app", "LibreOffice"),
+                ("current", progress.FileIndex + 1),
+                ("total", progress.TotalFiles)));
 
         ProcessStartInfo startInfo = CreateConversionStartInfo(executablePath, paths);
         var output = new StringBuilder();
@@ -235,9 +237,10 @@ public static class LibreOfficeHelper
             progress.Callback?.Invoke(
                 progress.FileIndex * 100 + 60,
                 progress.TotalFiles * 100,
-                string.Format(
-                    Localization.T("status_libreoffice_exporting", language),
-                    Path.GetFileName(paths.Input)));
+                Localization.Format(
+                    "status_libreoffice_exporting",
+                    language,
+                    ("name", Path.GetFileName(paths.Input))));
 
             if (!process.WaitForExit(TimeSpan.FromMinutes(2)))
             {
@@ -251,9 +254,10 @@ public static class LibreOfficeHelper
             progress.Callback?.Invoke(
                 progress.FileIndex * 100 + 100,
                 progress.TotalFiles * 100,
-                string.Format(
-                    Localization.T("status_libreoffice_completed", language),
-                    Path.GetFileName(paths.Input)));
+                Localization.Format(
+                    "status_office_completed",
+                    language,
+                    ("name", Path.GetFileName(paths.Input))));
         }
     }
 
@@ -307,11 +311,15 @@ public static class LibreOfficeHelper
     {
         string details = error.Length > 0 ? error.ToString().Trim() : output.ToString().Trim();
         if (exitCode != 0)
-            throw new InvalidOperationException(string.Format(Localization.T("error_libreoffice_exit_code", language), exitCode, FormatLibreOfficeExitCode(exitCode), details));
+            throw new InvalidOperationException(
+                Localization.T("error_libreoffice_exit_code", language),
+                new InvalidOperationException($"LibreOffice exit code {exitCode} ({FormatLibreOfficeExitCode(exitCode)}): {details}"));
 
         string convertedPath = Path.Combine(paths.TemporaryDirectory, Path.GetFileNameWithoutExtension(paths.Input) + ".pdf");
         if (!System.IO.File.Exists(convertedPath))
-            throw new InvalidOperationException(string.Format(Localization.T("error_libreoffice_output_missing", language), details));
+            throw new InvalidOperationException(
+                Localization.T("error_libreoffice_output_missing", language),
+                new InvalidOperationException($"LibreOffice produced no PDF: {details}"));
 
         string? outputDir = Path.GetDirectoryName(paths.Output);
         if (!string.IsNullOrEmpty(outputDir))

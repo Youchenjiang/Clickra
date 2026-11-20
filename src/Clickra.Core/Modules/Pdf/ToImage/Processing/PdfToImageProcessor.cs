@@ -47,6 +47,7 @@ public class PdfToImageProcessor : SingleFileProcessorBase
         int ProgressBase,
         int TotalProgressMax,
         Action<int, int, string>? OnProgress,
+        string Language,
         CancellationToken CancellationToken);
 
     protected override string GetOutputSuffix() => ".png";
@@ -61,21 +62,22 @@ public class PdfToImageProcessor : SingleFileProcessorBase
         CancellationToken cancellationToken)
     {
         var parsed = ParseOptions(options);
+        string language = ExecutionLocalizationOptions.ReadLanguage(options);
 
         int progressBase = ProgressCalculator.GetProgressBase(fileIndex);
         int totalProgressMax = ProgressCalculator.GetProgressMax(totalFiles);
 
-        onProgress?.Invoke(progressBase + 10, totalProgressMax, "正在讀取 PDF 文件...");
+        onProgress?.Invoke(progressBase + 10, totalProgressMax, ExecutionLocalizationOptions.Text(language, "core_progress_reading_pdf"));
         cancellationToken.ThrowIfCancellationRequested();
 
         using var inDoc = OpenInputDocument(fullPath, parsed.Password);
         int pageCount = inDoc.PageCount;
         if (pageCount == 0)
         {
-            throw new InvalidOperationException("PDF 檔案不包含任何頁面。");
+            throw new InvalidOperationException(ExecutionLocalizationOptions.Text(language, "core_pdf_no_pages"));
         }
 
-        List<int> targetPages = ResolveTargetPages(parsed.PagesSpec, pageCount);
+        List<int> targetPages = ResolveTargetPages(parsed.PagesSpec, pageCount, language);
 
         string baseDir = Path.GetDirectoryName(Path.GetFullPath(targetOutputPath)) ??
                          Path.GetDirectoryName(fullPath) ??
@@ -98,6 +100,7 @@ public class PdfToImageProcessor : SingleFileProcessorBase
             progressBase,
             totalProgressMax,
             onProgress,
+            language,
             cancellationToken);
 
         if (parsed.Stitch)
@@ -109,7 +112,7 @@ public class PdfToImageProcessor : SingleFileProcessorBase
             ProcessPerPageMode(ctx);
         }
 
-        onProgress?.Invoke(progressBase + 100, totalProgressMax, "PDF 轉圖片完成！");
+        onProgress?.Invoke(progressBase + 100, totalProgressMax, ExecutionLocalizationOptions.Text(language, "core_to_image_done"));
     }
 
     private static ParsedOptions ParseOptions(Dictionary<string, object>? options)
@@ -155,7 +158,7 @@ public class PdfToImageProcessor : SingleFileProcessorBase
         return new ParsedOptions(format, dpi, pagesSpec, stitch, password);
     }
 
-    private static List<int> ResolveTargetPages(string pagesSpec, int pageCount)
+    private static List<int> ResolveTargetPages(string pagesSpec, int pageCount, string language)
     {
         List<int> targetPages = pagesSpec.Equals("all", StringComparison.OrdinalIgnoreCase) ||
                                 pagesSpec.Equals("each", StringComparison.OrdinalIgnoreCase)
@@ -164,7 +167,7 @@ public class PdfToImageProcessor : SingleFileProcessorBase
 
         if (targetPages.Count == 0)
         {
-            throw new ArgumentException($"指定的分頁範圍「{pagesSpec}」無效或超出頁數範圍 (1-{pageCount})。");
+            throw new ArgumentException(ExecutionLocalizationOptions.Text(language, "core_pages_invalid", ("pages", pagesSpec), ("count", pageCount)));
         }
         return targetPages;
     }
@@ -179,15 +182,15 @@ public class PdfToImageProcessor : SingleFileProcessorBase
                 ctx.CancellationToken.ThrowIfCancellationRequested();
                 int pageNum = ctx.Pages[i];
                 int prog = ctx.ProgressBase + 10 + (int)((i + 1) * 70.0 / ctx.Pages.Count);
-                ctx.OnProgress?.Invoke(prog, ctx.TotalProgressMax, $"正在渲染第 {pageNum} 頁 ({i + 1}/{ctx.Pages.Count})...");
+                ctx.OnProgress?.Invoke(prog, ctx.TotalProgressMax, ExecutionLocalizationOptions.Text(ctx.Language, "core_to_image_progress_page", ("page", pageNum), ("current", i + 1), ("total", ctx.Pages.Count)));
 
                 Bitmap bmp = RenderPageToBitmap(ctx.FullPath, pageNum, ctx.Dpi, ctx.Password)
-                    ?? throw new InvalidOperationException($"無法渲染 PDF 第 {pageNum} 頁。");
+                    ?? throw new InvalidOperationException(ExecutionLocalizationOptions.Text(ctx.Language, "core_to_image_page_failed", ("page", pageNum)));
                 bitmaps.Add(bmp);
             }
 
             ctx.CancellationToken.ThrowIfCancellationRequested();
-            ctx.OnProgress?.Invoke(ctx.ProgressBase + 85, ctx.TotalProgressMax, "正在拼接直式長圖...");
+            ctx.OnProgress?.Invoke(ctx.ProgressBase + 85, ctx.TotalProgressMax, ExecutionLocalizationOptions.Text(ctx.Language, "core_to_image_progress_stitching"));
 
             using var stitched = StitchBitmaps(bitmaps);
             string finalOutputPath = ResolveStitchedOutputPath(ctx.TargetOutputPath, ctx.BaseDir, ctx.BaseFileName, ctx.Format);
@@ -219,10 +222,10 @@ public class PdfToImageProcessor : SingleFileProcessorBase
             ctx.CancellationToken.ThrowIfCancellationRequested();
             int pageNum = ctx.Pages[i];
             int prog = ctx.ProgressBase + 10 + (int)((i + 1) * 85.0 / ctx.Pages.Count);
-            ctx.OnProgress?.Invoke(prog, ctx.TotalProgressMax, $"正在匯出第 {pageNum} 頁圖片 ({i + 1}/{ctx.Pages.Count})...");
+            ctx.OnProgress?.Invoke(prog, ctx.TotalProgressMax, ExecutionLocalizationOptions.Text(ctx.Language, "core_to_image_progress_saving_page", ("page", pageNum), ("current", i + 1), ("total", ctx.Pages.Count)));
 
             using Bitmap bmp = RenderPageToBitmap(ctx.FullPath, pageNum, ctx.Dpi, ctx.Password)
-                ?? throw new InvalidOperationException($"無法渲染 PDF 第 {pageNum} 頁。");
+                ?? throw new InvalidOperationException(ExecutionLocalizationOptions.Text(ctx.Language, "core_to_image_page_failed", ("page", pageNum)));
 
             string outPath = singlePage
                 ? ResolveSinglePageOutputPath(ctx, ext)

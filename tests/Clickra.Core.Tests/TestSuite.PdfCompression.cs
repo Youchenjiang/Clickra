@@ -82,17 +82,17 @@ static partial class TestSuite
 
         runner.Run("PDF compression formats size reduction summary", () =>
         {
-            string summary = NativePdfCompressionEngine.FormatCompressionSummary(5_308_416, 5_138_022);
+            string summary = NativePdfCompressionEngine.FormatCompressionSummary(5_308_416, 5_138_022, "zh-TW");
 
-            Assert.True(summary.Contains("5.06 MB -> 4.9 MB"), $"Expected before and after sizes in summary, got: {summary}");
-            Assert.True(summary.Contains("減少 3.2%"), $"Expected reduction percentage in summary, got: {summary}");
+            Assert.True(summary.Contains("5.06 MB → 4.9 MB"), $"Expected before and after sizes in summary, got: {summary}");
+            Assert.True(summary.Contains("小了 3%"), $"Expected a whole-percent reduction in summary, got: {summary}");
         });
 
         runner.Run("PDF compression explains unchanged output size", () =>
         {
-            string summary = NativePdfCompressionEngine.FormatCompressionSummary(1024, 1200);
+            string summary = NativePdfCompressionEngine.FormatCompressionSummary(1024, 1200, "zh-TW");
 
-            Assert.True(summary.Contains("檔案大小未明顯下降"), $"Expected unchanged-size explanation, got: {summary}");
+            Assert.True(summary.Contains("已經很難再壓縮"), $"Expected unchanged-size explanation, got: {summary}");
         });
     }
 

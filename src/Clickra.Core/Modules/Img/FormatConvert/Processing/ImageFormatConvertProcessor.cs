@@ -38,7 +38,7 @@ using Clickra.Core.Modules.Img.Shared.Infrastructure;
         protected override void ProcessFile(string filePath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            onProgress?.Invoke((fileIndex * 100) + 50, totalFiles * 100, $"正在轉換圖片格式: {Path.GetFileName(filePath)} ({fileIndex + 1}/{totalFiles})...");
+            onProgress?.Invoke((fileIndex * 100) + 50, totalFiles * 100, ExecutionLocalizationOptions.Text(_language, "core_image_progress_file", ("name", Path.GetFileName(filePath)), ("current", fileIndex + 1), ("total", totalFiles)));
 
             if (!System.IO.File.Exists(filePath)) throw new FileNotFoundException("Image file not found", filePath);
 
@@ -46,7 +46,7 @@ using Clickra.Core.Modules.Img.Shared.Infrastructure;
             string targetExt = "." + _format.TrimStart('.').ToLowerInvariant();
             if (sourceExt == targetExt)
             {
-                onProgress?.Invoke((fileIndex * 100) + 100, totalFiles * 100, $"已是目標格式，跳過: {Path.GetFileName(filePath)}");
+                onProgress?.Invoke((fileIndex * 100) + 100, totalFiles * 100, ExecutionLocalizationOptions.Text(_language, "core_image_already_target", ("name", Path.GetFileName(filePath)), ("format", _format.TrimStart('.').ToUpperInvariant())));
                 return;
             }
 
