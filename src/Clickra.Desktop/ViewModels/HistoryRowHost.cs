@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using Clickra.Desktop.L10n;
 
 namespace Clickra.Desktop.ViewModels;
 
@@ -20,7 +21,7 @@ public sealed class RerunRequestEventArgs(string command, IReadOnlyList<string> 
 /// </summary>
 public abstract class HistoryRowHostBase : ViewModelBase, IHistoryRowHost
 {
-    private enum NoticeSource { None, Folder, Rerun }
+    private enum NoticeSource { None, Folder, Rerun, Resume }
 
     private HistoryRowViewModel? _noticeRow;
     private NoticeSource _noticeSource;
@@ -105,15 +106,17 @@ public abstract class HistoryRowHostBase : ViewModelBase, IHistoryRowHost
         if (folder is not null && Directory.Exists(folder))
         {
             OpenPath(folder);
-            Show(row, NoticeSource.Folder, $"找不到 {Path.GetFileName(target)}，可能已被移動或刪除，已開啟原本的資料夾");
+            Show(row, NoticeSource.Folder, Strings.F("ui_history_missing_opened_folder", ("name", Path.GetFileName(target))));
             return;
         }
 
         string? nearest = NearestExistingParent(folder);
         if (nearest is not null) OpenPath(nearest);
         Show(row, NoticeSource.Folder, nearest is null
-            ? $"找不到資料夾 {folder}"
-            : $"找不到資料夾 {Path.GetFileName(folder?.TrimEnd('\\', '/'))}，已開啟上一層的 {nearest}");
+            ? Strings.F("ui_history_missing_folder", ("name", Path.GetFileName(folder?.TrimEnd('\\', '/'))))
+            : Strings.F("ui_history_missing_folder_opened_parent",
+                ("name", Path.GetFileName(folder?.TrimEnd('\\', '/'))),
+                ("parent", Path.GetFileName(nearest.TrimEnd('\\', '/')) is { Length: > 0 } p ? p : nearest)));
     }
 
     // ----- 再轉一次 -----
@@ -124,7 +127,7 @@ public abstract class HistoryRowHostBase : ViewModelBase, IHistoryRowHost
 
         if (IsBusy?.Invoke() == true)
         {
-            Show(row, NoticeSource.Rerun, "正在處理其他檔案，做完後再試一次");
+            Show(row, NoticeSource.Rerun, Strings.T("ui_history_missing_busy_with_other_files_try"));
             return;
         }
 
@@ -153,21 +156,21 @@ public abstract class HistoryRowHostBase : ViewModelBase, IHistoryRowHost
             }
             else if (files.Count == 1)
             {
-                text = $"找不到 {Path.GetFileName(files[0])}，可能已被移動或刪除";
+                text = Strings.F("ui_history_missing_file", ("name", Path.GetFileName(files[0])));
             }
             else
             {
-                text = $"{files.Count} 個檔案都找不到，可能已被移動或刪除";
+                text = Strings.F("ui_history_missing_all", ("count", files.Count));
             }
             Show(row, NoticeSource.Rerun, text);
             return;
         }
 
         List<string> present = files.Where(File.Exists).ToList();
-        string names = string.Join("、", missing.Take(2).Select(Path.GetFileName)) + (missing.Count > 2 ? " 等" : "");
+        string names = Strings.ShortList(missing.Select(f => Path.GetFileName(f)).ToList());
         Show(row, NoticeSource.Rerun,
-            $"{files.Count} 個檔案中有 {missing.Count} 個找不到：{names}",
-            $"只處理其他 {present.Count} 個",
+            Strings.F("ui_history_missing_some", ("total", files.Count), ("count", missing.Count), ("names", names)),
+            Strings.F("ui_history_missing_process_others", ("count", present.Count)),
             () =>
             {
                 _noticeRow = null;
@@ -176,8 +179,66 @@ public abstract class HistoryRowHostBase : ViewModelBase, IHistoryRowHost
             });
     }
 
+    // ----- ▶ 繼續 -----
+
+    /// <summary>
+    /// ▶ 繼續 checks the files that are still to do before the task leaves 待繼續 (spec 4.2, 2026-11-20).
+    /// All there: <paramref name="resume"/> runs with <see langword="null"/> (keep the task's own list).
+    /// Some missing: the row offers 只處理其他 N 個, which resumes with the missing ones dropped.
+    /// All missing: the row offers 移除這個工作. Nothing is claimed until the user chooses.
+    /// </summary>
+    protected void CheckFilesBeforeResume(
+        HistoryRowViewModel row,
+        Action<IReadOnlyList<string>?> resume,
+        Action remove)
+    {
+        if (ToggledOff(row, NoticeSource.Resume)) return;
+
+        IReadOnlyList<string> files = row.InputPaths;
+        int start = Math.Clamp(row.Item.Entry.CurrentIndex, 0, files.Count);
+        List<string> remaining = files.Skip(start).ToList();
+        List<string> missing = remaining.Where(f => !File.Exists(f)).ToList();
+        if (missing.Count == 0)
+        {
+            resume(null);
+            return;
+        }
+
+        if (missing.Count == remaining.Count)
+        {
+            string? root = Path.GetPathRoot(missing[0]);
+            bool driveMissing = !string.IsNullOrEmpty(root) && !Directory.Exists(root) &&
+                                missing.All(f => string.Equals(Path.GetPathRoot(f), root, StringComparison.OrdinalIgnoreCase));
+            string text = driveMissing
+                ? MissingDriveText(root!)
+                : remaining.Count == 1
+                    ? Strings.F("ui_history_missing_file", ("name", Path.GetFileName(remaining[0])))
+                    : Strings.F("ui_history_resume_missing_all", ("count", remaining.Count));
+            Show(row, NoticeSource.Resume, text, Strings.T("ui_history_resume_remove_task"), () =>
+            {
+                _noticeRow = null;
+                _noticeSource = NoticeSource.None;
+                remove();
+            });
+            return;
+        }
+
+        List<string> keep = files.Take(start).Concat(remaining.Where(File.Exists)).ToList();
+        int present = remaining.Count - missing.Count;
+        string names = Strings.ShortList(missing.Select(f => Path.GetFileName(f)).ToList());
+        Show(row, NoticeSource.Resume,
+            Strings.F("ui_history_resume_missing_some", ("total", remaining.Count), ("count", missing.Count), ("names", names)),
+            Strings.F("ui_history_missing_process_others", ("count", present)),
+            () =>
+            {
+                _noticeRow = null;
+                _noticeSource = NoticeSource.None;
+                resume(keep);
+            });
+    }
+
     private static string MissingDriveText(string root) =>
-        $"找不到 {root.TrimEnd('\\', '/')}，可能是隨身碟或網路磁碟沒有接上";
+        Strings.F("ui_history_missing_drive", ("drive", root.TrimEnd('\\', '/')));
 
     private static string? FirstPath(string joined) =>
         joined.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault();

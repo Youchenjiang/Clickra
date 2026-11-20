@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Clickra.Core.Modules.Pdf.Split.Application;
+using Clickra.Desktop.L10n;
 
 namespace Clickra.Desktop.ViewModels;
 
@@ -52,9 +53,9 @@ public sealed class OrderWorkspaceViewModel : ViewModelBase
         _ = LoadDetailsAsync(Items.ToList());
     }
 
-    public string Title => _command == "img-stitch" ? "拼接順序（由上到下）" : "合併順序";
+    public string Title => _command == "img-stitch" ? Strings.T("ui_order_stitch_order_top_to_bottom") : Strings.T("ui_order_merge_order");
     public string OutputExtension => _command == "img-stitch" ? ".png" : ".pdf";
-    public string CountText => $"{Items.Count} 個檔案";
+    public string CountText => Strings.Count("ui_files_count_files", Items.Count);
 
     public string OutputName
     {
@@ -134,7 +135,7 @@ public sealed class OrderWorkspaceViewModel : ViewModelBase
     private string DefaultOutputName()
     {
         string first = Items.Count > 0 ? System.IO.Path.GetFileNameWithoutExtension(Items[0].Name) : "";
-        string suffix = _command == "img-stitch" ? "_長圖" : "_合併";
+        string suffix = Strings.T(_command == "img-stitch" ? "ui_order_suffix_stitched" : "ui_order_suffix_merged");
         return first.Length == 0 ? suffix.TrimStart('_') : first + suffix;
     }
 
@@ -155,7 +156,7 @@ public sealed class OrderWorkspaceViewModel : ViewModelBase
             if (System.IO.Path.GetExtension(path).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
             {
                 int pages = PdfPageCountQuery.Get(path);
-                return pages > 0 ? $"{pages} 頁" : "";
+                return pages > 0 ? Strings.Count("ui_order_pages", pages) : "";
             }
             long bytes = new FileInfo(path).Length;
             return bytes < 1024 * 1024 ? $"{bytes / 1024.0:0} KB" : $"{bytes / (1024.0 * 1024.0):0.0} MB";

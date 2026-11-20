@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Clickra.Core.Modules.Sys.HistoryTasks.Application;
 using Clickra.Core.Modules.Sys.HistoryTasks.Presentation;
 using Clickra.Core.Modules.Sys.Settings.Application;
+using Clickra.Desktop.L10n;
 
 namespace Clickra.Desktop.ViewModels;
 
@@ -118,7 +119,7 @@ public sealed class HistoryViewModel : HistoryRowHostBase
         HistoryFeed? feed = null;
         try
         {
-            feed = HistoryFeed.Load(SettingsController.Language, completedLimit: 100);
+            feed = HistoryFeed.Load(Strings.Language, completedLimit: 100);
         }
         catch
         {
@@ -139,7 +140,7 @@ public sealed class HistoryViewModel : HistoryRowHostBase
         HistoryFeed? feed = null;
         try
         {
-            feed = await Task.Run(() => HistoryFeed.Load(SettingsController.Language, completedLimit: 100));
+            feed = await Task.Run(() => HistoryFeed.Load(Strings.Language, completedLimit: 100));
         }
         catch
         {
@@ -283,7 +284,7 @@ public sealed class HistoryViewModel : HistoryRowHostBase
 
         // Stopping a parked task cannot be undone, so ask first.
         if (Confirm is not null &&
-            !await Confirm("停止這個工作？", "剩下的檔案不會處理，這筆會移到下方的紀錄。", "停止", false))
+            !await Confirm(Strings.T("ui_history_parked_stop_this_task"), Strings.T("ui_history_parked_the_remaining_files_wont_be"), Strings.T("ui_common_stop"), false))
             return;
         try { _presentation.CancelParked(row.Id); }
         catch { /* best effort */ }
@@ -295,25 +296,38 @@ public sealed class HistoryViewModel : HistoryRowHostBase
         DismissNoticeExcept(row);
         if (IsBusy?.Invoke() == true)
         {
-            row.ShowNotice("正在處理其他檔案，做完後再繼續");
+            row.ShowNotice(Strings.T("ui_history_parked_busy_with_other_files_resume"));
             return;
         }
+        // Check the files first: claiming moves the task out of 待繼續, so a task whose files are gone
+        // must not be claimed and then lost (2026-11-20).
+        CheckFilesBeforeResume(row, files => ClaimAndResume(row, files), () =>
+        {
+            try { _presentation.CancelParked(row.Id); }
+            catch { /* best effort */ }
+            Refresh();
+        });
+    }
+
+    private void ClaimAndResume(HistoryRowViewModel row, IReadOnlyList<string>? files)
+    {
         ParkedTaskResumePresentation? task = null;
         try { task = _presentation.ClaimForResume(row.Id); }
         catch { /* handled below */ }
         if (task is null)
         {
-            row.ShowNotice("這個工作已無法繼續，可能已過期或已在別處處理");
+            row.ShowNotice(Strings.T("ui_history_parked_cant_resume_this_task_it"));
             Refresh();
             return;
         }
+        if (files is not null) task = task with { Files = files.ToList() };
         ResumeRequested?.Invoke(this, new ResumeRequestEventArgs(task));
     }
 
     /// <summary>⋯ › 清除歷史…, after the confirm dialog. Converted files are kept.</summary>
     public async Task ClearHistory()
     {
-        if (Confirm is not null && !await Confirm("清除全部歷史？", "轉好的檔案不會被刪除。", "清除", true))
+        if (Confirm is not null && !await Confirm(Strings.T("ui_history_clear_clear_all_history"), Strings.T("ui_history_clear_output_files_wont_be_deleted"), Strings.T("ui_history_clear_clear"), true))
             return;
         try
         {

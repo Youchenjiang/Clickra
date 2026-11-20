@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Clickra.Desktop.ViewModels;
+using Clickra.Desktop.L10n;
 
 namespace Clickra.Desktop.Views;
 
@@ -18,7 +19,7 @@ public static class Dialogs
     public static async Task<bool> ConfirmAsync(Window owner, string title, string body, string confirmText, bool danger)
     {
         Window dialog = CreateWindow(owner, 400);
-        var cancel = new Button { Content = "取消", MinHeight = 36, Padding = new Thickness(18, 0) };
+        var cancel = new Button { Content = Strings.T("ui_common_cancel"), MinHeight = 36, Padding = new Thickness(18, 0) };
         cancel.Classes.Add("secondary");
         var confirm = new Button { Content = confirmText, MinHeight = 36, Padding = new Thickness(18, 0), FontSize = 14 };
         confirm.Classes.Add(danger ? "danger" : "primary");
@@ -54,12 +55,12 @@ public static class Dialogs
     public static Task<CloseChoice?> AskCloseAsync(Window owner, int remaining)
     {
         Window dialog = CreateWindow(owner, 420);
-        var remember = new CheckBox { Content = "下次不再詢問", FontSize = 13 };
-        ToolTip.SetTip(remember, "之後可以在「設定 › 行為」更改");
+        var remember = new CheckBox { Content = Strings.T("ui_close_dont_ask_again"), FontSize = 13 };
+        ToolTip.SetTip(remember, Strings.T("ui_close_you_can_change_this_later"));
 
-        Button background = ChoiceButton("在背景繼續",
+        Button background = ChoiceButton(Strings.T("ui_close_continue_in_background"),
             "M3,5 H21 V16 H3 Z M8,20 H16 M12,16 V20", accent: true);
-        Button stop = ChoiceButton(remaining > 0 ? $"停止（剩下 {remaining} 個不處理）" : "停止",
+        Button stop = ChoiceButton(remaining > 0 ? Strings.F("ui_close_stop_remaining", ("count", remaining)) : Strings.T("ui_common_stop"),
             "M12,3 A9,9 0 1 1 11.99,3 Z M9,9 H15 V15 H9 Z", accent: false);
         background.Click += (_, _) => dialog.Close(new CloseChoice(CloseWhileRunning.Background, remember.IsChecked == true));
         stop.Click += (_, _) => dialog.Close(new CloseChoice(CloseWhileRunning.Stop, remember.IsChecked == true));
@@ -70,7 +71,7 @@ public static class Dialogs
             Spacing = 10,
             Children =
             {
-                new TextBlock { Text = "還在處理，要關閉嗎？", FontSize = 18, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 0, 0, 6) },
+                new TextBlock { Text = Strings.T("ui_close_still_processing_close_anyway"), FontSize = 18, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 0, 0, 6) },
                 background,
                 stop,
                 remember,

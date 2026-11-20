@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Clickra.Desktop.L10n"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Clickra.Desktop.ViewModels"
              xmlns:controls="using:Clickra.Desktop.Controls"
@@ -188,10 +189,10 @@
                             </Canvas>
                         </Viewbox>
                     </Border>
-                    <TextBlock Classes="h1" FontSize="26" Text="要處理什麼檔案？" HorizontalAlignment="Center" />
-                    <TextBlock Classes="secondary" FontSize="15" Text="把檔案拖到這裡，Clickra 會告訴你可以做什麼。"
+                    <TextBlock Classes="h1" FontSize="26" Text="{l:T ui_start_which_files}" HorizontalAlignment="Center" />
+                    <TextBlock Classes="secondary" FontSize="15" Text="{l:T ui_start_drop_files_here_to_see}"
                                HorizontalAlignment="Center" />
-                    <Button Classes="primary" Name="PickFilesButton" Content="選擇檔案" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                    <Button Classes="primary" Name="PickFilesButton" Content="{l:T ui_start_choose_files}" HorizontalAlignment="Center" Margin="0,8,0,0" />
                 </StackPanel>
             </Panel>
 
@@ -219,10 +220,10 @@
 
                     <!-- Actions: Manage Files and Re-pick -->
                     <Button Grid.Column="2" Classes="secondary" Name="ManageFilesButton"
-                            Content="管理檔案" Margin="0,0,8,0" VerticalAlignment="Center"
+                            Content="{l:T ui_files_manage_files}" Margin="0,0,8,0" VerticalAlignment="Center"
                             IsEnabled="{Binding !IsExecuting}" />
                     <Button Grid.Column="3" Classes="subtle" Name="RePickFilesButton"
-                            Content="重新選" VerticalAlignment="Center"
+                            Content="{l:T ui_files_choose_other_files}" VerticalAlignment="Center"
                             IsEnabled="{Binding !IsExecuting}" />
                 </Grid>
             </Border>
@@ -239,8 +240,8 @@
                          (at most 3); rows that do not fit are left out, never cut (spec 5.2). -->
                     <Grid IsVisible="{Binding HasRecentHistory}" RowDefinitions="Auto,*" VerticalAlignment="Top">
                         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,-6,0,6">
-                            <TextBlock Grid.Column="0" Text="最近處理" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <Button Grid.Column="1" Classes="link" Name="ViewAllHistoryButton" Content="全部歷史 ›" FontSize="13" />
+                            <TextBlock Grid.Column="0" Text="{l:T ui_recent_recent}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Classes="link" Name="ViewAllHistoryButton" Content="{l:T ui_recent_all_history}" FontSize="13" />
                         </Grid>
                         <ItemsControl Grid.Row="1" ItemsSource="{Binding RecentItems}" Margin="-20,0,-20,-14">
                             <ItemsControl.ItemsPanel>
@@ -263,8 +264,8 @@
                                 Background="{DynamicResource Clk.Card}"
                                 BorderBrush="{DynamicResource Clk.ControlBorder}" BorderThickness="1">
                             <StackPanel Spacing="2">
-                                <Border Classes="menuItem"><TextBlock Text="開啟" /></Border>
-                                <Border Classes="menuItem"><TextBlock Text="複製" /></Border>
+                                <Border Classes="menuItem"><TextBlock Text="{l:T ui_menu_intro_open}" /></Border>
+                                <Border Classes="menuItem"><TextBlock Text="{l:T ui_menu_intro_copy}" /></Border>
                                 <Border Classes="menuItem" Background="{DynamicResource Clk.SegmentSelected}">
                                     <Grid ColumnDefinitions="Auto,*,Auto">
                                         <Image Source="avares://Clickra.Desktop/Assets/clickra-64.png" Width="14" Height="14"
@@ -273,14 +274,14 @@
                                         <TextBlock Grid.Column="2" Text="›" FontSize="13" VerticalAlignment="Center" />
                                     </Grid>
                                 </Border>
-                                <Border Classes="menuItem"><TextBlock Text="內容" /></Border>
+                                <Border Classes="menuItem"><TextBlock Text="{l:T ui_menu_intro_properties}" /></Border>
                             </StackPanel>
                         </Border>
                         <StackPanel VerticalAlignment="Center" Spacing="4" MaxWidth="420">
-                            <TextBlock Text="也可以在檔案總管直接使用" FontSize="16" FontWeight="SemiBold" />
+                            <TextBlock Text="{l:T ui_menu_intro_also_works_in_file_explorer}" FontSize="16" FontWeight="SemiBold" />
                             <TextBlock Classes="secondary" FontSize="14" TextWrapping="Wrap"
-                                       Text="對檔案按右鍵，選 Clickra，就能不開這個視窗直接處理" />
-                            <Button Classes="link" Name="MenuSettingsLink" Content="選擇右鍵選單要顯示的功能"
+                                       Text="{l:T ui_menu_intro_right_click_a_file_and}" />
+                            <Button Classes="link" Name="MenuSettingsLink" Content="{l:T ui_menu_intro_choose_what_the_right_click}"
                                     HorizontalAlignment="Left" FontSize="14" />
                         </StackPanel>
                     </StackPanel>
@@ -288,7 +289,7 @@
 
                 <!-- STATE B1: Action Catalog (Grid of available actions) -->
                 <Grid Name="CatalogPanel" RowDefinitions="Auto,Auto,Auto,*,Auto" IsVisible="{Binding IsActionCatalog}">
-                    <TextBlock Grid.Row="0" Text="要對這些檔案做什麼？" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,16" />
+                    <TextBlock Grid.Row="0" Text="{l:T ui_catalog_what_do_you_want_to}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,16" />
                     <!-- Only 重新命名 is left (spec 4.1): say why in one sentence and offer 建議新功能. -->
                     <Border Grid.Row="1" Classes="card" Padding="16,10" Margin="6,0,6,10" IsVisible="{Binding OnlyRename}">
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
@@ -299,7 +300,7 @@
                                 </Canvas>
                             </Viewbox>
                             <TextBlock Grid.Column="1" Text="{Binding OnlyRenameText}" FontSize="14" TextWrapping="Wrap" VerticalAlignment="Center" />
-                            <Button Grid.Column="2" Classes="secondary" Content="建議新功能" Command="{Binding SuggestFeature}" VerticalAlignment="Center" />
+                            <Button Grid.Column="2" Classes="secondary" Content="{l:T ui_catalog_suggest_a_feature}" Command="{Binding SuggestFeature}" VerticalAlignment="Center" />
                         </Grid>
                     </Border>
                     <!-- PDFs with a password or print/copy restrictions (spec 4.1): which actions wait for 解密. -->
@@ -311,7 +312,7 @@
                                 </Canvas>
                             </Viewbox>
                             <TextBlock Grid.Column="1" Text="{Binding ProtectedPdfText}" FontSize="14" TextWrapping="Wrap" VerticalAlignment="Center" />
-                            <Button Grid.Column="2" Classes="primary" Content="先解密" Command="{Binding DecryptFirst}" VerticalAlignment="Center" />
+                            <Button Grid.Column="2" Classes="primary" Content="{l:T ui_notice_decrypt_first}" Command="{Binding DecryptFirst}" VerticalAlignment="Center" />
                         </Grid>
                     </Border>
                     <ScrollViewer Grid.Row="3" Name="CatalogScroll">
@@ -346,8 +347,8 @@
                     </ScrollViewer>
                     <!-- The action may simply not exist yet: a quiet line under the cards (spec 4.1). -->
                     <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="12" Margin="6,8,6,0" IsVisible="{Binding !OnlyRename}">
-                        <TextBlock Text="沒有你要的？" Classes="secondary" FontSize="13" VerticalAlignment="Center" />
-                        <Button Classes="secondary" Content="建議新功能" Command="{Binding SuggestFeature}" />
+                        <TextBlock Text="{l:T ui_catalog_cant_find_what_you_need}" Classes="secondary" FontSize="13" VerticalAlignment="Center" />
+                        <Button Classes="secondary" Content="{l:T ui_catalog_suggest_a_feature}" Command="{Binding SuggestFeature}" />
                     </StackPanel>
                 </Grid>
 
@@ -356,7 +357,7 @@
                     <!-- Title Row: Back button + Icon + Name -->
                     <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,0,0,16">
                         <Button Grid.Column="0" Classes="link back" Name="BackToCatalogButton"
-                                Content="所有動作" FontSize="15" Margin="0,0,16,0" VerticalAlignment="Center" />
+                                Content="{l:T ui_catalog_all_actions}" FontSize="15" Margin="0,0,16,0" VerticalAlignment="Center" />
                         <!-- The feature icon is its own coloured tile, so it gets no extra plate (spec 7). -->
                         <Image Grid.Column="1" Name="ActionIcon" Width="32" Height="32" Margin="0,0,10,0"
                                VerticalAlignment="Center" Source="{Binding SelectedAction.Icon}" />
@@ -365,7 +366,7 @@
                         <!-- 設為預設值 for the whole card, at the right of the title row (spec 4.9): next to the action's
                              name it reads as "this action's settings", away from the one-off 存放位置 at the bottom. -->
                         <Panel Grid.Column="3" VerticalAlignment="Center" IsVisible="{Binding IsOptionsAction}">
-                            <Button Classes="secondary" Content="設為預設值" Command="{Binding Options.SaveDefault}"
+                            <Button Classes="secondary" Content="{l:T ui_action_set_as_default}" Command="{Binding Options.SaveDefault}"
                                     IsVisible="{Binding Options.ShowSaveDefault}" />
                             <StackPanel Orientation="Horizontal" Spacing="6" MinHeight="32" IsVisible="{Binding Options.ShowSavedNote}">
                                 <Viewbox Classes="ic" Width="16" Height="16" VerticalAlignment="Center">
@@ -373,7 +374,7 @@
                                         <Path Data="M5,12.5 L9.5,17 L19,7.5" Stroke="{DynamicResource Clk.Success}" />
                                     </Canvas>
                                 </Viewbox>
-                                <TextBlock Text="已設為預設值" Classes="secondary" FontSize="13" VerticalAlignment="Center" />
+                                <TextBlock Text="{l:T ui_action_set_as_default_2}" Classes="secondary" FontSize="13" VerticalAlignment="Center" />
                             </StackPanel>
                         </Panel>
                     </Grid>
@@ -382,75 +383,75 @@
                     <Grid Grid.Row="1" IsVisible="{Binding IsRenameAction}" ColumnDefinitions="300,16,*">
                         <ScrollViewer Grid.Column="0">
                             <StackPanel Spacing="8" Margin="0,0,8,0">
-                                <CheckBox Content="取代文字" IsChecked="{Binding Rename.UseReplace}" />
+                                <CheckBox Content="{l:T ui_rename_replace_text}" IsChecked="{Binding Rename.UseReplace}" />
                                 <Grid IsVisible="{Binding Rename.UseReplace}" ColumnDefinitions="56,*" RowDefinitions="Auto,Auto,Auto"
                                       RowSpacing="6" Margin="28,0,0,6">
-                                    <TextBlock Text="尋找" VerticalAlignment="Center" Classes="secondary" />
+                                    <TextBlock Text="{l:T ui_rename_find}" VerticalAlignment="Center" Classes="secondary" />
                                     <TextBox Grid.Column="1" Text="{Binding Rename.FindText}" />
-                                    <TextBlock Grid.Row="1" Text="改成" VerticalAlignment="Center" Classes="secondary" />
+                                    <TextBlock Grid.Row="1" Text="{l:T ui_rename_replace_with}" VerticalAlignment="Center" Classes="secondary" />
                                     <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Rename.ReplaceWith}" />
                                     <StackPanel Grid.Row="2" Grid.Column="1">
-                                        <CheckBox Content="區分大小寫" IsChecked="{Binding Rename.MatchCase}" />
-                                        <CheckBox Content="使用正規表示式" IsChecked="{Binding Rename.UseRegex}" />
+                                        <CheckBox Content="{l:T ui_rename_match_case}" IsChecked="{Binding Rename.MatchCase}" />
+                                        <CheckBox Content="{l:T ui_rename_use_regular_expressions}" IsChecked="{Binding Rename.UseRegex}" />
                                     </StackPanel>
                                 </Grid>
 
-                                <CheckBox Content="加上編號" IsChecked="{Binding Rename.UseNumbering}" />
+                                <CheckBox Content="{l:T ui_rename_add_numbers}" IsChecked="{Binding Rename.UseNumbering}" />
                                 <Grid IsVisible="{Binding Rename.UseNumbering}" ColumnDefinitions="56,*" RowDefinitions="Auto,Auto"
                                       RowSpacing="6" Margin="28,0,0,6">
-                                    <TextBlock Text="起始" VerticalAlignment="Center" Classes="secondary" />
+                                    <TextBlock Text="{l:T ui_rename_start_at}" VerticalAlignment="Center" Classes="secondary" />
                                     <TextBox Grid.Column="1" Text="{Binding Rename.StartNumber}" Width="80" HorizontalAlignment="Left"
-                                             ToolTip.Tip="寫 01 就是兩位數，寫 001 就是三位數" />
-                                    <TextBlock Grid.Row="1" Text="位置" VerticalAlignment="Center" Classes="secondary" />
+                                             ToolTip.Tip="{l:T ui_rename_type_01_for_two_digits}" />
+                                    <TextBlock Grid.Row="1" Text="{l:T ui_rename_position}" VerticalAlignment="Center" Classes="secondary" />
                                     <ComboBox Grid.Row="1" Grid.Column="1" SelectedIndex="{Binding Rename.NumberPosition, Mode=TwoWay}">
-                                        <ComboBoxItem Content="檔名前面" />
-                                        <ComboBoxItem Content="檔名後面" />
+                                        <ComboBoxItem Content="{l:T ui_rename_before_the_name}" />
+                                        <ComboBoxItem Content="{l:T ui_rename_after_the_name}" />
                                     </ComboBox>
                                 </Grid>
 
-                                <CheckBox Content="加上日期" IsChecked="{Binding Rename.UseDate}" />
+                                <CheckBox Content="{l:T ui_rename_add_date}" IsChecked="{Binding Rename.UseDate}" />
                                 <Grid IsVisible="{Binding Rename.UseDate}" ColumnDefinitions="56,*" RowDefinitions="Auto,Auto"
                                       RowSpacing="6" Margin="28,0,0,6">
-                                    <TextBlock Text="日期" VerticalAlignment="Center" Classes="secondary" />
+                                    <TextBlock Text="{l:T ui_rename_date}" VerticalAlignment="Center" Classes="secondary" />
                                     <ComboBox Grid.Column="1" SelectedIndex="{Binding Rename.DateSource, Mode=TwoWay}">
-                                        <ComboBoxItem Content="修改日期" />
-                                        <ComboBoxItem Content="建立日期" />
+                                        <ComboBoxItem Content="{l:T ui_rename_date_modified}" />
+                                        <ComboBoxItem Content="{l:T ui_rename_date_created}" />
                                     </ComboBox>
-                                    <TextBlock Grid.Row="1" Text="位置" VerticalAlignment="Center" Classes="secondary" />
+                                    <TextBlock Grid.Row="1" Text="{l:T ui_rename_position}" VerticalAlignment="Center" Classes="secondary" />
                                     <ComboBox Grid.Row="1" Grid.Column="1" SelectedIndex="{Binding Rename.DatePosition, Mode=TwoWay}">
-                                        <ComboBoxItem Content="檔名前面" />
-                                        <ComboBoxItem Content="檔名後面" />
+                                        <ComboBoxItem Content="{l:T ui_rename_before_the_name}" />
+                                        <ComboBoxItem Content="{l:T ui_rename_after_the_name}" />
                                     </ComboBox>
                                 </Grid>
 
-                                <CheckBox Content="加上前後文字" IsChecked="{Binding Rename.UseAffix}" />
+                                <CheckBox Content="{l:T ui_rename_add_text_before_or_after}" IsChecked="{Binding Rename.UseAffix}" />
                                 <Grid IsVisible="{Binding Rename.UseAffix}" ColumnDefinitions="56,*" RowDefinitions="Auto,Auto"
                                       RowSpacing="6" Margin="28,0,0,6">
-                                    <TextBlock Text="前面" VerticalAlignment="Center" Classes="secondary" />
+                                    <TextBlock Text="{l:T ui_rename_before}" VerticalAlignment="Center" Classes="secondary" />
                                     <TextBox Grid.Column="1" Text="{Binding Rename.Prefix}" />
-                                    <TextBlock Grid.Row="1" Text="後面" VerticalAlignment="Center" Classes="secondary" />
+                                    <TextBlock Grid.Row="1" Text="{l:T ui_rename_after}" VerticalAlignment="Center" Classes="secondary" />
                                     <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Rename.Suffix}" />
                                 </Grid>
 
                                 <!-- Case and extension apply to every name, so they are always shown (D2: no 進階選項). -->
                                 <Border Classes="divider" Margin="0,4" />
                                 <Grid ColumnDefinitions="56,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
-                                    <TextBlock Text="大小寫" VerticalAlignment="Center" Classes="secondary" />
+                                    <TextBlock Text="{l:T ui_rename_case}" VerticalAlignment="Center" Classes="secondary" />
                                     <ComboBox Grid.Column="1" SelectedIndex="{Binding Rename.CaseIndex, Mode=TwoWay}" HorizontalAlignment="Stretch">
-                                        <ComboBoxItem Content="不變" />
-                                        <ComboBoxItem Content="全部小寫" />
-                                        <ComboBoxItem Content="全部大寫" />
-                                        <ComboBoxItem Content="每個字首大寫" />
+                                        <ComboBoxItem Content="{l:T ui_rename_unchanged}" />
+                                        <ComboBoxItem Content="{l:T ui_rename_lowercase}" />
+                                        <ComboBoxItem Content="{l:T ui_rename_uppercase}" />
+                                        <ComboBoxItem Content="{l:T ui_rename_capitalize_each_word}" />
                                     </ComboBox>
-                                    <TextBlock Grid.Row="1" Text="副檔名" VerticalAlignment="Center" Classes="secondary" />
+                                    <TextBlock Grid.Row="1" Text="{l:T ui_rename_extension}" VerticalAlignment="Center" Classes="secondary" />
                                     <ComboBox Grid.Row="1" Grid.Column="1" SelectedIndex="{Binding Rename.ExtensionIndex, Mode=TwoWay}" HorizontalAlignment="Stretch">
-                                        <ComboBoxItem Content="保持原樣" />
-                                        <ComboBoxItem Content="小寫" />
-                                        <ComboBoxItem Content="大寫" />
-                                        <ComboBoxItem Content="改成…" />
+                                        <ComboBoxItem Content="{l:T ui_rename_unchanged_2}" />
+                                        <ComboBoxItem Content="{l:T ui_rename_lowercase_2}" />
+                                        <ComboBoxItem Content="{l:T ui_rename_uppercase_2}" />
+                                        <ComboBoxItem Content="{l:T ui_rename_change_to}" />
                                     </ComboBox>
                                     <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Rename.CustomExtension}"
-                                             IsVisible="{Binding Rename.IsCustomExtension}" PlaceholderText="例如 jpg" />
+                                             IsVisible="{Binding Rename.IsCustomExtension}" PlaceholderText="{l:T ui_rename_e_g_jpg}" />
                                 </Grid>
                             </StackPanel>
                         </ScrollViewer>
@@ -458,7 +459,7 @@
                         <Border Grid.Column="2" Classes="card" Padding="0">
                             <Grid RowDefinitions="Auto,*">
                                 <Grid ColumnDefinitions="*,Auto" Margin="14,10">
-                                    <TextBlock Text="預覽" FontSize="14" FontWeight="SemiBold" />
+                                    <TextBlock Text="{l:T ui_rename_preview}" FontSize="14" FontWeight="SemiBold" />
                                     <TextBlock Grid.Column="1" Text="{Binding Rename.PreviewSummary}" FontSize="13"
                                                Classes="secondary" IsVisible="{Binding !Rename.HasProblems}" />
                                     <TextBlock Grid.Column="1" Text="{Binding Rename.PreviewSummary}" FontSize="13"
@@ -478,7 +479,7 @@
                                                             <TextBlock Grid.Column="2" Text="{Binding NewName}" FontSize="13"
                                                                        TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
                                                                        IsVisible="{Binding !IsUnchanged}" />
-                                                            <TextBlock Grid.Column="2" Text="不變" FontSize="13" Classes="secondary"
+                                                            <TextBlock Grid.Column="2" Text="{l:T ui_rename_unchanged}" FontSize="13" Classes="secondary"
                                                                        VerticalAlignment="Center" IsVisible="{Binding IsUnchanged}" />
                                                         </Grid>
                                                         <TextBlock Text="{Binding Problem}" FontSize="12" IsVisible="{Binding IsProblem}"
@@ -499,20 +500,20 @@
                     <Grid Grid.Row="1" IsVisible="{Binding IsSplitAction}" RowDefinitions="Auto,*" RowSpacing="12">
                         <WrapPanel Grid.Row="0" Orientation="Horizontal">
                             <ListBox Classes="segmented" SelectedIndex="{Binding Split.Mode, Mode=TwoWay}" Margin="0,0,10,0">
-                                <ListBoxItem Content="自訂切點" IsEnabled="{Binding Split.IsSingleFile}" />
-                                <ListBoxItem Content="每一頁一份" />
-                                <ListBoxItem Content="每 N 頁一份" />
+                                <ListBoxItem Content="{l:T ui_split_custom_split_points}" IsEnabled="{Binding Split.IsSingleFile}" />
+                                <ListBoxItem Content="{l:T ui_split_one_pdf_per_page}" />
+                                <ListBoxItem Content="{l:T ui_split_every_n_pages}" />
                             </ListBox>
                             <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding Split.IsFixed}" VerticalAlignment="Center" Margin="0,0,10,0">
-                                <TextBlock Text="每" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding Split.EveryPagesBefore}" VerticalAlignment="Center" />
                                 <NumericUpDown Value="{Binding Split.PagesPerPart, Mode=TwoWay}" Minimum="1" Increment="1" FormatString="0"
                                                Width="110" VerticalAlignment="Center" />
-                                <TextBlock Text="頁一份" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding Split.EveryPagesAfter}" VerticalAlignment="Center" />
                             </StackPanel>
                             <TextBlock Text="{Binding Split.Hint}" Classes="secondary" FontSize="13" VerticalAlignment="Center" Margin="0,0,10,0" />
                             <Border IsVisible="{Binding Split.ConvertedToCustom}" Background="{DynamicResource Clk.ChipOn}" CornerRadius="6"
                                     Padding="10,4" VerticalAlignment="Center">
-                                <TextBlock Text="已改成自訂切點，原本的切點都保留" FontSize="13" />
+                                <TextBlock Text="{l:T ui_split_switched_to_custom_split_points}" FontSize="13" />
                             </Border>
                         </WrapPanel>
                         <Border Grid.Row="1" Classes="card" Padding="12">
@@ -532,7 +533,7 @@
                                                              page's shape at a fixed height, so landscape slides are not boxed into a portrait tile. -->
                                                         <Border Height="108" CornerRadius="4" BorderThickness="1"
                                                                 BorderBrush="{DynamicResource Clk.CardBorder}" Background="#FFFFFF" ClipToBounds="True"
-                                                                Cursor="Hand" ToolTip.Tip="點兩下放大" DoubleTapped="OnSplitPageDoubleTapped">
+                                                                Cursor="Hand" ToolTip.Tip="{l:T ui_split_double_click_to_zoom}" DoubleTapped="OnSplitPageDoubleTapped">
                                                             <Panel>
                                                                 <Image Source="{Binding Thumbnail}" Stretch="Uniform" IsVisible="{Binding HasThumbnail}" />
                                                                 <TextBlock Text="{Binding Number}" Foreground="#9AA0A6" FontSize="20"
@@ -572,10 +573,10 @@
                             <TextBlock Classes="optLabel" Text="{Binding Order.Title}" Margin="0,0,8,0" VerticalAlignment="Center" />
                             <TextBlock Text="{Binding Order.CountText}" Classes="secondary" FontSize="13" Margin="0,0,16,0" VerticalAlignment="Center" />
                             <ListBox Classes="segmented" SelectedIndex="{Binding Order.SortIndex, Mode=TwoWay}" Margin="0,0,8,0">
-                                <ListBoxItem Content="依檔名排序" />
-                                <ListBoxItem Content="依修改時間" />
+                                <ListBoxItem Content="{l:T ui_order_by_name}" />
+                                <ListBoxItem Content="{l:T ui_order_by_date_modified}" />
                             </ListBox>
-                            <Button Classes="secondary" Content="反過來" Command="{Binding Order.Reverse}" VerticalAlignment="Center" />
+                            <Button Classes="secondary" Content="{l:T ui_order_reverse_order}" Command="{Binding Order.Reverse}" VerticalAlignment="Center" />
                         </WrapPanel>
                         <Border Grid.Row="1" Classes="card" Padding="0">
                             <ScrollViewer>
@@ -586,7 +587,7 @@
                                                     Background="Transparent">
                                                 <Grid ColumnDefinitions="Auto,32,*,Auto,Auto" ColumnSpacing="8">
                                                     <Border Grid.Column="0" Classes="dragHandle" Width="28" Height="32" Background="Transparent"
-                                                            Cursor="SizeNorthSouth" ToolTip.Tip="拖曳調整順序">
+                                                            Cursor="SizeNorthSouth" ToolTip.Tip="{l:T ui_order_drag_to_reorder}">
                                                         <Viewbox Classes="ic" Width="16" Height="16">
                                                             <Canvas Width="24" Height="24">
                                                                 <Path Data="M9,6 L9.01,6 M15,6 L15.01,6 M9,12 L9.01,12 M15,12 L15.01,12 M9,18 L9.01,18 M15,18 L15.01,18"
@@ -600,14 +601,14 @@
                                                                VerticalAlignment="Center" ToolTip.Tip="{Binding Path}" />
                                                     <TextBlock Grid.Column="3" Text="{Binding Detail}" Classes="secondary" FontSize="13" VerticalAlignment="Center" />
                                                     <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4">
-                                                        <Button Classes="subtle" Padding="6" ToolTip.Tip="往前" IsEnabled="{Binding CanMoveUp}" AutomationProperties.Name="往前"
+                                                        <Button Classes="subtle" Padding="6" ToolTip.Tip="{l:T ui_order_move_up}" IsEnabled="{Binding CanMoveUp}" AutomationProperties.Name="{l:T ui_order_move_up}"
                                                                 Command="{Binding $parent[UserControl].((vm:ConvertViewModel)DataContext).Order.MoveUp}"
                                                                 CommandParameter="{Binding}">
                                                             <Viewbox Classes="ic" Width="16" Height="16"><Canvas Width="24" Height="24">
                                                                 <Path Data="M12,19 V5 M6,11 L12,5 L18,11" Stroke="{DynamicResource Clk.TextSecondary}" />
                                                             </Canvas></Viewbox>
                                                         </Button>
-                                                        <Button Classes="subtle" Padding="6" ToolTip.Tip="往後" IsEnabled="{Binding CanMoveDown}" AutomationProperties.Name="往後"
+                                                        <Button Classes="subtle" Padding="6" ToolTip.Tip="{l:T ui_order_move_down}" IsEnabled="{Binding CanMoveDown}" AutomationProperties.Name="{l:T ui_order_move_down}"
                                                                 Command="{Binding $parent[UserControl].((vm:ConvertViewModel)DataContext).Order.MoveDown}"
                                                                 CommandParameter="{Binding}">
                                                             <Viewbox Classes="ic" Width="16" Height="16"><Canvas Width="24" Height="24">
@@ -623,7 +624,7 @@
                             </ScrollViewer>
                         </Border>
                         <StackPanel Grid.Row="2" Spacing="6">
-                            <TextBlock Classes="optLabel" Text="合併後的檔名" />
+                            <TextBlock Classes="optLabel" Text="{l:T ui_order_merged_file_name}" />
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
                                 <TextBox Text="{Binding Order.OutputName}" />
                                 <TextBlock Grid.Column="1" Text="{Binding Order.OutputExtension}" Classes="secondary" FontSize="14" VerticalAlignment="Center" />
@@ -642,27 +643,23 @@
                                     <!-- PDF 壓縮 -->
                                     <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.IsCompressPdf}">
                                         <StackPanel Spacing="6">
-                                            <TextBlock Classes="optLabel" Text="壓縮程度" />
+                                            <TextBlock Classes="optLabel" Text="{l:T ui_pdf_compress_compression}" />
                                             <TextBlock Text="{Binding Options.PdfLevelHint}" Classes="secondary" FontSize="13" />
                                             <controls:StepSlider Steps="{Binding Options.PdfLevelSteps}" SelectedIndex="{Binding Options.PdfLevel, Mode=TwoWay}" />
                                         </StackPanel>
-                                        <controls:OptionRow MinItemWidth="240">
-                                            <CheckBox Content="移除內嵌字型（檔案更小，少見的字可能顯示不同）" IsChecked="{Binding Options.StripFonts}" />
-                                            <CheckBox Content="精簡內容串流" IsChecked="{Binding Options.MinifyContent}" />
-                                        </controls:OptionRow>
                                     </StackPanel>
 
                                     <!-- 圖片壓縮 -->
                                     <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.IsImageCompress}">
                                         <StackPanel Spacing="6">
-                                            <TextBlock Classes="optLabel" Text="壓縮程度" />
+                                            <TextBlock Classes="optLabel" Text="{l:T ui_pdf_compress_compression}" />
                                             <controls:StepSlider Steps="{Binding Options.ImageLevelSteps}" SelectedIndex="{Binding Options.ImageLevel, Mode=TwoWay}" />
                                         </StackPanel>
                                         <StackPanel Spacing="6">
-                                            <TextBlock Classes="optLabel" Text="最大邊長" />
+                                            <TextBlock Classes="optLabel" Text="{l:T ui_img_compress_longest_side}" />
                                             <ComboBox ItemsSource="{Binding Options.MaxDimChoices}" SelectedIndex="{Binding Options.ImageMaxDimIndex, Mode=TwoWay}"
                                                       HorizontalAlignment="Left" MinWidth="260" />
-                                            <TextBlock Text="比這個小的圖片不會被放大" Classes="secondary" FontSize="13" />
+                                            <TextBlock Text="{l:T ui_img_compress_smaller_images_keep_their_size}" Classes="secondary" FontSize="13" />
                                         </StackPanel>
                                     </StackPanel>
 
@@ -670,22 +667,22 @@
                                     <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.IsPdfToImage}">
                                         <controls:OptionRow MinItemWidth="200">
                                             <StackPanel Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="格式" />
+                                                <TextBlock Classes="optLabel" Text="{l:T ui_pdf2img_format}" />
                                                 <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.PdfImageFormatIndex, Mode=TwoWay}"><ListBoxItem Content="PNG" /><ListBoxItem Content="JPG" /><ListBoxItem Content="WebP" /></ListBox>
                                             </StackPanel>
                                             <StackPanel Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="解析度" />
+                                                <TextBlock Classes="optLabel" Text="{l:T ui_pdf2img_resolution}" />
                                                 <ComboBox ItemsSource="{Binding Options.DpiChoices}" SelectedIndex="{Binding Options.PdfImageDpiIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
                                             </StackPanel>
                                         </controls:OptionRow>
                                         <controls:OptionRow MinItemWidth="200">
                                             <StackPanel Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="頁面範圍" />
-                                                <TextBox Text="{Binding Options.PdfImagePages}" PlaceholderText="全部頁面；例如 1-3, 5" />
+                                                <TextBlock Classes="optLabel" Text="{l:T ui_pdf2img_pages}" />
+                                                <TextBox Text="{Binding Options.PdfImagePages}" PlaceholderText="{l:T ui_pdf2img_e_g_1_3_5}" />
                                             </StackPanel>
                                             <StackPanel Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="輸出" />
-                                                <CheckBox Content="所有頁面接成一張長圖" IsChecked="{Binding Options.PdfImageStitch}" />
+                                                <TextBlock Classes="optLabel" Text="{l:T ui_result_output_files}" />
+                                                <CheckBox Content="{l:T ui_pdf2img_join_all_pages_into_one}" IsChecked="{Binding Options.PdfImageStitch}" />
                                             </StackPanel>
                                         </controls:OptionRow>
                                     </StackPanel>
@@ -694,12 +691,12 @@
                                     <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.IsTranslate}">
                                         <controls:OptionRow MinItemWidth="200">
                                             <StackPanel Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="翻譯成" />
+                                                <TextBlock Classes="optLabel" Text="{l:T ui_translate_translate_to}" />
                                                 <ComboBox ItemsSource="{Binding Options.TranslateChoices}" SelectedIndex="{Binding Options.TranslateLanguageIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
                                             </StackPanel>
                                             <StackPanel Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="翻譯服務" />
-                                                <ComboBox SelectedIndex="{Binding Options.TranslateEngineIndex, Mode=TwoWay}" HorizontalAlignment="Stretch"><ComboBoxItem Content="Google 翻譯" /><ComboBoxItem Content="自訂 AI 服務" /></ComboBox>
+                                                <TextBlock Classes="optLabel" Text="{l:T ui_translate_translation_service}" />
+                                                <ComboBox SelectedIndex="{Binding Options.TranslateEngineIndex, Mode=TwoWay}" HorizontalAlignment="Stretch"><ComboBoxItem Content="{l:T ui_translate_google_translate}" /><ComboBoxItem Content="{l:T ui_translate_custom_ai_service}" /></ComboBox>
                                             </StackPanel>
                                         </controls:OptionRow>
                                         <!-- 自訂 AI 服務 (canvas B): a remembered service is one line with 變更; otherwise the
@@ -707,33 +704,33 @@
                                         <Border Background="{DynamicResource Clk.TileFill}" CornerRadius="10" Padding="14,8"
                                                 IsVisible="{Binding Options.ShowAiSummary}">
                                             <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="4">
-                                                <TextBlock Text="使用" VerticalAlignment="Center" />
+                                                <TextBlock Text="{l:T ui_translate_use}" VerticalAlignment="Center" />
                                                 <TextBlock Grid.Column="1" Text="{Binding Options.AiSummaryModel}" FontWeight="SemiBold" VerticalAlignment="Center" />
                                                 <TextBlock Grid.Column="2" Text="{Binding Options.AiSummaryHost}" Classes="secondary" VerticalAlignment="Center"
                                                            TextTrimming="CharacterEllipsis" />
-                                                <Button Grid.Column="3" Classes="secondary" Content="變更" Command="{Binding Options.EditAi}" />
+                                                <Button Grid.Column="3" Classes="secondary" Content="{l:T ui_translate_change}" Command="{Binding Options.EditAi}" />
                                             </Grid>
                                         </Border>
                                         <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.ShowAiFields}">
                                             <controls:OptionRow MinItemWidth="220">
                                                 <StackPanel Spacing="6">
-                                                    <TextBlock Classes="optLabel" Text="服務網址" />
+                                                    <TextBlock Classes="optLabel" Text="{l:T ui_translate_service_url}" />
                                                     <TextBox Text="{Binding Options.AiEndpoint}" PlaceholderText="https://api.openai.com/v1" />
                                                 </StackPanel>
                                                 <StackPanel Spacing="6">
-                                                    <TextBlock Classes="optLabel" Text="模型" />
-                                                    <TextBox Text="{Binding Options.AiModel}" PlaceholderText="例如 gpt-4o-mini" />
+                                                    <TextBlock Classes="optLabel" Text="{l:T ui_translate_model}" />
+                                                    <TextBox Text="{Binding Options.AiModel}" PlaceholderText="{l:T ui_translate_e_g_gpt_4o_mini}" />
                                                 </StackPanel>
                                                 <StackPanel Spacing="6">
-                                                    <TextBlock Classes="optLabel" Text="API 金鑰" />
+                                                    <TextBlock Classes="optLabel" Text="{l:T ui_translate_api_key}" />
                                                     <TextBox Text="{Binding Options.AiApiKey}" PasswordChar="●" RevealPassword="False" />
                                                 </StackPanel>
                                             </controls:OptionRow>
-                                            <CheckBox Content="記住這個服務，下次不用再填" IsChecked="{Binding Options.RememberAi}" />
+                                            <CheckBox Content="{l:T ui_translate_remember_this_service}" IsChecked="{Binding Options.RememberAi}" />
                                         </StackPanel>
                                         <!-- Privacy affects the result, so it is said on the card (spec 4.9). -->
                                         <TextBlock Classes="secondary" FontSize="13" TextWrapping="Wrap"
-                                                   Text="{Binding Options.TranslateServiceName, StringFormat='翻譯需要連網，檔案內容會送到 {0}'}" />
+                                                   Text="{Binding Options.TranslateOnlineNotice}" />
                                     </StackPanel>
 
                                     <!-- 解密 PDF -->
@@ -741,9 +738,8 @@
                                          printing or copying is decrypted without one (spec 4.9). -->
                                     <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.IsDecrypt}">
                                         <StackPanel Spacing="14" IsVisible="{Binding Options.DecryptNeedsPassword}">
-                                            <TextBlock Classes="optLabel" Text="密碼" />
+                                            <TextBlock Classes="optLabel" Text="{l:T ui_decrypt_password}" />
                                             <TextBox Text="{Binding Options.Password}" PasswordChar="●" RevealPassword="False" />
-                                            <TextBlock Text="多個檔案會先用同一組密碼試；密碼只用這一次，不會儲存" Classes="secondary" FontSize="13" />
                                         </StackPanel>
                                         <TextBlock IsVisible="{Binding Options.DecryptNoPassword}" TextWrapping="Wrap" FontSize="14"
                                                    Text="{Binding Options.DecryptNoPasswordText}" />
@@ -751,7 +747,7 @@
 
                                     <!-- 圖片轉換格式（必選，沒有預設） -->
                                     <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.IsImageFormat}">
-                                        <TextBlock Classes="optLabel" Text="轉成" />
+                                        <TextBlock Classes="optLabel" Text="{l:T ui_img_format_convert_to}" />
                                         <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.ImageFormatIndex, Mode=TwoWay}">
                                             <ListBoxItem Content="PNG" IsEnabled="{Binding Options.ImageFormatAllowed[0]}" />
                                             <ListBoxItem Content="JPG" IsEnabled="{Binding Options.ImageFormatAllowed[1]}" />
@@ -764,7 +760,7 @@
                                     <!-- Markdown 轉成 PDF／Word (canvas MarkdownB / MarkdownWordB / MarkdownWordFailB, D2): template cards, what was read from a Word template, then paper, text size and code blocks side by side -->
                                     <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.IsMarkdown}">
                                         <StackPanel Spacing="10">
-                                        <TextBlock Classes="optLabel" Text="文件範本" />
+                                        <TextBlock Classes="optLabel" Text="{l:T ui_markdown_document_template}" />
                                         <ListBox Classes="templateCards" ItemsSource="{Binding Options.TemplateCards}" Margin="-6,0"
                                                  SelectedIndex="{Binding Options.MarkdownThemeIndex, Mode=TwoWay}">
                                             <ListBox.ItemsPanel>
@@ -827,69 +823,69 @@
                                                        Margin="0,0,12,0" IsVisible="{Binding Options.ShowTemplateSummary}" />
                                             <TextBlock Text="{Binding Options.TemplateError}" Foreground="{DynamicResource Clk.Danger}" FontSize="13"
                                                        VerticalAlignment="Center" Margin="0,0,12,0" TextWrapping="Wrap" IsVisible="{Binding Options.HasTemplateError}" />
-                                            <Button Classes="secondary" Content="換一個範本" Command="{Binding Options.RequestTemplatePick}" />
+                                            <Button Classes="secondary" Content="{l:T ui_action_change_template}" Command="{Binding Options.RequestTemplatePick}" />
                                         </WrapPanel>
                                         </StackPanel>
                                         <controls:OptionRow MinItemWidth="160">
                                             <StackPanel Spacing="6" IsVisible="{Binding Options.IsMarkdownPdf}">
-                                                <TextBlock Classes="optLabel" Text="紙張" />
+                                                <TextBlock Classes="optLabel" Text="{l:T ui_markdown_paper}" />
                                                 <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.MarkdownPaperIndex, Mode=TwoWay}"><ListBoxItem Content="A4" /><ListBoxItem Content="Letter" /></ListBox>
                                             </StackPanel>
                                             <StackPanel Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="文字縮放" />
-                                                <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.MarkdownTextSizeIndex, Mode=TwoWay}"><ListBoxItem Content="0.9 倍" /><ListBoxItem Content="1 倍" /><ListBoxItem Content="1.12 倍" /></ListBox>
+                                                <TextBlock Classes="optLabel" Text="{l:T ui_markdown_text_scale}" />
+                                                <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.MarkdownTextSizeIndex, Mode=TwoWay}"><ListBoxItem Content="{l:T ui_markdown_0_9}" /><ListBoxItem Content="{l:T ui_markdown_1}" /><ListBoxItem Content="{l:T ui_markdown_1_12}" /></ListBox>
                                             </StackPanel>
                                             <StackPanel Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="程式碼區塊配色" />
-                                                <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.MarkdownCodeIndex, Mode=TwoWay}"><ListBoxItem Content="深色底" /><ListBoxItem Content="淺色底" /></ListBox>
+                                                <TextBlock Classes="optLabel" Text="{l:T ui_markdown_code_block_colors}" />
+                                                <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.MarkdownCodeIndex, Mode=TwoWay}"><ListBoxItem Content="{l:T ui_markdown_dark}" /><ListBoxItem Content="{l:T ui_markdown_light}" /></ListBox>
                                             </StackPanel>
                                         </controls:OptionRow>
                                     </StackPanel>
 
                                     <!-- Office 轉成 PDF：沒有選項 -->
                                     <TextBlock IsVisible="{Binding Options.IsOffice}" Classes="secondary" FontSize="14"
-                                               Text="這個動作沒有需要調整的選項" />
+                                               Text="{l:T ui_action_no_options_for_this_action}" />
 
                                     <!-- 列印：印表機與份數同一列，其餘並排在下面 -->
                                     <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.IsPrint}">
                                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="28" IsVisible="{Binding Options.HasPrinters}">
                                             <StackPanel Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="印表機" />
+                                                <TextBlock Classes="optLabel" Text="{l:T ui_print_printer}" />
                                                 <ComboBox ItemsSource="{Binding Options.Printers}" SelectedIndex="{Binding Options.PrinterIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
                                             </StackPanel>
                                             <StackPanel Grid.Column="1" Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="份數" />
+                                                <TextBlock Classes="optLabel" Text="{l:T ui_print_copies}" />
                                                 <NumericUpDown Value="{Binding Options.Copies, Mode=TwoWay}" Minimum="1" Maximum="99" Increment="1" FormatString="0" Width="140" />
                                             </StackPanel>
                                         </Grid>
                                         <StackPanel Spacing="6" IsVisible="{Binding !Options.HasPrinters}">
-                                            <TextBlock Classes="optLabel" Text="印表機" />
-                                            <TextBlock Classes="secondary" FontSize="14" Text="這台電腦沒有可用的印表機" />
+                                            <TextBlock Classes="optLabel" Text="{l:T ui_print_printer}" />
+                                            <TextBlock Classes="secondary" FontSize="14" Text="{l:T ui_print_no_printers_are_available_on}" />
                                         </StackPanel>
                                         <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.HasPrinters}">
                                         <controls:OptionRow MinItemWidth="200">
                                             <StackPanel Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="頁面範圍" />
-                                                <TextBox Text="{Binding Options.PrintPages}" PlaceholderText="全部頁面；例如 1-3, 5" />
+                                                <TextBlock Classes="optLabel" Text="{l:T ui_pdf2img_pages}" />
+                                                <TextBox Text="{Binding Options.PrintPages}" PlaceholderText="{l:T ui_pdf2img_e_g_1_3_5}" />
                                             </StackPanel>
                                             <StackPanel Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="紙張" />
+                                                <TextBlock Classes="optLabel" Text="{l:T ui_markdown_paper}" />
                                                 <ComboBox ItemsSource="{Binding Options.PaperSizes}" SelectedIndex="{Binding Options.PaperIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
                                             </StackPanel>
                                         </controls:OptionRow>
                                         <controls:OptionRow MinItemWidth="380">
                                             <StackPanel Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="雙面" />
-                                                <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.DuplexIndex, Mode=TwoWay}"><ListBoxItem Content="單面" /><ListBoxItem Content="雙面（長邊翻頁）" /><ListBoxItem Content="雙面（短邊翻頁）" /></ListBox>
+                                                <TextBlock Classes="optLabel" Text="{l:T ui_print_two_sided}" />
+                                                <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.DuplexIndex, Mode=TwoWay}"><ListBoxItem Content="{l:T ui_print_one_sided}" /><ListBoxItem Content="{l:T ui_print_two_sided_flip_on_long}" /><ListBoxItem Content="{l:T ui_print_two_sided_flip_on_short}" /></ListBox>
                                             </StackPanel>
                                             <StackPanel Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="方向" />
-                                                <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.OrientationIndex, Mode=TwoWay}"><ListBoxItem Content="自動" /><ListBoxItem Content="直向" /><ListBoxItem Content="橫向" /></ListBox>
+                                                <TextBlock Classes="optLabel" Text="{l:T ui_print_orientation}" />
+                                                <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.OrientationIndex, Mode=TwoWay}"><ListBoxItem Content="{l:T ui_print_auto}" /><ListBoxItem Content="{l:T ui_print_portrait}" /><ListBoxItem Content="{l:T ui_print_landscape}" /></ListBox>
                                             </StackPanel>
                                         </controls:OptionRow>
                                         <controls:OptionRow MinItemWidth="200">
-                                            <CheckBox Content="縮放至紙張大小" IsChecked="{Binding Options.FitToPage}" />
-                                            <CheckBox Content="加深淺色文字" IsChecked="{Binding Options.DarkenText}" />
+                                            <CheckBox Content="{l:T ui_print_fit_to_paper}" IsChecked="{Binding Options.FitToPage}" />
+                                            <CheckBox Content="{l:T ui_print_darken_light_text}" IsChecked="{Binding Options.DarkenText}" />
                                         </controls:OptionRow>
                                         </StackPanel>
                                     </StackPanel>
@@ -900,7 +896,7 @@
 
                     <!-- Bottom Bar: Output Path + Start Button -->
                     <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,16,0,0" VerticalAlignment="Bottom">
-                        <TextBlock Grid.Column="0" Text="會直接改掉原本的檔名" Classes="secondary" FontSize="14"
+                        <TextBlock Grid.Column="0" Text="{l:T ui_rename_files_are_renamed_in_place}" Classes="secondary" FontSize="14"
                                    VerticalAlignment="Center" IsVisible="{Binding IsRenameAction}" />
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                     IsVisible="{Binding ShowsOutputLocation}">
@@ -927,7 +923,7 @@
                                         <Grid ColumnDefinitions="*,Auto,Auto">
                                             <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="14" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                             <TextBlock Grid.Column="1" Text="{Binding FileSizeText}" Classes="secondary" FontSize="13" Margin="12,0" VerticalAlignment="Center" />
-                                            <Button Grid.Column="2" Classes="subtle" Padding="8" ToolTip.Tip="移除" AutomationProperties.Name="移除"
+                                            <Button Grid.Column="2" Classes="subtle" Padding="8" ToolTip.Tip="{l:T ui_result_remove}" AutomationProperties.Name="{l:T ui_result_remove}"
                                                     Command="{Binding $parent[UserControl].((vm:ConvertViewModel)DataContext).RemoveFile}"
                                                     CommandParameter="{Binding Path}">
                                                 <Viewbox Classes="ic" Width="16" Height="16">
@@ -940,7 +936,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </ScrollViewer>
-                    <Button Grid.Row="1" Classes="primary" Name="DoneManageFilesButton" Content="完成"
+                    <Button Grid.Row="1" Classes="primary" Name="DoneManageFilesButton" Content="{l:T ui_result_done_2}"
                             HorizontalAlignment="Right" Margin="0,12,0,0" MinHeight="36" Padding="20,0" />
                 </Grid>
 
@@ -970,14 +966,13 @@
                                                 <TextBlock Text="{Binding PasswordError}" Foreground="{DynamicResource Clk.Danger}" FontSize="13"
                                                            IsVisible="{Binding HasPasswordError}" />
                                                 <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-                                                    <TextBox Text="{Binding PasswordInput}" PasswordChar="●" PlaceholderText="這個 PDF 有密碼，請輸入" />
+                                                    <TextBox Text="{Binding PasswordInput}" PasswordChar="●" PlaceholderText="{l:T ui_password_enter}" />
                                                     <!-- Core cancels the whole task when no password is given, so this button says 停止 until a real
                                                          per-file skip lands (docs/specs/pdf_password_unlock_plan.md). -->
-                                                    <Button Grid.Column="1" Classes="secondary" Content="停止" Command="{Binding SkipPassword}"
-                                                            ToolTip.Tip="不輸入密碼，停止這次處理" />
+                                                    <Button Grid.Column="1" Classes="secondary" Content="{l:T ui_common_stop}" Command="{Binding SkipPassword}"
+                                                            ToolTip.Tip="{l:T ui_password_stop_without_entering_a_password}" />
                                                     <Button Grid.Column="2" Classes="primary" Content="{Binding UnlockText}" Command="{Binding SubmitPassword}" />
                                                 </Grid>
-                                                <TextBlock Text="密碼只用這一次，不會儲存；同一批其他有密碼的檔案會先用這組試" Classes="secondary" FontSize="12" />
                                             </StackPanel>
                                         </StackPanel>
                                     </Border>
@@ -985,7 +980,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </ScrollViewer>
-                    <Button Grid.Row="3" Classes="secondary" Name="CancelConversionButton" Content="取消"
+                    <Button Grid.Row="3" Classes="secondary" Name="CancelConversionButton" Content="{l:T ui_common_cancel}"
                             HorizontalAlignment="Right" Margin="0,12,0,0" MinHeight="38" Padding="24,0" />
                 </Grid>
 
@@ -1019,8 +1014,8 @@
                         </ItemsControl>
                     </ScrollViewer>
                     <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" Margin="0,16,0,0">
-                        <Button Grid.Column="0" Classes="secondary" Name="ProcessOtherFilesButton" Content="處理其他檔案" MinHeight="40" Padding="18,0" />
-                        <Button Grid.Column="2" Classes="primary" Name="OpenOutputFolderButton" Content="開啟所在資料夾" MinHeight="40" Padding="24,0" />
+                        <Button Grid.Column="0" Classes="secondary" Name="ProcessOtherFilesButton" Content="{l:T ui_result_process_other_files}" MinHeight="40" Padding="18,0" />
+                        <Button Grid.Column="2" Classes="primary" Name="OpenOutputFolderButton" Content="{l:T ui_result_show_in_folder}" MinHeight="40" Padding="24,0" />
                     </Grid>
                 </Grid>
 
@@ -1063,40 +1058,40 @@
         </Border.IsVisible>
         <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
             <Grid ColumnDefinitions="Auto,*,Auto,*,Auto,Auto" ColumnSpacing="12">
-                <Button Grid.Column="0" Classes="link back" Content="回到所有頁面" FontSize="15" VerticalAlignment="Center"
+                <Button Grid.Column="0" Classes="link back" Content="{l:T ui_preview_back_to_all_pages}" FontSize="15" VerticalAlignment="Center"
                         Command="{Binding Split.ClosePreview}" ToolTip.Tip="Esc" />
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                     <!-- Every toolbar button is 40 high with line icons on the 24 grid (spec 7), not ‹ › − ＋ glyphs, whose
                          sizes and baselines differ from font to font. -->
                     <Button Classes="secondary" Width="40" Height="40" Padding="0" HorizontalContentAlignment="Center"
-                            Command="{Binding Split.PreviousPage}" ToolTip.Tip="上一頁（←）">
+                            Command="{Binding Split.PreviousPage}" ToolTip.Tip="{l:T ui_preview_previous_page}">
                         <Viewbox Classes="ic" Width="16" Height="16"><Canvas Width="24" Height="24"><Path Data="M15,5 L8,12 L15,19" /></Canvas></Viewbox>
                     </Button>
                     <TextBlock Text="{Binding Split.PreviewTitle}" MinWidth="112" TextAlignment="Center" VerticalAlignment="Center" />
                     <Button Classes="secondary" Width="40" Height="40" Padding="0" HorizontalContentAlignment="Center"
-                            Command="{Binding Split.NextPage}" ToolTip.Tip="下一頁（→）">
+                            Command="{Binding Split.NextPage}" ToolTip.Tip="{l:T ui_preview_next_page}">
                         <Viewbox Classes="ic" Width="16" Height="16"><Canvas Width="24" Height="24"><Path Data="M9,5 L16,12 L9,19" /></Canvas></Viewbox>
                     </Button>
                 </StackPanel>
                 <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                     <Button Classes="secondary" Width="40" Height="40" Padding="0" HorizontalContentAlignment="Center"
-                            Command="{Binding Split.ZoomOutPreview}" ToolTip.Tip="縮小（Ctrl＋滾輪）">
+                            Command="{Binding Split.ZoomOutPreview}" ToolTip.Tip="{l:T ui_preview_zoom_out_ctrl_scroll}">
                         <Viewbox Classes="ic" Width="16" Height="16"><Canvas Width="24" Height="24"><Path Data="M6,12 H18" /></Canvas></Viewbox>
                     </Button>
                     <Button Classes="secondary" Content="{Binding Split.PreviewZoomText}" MinWidth="88" Height="40"
                             HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                            Command="{Binding Split.TogglePreviewFit}" ToolTip.Tip="在整頁與符合寬度之間切換" />
+                            Command="{Binding Split.TogglePreviewFit}" ToolTip.Tip="{l:T ui_preview_switch_between_whole_page_and}" />
                     <Button Classes="secondary" Width="40" Height="40" Padding="0" HorizontalContentAlignment="Center"
-                            Command="{Binding Split.ZoomInPreview}" ToolTip.Tip="放大（Ctrl＋滾輪）">
+                            Command="{Binding Split.ZoomInPreview}" ToolTip.Tip="{l:T ui_preview_zoom_in_ctrl_scroll}">
                         <Viewbox Classes="ic" Width="16" Height="16"><Canvas Width="24" Height="24"><Path Data="M12,6 V18 M6,12 H18" /></Canvas></Viewbox>
                     </Button>
                 </StackPanel>
                 <Panel Grid.Column="5" IsVisible="{Binding Split.PreviewHasGap}" VerticalAlignment="Center">
-                    <Button Classes="secondary" Content="在這頁後面切開" Height="40" Padding="16,0" VerticalContentAlignment="Center"
+                    <Button Classes="secondary" Content="{l:T ui_preview_split_after_this_page}" Height="40" Padding="16,0" VerticalContentAlignment="Center"
                             IsVisible="{Binding !Split.PreviewIsCut}" Command="{Binding Split.TogglePreviewCut}" />
-                    <Button Classes="primary" Content="✓ 這頁後面已切開" Height="40" Padding="16,0" VerticalContentAlignment="Center"
+                    <Button Classes="primary" Content="{l:T ui_preview_split_after_this_page_2}" Height="40" Padding="16,0" VerticalContentAlignment="Center"
                             IsVisible="{Binding Split.PreviewIsCut}" Command="{Binding Split.TogglePreviewCut}"
-                            ToolTip.Tip="再按一次取消切點" />
+                            ToolTip.Tip="{l:T ui_preview_click_again_to_remove_the}" />
                 </Panel>
             </Grid>
             <Border Grid.Row="1" CornerRadius="12" Background="{DynamicResource Clk.Card}" ClipToBounds="True">
@@ -1118,9 +1113,9 @@
                     <TextBlock Text="{Binding Split.PreviewPartText}" FontSize="13" />
                 </Border>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-                    <TextBlock Text="← → 換頁" Classes="secondary" FontSize="12" />
-                    <TextBlock Text="Esc 回到所有頁面" Classes="secondary" FontSize="12" />
-                    <TextBlock Text="Ctrl＋滾輪 縮放" Classes="secondary" FontSize="12" />
+                    <TextBlock Text="{l:T ui_preview_change_page}" Classes="secondary" FontSize="12" />
+                    <TextBlock Text="{l:T ui_preview_esc_back_to_all_pages}" Classes="secondary" FontSize="12" />
+                    <TextBlock Text="{l:T ui_preview_ctrl_scroll_zoom}" Classes="secondary" FontSize="12" />
                 </StackPanel>
             </Grid>
         </Grid>

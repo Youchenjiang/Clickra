@@ -2,6 +2,7 @@ using System;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Clickra.Desktop.ViewModels;
+using Clickra.Desktop.L10n;
 
 namespace Clickra.Desktop.Views.Pages;
 
@@ -20,7 +21,7 @@ public partial class HistoryPage : UserControl
         };
 
         // ⋯ menu: 清除歷史… (confirmed in a dialog).
-        var clear = new MenuItem { Header = "清除歷史…" };
+        var clear = new MenuItem { Header = Strings.T("ui_history_clear_history") };
         clear.Click += async (_, _) =>
         {
             if (GetViewModel() is { } vm) await vm.ClearHistory();

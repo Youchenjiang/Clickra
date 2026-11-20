@@ -7,6 +7,8 @@ using Avalonia.Platform;
 using Clickra.Core.Modules.Doc.Shared.Application;
 using Clickra.Desktop.Controls;
 
+using Clickra.Desktop.L10n;
+
 namespace Clickra.Desktop.ViewModels;
 
 /// <summary>
@@ -18,7 +20,7 @@ namespace Clickra.Desktop.ViewModels;
 /// </summary>
 public sealed class TemplateCardViewModel : ViewModelBase
 {
-    private const string WordCardName = "Word 範本";
+    private static string WordCardName => Strings.T("ui_markdown_word_template");
     private static readonly Color Title = Color.Parse("#1F1F1F");
     private static readonly Color Body = Color.Parse("#8A8A8A");
 

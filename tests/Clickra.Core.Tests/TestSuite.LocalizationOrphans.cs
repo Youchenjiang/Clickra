@@ -136,7 +136,12 @@ static partial class TestSuite
         }
 
         string searchableText = searchable.ToString();
-        var consumed = keys.Where(k => searchableText.Contains('"' + k + '"', StringComparison.Ordinal)).ToList();
+        // A key is consumed when code names it in quotes, or an .axaml view looks it up with {l:T key}.
+        // An English plural form key_one is consumed through its base key (Strings.Count picks it).
+        bool Named(string k) =>
+            searchableText.Contains('"' + k + '"', StringComparison.Ordinal) ||
+            searchableText.Contains("{l:T " + k + "}", StringComparison.Ordinal);
+        var consumed = keys.Where(k => Named(k) || (k.EndsWith("_one", StringComparison.Ordinal) && Named(k[..^4]))).ToList();
         var orphans = keys.Where(k => !consumed.Contains(k, StringComparer.Ordinal))
             .OrderBy(k => k, StringComparer.Ordinal)
             .ToList();
@@ -238,13 +243,14 @@ static partial class TestSuite
                 $"fits {ProgressTipLineHalfWidthUnits} ('{tip}').");
         }
     }
-    /// <summary>Every .cs and .xaml file under the given directory, excluding build output.</summary>
+    /// <summary>Every .cs, .xaml and .axaml file under the given directory, excluding build output.</summary>
     private static IEnumerable<string> EnumerateSources(string sourceDir)
     {
         Assert.True(Directory.Exists(sourceDir), $"Expected the source directory to exist: {sourceDir}");
         return Directory.EnumerateFiles(sourceDir, "*.*", SearchOption.AllDirectories)
             .Where(p => p.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) ||
-                        p.EndsWith(".xaml", StringComparison.OrdinalIgnoreCase))
+                        p.EndsWith(".xaml", StringComparison.OrdinalIgnoreCase) ||
+                        p.EndsWith(".axaml", StringComparison.OrdinalIgnoreCase))
             .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase) &&
                         !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase));
     }

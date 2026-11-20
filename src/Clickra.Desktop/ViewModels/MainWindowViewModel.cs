@@ -1,5 +1,5 @@
 using System;
-using Clickra.Core;
+using Clickra.Desktop.L10n;
 
 namespace Clickra.Desktop.ViewModels;
 
@@ -35,6 +35,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     {
         History.Session = Convert;
         History.IsBusy = () => Convert.IsExecuting;
+        Settings.IsBusy = () => Convert.IsExecuting;
         History.RerunRequested += (_, e) => Rerun(e);
         Convert.RerunRequested += (_, e) => Rerun(e);
         History.ResumeRequested += async (_, e) => await Convert.ResumeParkedAsync(e.Task);
@@ -51,9 +52,9 @@ public sealed class MainWindowViewModel : ViewModelBase
         if (Convert.PrepareRerun(e.Command, e.Files)) CurrentPage = MainPage.Convert;
     }
 
-    public string ConvertTabLabel { get; } = Localization.T("tab_convert");
-    public string HistoryTabLabel { get; } = Localization.T("tab_history");
-    public string SettingsTabLabel { get; } = Localization.T("tab_settings");
+    public string ConvertTabLabel { get; } = Strings.T("ui_tab_convert");
+    public string HistoryTabLabel { get; } = Strings.T("ui_tab_history");
+    public string SettingsTabLabel { get; } = Strings.T("ui_tab_settings");
 
     public MainPage CurrentPage
     {

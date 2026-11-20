@@ -1,6 +1,7 @@
 <!-- History (spec 4.2): title, filter 「全部｜✓ n｜✕ n」 and a ⋯ menu; then 進行中, 待繼續 and the finished
      tasks grouped by day. Every row is the shared HistoryRowView. -->
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="using:Clickra.Desktop.L10n"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Clickra.Desktop.ViewModels"
              xmlns:rows="using:Clickra.Desktop.Views.Controls"
@@ -22,21 +23,21 @@
 
     <Grid RowDefinitions="Auto,12,*" Margin="0,0,0,24">
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,4,0,0">
-            <TextBlock Grid.Column="0" Classes="h1" Text="歷史" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="0" Classes="h1" Text="{l:T ui_history_history}" VerticalAlignment="Center" />
 
             <!-- One segmented control; 全部 has no count, canceled tasks count only in 全部. -->
             <ListBox Grid.Column="2" Classes="segmented filter" Padding="3" VerticalAlignment="Center"
                      SelectedIndex="{Binding FilterIndex, Mode=TwoWay}" IsVisible="{Binding HasCompleted}">
-                <ListBoxItem AutomationProperties.Name="全部">
-                    <TextBlock Text="全部" FontSize="13" />
+                <ListBoxItem AutomationProperties.Name="{l:T ui_history_all}">
+                    <TextBlock Text="{l:T ui_history_all}" FontSize="13" />
                 </ListBoxItem>
-                <ListBoxItem ToolTip.Tip="成功" AutomationProperties.Name="成功">
+                <ListBoxItem ToolTip.Tip="{l:T ui_history_done}" AutomationProperties.Name="{l:T ui_history_done}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <Viewbox Classes="ic" Width="18" Height="18" VerticalAlignment="Center"><Canvas Width="24" Height="24"><Path Data="M5,12.5 L9.5,17 L19,7.5" Stroke="{DynamicResource Clk.TextTertiary}" /></Canvas></Viewbox>
                         <TextBlock Text="{Binding SuccessCount}" FontSize="13" />
                     </StackPanel>
                 </ListBoxItem>
-                <ListBoxItem ToolTip.Tip="失敗" AutomationProperties.Name="失敗">
+                <ListBoxItem ToolTip.Tip="{l:T ui_history_not_completed}" AutomationProperties.Name="{l:T ui_history_not_completed}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <Viewbox Classes="ic" Width="18" Height="18" VerticalAlignment="Center"><Canvas Width="24" Height="24"><Path Data="M6,6 L18,18 M18,6 L6,18" Stroke="{DynamicResource Clk.Danger}" /></Canvas></Viewbox>
                         <TextBlock Text="{Binding FailedCount}" FontSize="13" />
@@ -46,7 +47,7 @@
 
             <Button Grid.Column="3" Classes="subtle" Name="MoreButton" Width="40" Height="40" Padding="0"
                     Margin="8,0,0,0" VerticalAlignment="Center" HorizontalContentAlignment="Center"
-                    ToolTip.Tip="更多" AutomationProperties.Name="更多" IsVisible="{Binding HasCompleted}">
+                    ToolTip.Tip="{l:T ui_history_more}" AutomationProperties.Name="{l:T ui_history_more}" IsVisible="{Binding HasCompleted}">
                 <!-- ⋯ on the same grid: three dots drawn as round caps of zero-length strokes. -->
                 <Viewbox Classes="ic" Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Canvas Width="24" Height="24">
@@ -70,8 +71,8 @@
                             </Canvas>
                         </Viewbox>
                     </Border>
-                    <TextBlock Text="還沒有處理過檔案" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                    <Button Classes="primary" Name="GoConvertButton" Content="去轉檔"
+                    <TextBlock Text="{l:T ui_history_no_files_processed_yet}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                    <Button Classes="primary" Name="GoConvertButton" Content="{l:T ui_history_go_to_convert}"
                             HorizontalAlignment="Center" MinHeight="40" Padding="20,0" FontSize="14" />
                 </StackPanel>
 
@@ -79,7 +80,7 @@
                     <StackPanel>
                         <!-- 進行中: pinned on top. -->
                         <StackPanel IsVisible="{Binding HasActive}">
-                            <TextBlock Classes="sectionHead" Text="進行中" />
+                            <TextBlock Classes="sectionHead" Text="{l:T ui_history_parked_in_progress}" />
                             <ItemsControl ItemsSource="{Binding ActiveRows}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:HistoryRowViewModel">
@@ -91,7 +92,7 @@
 
                         <!-- 待繼續: paused tasks, kept for the remaining days shown in the time column. -->
                         <StackPanel IsVisible="{Binding HasParked}">
-                            <TextBlock Classes="sectionHead" Text="待繼續" />
+                            <TextBlock Classes="sectionHead" Text="{l:T ui_history_parked_paused}" />
                             <ItemsControl ItemsSource="{Binding ParkedRows}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:HistoryRowViewModel">
@@ -119,7 +120,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
-                        <TextBlock IsVisible="{Binding IsFilterEmpty}" Text="沒有符合的紀錄" Classes="secondary"
+                        <TextBlock IsVisible="{Binding IsFilterEmpty}" Text="{l:T ui_history_no_matching_records}" Classes="secondary"
                                    FontSize="14" HorizontalAlignment="Center" Margin="0,32" />
                     </StackPanel>
                 </ScrollViewer>

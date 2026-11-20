@@ -13,6 +13,7 @@ using Clickra.Desktop.Controls;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using Clickra.Desktop.ViewModels;
+using Clickra.Desktop.L10n;
 
 namespace Clickra.Desktop.Views.Pages;
 
@@ -140,9 +141,9 @@ public partial class ConvertPage : UserControl
         if (sender is not ActionOptionsViewModel options || TopLevel.GetTopLevel(this) is not { } top) return;
         var files = await top.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "選擇 Word 範本",
+            Title = Strings.T("ui_markdown_choose_a_word_template"),
             AllowMultiple = false,
-            FileTypeFilter = [new FilePickerFileType("Word 文件") { Patterns = ["*.docx"] }],
+            FileTypeFilter = [new FilePickerFileType(Strings.T("ui_markdown_word_file_type")) { Patterns = ["*.docx"] }],
         });
         string? path = files.Count > 0 ? files[0].Path.LocalPath : null;
         if (string.IsNullOrWhiteSpace(path)) options.CancelTemplatePick();
@@ -381,7 +382,7 @@ public partial class ConvertPage : UserControl
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "選擇要處理的檔案",
+            Title = Strings.T("ui_start_choose_files_to_process"),
             AllowMultiple = true
         });
 
@@ -475,19 +476,19 @@ public partial class ConvertPage : UserControl
         if (files.Count == 0)
         {
             string emptyTitle = folders.Count == 1
-                ? $"「{System.IO.Path.GetFileName(folders[0].TrimEnd('\\', '/'))}」裡沒有檔案"
-                : "這些資料夾裡沒有檔案";
-            return (emptyTitle, "只會加入資料夾這一層的檔案，不含子資料夾");
+                ? Strings.F("ui_drop_folder_empty", ("name", System.IO.Path.GetFileName(folders[0].TrimEnd('\\', '/'))))
+                : Strings.T("ui_drop_these_folders_have_no_files");
+            return (emptyTitle, Strings.T("ui_drop_only_files_in_this_folder"));
         }
 
         string title;
         if (folders.Count == 1 && rawPathsCount == 1)
         {
-            title = $"放開以加入「{System.IO.Path.GetFileName(folders[0].TrimEnd('\\', '/'))}」裡的 {files.Count} 個檔案";
+            title = Strings.F("ui_drop_add_from_folder", ("name", System.IO.Path.GetFileName(folders[0].TrimEnd('\\', '/'))), ("count", files.Count));
         }
         else
         {
-            title = isDropZone && folders.Count == 0 ? "放開以開始" : $"放開以加入 {files.Count} 個檔案";
+            title = isDropZone && folders.Count == 0 ? Strings.T("ui_drop_drop_to_start") : Strings.Count("ui_drop_add_files", files.Count);
         }
 
         List<string> extensions = files.Select(f => System.IO.Path.GetExtension(f).ToLowerInvariant()).Distinct().ToList();
@@ -495,11 +496,11 @@ public partial class ConvertPage : UserControl
         string subText = "";
         if (unknown.Count > 0 && unknown.Count == extensions.Count)
         {
-            subText = $"Clickra 還沒有處理{ConvertViewModel.KindName(unknown)}的功能，放開後只能重新命名";
+            subText = Strings.F("ui_drop_unsupported", ("kind", ConvertViewModel.KindName(unknown)));
         }
         else if (folders.Count > 0)
         {
-            subText = "只加入資料夾這一層的檔案，不含子資料夾";
+            subText = Strings.T("ui_drop_only_files_in_this_folder");
         }
 
         return (title, subText);

@@ -9,6 +9,7 @@ using Clickra.Core.Modules.Pdf.Print.Ports;
 using Clickra.Core.Modules.Pdf.ToImage.Application;
 using Clickra.Core.Modules.Pdf.Translation.Application;
 using Clickra.Core.Modules.Sys.Settings.Application;
+using Clickra.Desktop.L10n;
 
 namespace Clickra.Desktop.ViewModels;
 
@@ -25,7 +26,6 @@ public sealed class ActionOptionsViewModel : ViewModelBase
 
     // PDF compression (3 steps) and image compression (4 steps).
     private int _pdfLevel, _imageLevel;
-    private bool _stripFonts, _minifyContent;
     // PDF → images.
     private int _pdfImageFormat, _pdfImageDpi = Array.IndexOf(DpiValues, PdfToImageOptions.DefaultDpi);
     private string _pdfImagePages = "";
@@ -39,14 +39,14 @@ public sealed class ActionOptionsViewModel : ViewModelBase
     // Markdown.
     private int _markdownTheme, _markdownPaper, _markdownTextSize = 1, _markdownCode;
 
-    public static readonly string[] PdfLevelNames = ["小檔案", "平衡", "高品質"];
-    public static readonly string[] PdfLevelHints = ["檔案最小，圖片畫質會降低", "適合一般分享", "畫質幾乎不變，檔案縮小較少"];
-    public static readonly string[] ImageLevelNames = ["最小檔案", "小檔案", "標準", "高品質"];
+    public static readonly string[] PdfLevelNames = [Strings.T("ui_pdf_compress_small_file"), Strings.T("ui_pdf_compress_balanced"), Strings.T("ui_pdf_compress_high_quality")];
+    public static readonly string[] PdfLevelHints = [Strings.T("ui_pdf_compress_smallest_file_images_lose_quality"), Strings.T("ui_pdf_compress_good_for_sharing"), Strings.T("ui_pdf_compress_images_look_almost_the_same")];
+    public static readonly string[] ImageLevelNames = [Strings.T("ui_img_compress_smallest"), Strings.T("ui_pdf_compress_small_file"), Strings.T("ui_img_compress_standard"), Strings.T("ui_pdf_compress_high_quality")];
     public static readonly int[] DpiValues = [72, 96, 150, 200, 300, 600];
-    public static readonly string[] DpiLabels = ["72（螢幕預覽）", "96", "150（建議）", "200", "300（列印）", "600"];
+    public static readonly string[] DpiLabels = [Strings.T("ui_pdf2img_72_screen"), "96", Strings.T("ui_pdf2img_150_recommended"), "200", Strings.T("ui_pdf2img_300_print"), "600"];
     private static readonly string[] PdfImageFormats = ["png", "jpg", "webp"];
     public static readonly string[] TranslateLanguageCodes = ["zh-TW", "zh-CN", "en", "ja", "ko"];
-    public static readonly string[] TranslateLanguageNames = ["繁體中文", "简体中文", "English", "日本語", "한국어"];
+    public static readonly string[] TranslateLanguageNames = [Strings.T("ui_lang_zh_tw"), Strings.T("ui_lang_zh_cn"), "English", Strings.T("ui_lang_ja"), Strings.T("ui_lang_ko")];
     private static readonly string[] TranslateEngines = ["google", "custom-ai"];
     public static readonly string[] ImageFormats = ["PNG", "JPG", "WebP", "GIF", "HEIC"];
     private static readonly string[] MarkdownThemes = [MarkdownPdfOptions.ThemeDefault, MarkdownPdfOptions.ThemeMinimal, MarkdownPdfOptions.ThemeAcademic,
@@ -71,8 +71,6 @@ public sealed class ActionOptionsViewModel : ViewModelBase
         _command = command;
         _justSavedDefault = false;
         _pdfLevel = Math.Clamp(SettingsController.PdfCompressionImageLevel, 0, 2);
-        _stripFonts = SettingsController.PdfCompressionStripFonts;
-        _minifyContent = SettingsController.PdfCompressionMinifyContent;
         _imageLevel = Math.Clamp(SettingsController.ImageCompressionLevel, 0, 3);
         _pdfImageFormat = Math.Max(0, Array.IndexOf(PdfImageFormats, SettingsController.PdfToImageFormat));
         _pdfImageDpi = DpiIndexOf(SettingsController.PdfToImageDpi);
@@ -182,23 +180,16 @@ public sealed class ActionOptionsViewModel : ViewModelBase
         {
             if (value is < 0 or > 2 || value == _pdfLevel) return;
             _pdfLevel = value;
-            if (value == 0) StripFonts = true; // spec 4.9: 「小檔案」 also strips embedded fonts
             Changed(nameof(PdfLevel), nameof(PdfLevelHint), nameof(PdfLevelIsDefault));
         }
     }
     public string PdfLevelHint => $"{PdfLevelNames[_pdfLevel]}\u3000{PdfLevelHints[_pdfLevel]}";
-    public bool StripFonts { get => _stripFonts; set { _stripFonts = value; Changed(nameof(StripFonts), nameof(PdfLevelIsDefault)); } }
-    public bool MinifyContent { get => _minifyContent; set { _minifyContent = value; Changed(nameof(MinifyContent), nameof(PdfLevelIsDefault)); } }
     public bool PdfLevelIsDefault =>
-        _pdfLevel == Math.Clamp(SettingsController.PdfCompressionImageLevel, 0, 2) &&
-        _stripFonts == SettingsController.PdfCompressionStripFonts &&
-        _minifyContent == SettingsController.PdfCompressionMinifyContent;
+        _pdfLevel == Math.Clamp(SettingsController.PdfCompressionImageLevel, 0, 2);
     public void SavePdfDefault()
     {
         MarkSaved();
         SettingsController.PdfCompressionImageLevel = _pdfLevel;
-        SettingsController.PdfCompressionStripFonts = _stripFonts;
-        SettingsController.PdfCompressionMinifyContent = _minifyContent;
         OnPropertyChanged(nameof(PdfLevelIsDefault));
     }
 
@@ -226,7 +217,7 @@ public sealed class ActionOptionsViewModel : ViewModelBase
 
     /// <summary>最大邊長: 0 keeps the size; smaller images are never enlarged.</summary>
     public static readonly int[] MaxDimValues = [0, 3840, 2560, 1920, 1280];
-    public static readonly string[] MaxDimLabels = ["不縮小尺寸", "3840 px（4K）", "2560 px", "1920 px（Full HD）", "1280 px"];
+    public static readonly string[] MaxDimLabels = [Strings.T("ui_img_compress_keep_size"), Strings.T("ui_img_compress_3840_px_4k"), "2560 px", Strings.T("ui_img_compress_1920_px_full_hd"), "1280 px"];
     [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S2325:Methods and properties that don't access instance data should be static", Justification = "Required for XAML compiled binding")]
     public IReadOnlyList<string> MaxDimChoices => MaxDimLabels;
     private int _imageMaxDim;
@@ -282,7 +273,7 @@ public sealed class ActionOptionsViewModel : ViewModelBase
         set
         {
             _translateEngine = Math.Clamp(value, 0, 1);
-            Changed(nameof(TranslateEngineIndex), nameof(TranslateIsDefault), nameof(TranslateServiceName), nameof(IsCustomAi),
+            Changed(nameof(TranslateEngineIndex), nameof(TranslateIsDefault), nameof(TranslateServiceName), nameof(TranslateOnlineNotice), nameof(IsCustomAi),
                 nameof(ShowAiSummary), nameof(ShowAiFields), nameof(AiSummaryHost), nameof(IsReady), nameof(BlockingText));
         }
     }
@@ -291,8 +282,8 @@ public sealed class ActionOptionsViewModel : ViewModelBase
     {
         get
         {
-            if (_translateEngine != 1) return "Google 翻譯";
-            return Uri.TryCreate(_aiEndpoint.Trim(), UriKind.Absolute, out Uri? uri) && uri.Host.Length > 0 ? uri.Host : "你的 AI 服務";
+            if (_translateEngine != 1) return Strings.T("ui_translate_google_translate");
+            return Uri.TryCreate(_aiEndpoint.Trim(), UriKind.Absolute, out Uri? uri) && uri.Host.Length > 0 ? uri.Host : Strings.T("ui_translate_custom_ai_service_2");
         }
     }
 
@@ -308,14 +299,16 @@ public sealed class ActionOptionsViewModel : ViewModelBase
     public bool ShowAiSummary => IsCustomAi && !_aiEditing;
     public bool ShowAiFields => IsCustomAi && _aiEditing;
     public string AiSummaryModel => _aiModel.Trim();
-    public string AiSummaryHost => $"（{TranslateServiceName}）";
+    /// <summary>「翻譯需要連網，檔案內容會送到 Google 翻譯」 under the service choice.</summary>
+    public string TranslateOnlineNotice => Strings.F("ui_translate_online_notice", ("service", TranslateServiceName));
+    public string AiSummaryHost => Strings.F("ui_translate_summary_host", ("name", TranslateServiceName));
     public bool RememberAi { get => _rememberAi; set { _rememberAi = value; OnPropertyChanged(); } }
     public void EditAi()
     {
         _aiEditing = true;
         Changed(nameof(ShowAiSummary), nameof(ShowAiFields));
     }
-    public string AiEndpoint { get => _aiEndpoint; set { _aiEndpoint = value ?? ""; Changed(nameof(AiEndpoint), nameof(TranslateServiceName), nameof(AiSummaryHost), nameof(IsReady), nameof(BlockingText)); } }
+    public string AiEndpoint { get => _aiEndpoint; set { _aiEndpoint = value ?? ""; Changed(nameof(AiEndpoint), nameof(TranslateServiceName), nameof(TranslateOnlineNotice), nameof(AiSummaryHost), nameof(IsReady), nameof(BlockingText)); } }
     public string AiModel { get => _aiModel; set { _aiModel = value ?? ""; Changed(nameof(AiModel), nameof(AiSummaryModel), nameof(IsReady), nameof(BlockingText)); } }
     public string AiApiKey { get => _aiApiKey; set { _aiApiKey = value ?? ""; Changed(nameof(AiApiKey), nameof(IsReady), nameof(BlockingText)); } }
     private bool AiIncomplete => IsCustomAi && (_aiEndpoint.Trim().Length == 0 || _aiModel.Trim().Length == 0 || _aiApiKey.Trim().Length == 0);
@@ -351,8 +344,8 @@ public sealed class ActionOptionsViewModel : ViewModelBase
     }
     /// <summary>Restriction-only PDFs: what they are and what decrypting gives, in plain words (spec 4.9).</summary>
     public string DecryptNoPasswordText => _decryptSingleFile
-        ? "這個 PDF 打開不用密碼，但設了使用限制（例如不能列印或複製文字）。解密會另存一份沒有限制的檔案，不用輸入密碼。"
-        : "這些 PDF 打開不用密碼，但設了使用限制（例如不能列印或複製文字）。解密會各自另存一份沒有限制的檔案，不用輸入密碼。";
+        ? Strings.T("ui_decrypt_this_pdf_only_has_usage")
+        : Strings.T("ui_decrypt_these_pdfs_only_have_usage");
 
     // ----- image format -----
     private bool[] _imageFormatAllowed = [true, true, true, true, true];
@@ -380,10 +373,10 @@ public sealed class ActionOptionsViewModel : ViewModelBase
     /// <summary>The four template cards (spec 4.9 預覽卡片): a page preview each, then 「Word 範本」.</summary>
     public IReadOnlyList<TemplateCardViewModel> TemplateCards { get; } =
     [
-        new("預設", MarkdownPdfOptions.ThemeDefault),
-        new("極簡", MarkdownPdfOptions.ThemeMinimal),
-        new("學術", MarkdownPdfOptions.ThemeAcademic),
-        new("Word 範本", null),
+        new(Strings.T("ui_markdown_default"), MarkdownPdfOptions.ThemeDefault),
+        new(Strings.T("ui_markdown_minimal"), MarkdownPdfOptions.ThemeMinimal),
+        new(Strings.T("ui_markdown_academic"), MarkdownPdfOptions.ThemeAcademic),
+        new(Strings.T("ui_markdown_word_template"), null),
     ];
     private string _templatePath = "";
     private string _templateSummary = "";
@@ -463,26 +456,29 @@ public sealed class ActionOptionsViewModel : ViewModelBase
             var template = MarkdownTemplateSource.Load(path);
             var t = template.Typography;
             var l = template.Layout;
-            string fonts = t.CjkFont.Equals(t.LatinFont, StringComparison.OrdinalIgnoreCase) ? t.CjkFont : $"{t.CjkFont}／{t.LatinFont}";
+            string fonts = t.CjkFont.Equals(t.LatinFont, StringComparison.OrdinalIgnoreCase) ? t.CjkFont : Strings.F("ui_markdown_font_pair", ("cjk", t.CjkFont), ("latin", t.LatinFont));
             lineMultiple = t.BodySizePoints > 0 ? t.LineHeightPoints / t.BodySizePoints : 1.15;
             marginCm = l.MarginPoints / 28.3465;
             centerTitle = l.CenterH1;
             // Canvas MarkdownWordB: one line of what was read.
-            summary = $"讀到：{fonts} {t.BodySizePoints:0.#} pt、{lineMultiple:0.##} 倍行距、邊界 {marginCm:0.##} cm"
-                      + (centerTitle ? "、標題置中" : "");
+            summary = Strings.F(centerTitle ? "ui_markdown_template_summary_centered" : "ui_markdown_template_summary",
+                ("fonts", fonts),
+                ("size", t.BodySizePoints.ToString("0.#", Strings.Culture)),
+                ("spacing", lineMultiple.ToString("0.##", Strings.Culture)),
+                ("margin", marginCm.ToString("0.##", Strings.Culture)));
         }
         catch (System.IO.FileNotFoundException)
         {
-            error = $"找不到範本「{fileName}」，可能已被移動或刪除";
+            error = Strings.F("ui_markdown_template_missing", ("name", fileName));
         }
         catch (System.IO.InvalidDataException ex) when (ex.Message.Contains("East Asian", StringComparison.OrdinalIgnoreCase))
         {
             // Core needs the template to name a Chinese/Japanese/Korean font (English Word files often don't).
-            error = $"「{fileName}」沒有指定中文字型，請在 Word 的字型設定裡選一個中文字型後再試";
+            error = Strings.F("ui_markdown_template_no_cjk_font", ("name", fileName));
         }
         catch (Exception) // skipcq: CS-R1008
         {
-            error = $"「{fileName}」不是能用的 Word 範本（格式不對或檔案損毀）";
+            error = Strings.F("ui_markdown_template_unusable", ("name", fileName));
         }
     }
 
@@ -521,7 +517,7 @@ public sealed class ActionOptionsViewModel : ViewModelBase
     private string _printPages = "";
     private int _duplex, _orientation;
     private bool _fitToPage = true, _darkenText;
-    private IReadOnlyList<string> _paperSizes = ["印表機預設"];
+    private IReadOnlyList<string> _paperSizes = [Strings.T("ui_print_printer_setting")];
     private int _paperIndex;
 
     public IReadOnlyList<string> Printers => _printers;
@@ -631,7 +627,7 @@ public sealed class ActionOptionsViewModel : ViewModelBase
 
     private void LoadPaperSizes()
     {
-        var sizes = new List<string> { "印表機預設" };
+        var sizes = new List<string> { Strings.T("ui_print_printer_setting") };
         try
         {
             if (_printerIndex >= 0) sizes.AddRange(PrinterDiscovery.GetSupportedPaperSizes(_printers[_printerIndex]));
@@ -656,11 +652,11 @@ public sealed class ActionOptionsViewModel : ViewModelBase
 
     private string GetBlockingText()
     {
-        if (IsMarkdown && UsesWordTemplate && HasTemplateError) return "先換一個能用的範本";
-        if (IsDecrypt && _decryptNeedsPassword && _password.Length == 0) return "先輸入密碼";
-        if (IsImageFormat && _imageFormat < 0) return "先選要轉成的格式";
-        if (IsPrint && _printerIndex < 0) return HasPrinters ? "先選印表機" : "找不到印表機";
-        if (IsTranslate && AiIncomplete) return "先填好 AI 服務的網址、模型與金鑰";
+        if (IsMarkdown && UsesWordTemplate && HasTemplateError) return Strings.T("ui_markdown_choose_a_template_that_works");
+        if (IsDecrypt && _decryptNeedsPassword && _password.Length == 0) return Strings.T("ui_decrypt_enter_the_password_first");
+        if (IsImageFormat && _imageFormat < 0) return Strings.T("ui_img_format_choose_a_format_first");
+        if (IsPrint && _printerIndex < 0) return HasPrinters ? Strings.T("ui_print_choose_a_printer_first") : Strings.T("ui_print_cant_find_the_printer");
+        if (IsTranslate && AiIncomplete) return Strings.T("ui_translate_enter_the_ai_service_url");
         return "";
     }
 
@@ -706,8 +702,6 @@ public sealed class ActionOptionsViewModel : ViewModelBase
     private void BuildCompressPdfOptions(Dictionary<string, object> options)
     {
         options[CompressPdfUseCase.LevelOptionKey] = PdfCompressionOptions.ToOptionName(PdfCompressionOptions.FromSliderLevel(_pdfLevel));
-        options["strip_fonts"] = _stripFonts;
-        options["minify_content"] = _minifyContent;
     }
 
     private void BuildImageCompressOptions(Dictionary<string, object> options)
