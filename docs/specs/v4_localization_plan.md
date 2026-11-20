@@ -75,8 +75,10 @@
 
 ### 3.6 Core 進度與錯誤訊息
 
-- 約 190 條寫死的中文改為鍵，進度訊息由 `ExecutionLocalizationOptions` 傳入的語言取字。3.x 也一併受益。
-- 這部分範圍大且動到處理程式，放在桌面端完成之後、另一個提交群組中處理（見第 5 節）。
+- 抽出的約 190 條中文裡，真正會顯示給使用者的是進度與錯誤訊息（約 95 條，含既有的訊息鍵）；其餘是翻譯管線比對 PDF 內容用的中文、壓縮等級別名、字型名稱與設定登錄說明，不改。
+- 處理器寫死的中文改為 `core_*` 鍵；既有訊息鍵（`pdf_progress_*`、`status_office_*`、`error_office_*` 等）保留鍵名、改用具名參數。取字一律帶任務語言：`ExecutionLocalizationOptions.Text(language, key, ("name", 值))` 或 `Localization.Format(key, language, ...)`。3.x 介面也一併受益。
+- 只寫進日誌的技術細節（結束碼、LibreOffice 輸出）放在內部例外，不放進給使用者看的訊息。
+- 由 `TestSuite.CoreMessageLocalization` 守住：處理器沒有寫死的中日韓文字、訊息鍵五種語言的具名參數一致、繁中不用已淘汰的詞。
 
 ## 4. 文字確認流程
 
@@ -130,3 +132,4 @@ Core 進度與錯誤訊息（3.6）另開 `feat/core-message-localization`，在
 - 2026-11-20：抽取 `Clickra.Desktop` 的介面文字，共 427 條不重複文字（另有紀錄訊息不列入），做成對照表交給使用者確認繁中（第 4 節第 2 步）。
 - 2026-11-20：對照表改成照畫面整理（410 列），繁中逐條審完，修改寫在「修改成」欄；整理出的寫法規則存成 [ui_writing_guide.md](ui_writing_guide.md)。下一步：翻譯（第 4 節第 3 步）。
 - 2026-11-20：翻譯完成（對照表「翻譯」分頁），新介面約 420 條文字改為 `ui_*` 鍵並寫入五個語系檔；依語言選字型；設定頁換語言後提示重新開啟並可立即重開；新增 `TestSuite.DesktopLocalization` 四項架構測試，`LocalizationOrphans` 改為也讀 `.axaml` 的 `{l:T 鍵}`。與 3.21.1 的修正同一個分支，版本 3.22.0.0。Core 進度與錯誤訊息（3.6）仍留待下一步。
+- 2026-11-21：Core 進度與錯誤訊息（3.6）：對照表「Core 訊息」分頁 97 條，繁中照建議通過；實作時再拿掉 3 條其實不會顯示的英文翻譯錯誤（只寫進翻譯報告），加密 PDF 的提示改指向功能名稱「解密 PDF」。翻譯五種語言、改寫處理器、新增三項架構測試，並修正 `HistoryFeed.cs` 編碼損壞造成的分隔符號亂碼。分支 `feat/core-message-localization`，版本 3.22.1.0。

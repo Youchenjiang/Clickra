@@ -144,7 +144,7 @@
 
     - 規範詳見：[4.0 跨平台總計畫 (v4_cross_platform_master_plan.md)](specs/v4_cross_platform_master_plan.md)、[4.0 桌面端版面規格 (v4_desktop_ui_layout.md)](specs/v4_desktop_ui_layout.md)、[4.0 桌面多語系計畫 (v4_localization_plan.md)](specs/v4_localization_plan.md)、[文案指南 (ui_writing_guide.md)](specs/ui_writing_guide.md)、[PDF 當場解鎖計畫 (pdf_password_unlock_plan.md)](specs/pdf_password_unlock_plan.md)、[功能圖示識別度計畫 (feature_icon_recognition_plan.md)](specs/feature_icon_recognition_plan.md) 與 [Office COM 直調計畫 (office_com_direct_plan.md)](specs/office_com_direct_plan.md)。
 
-    - 版本節奏（2026-11-19）：`feat/avalonia-views` 以 v3.21.0.0 合併，新介面維持預覽（不進正式套件）；新介面成為預設介面時才是 v4.0.0.0，前置工作見總計畫〈4.0 上線前清單〉（多語系、實機驗收、密碼當場解鎖、右鍵精簡視窗、設定沿用、發佈流程、體積、舊介面退場、測試、商店素材、文件）。
+    - 版本節奏（2026-11-19）：`feat/avalonia-views` 以 v3.21.0.0 合併，新介面維持預覽（不進正式套件）；新介面成為預設介面時才是 v4.0.0.0，前置工作見總計畫〈4.0 上線前清單〉（多語系、實機驗收、密碼當場解鎖、右鍵精簡視窗、設定沿用、發佈流程、體積、舊介面退場、測試、商店素材、文件）。（2026-11-21 進度：v3.22.1.0 完成 Core 處理器進度與錯誤訊息五語系本地化，規範見 v4_localization_plan.md 與 ui_writing_guide.md。）
 
     - 建置 Clickra.Desktop 統一桌面端（以 Avalonia 11+ 為評估首選候選框架）。
 
