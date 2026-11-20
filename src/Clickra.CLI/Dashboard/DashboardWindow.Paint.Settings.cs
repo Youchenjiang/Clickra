@@ -228,9 +228,9 @@ namespace Clickra.UI
             bool isMicrosoftEngine = engineMode == OfficeEnginePreference.Microsoft;
             bool isLibreOfficeEngine = engineMode == OfficeEnginePreference.LibreOffice;
 
-            bool isLibreOfficeSetupRunning;
-            int downloadProgress;
-            string downloadStatus;
+            bool isLibreOfficeSetupRunning = false;
+            int downloadProgress = 0;
+            string downloadStatus = string.Empty;
             lock (_libreOfficeDownloadLock)
             {
                 isLibreOfficeSetupRunning = _libreOfficeDownloadInProgress;
@@ -284,8 +284,8 @@ namespace Clickra.UI
 
             if (_subFont != null)
             {
-                Color statusColor;
-                string statusText;
+                Color statusColor = Color.Empty;
+                string statusText = string.Empty;
 
                 if (isMicrosoftEngine)
                 {
@@ -671,9 +671,9 @@ namespace Clickra.UI
         {
             float s = _dpiScale;
             bool isHovered = _hoveredElement == elementId;
-            Color btnBg;
-            Color btnBorder;
-            Color textColor;
+            Color btnBg = Color.Empty;
+            Color btnBorder = Color.Empty;
+            Color textColor = Color.Empty;
 
             if (selected)
             {

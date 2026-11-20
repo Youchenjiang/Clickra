@@ -388,7 +388,7 @@ namespace Clickra.UI
 
                     var ver = typeof(DashboardWindow).Assembly.GetName().Version;
                     string verStr = ver != null ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : "Unknown";
-                    string timeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    string timeStr = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
                     var (subjectText, bodyText) = Localization.BuildDiagnosticsEmail(verStr, timeStr);
                     string subject = Uri.EscapeDataString(subjectText);
                     string body = Uri.EscapeDataString(bodyText);
