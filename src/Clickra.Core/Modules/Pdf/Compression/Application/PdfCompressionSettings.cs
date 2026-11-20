@@ -7,7 +7,7 @@ public class PdfCompressionSettings
 {
     public PdfCompressionLevel Level { get; set; } = PdfCompressionLevel.Balanced;
     /// <summary>Content-stream minification is lossless and always on; there is no option to turn it off.</summary>
-    public bool MinifyContent => true;
+    public bool MinifyContent { get; } = true;
     public bool DeduplicateFonts { get; set; } = true;
     /// <summary>Drops XMP metadata, page thumbnails and PieceInfo (Small only). Fonts are never removed.</summary>
     public bool RemoveMetadata { get; set; }
