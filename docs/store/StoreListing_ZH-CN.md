@@ -1,6 +1,6 @@
 # Microsoft Store 清单 - 中文 (简体)
 
-以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.20.2.0。
+以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.21.0.0。
 
 ---
 
@@ -15,11 +15,10 @@ Clickra 是一款专为 Windows 资源管理器打造的原生右键扩展工具
 源代码：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 修复 PDF 转图片、打印与分割预览功能：修复先前版本仅绘制文字的问题，完整恢复图片、表格与版面画面。
-- 通用 CLI 与跨平台打包：Clickra CLI 现已正式支持 .NET 全局工具（dotnet tool install -g Clickra）以及 Windows、Linux、macOS 原生 NativeAOT 独立二进制文件。
-- 多目标架构解耦：Core 支持多目标，CLI 采 net8.0 以支持跨平台工具封装。
-- 无头执行与 ANSI 彩色进度：支持无头后台执行（--headless）、平台与引擎诊断（--diagnostics）及终端实时彩色进度条。
-- 双轨发布渠道：提供 GitHub Release Assets 原生压缩包与 GitHub Packages NuGet 注册表发布。
+- PDF 密码感知与使用限制移除：智能识别受密码保护或仅限制打印/复制的 PDF，卡片密码优先尝试；仅具使用限制之文件无需输入密码即可直接解密。
+- 可视化 PDF 分割工作区强化：缩略图按页面真实长宽比呈现，支持双击全内容区放大预览（缩放、键盘快捷键与图标工具栏），任意模式均可实时调整切点。
+- 全新现代桌面端预览 (Clickra.Desktop)：以 Avalonia 打造之跨平台桌面界面，支持文件拖放、动作目录、长图拼接与合并排序工作区，可使用 --desktop 参数开启预览。
+- 专属工作区与操作体验优化：提供批量重命名实时预览、Markdown 模板卡片选择、窗口位置尺寸记忆，以及关闭窗口时后台持续转换。
 
 ## Product Features
 *(最多 20 个，以项目符号显示)*

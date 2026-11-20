@@ -142,7 +142,9 @@
 
 - [ ] **[F1-17] v4.0.0 Unified Cross-Platform Modern GUI**：統一跨平台現代 XAML 介面。
 
-    - 規範詳見：[4.0 跨平台總計畫 (v4_cross_platform_master_plan.md)](specs/v4_cross_platform_master_plan.md) 與 [4.0 桌面端版面規格 (v4_desktop_ui_layout.md)](specs/v4_desktop_ui_layout.md)。
+    - 規範詳見：[4.0 跨平台總計畫 (v4_cross_platform_master_plan.md)](specs/v4_cross_platform_master_plan.md)、[4.0 桌面端版面規格 (v4_desktop_ui_layout.md)](specs/v4_desktop_ui_layout.md)、[PDF 當場解鎖計畫 (pdf_password_unlock_plan.md)](specs/pdf_password_unlock_plan.md)、[功能圖示識別度計畫 (feature_icon_recognition_plan.md)](specs/feature_icon_recognition_plan.md) 與 [Office COM 直調計畫 (office_com_direct_plan.md)](specs/office_com_direct_plan.md)。
+
+    - 版本節奏（2026-11-19）：`feat/avalonia-views` 以 v3.21.0.0 合併，新介面維持預覽（不進正式套件）；新介面成為預設介面時才是 v4.0.0.0，前置工作見總計畫〈4.0 上線前清單〉（多語系、實機驗收、密碼當場解鎖、右鍵精簡視窗、設定沿用、發佈流程、體積、舊介面退場、測試、商店素材、文件）。
 
     - 建置 Clickra.Desktop 統一桌面端（以 Avalonia 11+ 為評估首選候選框架）。
 
@@ -427,6 +429,10 @@
     - **動態圖壓製 (Video to GIF/APNG)**：支援將短影片片段或連續圖檔轉換為動態 GIF 或 APNG，內建調色盤最佳化（PaletteGen）防止色階斷裂與雜點，支援幀率（FPS）與尺寸調節。
 
     - **NativeAOT 合規**：優先整合 Windows Media Foundation (MF) COM 原生 API，維持二進位體積精簡；重度轉換可選取本機 FFmpeg / 備援引擎調度。
+
+- [ ] **[F2-38] Image & PDF Page Collage onto a Sized Canvas**：拼貼。把圖片與 PDF 頁面（可混合）排到同一張可調大小的畫布上：紙張（A4、A3、Letter，直／橫）或自訂尺寸（px、mm），格狀或自動排法（自由排之後再議），預設完整放入、可改填滿裁切，間距、邊界、背景可調，預設輸出多頁 PDF（PDF 頁面保留向量），可改成圖片；只在動作頁使用，不提供右鍵直接執行。排在 4.0 之後。
+
+    - 規範詳見：[collage_layout_plan.md](specs/collage_layout_plan.md)。與 F2-13 掃描件拼合共用排版邏輯；頁面縮圖與放大預覽沿用 4.0 共用預覽元件。
 
 - [ ] **[F2-37] E-book & Universal Document Formats (EPUB / TXT / DOCX / RTF)**：電子書與通用文件擴充。
 

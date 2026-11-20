@@ -208,34 +208,43 @@ namespace ClickraShell
             int idx = obj->Data;
             *p = 2; // Default: Hidden (ECS_HIDDEN)
 
+            // Settings › 檔案總管右鍵選單: the master switch hides everything; unchecked commands are hidden.
+            ContextMenuVisibility.State menu = ContextMenuVisibility.Read(ShellUtils.GetPackageFamilyName());
+            if (!menu.Enabled) return 0;
+
             var files = GetFiles(psi);
             if (files.Count == 0) return 0;
 
             if (idx == -1)
             {
-                // Root menu is enabled for multi-file selections (batch rename requires at least 2 files)
-                // or for single files with supported conversion extensions.
-                bool anySupported = files.Count >= 2 || files.Any(f => IsSupported(f, -1));
-                if (anySupported)
+                // The Clickra submenu appears only when at least one entry inside it would appear, so
+                // unchecking every command that fits these files never leaves an empty submenu.
+                for (int i = 0; i < SubArgs.Length; i++)
                 {
-                    *p = 0; // ECS_ENABLED
+                    if (IsAvailable(i, files, menu))
+                    {
+                        *p = 0; // ECS_ENABLED
+                        break;
+                    }
                 }
                 return 0;
             }
 
-            int minFiles = 1;
-            if (idx >= 0 && idx < SubArgs.Length)
-            {
-                minFiles = SubArgs[idx] == "batch-rename" ? 2 : ConvertCommandMetadata.GetMinFiles(SubArgs[idx]);
-            }
-            bool countOk = files.Count >= minFiles;
-
-            if (countOk && files.All(f => IsSupported(f, idx)))
+            if (IsAvailable(idx, files, menu))
             {
                 *p = 0; // ECS_ENABLED
             }
 
             return 0;
+        }
+
+        /// <summary>A command shows when it is not hidden in Settings, enough files are selected (batch rename
+        /// needs two) and every selected file is a type it accepts.</summary>
+        private static bool IsAvailable(int idx, List<string> files, ContextMenuVisibility.State menu)
+        {
+            if (idx < 0 || idx >= SubArgs.Length || menu.Hidden.Contains(SubArgs[idx])) return false;
+            int minFiles = SubArgs[idx] == "batch-rename" ? 2 : ConvertCommandMetadata.GetMinFiles(SubArgs[idx]);
+            return files.Count >= minFiles && files.All(f => IsSupported(f, idx));
         }
 
         /// <summary>Extracts the selected file paths from an IShellItemArray by walking its vtable.</summary>

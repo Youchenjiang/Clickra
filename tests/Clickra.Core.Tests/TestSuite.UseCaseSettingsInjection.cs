@@ -19,6 +19,9 @@ using Clickra.Core.Modules.Pdf.Compression.Application;
 using Clickra.Core.Modules.Pdf.Compression.Processing;
 using Clickra.Core.Modules.Pdf.Decrypt.Application;
 using Clickra.Core.Modules.Pdf.Translation.Application;
+using Clickra.Core.Modules.Pdf.ToImage.Application;
+using Clickra.Core.Modules.Pdf.Print.Application;
+using Clickra.Core.Storage;
 using Clickra.Core.Modules.Sys.Settings.Application;
 using Clickra.Core.Presentation.Convert;
 using Clickra.Core.Processors;
@@ -27,8 +30,88 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
+    private const string SamplePdfFile = "sample.pdf";
+    private const string NotesMdFile = "notes.md";
+
     public static void RegisterUseCaseSettingsInjectionTests(TestRunner runner)
     {
+        runner.Run("Use case options injection: PdfToImage falls back to the saved format, dpi and stitch", () =>
+        {
+            var useCase = new PdfToImageUseCase();
+            ConversionPlan defaultPlan = useCase.Plan(new ConversionRequest(PdfToImageUseCase.CommandName, new[] { SamplePdfFile }));
+            Assert.Equal(PdfToImageOptions.NormalizeFormat(SettingsController.PdfToImageFormat), (string)defaultPlan.NormalizedOptions[PdfToImageOptions.FormatOptionKey]);
+            Assert.Equal(PdfToImageOptions.NormalizeDpi(SettingsController.PdfToImageDpi), (int)defaultPlan.NormalizedOptions[PdfToImageOptions.DpiOptionKey]);
+            Assert.True((bool)defaultPlan.NormalizedOptions[PdfToImageOptions.StitchOptionKey] == SettingsController.PdfToImageStitch, "Default stitch should match SettingsController");
+
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(PdfToImageUseCase.CommandName, new[] { SamplePdfFile },
+                new Dictionary<string, object>
+                {
+                    [PdfToImageOptions.FormatOptionKey] = "webp",
+                    [PdfToImageOptions.DpiOptionKey] = 300,
+                    [PdfToImageOptions.StitchOptionKey] = !SettingsController.PdfToImageStitch
+                }));
+            Assert.Equal("webp", (string)plan.NormalizedOptions[PdfToImageOptions.FormatOptionKey]);
+            Assert.Equal(300, (int)plan.NormalizedOptions[PdfToImageOptions.DpiOptionKey]);
+            Assert.True((bool)plan.NormalizedOptions[PdfToImageOptions.StitchOptionKey] == !SettingsController.PdfToImageStitch, "Caller stitch must win");
+        });
+
+        runner.Run("Use case options injection: Markdown falls back to the saved theme, paper, text size and code theme", () =>
+        {
+            var useCase = new MarkdownToPdfUseCase();
+            ConversionPlan defaultPlan = useCase.Plan(new ConversionRequest(MarkdownToPdfUseCase.CommandName, new[] { NotesMdFile }));
+            var expected = new Dictionary<string, object>
+            {
+                [MarkdownPdfOptions.PaperKey] = SettingsController.MarkdownPaper,
+                [MarkdownPdfOptions.TextSizeKey] = SettingsController.MarkdownTextSize,
+                [MarkdownPdfOptions.CodeThemeKey] = SettingsController.MarkdownCodeTheme
+            };
+            if (SettingsController.MarkdownTheme != ClickraSettings.MarkdownThemeWordTemplate)
+            {
+                expected[MarkdownPdfOptions.ThemeKey] = SettingsController.MarkdownTheme;
+                Assert.Equal(MarkdownPdfOptions.GetTheme(expected), (string)defaultPlan.NormalizedOptions[MarkdownPdfOptions.ThemeKey]);
+            }
+            Assert.Equal(MarkdownPdfOptions.GetPaper(expected), (string)defaultPlan.NormalizedOptions[MarkdownPdfOptions.PaperKey]);
+            Assert.Equal(MarkdownPdfOptions.GetTextSize(expected), (string)defaultPlan.NormalizedOptions[MarkdownPdfOptions.TextSizeKey]);
+            Assert.Equal(MarkdownPdfOptions.GetCodeTheme(expected), (string)defaultPlan.NormalizedOptions[MarkdownPdfOptions.CodeThemeKey]);
+
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(MarkdownToPdfUseCase.CommandName, new[] { NotesMdFile },
+                new Dictionary<string, object>
+                {
+                    [MarkdownPdfOptions.ThemeKey] = MarkdownPdfOptions.ThemeAcademic,
+                    [MarkdownPdfOptions.PaperKey] = MarkdownPdfOptions.PaperLetter,
+                    [MarkdownPdfOptions.TextSizeKey] = MarkdownPdfOptions.TextLarge,
+                    [MarkdownPdfOptions.CodeThemeKey] = MarkdownPdfOptions.CodeLight
+                }));
+            Assert.Equal(MarkdownPdfOptions.ThemeAcademic, (string)plan.NormalizedOptions[MarkdownPdfOptions.ThemeKey]);
+            Assert.Equal(MarkdownPdfOptions.PaperLetter, (string)plan.NormalizedOptions[MarkdownPdfOptions.PaperKey]);
+            Assert.Equal(MarkdownPdfOptions.TextLarge, (string)plan.NormalizedOptions[MarkdownPdfOptions.TextSizeKey]);
+            Assert.Equal(MarkdownPdfOptions.CodeLight, (string)plan.NormalizedOptions[MarkdownPdfOptions.CodeThemeKey]);
+        });
+
+        runner.Run("Use case options injection: Print falls back to the saved copies, duplex, orientation, fit and darken", () =>
+        {
+            var useCase = new PrintPdfUseCase();
+            ConversionPlan defaultPlan = useCase.Plan(new ConversionRequest(PrintPdfUseCase.CommandName, new[] { SamplePdfFile }));
+            var saved = PrintPdfOptions.FromDictionary(new Dictionary<string, object>
+            {
+                [PrintPdfOptions.CopiesKey] = SettingsController.PrintCopies,
+                [PrintPdfOptions.DuplexKey] = SettingsController.PrintDuplex,
+                [PrintPdfOptions.OrientationKey] = SettingsController.PrintOrientation,
+                [PrintPdfOptions.FitToPageKey] = SettingsController.PrintFitToPage,
+                [PrintPdfOptions.DarkenTextKey] = SettingsController.PrintDarkenText
+            });
+            var planned = PrintPdfOptions.FromDictionary(defaultPlan.NormalizedOptions);
+            Assert.Equal(saved.Copies, planned.Copies);
+            Assert.True(saved.Duplex == planned.Duplex, "Default duplex should match SettingsController");
+            Assert.True(saved.Orientation == planned.Orientation, "Default orientation should match SettingsController");
+            Assert.True(saved.FitToPage == planned.FitToPage, "Default fit-to-page should match SettingsController");
+            Assert.True(saved.DarkenText == planned.DarkenText, "Default darken-text should match SettingsController");
+
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(PrintPdfUseCase.CommandName, new[] { SamplePdfFile },
+                new Dictionary<string, object> { [PrintPdfOptions.CopiesKey] = 7 }));
+            Assert.Equal(7, PrintPdfOptions.FromDictionary(plan.NormalizedOptions).Copies);
+        });
+
         runner.Run("Use case options injection: PdfDecrypt honors caller language override", () =>
         {
             var useCase = new DecryptPdfUseCase();
@@ -55,7 +138,7 @@ static partial class TestSuite
             string testLang = SettingsController.Language == "fr" ? "de" : "fr";
             var requestWithLang = new ConversionRequest(
                 MarkdownToPdfUseCase.CommandName,
-                new[] { "notes.md" },
+                new[] { NotesMdFile },
                 new Dictionary<string, object>
                 {
                     [ExecutionLocalizationOptions.LanguageKey] = testLang
@@ -65,7 +148,7 @@ static partial class TestSuite
 
             var requestWithoutLang = new ConversionRequest(
                 MarkdownToPdfUseCase.CommandName,
-                new[] { "notes.md" });
+                new[] { NotesMdFile });
             ConversionPlan defaultPlan = useCase.Plan(requestWithoutLang);
             Assert.Equal(SettingsController.Language, (string)defaultPlan.NormalizedOptions[ExecutionLocalizationOptions.LanguageKey]);
         });
@@ -121,7 +204,7 @@ static partial class TestSuite
             bool targetMinify = !SettingsController.PdfCompressionMinifyContent;
             var requestWithOptions = new ConversionRequest(
                 CompressPdfUseCase.CommandName,
-                new[] { "sample.pdf" },
+                new[] { SamplePdfFile },
                 new Dictionary<string, object>
                 {
                     [CompressPdfUseCase.LevelOptionKey] = "high",
@@ -135,7 +218,7 @@ static partial class TestSuite
 
             var requestWithoutOptions = new ConversionRequest(
                 CompressPdfUseCase.CommandName,
-                new[] { "sample.pdf" });
+                new[] { SamplePdfFile });
             ConversionPlan defaultPlan = useCase.Plan(requestWithoutOptions);
             Assert.True((bool)defaultPlan.NormalizedOptions["strip_fonts"] == SettingsController.PdfCompressionStripFonts, "Default strip_fonts should match SettingsController");
             Assert.True((bool)defaultPlan.NormalizedOptions["minify_content"] == SettingsController.PdfCompressionMinifyContent, "Default minify_content should match SettingsController");

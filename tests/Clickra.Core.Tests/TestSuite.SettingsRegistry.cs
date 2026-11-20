@@ -83,7 +83,12 @@ static partial class TestSuite
             "LibreOfficeManagedProductCode", "LibreOfficeManagedSofficePath",
             "TranslateTargetLang", "TranslateEngine", "TranslateAiEndpoint", "TranslateAiApiKey", "TranslateAiModel",
             "PdfCompressImageLevel", "PdfCompressStripFonts", "PdfCompressMinifyContent",
-            "ImageCompressLevel", "ImageCompressMaxDimension", "ParkedTaskRetention"
+            "ImageCompressLevel", "ImageCompressMaxDimension", "ParkedTaskRetention",
+            "ContextMenuEnabled", "ContextMenuHidden",
+            "PdfToImageFormat", "MarkdownTheme", "MarkdownPaper", "MarkdownTextSize", "MarkdownTemplatePath",
+            "MarkdownCodeTheme", "PdfToImageDpi", "PdfToImageStitch",
+            "PrintPrinter", "PrintCopies", "PrintDuplex", "PrintPaper", "PrintOrientation", "PrintFitToPage", "PrintDarkenText",
+            "DesktopTheme", "DesktopWindowBounds"
         };
         string[] actual = keys.OrderBy(k => k, StringComparer.Ordinal).ToArray();
         string[] want = expected.OrderBy(k => k, StringComparer.Ordinal).ToArray();
@@ -149,7 +154,10 @@ static partial class TestSuite
         System.Collections.Generic.HashSet<string> registered)
     {
         string source = File.ReadAllText(file);
-        bool isRegistry = file.EndsWith("ClickraSettings.cs", StringComparison.Ordinal);
+        // ContextMenuVisibility.cs (src/Shared) holds the two context-menu keys for the shell extension, which
+        // cannot reference Core; ClickraSettings aliases those constants, so they are still declared once.
+        bool isRegistry = file.EndsWith("ClickraSettings.cs", StringComparison.Ordinal) ||
+                          file.EndsWith("ContextMenuVisibility.cs", StringComparison.Ordinal);
         string shortName = Path.GetFileName(file);
 
         Assert.True(!Regex.IsMatch(source, LiteralSettingKeyPattern, RegexOptions.CultureInvariant, SettingsRegexTimeout),

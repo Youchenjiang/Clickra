@@ -1,6 +1,6 @@
 # Microsoft Store 목록 - 한국어
 
-다음은 Microsoft 파트너 센터 (Partner Center)에 직접 복사하여 붙여넣을 수 있는 전체 정보입니다 (v3.20.2.0 기준).
+다음은 Microsoft 파트너 센터 (Partner Center)에 직접 복사하여 붙여넣을 수 있는 전체 정보입니다 (v3.21.0.0 기준).
 
 ---
 
@@ -15,11 +15,10 @@ Clickra는 Windows 파일 탐색기를 위한 네이티브 우클릭 확장 프�
 소스 코드: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- PDF를 이미지로 변환, 인쇄 및 분할 미리보기 렌더링 수정: 텍스트만 렌더링되던 문제를 해결하여 이미지, 표, 다이어그램이 포함된 전체 화면 출력을 복원했습니다.
-- 유니버설 CLI 및 크로스 플랫폼 패키징: Clickra CLI가 이제 .NET 전역 도구(dotnet tool install -g Clickra) 및 Windows, Linux, macOS용 NativeAOT 독립 바이너리로 제공됩니다.
-- 멀티 타겟 아키텍처: Core는 멀티 타겟을 지원하며, CLI는 크로스 플랫폼 도구 패키징을 위해 net8.0을 채택.
-- 헤드리스 실행 및 ANSI 진행 표시줄: 헤드리스 모드(--headless), 플랫폼 진단(--diagnostics) 및 실시간 터미널 진행 표시줄 지원.
-- 이중 배포 채널: GitHub Release Assets 독립 아카이브 및 GitHub Packages NuGet 레ジ스트리 배포 제공.
+- 보호 감지 기반 PDF 비밀번호 해제: 비밀번호로 보호되거나 인쇄/복사가 제한된 PDF를 자동 감지합니다. 입력된 비밀번호를 우선 적용하며, 사용 제한만 있는 파일은 비밀번호 없이 즉시 해제합니다.
+- 향상된 시각적 PDF 분할 작업 영역: 페이지의 실제 종횡비에 맞춘 썸네일 표시, 더블 클릭 전체 영역 확대 미리보기(확대/축소, 단축키, 아이콘 도구 모음), 모든 분할 모드에서 유연한 절단점 조정을 지원합니다.
+- 최신 데스크톱 UI 미리보기 (Clickra.Desktop): Avalonia 기반의 크로스 플랫폼 데스크톱 앱으로, 파일 드래그 앤 드롭, 작업 카탈로그, 긴 이미지 결합/병합 순서 조정 작업 영역을 제공합니다(--desktop 플래그로 실행 가능).
+- 전용 작업 영역 및 UX 개선: 일괄 이름 바꾸기 실시간 미리보기, Markdown 템플릿 카드 선택, 창 위치 및 크기 기억, 창을 닫을 때 백그라운드 변환 유지 지원.
 
 ## Product Features
 *(최대 20개, 글머리 기호로 표시)*

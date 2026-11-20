@@ -41,6 +41,112 @@ public static class SettingsController
         set => WriteText(ClickraSettings.TranslateTargetLang, value);
     }
 
+    public static string PdfToImageFormat
+    {
+        get => ReadText(ClickraSettings.PdfToImageFormat);
+        set => WriteText(ClickraSettings.PdfToImageFormat, value);
+    }
+
+    public static string MarkdownTheme
+    {
+        get => ReadText(ClickraSettings.MarkdownTheme);
+        set => WriteText(ClickraSettings.MarkdownTheme, value);
+    }
+
+    public static string MarkdownPaper
+    {
+        get => ReadText(ClickraSettings.MarkdownPaper);
+        set => WriteText(ClickraSettings.MarkdownPaper, value);
+    }
+
+    public static string MarkdownCodeTheme
+    {
+        get => ReadText(ClickraSettings.MarkdownCodeTheme);
+        set => WriteText(ClickraSettings.MarkdownCodeTheme, value);
+    }
+
+    public static int PdfToImageDpi
+    {
+        get => int.TryParse(ReadText(ClickraSettings.PdfToImageDpi), out int dpi)
+            ? ClickraSettings.ClampNumericSetting(ClickraSettings.PdfToImageDpi, dpi)
+            : ClickraSettings.GetDefaultInt(ClickraSettings.PdfToImageDpi);
+        set => WriteText(ClickraSettings.PdfToImageDpi, ClickraSettings.ClampNumericSetting(ClickraSettings.PdfToImageDpi, value).ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    public static bool PdfToImageStitch
+    {
+        get => ReadBool(ClickraSettings.PdfToImageStitch);
+        set => WriteBool(ClickraSettings.PdfToImageStitch, value);
+    }
+
+    public static string PrintPrinter
+    {
+        get => ReadText(ClickraSettings.PrintPrinter);
+        set => WriteText(ClickraSettings.PrintPrinter, value ?? "");
+    }
+
+    public static int PrintCopies
+    {
+        get => int.TryParse(ReadText(ClickraSettings.PrintCopies), out int copies)
+            ? ClickraSettings.ClampNumericSetting(ClickraSettings.PrintCopies, copies)
+            : ClickraSettings.GetDefaultInt(ClickraSettings.PrintCopies);
+        set => WriteText(ClickraSettings.PrintCopies, ClickraSettings.ClampNumericSetting(ClickraSettings.PrintCopies, value).ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    public static string PrintDuplex
+    {
+        get => ReadText(ClickraSettings.PrintDuplex);
+        set => WriteText(ClickraSettings.PrintDuplex, value);
+    }
+
+    public static string PrintPaper
+    {
+        get => ReadText(ClickraSettings.PrintPaper);
+        set => WriteText(ClickraSettings.PrintPaper, value ?? "");
+    }
+
+    public static string PrintOrientation
+    {
+        get => ReadText(ClickraSettings.PrintOrientation);
+        set => WriteText(ClickraSettings.PrintOrientation, value);
+    }
+
+    public static bool PrintFitToPage
+    {
+        get => ReadBool(ClickraSettings.PrintFitToPage);
+        set => WriteBool(ClickraSettings.PrintFitToPage, value);
+    }
+
+    public static bool PrintDarkenText
+    {
+        get => ReadBool(ClickraSettings.PrintDarkenText);
+        set => WriteBool(ClickraSettings.PrintDarkenText, value);
+    }
+
+    public static string MarkdownTextSize
+    {
+        get => ReadText(ClickraSettings.MarkdownTextSize);
+        set => WriteText(ClickraSettings.MarkdownTextSize, value);
+    }
+
+    public static string MarkdownTemplatePath
+    {
+        get => ReadText(ClickraSettings.MarkdownTemplatePath);
+        set => WriteText(ClickraSettings.MarkdownTemplatePath, value ?? string.Empty);
+    }
+
+    public static string DesktopTheme
+    {
+        get => ReadText(ClickraSettings.DesktopTheme);
+        set => WriteText(ClickraSettings.DesktopTheme, value);
+    }
+
+    public static string DesktopWindowBounds
+    {
+        get => ReadText(ClickraSettings.DesktopWindowBounds);
+        set => WriteText(ClickraSettings.DesktopWindowBounds, value);
+    }
+
     public static string TranslateEngine
     {
         get => ReadText(ClickraSettings.TranslateEngine);

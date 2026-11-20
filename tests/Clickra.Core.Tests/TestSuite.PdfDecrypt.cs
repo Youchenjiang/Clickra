@@ -55,6 +55,8 @@ static partial class TestSuite
         runner.Run("Decrypt use case can run without task tracking", TestDecryptUseCaseCanRunWithoutTaskTracking);
         runner.Run("IsEncrypted detects encrypted and unencrypted PDFs", TestIsEncryptedDetection);
         runner.Run("Encrypted PDF processing throws localized error across pipelines", TestEncryptedPdfThrowsLocalizedErrors);
+        runner.Run("Decrypt tells an open password from print or copy restrictions", TestDecryptTellsOpenPasswordFromRestrictions);
+        runner.Run("Decrypt uses the card password and needs none for restricted PDFs", TestDecryptUsesCardPassword);
     }
 
     private static void TestDecryptUseCaseCanRunWithoutTaskTracking()
@@ -172,6 +174,70 @@ static partial class TestSuite
             {
                 File.WriteAllBytes(historyPath, historySnapshot);
             }
+        }
+    }
+
+    private static string CreateProtectedPdf(string name, string? userPassword)
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"clickra-{name}-{Guid.NewGuid():N}.pdf");
+        using var document = new PdfDocument();
+        document.AddPage();
+        if (userPassword is not null) document.SecuritySettings.UserPassword = userPassword;
+        document.SecuritySettings.OwnerPassword = "clickra-restrict-owner";
+        document.SecuritySettings.PermitPrint = false;
+        document.SecuritySettings.PermitExtractContent = false;
+        document.Save(path);
+        return path;
+    }
+
+    private static void TestDecryptTellsOpenPasswordFromRestrictions()
+    {
+        string locked = CreateProtectedPdf("decrypt-open", "clickra-open-password");
+        string restricted = CreateProtectedPdf("decrypt-restricted", null);
+        try
+        {
+            Assert.True(PdfEncryptionQuery.IsEncrypted(locked), "A PDF with an open password is encrypted.");
+            Assert.True(PdfEncryptionQuery.IsEncrypted(restricted), "A PDF that only restricts printing is encrypted.");
+            Assert.True(PdfEncryptionQuery.NeedsOpenPassword(locked), "A PDF with an open password needs it to open.");
+            Assert.True(!PdfEncryptionQuery.NeedsOpenPassword(restricted), "A PDF that only restricts printing opens without a password.");
+        }
+        finally
+        {
+            TryDeleteDecryptFixture(locked);
+            TryDeleteDecryptFixture(restricted);
+        }
+    }
+
+    private static void TestDecryptUsesCardPassword()
+    {
+        const string password = "clickra-card-password";
+        string locked = CreateProtectedPdf("decrypt-card", password);
+        string restricted = CreateProtectedPdf("decrypt-card-restricted", null);
+        string outputDir = Path.Combine(Path.GetTempPath(), $"clickra-decrypt-card-out-{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateDirectory(outputDir);
+            var useCase = new DecryptPdfUseCase();
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                DecryptPdfUseCase.CommandName,
+                new[] { restricted, locked },
+                new Dictionary<string, object> { [DecryptPdfUseCase.PasswordOptionKey] = password },
+                OutputOverride: outputDir,
+                TrackTaskLifecycle: false));
+            var interaction = new RetryPasswordInteraction();
+            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
+
+            Assert.True(result.Status == ConversionResultStatus.Succeeded,
+                $"Expected decrypt success, got {result.Status}: {result.Error}");
+            Assert.True(interaction.Requests == 0,
+                "The card password opens the locked PDF and the restricted one needs none, so nothing is asked again.");
+            Assert.True(plan.Outputs.All(File.Exists), "Both decrypted PDFs must be written.");
+        }
+        finally
+        {
+            TryDeleteDecryptFixture(locked);
+            TryDeleteDecryptFixture(restricted);
+            try { Directory.Delete(outputDir, recursive: true); } catch { /* Best-effort fixture cleanup. */ }
         }
     }
 

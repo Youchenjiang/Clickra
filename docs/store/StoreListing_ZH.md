@@ -1,6 +1,6 @@
 # Microsoft Store 清單 - 中文 (台灣)
 
-以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.20.2.0。
+以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.21.0.0。
 
 ---
 
@@ -15,11 +15,10 @@ Clickra 是一款專為 Windows 檔案總管打造的原生右鍵擴充工具。
 原始碼：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 修正 PDF 轉圖片、列印與分割預覽功能：修復先前版本僅繪製文字之問題，完整恢復圖片、表格與版面畫面。
-- 通用 CLI 與跨平台封裝：Clickra CLI 現已正式支援 .NET 全域工具（dotnet tool install -g Clickra）與 Windows、Linux、macOS 原生 NativeAOT 獨立執行檔。
-- 多目標架構解耦：Core 支援多目標，CLI 採 net8.0 以支援跨平台工具封裝。
-- 無頭執行與 ANSI 彩色進度：支援無頭背景執行（--headless）、平台與引擎診斷（--diagnostics）及終端即時彩色進度條。
-- 雙軌發布管道：提供 GitHub Release Assets 原生壓縮包與 GitHub Packages NuGet 註冊表發布。
+- PDF 密碼感知與使用限制移除：智慧識別受密碼保護或僅限制列印/複製的 PDF，卡片密碼優先嘗試；僅具使用限制之檔案無需輸入密碼即可直接解密。
+- 視覺化 PDF 分割工作區強化：縮圖按頁面真實長寬比呈現，支援雙擊全內容區放大預覽（縮放、鍵盤快捷鍵與圖示工具列），任意模式均可即時調整切點。
+- 全新現代桌面端預覽 (Clickra.Desktop)：以 Avalonia 打造之跨平台桌面介面，支援檔案拖放、動作目錄、長圖拼接與合併排序工作區，可使用 --desktop 參數開啟預覽。
+- 專屬工作區與操作體驗優化：提供批次重新命名即時預覽、Markdown 範本卡片選擇、視窗位置尺寸記憶，以及關閉視窗時背景持續轉檔。
 
 ## Product Features
 *(最多 20 個，以項目符號顯示)*

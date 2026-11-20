@@ -1,0 +1,146 @@
+<!-- One history row (spec 4.2), also used by 最近處理 on the convert page (spec 4.1).
+     status icon → time → coloured feature label → file name (middle-trimmed) → reason; two outlined icon
+     buttons at the right; a one-line notice and the details expand under the row. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Clickra.Desktop.ViewModels"
+             xmlns:controls="using:Clickra.Desktop.Controls"
+             x:Class="Clickra.Desktop.Views.Controls.HistoryRowView"
+             x:DataType="vm:HistoryRowViewModel">
+    <UserControl.Styles>
+        <Style Selector="Button.rowMain">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="16,0,8,0" />
+            <Setter Property="MinHeight" Value="46" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="CornerRadius" Value="0" />
+        </Style>
+        <Style Selector="Button.rowMain:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Clk.HoverFill}" />
+        </Style>
+        <Style Selector="Button.rowIcon">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Clk.ControlBorder}" />
+            <Setter Property="Background" Value="{DynamicResource Clk.Card}" />
+            <Setter Property="Foreground" Value="{DynamicResource Clk.Text}" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.detailLabel">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{DynamicResource Clk.TextSecondary}" />
+        </Style>
+        <Style Selector="TextBlock.detailValue">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+    </UserControl.Styles>
+
+    <Border BorderBrush="{DynamicResource Clk.Divider}" BorderThickness="0,1,0,0">
+        <StackPanel>
+            <Grid ColumnDefinitions="*,Auto">
+                <Button Grid.Column="0" Classes="rowMain" Command="{Binding ToggleExpand}"
+                        AutomationProperties.Name="{Binding FullName}">
+                    <Grid ColumnDefinitions="20,Auto,Auto,*" ColumnSpacing="12">
+                        <!-- Status: shape tells the outcome; only failure uses colour. -->
+                        <Panel Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center">
+                            <!-- All line icons: one 24 × 24 grid, scaled as a whole, same stroke (spec 7). -->
+                            <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding IsSuccess}" ToolTip.Tip="成功"><Canvas Width="24" Height="24"><Path Data="M5,12.5 L9.5,17 L19,7.5" Stroke="{DynamicResource Clk.TextTertiary}" /></Canvas></Viewbox>
+                            <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding IsFailed}" ToolTip.Tip="失敗"><Canvas Width="24" Height="24"><Path Data="M6,6 L18,18 M18,6 L6,18" Stroke="{DynamicResource Clk.Danger}" /></Canvas></Viewbox>
+                            <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding IsCanceled}" ToolTip.Tip="已取消"><Canvas Width="24" Height="24"><Path Data="M12,4 A8,8 0 1 1 11.99,4 Z M6.5,17.5 L17.5,6.5" Stroke="{DynamicResource Clk.TextTertiary}" /></Canvas></Viewbox>
+                            <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding IsParked}" ToolTip.Tip="暫停中"><Canvas Width="24" Height="24"><Path Data="M9,6 V18 M15,6 V18" Stroke="{DynamicResource Clk.TextTertiary}" /></Canvas></Viewbox>
+                        </Panel>
+                        <Panel Grid.Column="1" Width="44" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding TimeText}" FontSize="13" IsVisible="{Binding !IsRunning}"
+                                       Foreground="{DynamicResource Clk.TextSecondary}" />
+                            <TextBlock Text="{Binding ProgressText}" FontSize="13" IsVisible="{Binding IsRunning}"
+                                       Foreground="{DynamicResource Clk.TextSecondary}" />
+                        </Panel>
+                        <!-- Coloured feature label (spec 7 檔案類型色). -->
+                        <Border Grid.Column="2" Height="24" MinWidth="92" Padding="8,0" CornerRadius="5"
+                                BorderThickness="1" VerticalAlignment="Center"
+                                Background="{Binding FeatureFill}" BorderBrush="{Binding FeatureStroke}">
+                            <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center">
+                                <Image Width="14" Height="14" VerticalAlignment="Center" Source="{Binding FeatureIcon}" />
+                                <TextBlock Text="{Binding FeatureName}" FontSize="12" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                        <StackPanel Grid.Column="3" VerticalAlignment="Center" Spacing="5">
+                            <controls:MiddleTrimPanel Gap="8">
+                                <TextBlock Text="{Binding NameHead}" FontSize="14" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding NameTail}" FontSize="14" />
+                                <TextBlock Text="{Binding MoreText}" FontSize="13" IsVisible="{Binding HasMore}"
+                                           Foreground="{DynamicResource Clk.TextSecondary}" />
+                                <Panel IsVisible="{Binding HasReason}">
+                                    <TextBlock Text="{Binding Reason}" FontSize="13" TextTrimming="CharacterEllipsis"
+                                               IsVisible="{Binding ReasonIsError}" Foreground="{DynamicResource Clk.Danger}" />
+                                    <TextBlock Text="{Binding Reason}" FontSize="13" TextTrimming="CharacterEllipsis"
+                                               IsVisible="{Binding !ReasonIsError}" Foreground="{DynamicResource Clk.TextSecondary}" />
+                                </Panel>
+                            </controls:MiddleTrimPanel>
+                            <ProgressBar IsVisible="{Binding IsRunning}" Height="3" MinHeight="3" Minimum="0" Maximum="100"
+                                         Value="{Binding ProgressPercent}" />
+                        </StackPanel>
+                    </Grid>
+                </Button>
+
+                <!-- Right end: the same two positions in every section (spec 4.2). -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="0,0,12,0" VerticalAlignment="Center">
+                    <Button Classes="rowIcon" IsVisible="{Binding IsCompleted}" Command="{Binding OpenFolder}"
+                            ToolTip.Tip="{Binding FolderButtonLabel}" AutomationProperties.Name="{Binding FolderButtonLabel}">
+                        <Viewbox Classes="ic" Width="20" Height="20"><Canvas Width="24" Height="24"><Path Data="M3,7 A2,2 0 0 1 5,5 H9 L11,7 H19 A2,2 0 0 1 21,9 V17 A2,2 0 0 1 19,19 H5 A2,2 0 0 1 3,17 Z" /></Canvas></Viewbox>
+                    </Button>
+                    <Button Classes="rowIcon" IsVisible="{Binding IsCompleted}" Command="{Binding Rerun}"
+                            ToolTip.Tip="再轉一次" AutomationProperties.Name="再轉一次">
+                        <Viewbox Classes="ic" Width="20" Height="20"><Canvas Width="24" Height="24"><Path Data="M20,12 A8,8 0 1 1 17.66,6.34 M20,4 V9 H15" /></Canvas></Viewbox>
+                    </Button>
+                    <Button Classes="rowIcon" IsVisible="{Binding IsParked}" Command="{Binding Resume}"
+                            ToolTip.Tip="繼續" AutomationProperties.Name="繼續">
+                        <Viewbox Classes="ic" Width="20" Height="20"><Canvas Width="24" Height="24"><Path Data="M8,5.5 V18.5 L18.5,12 Z" /></Canvas></Viewbox>
+                    </Button>
+                    <Button Classes="rowIcon" IsVisible="{Binding CanPause}" Command="{Binding Pause}"
+                            ToolTip.Tip="做完這個檔案後暫停" AutomationProperties.Name="做完這個檔案後暫停">
+                        <Viewbox Classes="ic" Width="20" Height="20"><Canvas Width="24" Height="24"><Path Data="M9,6 V18 M15,6 V18" /></Canvas></Viewbox>
+                    </Button>
+                    <Button Classes="rowIcon" IsVisible="{Binding IsParked}" Command="{Binding Stop}"
+                            ToolTip.Tip="停止，不再繼續" AutomationProperties.Name="停止，不再繼續">
+                        <Viewbox Classes="ic" Width="20" Height="20"><Canvas Width="24" Height="24"><Path Data="M6,6 H18 V18 H6 Z" /></Canvas></Viewbox>
+                    </Button>
+                    <Button Classes="rowIcon" IsVisible="{Binding CanStopRunning}" Command="{Binding Stop}"
+                            ToolTip.Tip="停止，不再繼續" AutomationProperties.Name="停止，不再繼續">
+                        <Viewbox Classes="ic" Width="20" Height="20"><Canvas Width="24" Height="24"><Path Data="M6,6 H18 V18 H6 Z" /></Canvas></Viewbox>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- A button found something missing: one line, action button at the right end (spec 4.2). -->
+            <Border IsVisible="{Binding HasNotice}" Margin="72,0,16,12" Padding="12,8,8,8" CornerRadius="8"
+                    Background="#1AF7B955">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                    <Viewbox Classes="ic" Width="20" Height="20" Grid.Column="0" VerticalAlignment="Center"><Canvas Width="24" Height="24"><Path Data="M12,3.5 L2.5,20 H21.5 Z M12,10 V14.5 M12,17.4 V17.5" Stroke="{DynamicResource Clk.Warning}" /></Canvas></Viewbox>
+                    <TextBlock Grid.Column="1" Text="{Binding Notice}" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center" />
+                    <Button Grid.Column="2" Classes="primary" IsVisible="{Binding HasNoticeAction}" MinHeight="34" Padding="14,0"
+                            FontSize="13" Content="{Binding NoticeActionText}" Command="{Binding RunNoticeAction}" />
+                </Grid>
+            </Border>
+
+            <!-- Details, opened by clicking the row. -->
+            <Grid IsVisible="{Binding IsExpanded}" Margin="72,0,16,16" ColumnDefinitions="48,*" RowDefinitions="Auto,Auto,Auto"
+                  ColumnSpacing="14" RowSpacing="6">
+                <TextBlock Grid.Row="0" Classes="detailLabel" Text="輸入" />
+                <TextBlock Grid.Row="0" Grid.Column="1" Classes="detailValue" Text="{Binding InputText}" />
+                <TextBlock Grid.Row="1" Classes="detailLabel" Text="輸出" IsVisible="{Binding HasOutput}" />
+                <TextBlock Grid.Row="1" Grid.Column="1" Classes="detailValue" Text="{Binding OutputText}" IsVisible="{Binding HasOutput}" />
+                <TextBlock Grid.Row="2" Classes="detailLabel" Text="時間" />
+                <TextBlock Grid.Row="2" Grid.Column="1" Classes="detailValue" Text="{Binding TimeDetail}" />
+            </Grid>
+        </StackPanel>
+    </Border>
+</UserControl>

@@ -11,6 +11,7 @@
         Width="960" Height="660"
         MinWidth="760" MinHeight="520"
         WindowStartupLocation="CenterScreen"
+        WindowDecorationsTheme="{StaticResource Clk.WindowDecorationsTheme}"
         FontFamily="avares://Clickra.Desktop/Assets/Fonts#Noto Sans TC, Microsoft JhengHei UI, PingFang TC, Noto Sans CJK TC, $Default"
         FontSize="14">
 
@@ -43,9 +44,9 @@
         <!-- Page area: content column is at most 860 wide and centered (section 6). -->
         <Panel Grid.Row="1" Margin="24,4,24,0">
             <Panel MaxWidth="{StaticResource Clk.ContentMaxWidth}">
-                <pages:ConvertPage Name="ConvertView" IsVisible="{Binding IsConvertPage}" />
-                <pages:HistoryPage Name="HistoryView" IsVisible="{Binding IsHistoryPage}" />
-                <pages:SettingsPage Name="SettingsView" IsVisible="{Binding IsSettingsPage}" />
+                <pages:ConvertPage Name="ConvertView" DataContext="{Binding Convert}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsConvertPage}" />
+                <pages:HistoryPage Name="HistoryView" DataContext="{Binding History}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsHistoryPage}" />
+                <pages:SettingsPage Name="SettingsView" DataContext="{Binding Settings}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsSettingsPage}" />
             </Panel>
         </Panel>
     </Grid>

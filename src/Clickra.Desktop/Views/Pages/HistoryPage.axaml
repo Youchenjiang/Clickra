@@ -1,24 +1,129 @@
-<!-- History page shell (spec 4.2): fixed heading row, one section whose list scrolls inside it,
-     24 bottom margin. Shown here in its empty state; the list arrives with Core wiring (branch 7). -->
+<!-- History (spec 4.2): title, filter 「全部｜✓ n｜✕ n」 and a ⋯ menu; then 進行中, 待繼續 and the finished
+     tasks grouped by day. Every row is the shared HistoryRowView. -->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="Clickra.Desktop.Views.Pages.HistoryPage">
+             xmlns:vm="using:Clickra.Desktop.ViewModels"
+             xmlns:rows="using:Clickra.Desktop.Views.Controls"
+             x:Class="Clickra.Desktop.Views.Pages.HistoryPage"
+             x:DataType="vm:HistoryViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.sectionHead">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource Clk.TextSecondary}" />
+            <Setter Property="Margin" Value="16,14,16,6" />
+        </Style>
+        <Style Selector="ListBox.filter ListBoxItem">
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="Padding" Value="14,0" />
+        </Style>
+    </UserControl.Styles>
+
     <Grid RowDefinitions="Auto,12,*" Margin="0,0,0,24">
-        <TextBlock Grid.Row="0" Classes="h1" Text="歷史" Margin="0,4,0,0" />
-        <Border Grid.Row="2" Classes="section">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
-                <Border Width="48" Height="48" CornerRadius="24" HorizontalAlignment="Center"
-                        Background="{DynamicResource Clk.Card}">
-                    <Path Data="M12,3 A9,9 0 1 1 11.99,3 Z M12,7 V12 L15,14"
-                          Stroke="{DynamicResource Clk.TextSecondary}" StrokeThickness="1.8"
-                          StrokeLineCap="Round" StrokeJoin="Round"
-                          Width="22" Height="22" Stretch="Uniform"
-                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Border>
-                <TextBlock Text="還沒有處理過檔案" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                <Button Classes="primary" Name="GoConvertButton" Content="去轉檔"
-                        HorizontalAlignment="Center" MinHeight="40" Padding="20,0" FontSize="14" />
-            </StackPanel>
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,4,0,0">
+            <TextBlock Grid.Column="0" Classes="h1" Text="歷史" VerticalAlignment="Center" />
+
+            <!-- One segmented control; 全部 has no count, canceled tasks count only in 全部. -->
+            <ListBox Grid.Column="2" Classes="segmented filter" Padding="3" VerticalAlignment="Center"
+                     SelectedIndex="{Binding FilterIndex, Mode=TwoWay}" IsVisible="{Binding HasCompleted}">
+                <ListBoxItem AutomationProperties.Name="全部">
+                    <TextBlock Text="全部" FontSize="13" />
+                </ListBoxItem>
+                <ListBoxItem ToolTip.Tip="成功" AutomationProperties.Name="成功">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Viewbox Classes="ic" Width="18" Height="18" VerticalAlignment="Center"><Canvas Width="24" Height="24"><Path Data="M5,12.5 L9.5,17 L19,7.5" Stroke="{DynamicResource Clk.TextTertiary}" /></Canvas></Viewbox>
+                        <TextBlock Text="{Binding SuccessCount}" FontSize="13" />
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem ToolTip.Tip="失敗" AutomationProperties.Name="失敗">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Viewbox Classes="ic" Width="18" Height="18" VerticalAlignment="Center"><Canvas Width="24" Height="24"><Path Data="M6,6 L18,18 M18,6 L6,18" Stroke="{DynamicResource Clk.Danger}" /></Canvas></Viewbox>
+                        <TextBlock Text="{Binding FailedCount}" FontSize="13" />
+                    </StackPanel>
+                </ListBoxItem>
+            </ListBox>
+
+            <Button Grid.Column="3" Classes="subtle" Name="MoreButton" Width="40" Height="40" Padding="0"
+                    Margin="8,0,0,0" VerticalAlignment="Center" HorizontalContentAlignment="Center"
+                    ToolTip.Tip="更多" AutomationProperties.Name="更多" IsVisible="{Binding HasCompleted}">
+                <!-- ⋯ on the same grid: three dots drawn as round caps of zero-length strokes. -->
+                <Viewbox Classes="ic" Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Canvas Width="24" Height="24">
+                        <Path Data="M5,12 L5.01,12 M12,12 L12.01,12 M19,12 L19.01,12" StrokeThickness="3"
+                              Stroke="{DynamicResource Clk.TextSecondary}" />
+                    </Canvas>
+                </Viewbox>
+            </Button>
+        </Grid>
+
+        <Border Grid.Row="2" Classes="section" Padding="0,4,0,8">
+            <Panel>
+                <!-- Empty State -->
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12"
+                            IsVisible="{Binding IsEmpty}">
+                    <Border Width="48" Height="48" CornerRadius="24" HorizontalAlignment="Center"
+                            Background="{DynamicResource Clk.Card}">
+                        <Viewbox Classes="ic" Width="26" Height="26" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Canvas Width="24" Height="24">
+                                <Path Data="M12,3 A9,9 0 1 1 11.99,3 Z M12,7 V12 L15,14" Stroke="{DynamicResource Clk.TextSecondary}" />
+                            </Canvas>
+                        </Viewbox>
+                    </Border>
+                    <TextBlock Text="還沒有處理過檔案" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                    <Button Classes="primary" Name="GoConvertButton" Content="去轉檔"
+                            HorizontalAlignment="Center" MinHeight="40" Padding="20,0" FontSize="14" />
+                </StackPanel>
+
+                <ScrollViewer IsVisible="{Binding !IsEmpty}">
+                    <StackPanel>
+                        <!-- 進行中: pinned on top. -->
+                        <StackPanel IsVisible="{Binding HasActive}">
+                            <TextBlock Classes="sectionHead" Text="進行中" />
+                            <ItemsControl ItemsSource="{Binding ActiveRows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:HistoryRowViewModel">
+                                        <rows:HistoryRowView />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <!-- 待繼續: paused tasks, kept for the remaining days shown in the time column. -->
+                        <StackPanel IsVisible="{Binding HasParked}">
+                            <TextBlock Classes="sectionHead" Text="待繼續" />
+                            <ItemsControl ItemsSource="{Binding ParkedRows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:HistoryRowViewModel">
+                                        <rows:HistoryRowView />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <!-- Finished, grouped by 今天／昨天／date. -->
+                        <ItemsControl ItemsSource="{Binding Groups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:HistoryDayGroup">
+                                    <StackPanel>
+                                        <TextBlock Classes="sectionHead" Text="{Binding Title}" />
+                                        <ItemsControl ItemsSource="{Binding Rows}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:HistoryRowViewModel">
+                                                    <rows:HistoryRowView />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock IsVisible="{Binding IsFilterEmpty}" Text="沒有符合的紀錄" Classes="secondary"
+                                   FontSize="14" HorizontalAlignment="Center" Margin="0,32" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Panel>
         </Border>
     </Grid>
 </UserControl>

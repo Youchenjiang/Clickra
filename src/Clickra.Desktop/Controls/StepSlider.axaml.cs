@@ -16,6 +16,9 @@ public partial class StepSlider : UserControl
     public static readonly StyledProperty<int> SelectedIndexProperty =
         AvaloniaProperty.Register<StepSlider, int>(nameof(SelectedIndex), defaultBindingMode: BindingMode.TwoWay);
 
+    public event EventHandler<int>? SelectedIndexChanged;
+    public event EventHandler<int>? ValueChanged;
+
     private bool _syncing;
 
     public StepSlider()
@@ -50,6 +53,8 @@ public partial class StepSlider : UserControl
         {
             SyncSlider();
             UpdateLabelEmphasis();
+            SelectedIndexChanged?.Invoke(this, SelectedIndex);
+            ValueChanged?.Invoke(this, SelectedIndex);
         }
     }
 

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Renders one page of each built-in Markdown template for the desktop template cards (spec 4.9).
+       Run on Windows (PDF page rendering uses System.Drawing), from the repository root:
+         dotnet run (project option) scripts/tools/TemplatePreviewGen
+       Output: src/Clickra.Desktop/Assets/TemplatePreviews/{default,minimal,academic}.png (committed). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RollForward>LatestMajor</RollForward>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ClickraSkipIconGen>true</ClickraSkipIconGen>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Clickra.Core\Clickra.Core.csproj" />
+  </ItemGroup>
+
+</Project>

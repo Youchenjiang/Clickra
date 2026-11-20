@@ -27,6 +27,30 @@ public sealed class MainWindowViewModel : ViewModelBase
 {
     private MainPage _currentPage = MainPage.Convert;
 
+    public ConvertViewModel Convert { get; } = new();
+    public HistoryViewModel History { get; } = new();
+    public SettingsViewModel Settings { get; } = new();
+
+    public MainWindowViewModel()
+    {
+        History.Session = Convert;
+        History.IsBusy = () => Convert.IsExecuting;
+        History.RerunRequested += (_, e) => Rerun(e);
+        Convert.RerunRequested += (_, e) => Rerun(e);
+        History.ResumeRequested += async (_, e) => await Convert.ResumeParkedAsync(e.Task);
+        Convert.ShowTaskRequested += (_, e) =>
+        {
+            History.ShowTask(e.TaskId);
+            CurrentPage = MainPage.History;
+        };
+    }
+
+    /// <summary>再轉一次: open the convert page on the same action with these files; the user presses 開始.</summary>
+    private void Rerun(RerunRequestEventArgs e)
+    {
+        if (Convert.PrepareRerun(e.Command, e.Files)) CurrentPage = MainPage.Convert;
+    }
+
     public string ConvertTabLabel { get; } = Localization.T("tab_convert");
     public string HistoryTabLabel { get; } = Localization.T("tab_history");
     public string SettingsTabLabel { get; } = Localization.T("tab_settings");
