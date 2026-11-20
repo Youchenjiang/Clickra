@@ -284,17 +284,12 @@ namespace Clickra.UI
 
             if (_subFont != null)
             {
-                var (statusColor, statusText) = ResolveEngineStatus(
-                    isMicrosoftEngine,
-                    isAutoEngine,
-                    officeReady,
-                    libreOfficeReady,
-                    isLibreOfficeSetupRunning,
-                    removalPendingRestart,
-                    downloadStatus,
-                    resolvedLibreOffice,
-                    GetText,
-                    ShortPath);
+                (Color statusColor, string statusText) = isMicrosoftEngine switch
+                {
+                    true => ResolveMicrosoftEngineStatus(officeReady),
+                    false when isAutoEngine => ResolveAutoEngineStatus(officeReady, libreOfficeReady),
+                    _ => ResolveLibreOfficeStatus(isLibreOfficeSetupRunning, removalPendingRestart, libreOfficeReady, downloadStatus, resolvedLibreOffice)
+                };
 
                 if (!(isLibreOfficeEngine && isLibreOfficeSetupRunning))
                 {
@@ -640,8 +635,10 @@ namespace Clickra.UI
             float s = _dpiScale;
             bool isHovered = _hoveredElement == elementId;
             Color selectedBg = isHovered ? UIHelper.Lighten(UIHelper.GetSystemColorizationColor(), 0.15f) : UIHelper.GetSystemColorizationColor();
-            Color btnBg = selected ? selectedBg : (isHovered ? Color.FromArgb(55, 55, 55) : Color.FromArgb(40, 40, 40));
-            Color btnBorder = selected ? selectedBg : (isHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(60, 60, 60));
+            Color unselectedBg = isHovered ? Color.FromArgb(55, 55, 55) : Color.FromArgb(40, 40, 40);
+            Color unselectedBorder = isHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(60, 60, 60);
+            Color btnBg = selected ? selectedBg : unselectedBg;
+            Color btnBorder = selected ? selectedBg : unselectedBorder;
             Color textColor = selected || isHovered ? Color.White : Color.FromArgb(200, 200, 200);
 
             int h = 30;
@@ -771,54 +768,39 @@ namespace Clickra.UI
             return dotRadius;
         }
 
-        private static (Color Color, string Text) ResolveEngineStatus(
-            bool isMicrosoftEngine,
-            bool isAutoEngine,
-            bool officeReady,
-            bool libreOfficeReady,
-            bool isLibreOfficeSetupRunning,
-            bool removalPendingRestart,
-            string downloadStatus,
-            string resolvedLibreOffice,
-            Func<string, string> getText,
-            Func<string, int, string> shortPath)
+        private static (Color Color, string Text) ResolveMicrosoftEngineStatus(bool officeReady) =>
+            (officeReady ? Color.FromArgb(100, 220, 100) : Color.FromArgb(255, 90, 70),
+             GetText(officeReady ? "setting_microsoft_ready" : "setting_microsoft_missing"));
+
+        private static (Color Color, string Text) ResolveAutoEngineStatus(bool officeReady, bool libreOfficeReady)
         {
-            if (isMicrosoftEngine)
+            if (officeReady)
             {
-                return (
-                    officeReady ? Color.FromArgb(100, 220, 100) : Color.FromArgb(255, 90, 70),
-                    getText(officeReady ? "setting_microsoft_ready" : "setting_microsoft_missing")
-                );
+                return (Color.FromArgb(100, 220, 100), string.Format(GetText("setting_engine_auto_using"), GetText("setting_engine_microsoft")));
             }
-
-            if (isAutoEngine)
+            if (libreOfficeReady)
             {
-                if (officeReady)
-                {
-                    return (Color.FromArgb(100, 220, 100), string.Format(getText("setting_engine_auto_using"), getText("setting_engine_microsoft")));
-                }
-                if (libreOfficeReady)
-                {
-                    return (Color.FromArgb(100, 220, 100), string.Format(getText("setting_engine_auto_using"), getText("setting_engine_libreoffice")));
-                }
-                return (Color.FromArgb(255, 90, 70), getText("setting_engine_none_available"));
+                return (Color.FromArgb(100, 220, 100), string.Format(GetText("setting_engine_auto_using"), GetText("setting_engine_libreoffice")));
             }
+            return (Color.FromArgb(255, 90, 70), GetText("setting_engine_none_available"));
+        }
 
-            Color statusColor = isLibreOfficeSetupRunning
-                ? Color.FromArgb(190, 190, 190)
-                : removalPendingRestart
-                    ? Color.FromArgb(255, 190, 90)
-                : libreOfficeReady
-                    ? Color.FromArgb(100, 220, 100)
-                    : Color.FromArgb(255, 90, 70);
-            string statusText = isLibreOfficeSetupRunning
-                ? downloadStatus
-                : removalPendingRestart
-                    ? getText("setting_libreoffice_removal_pending")
-                : libreOfficeReady
-                ? $"{getText("setting_libreoffice_ready")}: {shortPath(resolvedLibreOffice, 62)}"
-                : getText("setting_libreoffice_missing");
-            return (statusColor, statusText);
+        private static (Color Color, string Text) ResolveLibreOfficeStatus(
+            bool isSetupRunning, bool isRemovalPending, bool ready, string downloadStatus, string resolvedPath)
+        {
+            if (isSetupRunning)
+            {
+                return (Color.FromArgb(190, 190, 190), downloadStatus);
+            }
+            if (isRemovalPending)
+            {
+                return (Color.FromArgb(255, 190, 90), GetText("setting_libreoffice_removal_pending"));
+            }
+            if (ready)
+            {
+                return (Color.FromArgb(100, 220, 100), $"{GetText("setting_libreoffice_ready")}: {ShortPath(resolvedPath, 62)}");
+            }
+            return (Color.FromArgb(255, 90, 70), GetText("setting_libreoffice_missing"));
         }
     }
 }
