@@ -184,6 +184,11 @@ public abstract class HistoryRowHostBase : ViewModelBase, IHistoryRowHost
             {
                 _noticeRow = null;
                 _noticeSource = NoticeSource.None;
+                if (IsBusy?.Invoke() == true)
+                {
+                    Show(row, NoticeSource.Rerun, Strings.T("ui_history_missing_busy_with_other_files_try"));
+                    return;
+                }
                 RerunRequested?.Invoke(this, new RerunRequestEventArgs(command, present));
             });
     }
@@ -250,6 +255,11 @@ public abstract class HistoryRowHostBase : ViewModelBase, IHistoryRowHost
             {
                 _noticeRow = null;
                 _noticeSource = NoticeSource.None;
+                if (IsBusy?.Invoke() == true)
+                {
+                    Show(row, NoticeSource.Resume, Strings.T("ui_history_missing_busy_with_other_files_try"));
+                    return;
+                }
                 resume(keep);
             });
     }

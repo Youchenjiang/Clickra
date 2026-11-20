@@ -830,7 +830,13 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     /// <summary>▶ 繼續: runs a parked task again from the first file that was not done.</summary>
     public async Task ResumeParkedAsync(ParkedTaskResumePresentation task)
     {
-        if (IsExecuting) return;
+        if (IsExecuting)
+        {
+            // The task was claimed; return it to parked rather than losing it when another conversion runs.
+            try { new HistoryPresentationController().ReturnToParked(task.TaskId, Strings.T("ui_history_parked_busy_with_other_files_resume"), task.StartIndex); }
+            catch { /* best effort: the history page shows whatever storage holds */ }
+            return;
+        }
         ResetToStart();
         _workspace.AddFiles(task.Files);
         SyncFilesFromWorkspace();
