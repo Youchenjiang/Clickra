@@ -18,6 +18,7 @@ public interface IHistoryPresentationController
     bool AdjustRetention(string taskId, int deltaDays);
     void ResetRetention(string taskId);
     void CancelParked(string taskId);
+    void ReturnToParked(string taskId, string reason, int nextIndex);
     void ClearCompleted();
     ParkedTaskResumePresentation? ClaimForResume(string taskId);
     string GetLogPath(string? preferredDataDirectory = null);

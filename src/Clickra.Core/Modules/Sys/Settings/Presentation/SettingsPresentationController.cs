@@ -120,18 +120,6 @@ public sealed class SettingsPresentationController : ISettingsPresentationContro
         set => SettingsController.PdfCompressionImageLevel = value;
     }
 
-    public bool PdfCompressionStripFonts
-    {
-        get => SettingsController.PdfCompressionStripFonts;
-        set => SettingsController.PdfCompressionStripFonts = value;
-    }
-
-    public bool PdfCompressionMinifyContent
-    {
-        get => SettingsController.PdfCompressionMinifyContent;
-        set => SettingsController.PdfCompressionMinifyContent = value;
-    }
-
     public int ImageCompressionLevel
     {
         get => SettingsController.ImageCompressionLevel;
@@ -172,8 +160,6 @@ public sealed class SettingsPresentationController : ISettingsPresentationContro
         SettingPageRegistry.IsPrimaryRendererSetting(descriptor.Key);
 
     public SettingDescriptor PdfCompressionLevelDescriptor => GetRequiredDescriptor(SettingsContract.PdfCompressionImageLevel);
-    public SettingDescriptor PdfCompressionStripFontsDescriptor => GetRequiredDescriptor(SettingsContract.PdfCompressionStripFonts);
-    public SettingDescriptor PdfCompressionMinifyContentDescriptor => GetRequiredDescriptor(SettingsContract.PdfCompressionMinifyContent);
 
     public bool IsImageCompressionDescriptor(SettingDescriptor descriptor) =>
         descriptor.Key.Equals(SettingsContract.ImageCompressionLevel, StringComparison.OrdinalIgnoreCase) ||

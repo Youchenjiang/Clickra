@@ -22,8 +22,6 @@ public interface ISettingsPresentationController
     string LibreOfficePath { get; set; }
     bool LibreOfficeRemovalPendingRestart { get; set; }
     int PdfCompressionImageLevel { get; set; }
-    bool PdfCompressionStripFonts { get; set; }
-    bool PdfCompressionMinifyContent { get; set; }
     int ImageCompressionLevel { get; set; }
     int ImageCompressionMaxDimension { get; set; }
     int ParkedTaskRetentionDays { get; set; }
@@ -36,8 +34,6 @@ public interface ISettingsPresentationController
     bool IsPrimaryRendererSetting(SettingDescriptor descriptor);
     bool IsImageCompressionDescriptor(SettingDescriptor descriptor);
     SettingDescriptor PdfCompressionLevelDescriptor { get; }
-    SettingDescriptor PdfCompressionStripFontsDescriptor { get; }
-    SettingDescriptor PdfCompressionMinifyContentDescriptor { get; }
     SettingDescriptor GetRequiredDescriptor(string key);
 
     bool ReadBool(SettingDescriptor descriptor);

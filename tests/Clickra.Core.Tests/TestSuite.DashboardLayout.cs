@@ -458,12 +458,6 @@ static partial class TestSuite
         int compressionSliderWidth = SettingsLayout.SliderWidthFor(compressionInnerWidth);
         Assert.True(compressionSliderWidth + 2 * SettingsLayout.SliderHitHorizontalPadding <= columnWidth,
             "The PDF quality slider must stay inside the left half of the full-width compression card.");
-        LayoutRect secondaryToggle = SettingsLayout.ToggleRectWithin(
-            rightX + SettingsLayout.CardPadding,
-            compressionInnerWidth,
-            compression.Y + SettingsLayout.CompressionSecondaryTop);
-        Assert.True(secondaryToggle.X >= rightX && secondaryToggle.Right <= compression.Right,
-            "PDF structure toggles must stay inside the right half of the full-width compression card.");
 
         int firstLanguageDropdownBottom = 36 + DashboardLayout.DropdownHeight;
         int secondLanguageTitleTop = 12 + SettingsLayout.OverviewRowGap;
@@ -510,17 +504,20 @@ static partial class TestSuite
             "AOT Settings content height must use the compact shared trailing padding.");
         Assert.False(paint.Contains("y + 80f", StringComparison.Ordinal),
             "AOT Settings must not restore the oversized trailing padding that created an empty high-DPI viewport.");
-        Assert.True(paint.Contains("int fullWidth = (int)(logW - contentX - SettingsLayout.ContentRightMargin)", StringComparison.Ordinal)
-                    && paint.Contains("int pdfSecondaryX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1)", StringComparison.Ordinal),
-            "Wide PDF compression must use the full card width and place secondary controls in the second column.");
+        Assert.True(paint.Contains("int fullWidth = (int)(logW - contentX - SettingsLayout.ContentRightMargin)", StringComparison.Ordinal),
+            "Wide PDF compression must use the full card width.");
         string dynamicPaint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.Settings.Dynamic.cs"));
         AssertContainsAll(
             paint,
             "Native PDF compression must take titles and numeric bounds from shared Presentation descriptors.",
             "SettingsPresentationController.Shared.PdfCompressionLevelDescriptor",
-            "SettingsPresentationController.Shared.PdfCompressionStripFontsDescriptor",
-            "SettingsPresentationController.Shared.PdfCompressionMinifyContentDescriptor",
             "GetRequiredNumericRange(pdfLevelDescriptor)");
+        AssertContainsNone(
+            paint + click,
+            "PDF compression never removes fonts and always minifies, so the old toggles must not come back (2026-11-20).",
+            "StripFonts",
+            "MinifyContent",
+            "setting_pdf_compress_group_other");
         Assert.True(dynamicPaint.Contains("descriptor.SliderLabels", StringComparison.Ordinal),
             "Native slider labels must be rendered by the shared descriptor slider renderer.");
         AssertContainsNone(

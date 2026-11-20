@@ -37,11 +37,8 @@ internal static class PdfStructuralCompressionOptimizer
             if (settings.DeduplicateFonts)
                 DeduplicateEmbeddedFontStreams(document);
 
-            if (settings.StripFonts)
-            {
+            if (settings.RemoveMetadata)
                 RemoveDisposableMetadata(document);
-                UnembedLargeFonts(document);
-            }
 
             if (settings.TargetDpi > 0 && !string.IsNullOrEmpty(inputPath) && System.IO.File.Exists(inputPath))
                 DownsampleAndRecompressImages(document, settings.TargetDpi, settings.JpegQuality, inputPath);
@@ -586,46 +583,6 @@ internal static class PdfStructuralCompressionOptimizer
         {
             return System.Drawing.Imaging.ImageCodecInfo.GetImageDecoders()
                 .FirstOrDefault(codec => codec.FormatID == format.Guid);
-        }
-
-        // ─── Font Unembedding ─────────────────────────────────────────────────────
-
-        private static void UnembedLargeFonts(PdfDocument document)
-        {
-            var objects = document.Internals.GetAllObjects();
-            foreach (var obj in objects)
-            {
-                if (obj is not PdfDictionary dict)
-                    continue;
-
-                if (dict.Elements.GetName("/Type") != "/FontDescriptor")
-                    continue;
-
-                foreach (string key in FontFileKeys)
-                    TryRemoveFontFileIfLarge(document, dict, key);
-            }
-        }
-
-        private static void TryRemoveFontFileIfLarge(PdfDocument document, PdfDictionary dict, string key)
-        {
-            PdfReference? fontFileRef = dict.Elements.GetReference(key);
-            if (fontFileRef == null)
-                return;
-
-            if (fontFileRef.Value is not PdfDictionary fontFileDict || fontFileDict.Stream == null)
-                return;
-
-            int streamLen = fontFileDict.Stream.Value.Length;
-            if (streamLen <= 100 * 1024)
-                return;
-
-            dict.Elements.Remove(key);
-
-            // Recount after each removal so shared streams are only deleted when truly unreferenced
-            var currentCounts = CountReferences(document);
-            currentCounts.TryGetValue(fontFileRef, out int count);
-            if (count <= 0 && fontFileRef.Value != null)
-                document.Internals.RemoveObject(fontFileRef.Value);
         }
 
         private readonly record struct FontFileUsage(PdfDictionary Owner, string Key, PdfReference Reference);

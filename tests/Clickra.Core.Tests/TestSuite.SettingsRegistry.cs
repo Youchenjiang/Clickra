@@ -82,7 +82,7 @@ static partial class TestSuite
             "OfficeEngine", "LibreOfficePath", "LibreOfficeRemovalPendingRestart", "LibreOfficeInstalledByClickra",
             "LibreOfficeManagedProductCode", "LibreOfficeManagedSofficePath",
             "TranslateTargetLang", "TranslateEngine", "TranslateAiEndpoint", "TranslateAiApiKey", "TranslateAiModel",
-            "PdfCompressImageLevel", "PdfCompressStripFonts", "PdfCompressMinifyContent",
+            "PdfCompressImageLevel",
             "ImageCompressLevel", "ImageCompressMaxDimension", "ParkedTaskRetention",
             "ContextMenuEnabled", "ContextMenuHidden",
             "PdfToImageFormat", "MarkdownTheme", "MarkdownPaper", "MarkdownTextSize", "MarkdownTemplatePath",
@@ -118,8 +118,6 @@ static partial class TestSuite
 
         Assert.False(ClickraStorage.GetSettingBool(ClickraSettings.QuietMode), "Unset QuietMode must default to off.");
         Assert.True(ClickraStorage.GetSettingBool(ClickraSettings.Notification), "Unset Notification must default to on.");
-        Assert.True(ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent), "Unset MinifyContent must default to on.");
-        Assert.False(ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts), "Unset StripFonts must default to off.");
         Assert.Equal(1, ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressLevel));
         Assert.Equal(1, ClickraSettings.NormalizePdfCompressLevel(
             ClickraStorage.GetSettingInt(ClickraSettings.PdfCompressImageLevel)));

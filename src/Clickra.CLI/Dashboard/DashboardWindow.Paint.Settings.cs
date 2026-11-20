@@ -481,8 +481,6 @@ namespace Clickra.UI
             }
 
             SettingDescriptor pdfLevelDescriptor = SettingsPresentationController.Shared.PdfCompressionLevelDescriptor;
-            SettingDescriptor stripFontsDescriptor = SettingsPresentationController.Shared.PdfCompressionStripFontsDescriptor;
-            SettingDescriptor minifyContentDescriptor = SettingsPresentationController.Shared.PdfCompressionMinifyContentDescriptor;
             if (wideSettings)
             {
                 int cardY = (int)y;
@@ -512,16 +510,6 @@ namespace Clickra.UI
                 DrawCompressSlider(g, pdfX, pdfSliderY, sliderWidth, pdfLevelDescriptor, compressLevel, pdfLevelRange);
                 AddLayoutHitRect(83, SettingsLayout.SliderHitRect(pdfX, pdfSliderY, sliderWidth));
 
-                bool stripFonts = SettingsPresentationController.Shared.ReadBool(stripFontsDescriptor);
-                bool minifyContent = SettingsPresentationController.Shared.ReadBool(minifyContentDescriptor);
-                int pdfSecondaryX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1)
-                    + SettingsLayout.CardPadding;
-                int pdfSecondaryY = pdfCard.Y + SettingsLayout.CompressionSecondaryTop;
-                DrawCompactToggleRow(stripFontsDescriptor.TitleKey, stripFonts, 81,
-                    pdfSecondaryX, pdfSecondaryY, columnInnerWidth);
-                DrawCompactToggleRow(minifyContentDescriptor.TitleKey, minifyContent, 82,
-                    pdfSecondaryX, pdfSecondaryY + SettingsLayout.OverviewRowGap, columnInnerWidth);
-
                 y += SettingsLayout.CompressionCardHeight + SettingsLayout.CardGap;
             }
             else
@@ -544,15 +532,6 @@ namespace Clickra.UI
                 DrawCompressSlider(g, pdfCompressionX, pdfCompressionY, sliderW, pdfLevelDescriptor, compressLevel, pdfLevelRange);
                 AddLayoutHitRect(83, SettingsLayout.SliderHitRect((int)pdfCompressionX, (int)pdfCompressionY, (int)sliderW));
                 pdfCompressionY += SettingsLayout.SliderSectionHeight;
-                DrawGroupSubheader("setting_pdf_compress_group_other", pdfCompressionY);
-                pdfCompressionY += 24f;
-
-                bool stripFonts = SettingsPresentationController.Shared.ReadBool(stripFontsDescriptor);
-                DrawToggleSection(stripFontsDescriptor.TitleKey, stripFontsDescriptor.DescriptionKey ?? string.Empty, stripFonts, 81, pdfCompressionY);
-                pdfCompressionY += SettingsLayout.CompactToggleSectionHeight;
-                bool minifyContent = SettingsPresentationController.Shared.ReadBool(minifyContentDescriptor);
-                DrawToggleSection(minifyContentDescriptor.TitleKey, minifyContentDescriptor.DescriptionKey ?? string.Empty, minifyContent, 82, pdfCompressionY);
-                pdfCompressionY += SettingsLayout.CompactToggleSectionHeight;
                 y = pdfCompressionY + SettingsLayout.CardGap;
             }
 

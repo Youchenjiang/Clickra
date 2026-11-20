@@ -107,7 +107,7 @@ namespace Clickra.UI
         static bool IsDropdownToggleElement(int element) => element == 10 || element == 31;
 
         /// <summary>True when the element is one of the PDF compression settings controls.</summary>
-        static bool IsCompressSettingsElement(int element) => element == 83 || element == 81 || element == 82;
+        static bool IsCompressSettingsElement(int element) => element == 83;
 
         /// <summary>True when the element is one of the convert buttons, including the
         /// dynamically laid-out command cards that follow element 50.</summary>

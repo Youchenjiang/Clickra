@@ -38,13 +38,15 @@ public static class PdfCompressionOptions
     }
 
     /// <summary>Authoritative preset numbers for a compression level. These are the values
-    /// applied when only a level is chosen; individual option keys can still override them.</summary>
-    public static (int TargetDpi, int JpegQuality, bool StripFonts, bool MinifyContent) GetPreset(PdfCompressionLevel level) =>
+    /// applied when only a level is chosen; individual option keys can still override them.
+    /// Embedded fonts are never removed: a PDF must look the same on every computer
+    /// (docs/specs/pdf_compression_future_roadmap.md, 2026-11-20).</summary>
+    public static (int TargetDpi, int JpegQuality, bool RemoveMetadata) GetPreset(PdfCompressionLevel level) =>
         level switch
         {
-            PdfCompressionLevel.Small => (120, 75, true, true),
-            PdfCompressionLevel.HighQuality => (0, 85, false, true), // 0 = skip downsampling
-            _ => (150, 80, false, true)
+            PdfCompressionLevel.Small => (120, 75, true),
+            PdfCompressionLevel.HighQuality => (0, 85, false), // 0 = skip downsampling
+            _ => (150, 80, false)
         };
 
     /// <summary>Maps a 0-2 dashboard slider position to the compression level it selects.</summary>

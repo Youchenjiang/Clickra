@@ -113,6 +113,30 @@ static partial class TestSuite
             Assert.True(outputBytes < inputBytes, $"Expected duplicate font streams to be deduplicated. Input: {inputBytes}, output: {outputBytes}.");
         }));
 
+        runner.Run("PDF compression keeps embedded fonts at every level", () => RunWithTempFiles((input, output) =>
+        {
+            // 3.21 and earlier removed fonts over 100 KB at "small"; the output then looked different
+            // on computers without those fonts. Fonts must survive, even if an old caller asks.
+            CreatePdfWithDuplicateFontStreams(input);
+            new PdfCompressionProcessor().Process(
+                new List<string> { input },
+                output,
+                new Dictionary<string, object> { { LevelKey, LevelSmall }, { "strip_fonts", true } });
+
+            using var doc = PdfSharp.Pdf.IO.PdfReader.Open(output, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
+            int descriptors = 0;
+            foreach (var obj in doc.Internals.GetAllObjects())
+            {
+                if (obj is PdfDictionary dict && dict.Elements.GetName("/Type") == "/FontDescriptor")
+                {
+                    descriptors++;
+                    Assert.True(dict.Elements.ContainsKey("/FontFile2"),
+                        $"Font {dict.Elements.GetName("/FontName")} lost its embedded font file.");
+                }
+            }
+            Assert.True(descriptors == 2, $"Expected both font descriptors to remain, found {descriptors}.");
+        }));
+
         runner.Run("PDF compression downsamples high-DPI images", () => RunWithTempFiles((input, output) =>
         {
             CreatePdfWithHighResImage(input);
@@ -162,9 +186,20 @@ static partial class TestSuite
                 Assert.True(settings.Level == level, $"The parsed level must round-trip for {level}.");
                 Assert.True(settings.TargetDpi == preset.TargetDpi, $"{level} must use the preset DPI.");
                 Assert.True(settings.JpegQuality == preset.JpegQuality, $"{level} must use the preset JPEG quality.");
-                Assert.True(settings.StripFonts == preset.StripFonts, $"{level} must use the preset strip-fonts flag.");
-                Assert.True(settings.MinifyContent == preset.MinifyContent, $"{level} must use the preset minify flag.");
+                Assert.True(settings.RemoveMetadata == preset.RemoveMetadata, $"{level} must use the preset metadata flag.");
+                Assert.True(settings.MinifyContent, $"{level} must always minify content streams.");
             }
+
+            // Fonts are never removed and minification is always on, even when an old caller or a
+            // saved 3.x setting still sends the retired keys (2026-11-20).
+            var legacy = PdfCompressionSettings.Parse(new Dictionary<string, object>
+            {
+                { LevelKey, LevelSmall },
+                { "strip_fonts", true },
+                { "minify_content", false }
+            });
+            Assert.True(legacy.MinifyContent, "The retired minify_content key must not turn minification off.");
+            Assert.True(legacy.RemoveMetadata, "Small still drops disposable metadata.");
 
             // Persisted slider values normalize through the settings registry before the use case snapshots them.
             string origLevel = ClickraStorage.GetSetting(ClickraSettings.PdfCompressImageLevel);
@@ -186,36 +221,28 @@ static partial class TestSuite
         {
             string input = Path.Combine(Path.GetTempPath(), $"clickra-compress-plan-{Guid.NewGuid():N}.pdf");
             string originalLevel = ClickraStorage.GetSetting(ClickraSettings.PdfCompressImageLevel);
-            string originalStripFonts = ClickraStorage.GetSetting(ClickraSettings.PdfCompressStripFonts);
-            string originalMinifyContent = ClickraStorage.GetSetting(ClickraSettings.PdfCompressMinifyContent);
             try
             {
                 ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, "0");
-                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressStripFonts, ClickraSettings.ValueTrue);
-                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressMinifyContent, ClickraSettings.ValueFalse);
                 var useCase = new CompressPdfUseCase();
                 ConversionPlan plan = useCase.Plan(new ConversionRequest(
                     CompressPdfUseCase.CommandName,
                     new[] { input }));
 
                 ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, "2");
-                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressStripFonts, ClickraSettings.ValueFalse);
-                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressMinifyContent, ClickraSettings.ValueTrue);
 
                 Assert.Equal(Path.Combine(ClickraStorage.GetOutputDir(input), Path.GetFileNameWithoutExtension(input) + "_compressed.pdf"), plan.Outputs[0]);
                 Assert.Equal(LevelSmall, (string)plan.NormalizedOptions[CompressPdfUseCase.LevelOptionKey]);
-                Assert.True((bool)plan.NormalizedOptions["strip_fonts"],
-                    "PDF compression planning must snapshot the saved strip-fonts flag.");
-                Assert.False((bool)plan.NormalizedOptions["minify_content"],
-                    "PDF compression planning must snapshot the saved minify-content flag.");
+                Assert.False(plan.NormalizedOptions.ContainsKey("strip_fonts"),
+                    "PDF compression planning must not inject the retired strip-fonts option.");
+                Assert.False(plan.NormalizedOptions.ContainsKey("minify_content"),
+                    "PDF compression planning must not inject the retired minify-content option.");
                 Assert.True(plan.RequiredCapabilities.Count == 0,
                     "PDF compression must not require a presentation interaction capability.");
             }
             finally
             {
                 ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, originalLevel);
-                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressStripFonts, originalStripFonts);
-                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressMinifyContent, originalMinifyContent);
             }
         });
 
@@ -256,6 +283,46 @@ static partial class TestSuite
             Assert.True(File.Exists(plan.Outputs[0]), "Expected compressed output from application use case.");
             TryDelete(plan.Outputs[0]);
         }));
+
+        runner.Run("PDF compression reports a missing input as a failure", () =>
+        {
+            string dir = Path.Combine(Path.GetTempPath(), $"clickra-compress-missing-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(dir);
+            try
+            {
+                string first = Path.Combine(dir, "a.pdf");
+                string missing = Path.Combine(dir, "b.pdf");
+                string last = Path.Combine(dir, "c.pdf");
+                CreatePdfWithDuplicateFontStreams(first);
+                File.Copy(first, missing);
+                File.Copy(first, last);
+                var useCase = new CompressPdfUseCase();
+                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                    CompressPdfUseCase.CommandName,
+                    new[] { first, missing, last },
+                    new Dictionary<string, object> { [CompressPdfUseCase.LevelOptionKey] = LevelBalanced },
+                    OutputOverride: Path.Combine(dir, "out"),
+                    TrackTaskLifecycle: false));
+                File.Delete(missing);
+                var interaction = new DelegateConversionInteraction(
+                    (_, _, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+
+                ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
+
+                Assert.True(result.Status == ConversionResultStatus.Failed,
+                    $"A missing input must fail the run, not report success (got {result.Status}).");
+                Assert.True(result.FailureKind == ConversionFailureKind.FileNotFound,
+                    $"The failure must say the file was not found (got {result.FailureKind}).");
+                Assert.True(result.CompletedFiles == 1,
+                    $"Only the file before the missing one counts as done (got {result.CompletedFiles}).");
+            }
+            finally
+            {
+                try { Directory.Delete(dir, recursive: true); } catch { }
+            }
+        });
 
         runner.Run("PDF compression slider surfaces expose exactly three presets", TestPdfCompressionSliderSurfaces);
     }

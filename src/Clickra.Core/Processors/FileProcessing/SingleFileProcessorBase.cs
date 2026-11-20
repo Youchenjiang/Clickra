@@ -25,11 +25,10 @@ namespace Clickra.Core.Processors
                 
                 var filePath = files[i];
                 string fullPath = Path.GetFullPath(filePath);
+                // A file that disappeared is a failure, not a silent skip: skipping used to report the
+                // whole batch as succeeded with fewer outputs than inputs (2026-11-20).
                 if (!File.Exists(fullPath))
-                {
-                    onProgress?.Invoke(i + 1, total, $"跳過已不存在的檔案: {Path.GetFileName(filePath)}");
-                    continue;
-                }
+                    throw new FileNotFoundException("Input file was not found.", fullPath);
 
                 // If outputPath parameter is provided and this is the first (and only) file, use it.
                 // Otherwise use a caller-planned output when available, then fall back to the source directory.

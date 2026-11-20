@@ -606,8 +606,6 @@ public sealed partial class MainPage : Page
         };
         PdfLangCombo.SelectionChanged += (_, _) => SaveSettings();
         CompressionSlider.ValueChanged += (_, _) => { SaveSettings(); UpdateCompressionLabel(CompressionLabel, CompressionSlider); };
-        StripFontsToggle.Toggled += (_, _) => SaveSettings();
-        MinifyContentToggle.Toggled += (_, _) => SaveSettings();
         QuietModeToggle.Toggled += (_, _) => SaveSettings();
         NotificationToggle.Toggled += (_, _) => SaveSettings();
         ParkedRetentionBox.ValueChanged += OnParkedRetentionChanged;
@@ -655,8 +653,6 @@ public sealed partial class MainPage : Page
             CompressionSlider.Maximum = SettingsPresentationController.Shared.MaxPdfCompressionLevel;
             CompressionSlider.Value = SettingsPresentationController.Shared.PdfCompressionImageLevel;
             UpdateCompressionLabel(CompressionLabel, CompressionSlider);
-            StripFontsToggle.IsOn = SettingsPresentationController.Shared.PdfCompressionStripFonts;
-            MinifyContentToggle.IsOn = SettingsPresentationController.Shared.PdfCompressionMinifyContent;
             ParkedRetentionBox.Minimum = SettingsPresentationController.Shared.MinParkedRetentionDays;
             ParkedRetentionBox.Maximum = SettingsPresentationController.Shared.MaxParkedRetentionDays;
             ParkedRetentionBox.Value = SettingsPresentationController.Shared.ParkedTaskRetentionDays;
@@ -783,9 +779,6 @@ public sealed partial class MainPage : Page
         NotificationDesc.Text = L("fluent_notifications_desc");
         PdfCompressionTitle.Text = L("fluent_pdf_compression");
         PdfCompressImageGroupTitle.Text = L("setting_pdf_compress_group_image");
-        PdfCompressOtherGroupTitle.Text = L("setting_pdf_compress_group_other");
-        StripFontsTitle.Text = L("fluent_strip_fonts");
-        MinifyContentTitle.Text = L("fluent_minify_content");
         ParkedRetentionTitle.Text = L("setting_parked_ttl_title");
         ParkedRetentionDesc.Text = L("setting_parked_ttl_desc");
         LibreOfficeBrowseButton.Content = L("setting_libreoffice_browse");
@@ -817,8 +810,6 @@ public sealed partial class MainPage : Page
         SettingsPresentationController.Shared.Language = LanguageCombo.SelectedIndex switch { 1 => SimplifiedChineseLanguage, 2 => "en-US", 3 => "ja-JP", 4 => "ko-KR", _ => "zh-TW" };
         SettingsPresentationController.Shared.TranslationTargetLanguage = PdfLangCombo.SelectedIndex switch { 1 => "en", 2 => SimplifiedChineseLanguage, 3 => "ja", 4 => "ko", _ => SettingsPresentationController.Shared.DefaultTranslationTargetLanguage };
         SettingsPresentationController.Shared.PdfCompressionImageLevel = (int)CompressionSlider.Value;
-        SettingsPresentationController.Shared.PdfCompressionStripFonts = StripFontsToggle.IsOn;
-        SettingsPresentationController.Shared.PdfCompressionMinifyContent = MinifyContentToggle.IsOn;
         SettingsPresentationController.Shared.QuietMode = QuietModeToggle.IsOn;
         SettingsPresentationController.Shared.NotificationsEnabled = NotificationToggle.IsOn;
         RefreshLibreOfficeStatus();

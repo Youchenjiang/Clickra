@@ -58,6 +58,12 @@ public sealed class HistoryPresentationController : IHistoryPresentationControll
             ParkedTaskController.Cancel(taskId);
     }
 
+    public void ReturnToParked(string taskId, string reason, int nextIndex)
+    {
+        if (!string.IsNullOrWhiteSpace(taskId))
+            ParkedTaskController.ReturnToParked(taskId, reason, nextIndex);
+    }
+
     public void ClearCompleted() => HistoryController.Clear();
 
     public ParkedTaskResumePresentation? ClaimForResume(string taskId)

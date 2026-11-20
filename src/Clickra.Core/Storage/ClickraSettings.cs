@@ -38,8 +38,6 @@ public static class ClickraSettings
     public const string TranslateAiApiKey = "TranslateAiApiKey";
     public const string TranslateAiModel = "TranslateAiModel";
     public const string PdfCompressImageLevel = "PdfCompressImageLevel";
-    public const string PdfCompressStripFonts = "PdfCompressStripFonts";
-    public const string PdfCompressMinifyContent = "PdfCompressMinifyContent";
 
     // ─── 圖片壓縮 ──────────────────────────────────────────────────────────
     public const string ImageCompressLevel = "ImageCompressLevel";
@@ -144,8 +142,6 @@ public static class ClickraSettings
         new ClickraSetting(TranslateAiApiKey, DefaultTranslateAiApiKey, "自訂 AI 翻譯 API 金鑰"),
         new ClickraSetting(TranslateAiModel, DefaultTranslateAiModel, "自訂 AI 翻譯模型名稱"),
         new ClickraSetting(PdfCompressImageLevel, DefaultPdfCompressLevel, "PDF 圖片壓縮等級 0-2（1 = 平衡）"),
-        new ClickraSetting(PdfCompressStripFonts, ValueFalse, "壓縮 PDF 時移除嵌入字型"),
-        new ClickraSetting(PdfCompressMinifyContent, ValueTrue, "壓縮 PDF 時最佳化結構"),
         new ClickraSetting(ImageCompressLevel, DefaultImageCompressLevel, "圖片壓縮品質等級 0-3"),
         new ClickraSetting(ImageCompressMaxDimension, DefaultImageCompressMaxDimension, "圖片壓縮最大長邊（0 = 保持原尺寸）"),
         new ClickraSetting(ParkedTaskRetention, DefaultParkedTaskRetention, "已暫存任務保留天數（0 = 無限期）"),

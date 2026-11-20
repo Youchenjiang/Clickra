@@ -53,7 +53,6 @@ public static class SettingsLayout
     public const int CardGap = 14;
     public const int CompressionCardHeight = 138;
     public const int CompressionSliderTop = 52;
-    public const int CompressionSecondaryTop = 38;
     public const int ChoiceCardHeight = 72;
     public const int ChoiceCardExpandedHeight = 96;
     public const int EngineCardHeight = 118;

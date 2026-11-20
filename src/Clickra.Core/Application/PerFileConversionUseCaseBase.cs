@@ -21,8 +21,9 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
     protected virtual int GetInitialCompletedFiles(ConversionPlan plan) =>
         Math.Clamp(plan.ResumeStartIndex, 0, plan.Inputs.Count);
 
+    /// <summary>A missing input or folder is reported as such, so callers can say which file is gone.</summary>
     protected virtual ConversionFailureKind ClassifyFailure(Exception exception) =>
-        ConversionFailureKind.None;
+        ConversionFailureClassifier.Classify(exception);
 
     protected virtual string NormalizeOutputOverride(string outputOverride) =>
         Path.GetFullPath(outputOverride);
