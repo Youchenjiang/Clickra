@@ -17,13 +17,20 @@ static partial class TestSuite
 {
     private const string PdfCompressionCliProjectDirectory = "Clickra.CLI";
     private const string PdfCompressionDashboardDirectory = "Dashboard";
+    private const string LevelKey = "level";
+    private const string LevelSmall = "small";
+    private const string LevelBalanced = "balanced";
+    private const string LevelHigh = "high";
 
     public static void RegisterPdfCompressionTests(TestRunner runner)
     {
-        const string LevelKey = "level";
-        const string LevelSmall = "small";
-        const string LevelBalanced = "balanced";
-        const string LevelHigh = "high";
+        RegisterPdfCompressionOptionAndProcessorTests(runner);
+        RegisterPdfCompressionOptimizationTests(runner);
+        RegisterPdfCompressionUseCaseTests(runner);
+    }
+
+    private static void RegisterPdfCompressionOptionAndProcessorTests(TestRunner runner)
+    {
 
         runner.Run("PDF compression parses user-facing level aliases", () =>
         {
@@ -86,31 +93,32 @@ static partial class TestSuite
 
             Assert.True(summary.Contains("檔案大小未明顯下降"), $"Expected unchanged-size explanation, got: {summary}");
         });
+    }
 
+    private static void AssertCompressionReducesSize(string input, string output, string level, string failureMessage)
+    {
+        new PdfCompressionProcessor().Process(
+            new List<string> { input },
+            output,
+            new Dictionary<string, object> { { LevelKey, level } });
+
+        long inputBytes = new FileInfo(input).Length;
+        long outputBytes = new FileInfo(output).Length;
+        Assert.True(outputBytes < inputBytes, $"{failureMessage} Input: {inputBytes}, output: {outputBytes}.");
+    }
+
+    private static void RegisterPdfCompressionOptimizationTests(TestRunner runner)
+    {
         runner.Run("PDF compression minifies verbose page content streams", () => RunWithTempFiles((input, output) =>
         {
             CreateVerboseContentPdf(input);
-            new PdfCompressionProcessor().Process(
-                new List<string> { input },
-                output,
-                new Dictionary<string, object> { { LevelKey, LevelBalanced } });
-
-            long inputBytes = new FileInfo(input).Length;
-            long outputBytes = new FileInfo(output).Length;
-            Assert.True(outputBytes < inputBytes, $"Expected content stream minification to reduce size. Input: {inputBytes}, output: {outputBytes}.");
+            AssertCompressionReducesSize(input, output, LevelBalanced, "Expected content stream minification to reduce size.");
         }));
 
         runner.Run("PDF compression deduplicates repeated embedded font streams", () => RunWithTempFiles((input, output) =>
         {
             CreatePdfWithDuplicateFontStreams(input);
-            new PdfCompressionProcessor().Process(
-                new List<string> { input },
-                output,
-                new Dictionary<string, object> { { LevelKey, LevelBalanced } });
-
-            long inputBytes = new FileInfo(input).Length;
-            long outputBytes = new FileInfo(output).Length;
-            Assert.True(outputBytes < inputBytes, $"Expected duplicate font streams to be deduplicated. Input: {inputBytes}, output: {outputBytes}.");
+            AssertCompressionReducesSize(input, output, LevelBalanced, "Expected duplicate font streams to be deduplicated.");
         }));
 
         runner.Run("PDF compression keeps embedded fonts at every level", () => RunWithTempFiles((input, output) =>
@@ -216,7 +224,10 @@ static partial class TestSuite
                 ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, origLevel);
             }
         });
+    }
 
+    private static void RegisterPdfCompressionUseCaseTests(TestRunner runner)
+    {
         runner.Run("PDF compression use case owns planning and saved options", () =>
         {
             string input = Path.Combine(Path.GetTempPath(), $"clickra-compress-plan-{Guid.NewGuid():N}.pdf");
@@ -320,7 +331,14 @@ static partial class TestSuite
             }
             finally
             {
-                try { Directory.Delete(dir, recursive: true); } catch { }
+                try
+                {
+                    Directory.Delete(dir, recursive: true);
+                }
+                catch (IOException)
+                {
+                    // Cleanup of temporary directory is best-effort.
+                }
             }
         });
 

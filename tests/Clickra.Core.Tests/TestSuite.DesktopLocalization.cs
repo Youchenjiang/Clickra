@@ -79,12 +79,11 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
-        var keys = new SortedSet<string>(StringComparer.Ordinal);
-        foreach (string file in DesktopSourceFiles(root))
-        {
-            foreach (Match m in DesktopKeyLookup.Matches(WithoutComments(File.ReadAllText(file))))
-                keys.Add(m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value);
-        }
+        var keys = new SortedSet<string>(
+            DesktopSourceFiles(root)
+                .SelectMany(file => DesktopKeyLookup.Matches(WithoutComments(File.ReadAllText(file)))
+                    .Select(m => m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value)),
+            StringComparer.Ordinal);
         Assert.True(keys.Count > 100, $"Expected the window to look up its text by ui_ keys, found {keys.Count}.");
 
         var missing = Localization.FindMissingTranslations(keys);
