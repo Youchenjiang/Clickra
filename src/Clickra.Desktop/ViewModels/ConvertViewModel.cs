@@ -338,29 +338,28 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     public OrderWorkspaceViewModel Order { get; } = new();
     public bool IsOrderAction => SelectedAction?.Command is "merge-pdf" or "img-merge" or "img-stitch";
 
-    public string FileSummaryHeader
+    public string FileSummaryHeader => BuildFileSummaryHeader();
+
+    private string BuildFileSummaryHeader()
     {
-        get
+        int count = SelectedFiles.Count;
+        if (count == 0) return "";
+        string? key = PrimaryDomain switch
         {
-            int count = SelectedFiles.Count;
-            if (count == 0) return "";
-            string? key = PrimaryDomain switch
-            {
-                "pdf" => "ui_files_count_pdf",
-                "word" => "ui_files_count_word",
-                "excel" => "ui_files_count_excel",
-                "ppt" => "ui_files_count_ppt",
-                "markdown" => "ui_files_count_markdown",
-                ImageDomain => "ui_files_count_images",
-                _ => null
-            };
-            if (key is not null) return Strings.Count(key, count);
-            // 「2 個影片」 when every file is one kind Clickra knows by name, else 「3 個檔案」.
-            var kinds = SelectedFiles.Select(f => KindOf(f.Extension)).Distinct().ToList();
-            return kinds.Count == 1 && kinds[0] is not null
-                ? Strings.Count("ui_files_count_kind", count, ("kind", kinds[0]!))
-                : Strings.Count("ui_files_count_files", count);
-        }
+            "pdf" => "ui_files_count_pdf",
+            "word" => "ui_files_count_word",
+            "excel" => "ui_files_count_excel",
+            "ppt" => "ui_files_count_ppt",
+            "markdown" => "ui_files_count_markdown",
+            ImageDomain => "ui_files_count_images",
+            _ => null
+        };
+        if (key is not null) return Strings.Count(key, count);
+        // 「2 個影片」 when every file is one kind Clickra knows by name, else 「3 個檔案」.
+        var kinds = SelectedFiles.Select(f => KindOf(f.Extension)).Distinct().ToList();
+        return kinds.Count == 1 && kinds[0] is not null
+            ? Strings.Count("ui_files_count_kind", count, ("kind", kinds[0]!))
+            : Strings.Count("ui_files_count_files", count);
     }
 
     public string FileSummarySubtext
@@ -959,25 +958,24 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     public bool ProtectedNeedsPassword => SelectedFiles.Any(f => ProtectionOf(f.Path) == PdfProtection.OpenPassword);
 
     /// <summary>One sentence above the cards: what is protected and what has to wait for 解密.</summary>
-    public string ProtectedPdfText
+    public string ProtectedPdfText => BuildProtectedPdfText();
+
+    private string BuildProtectedPdfText()
     {
-        get
+        List<FileItemViewModel> files = GetProtectedFiles();
+        if (files.Count == 0) return "";
+        bool open = files.Any(f => ProtectionOf(f.Path) == PdfProtection.OpenPassword);
+        bool onlyRestricted = !open;
+        if (SelectedFiles.Count == 1)
         {
-            List<FileItemViewModel> files = GetProtectedFiles();
-            if (files.Count == 0) return "";
-            bool open = files.Any(f => ProtectionOf(f.Path) == PdfProtection.OpenPassword);
-            bool onlyRestricted = !open;
-            if (SelectedFiles.Count == 1)
-            {
-                return Strings.T(onlyRestricted ? "ui_notice_protected_one_restricted" : "ui_notice_protected_one_password");
-            }
-            if (files.Count == SelectedFiles.Count)
-                return Strings.F("ui_notice_protected_all", ("count", files.Count));
-            return Strings.F("ui_notice_protected_some",
-                ("total", SelectedFiles.Count),
-                ("count", files.Count),
-                ("names", Strings.ShortList(files.Select(f => f.Name).ToList())));
+            return Strings.T(onlyRestricted ? "ui_notice_protected_one_restricted" : "ui_notice_protected_one_password");
         }
+        if (files.Count == SelectedFiles.Count)
+            return Strings.F("ui_notice_protected_all", ("count", files.Count));
+        return Strings.F("ui_notice_protected_some",
+            ("total", SelectedFiles.Count),
+            ("count", files.Count),
+            ("names", Strings.ShortList(files.Select(f => f.Name).ToList())));
     }
 
     /// <summary>「先解密」 in the note above the cards.</summary>

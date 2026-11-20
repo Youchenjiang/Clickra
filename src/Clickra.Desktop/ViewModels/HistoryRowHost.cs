@@ -22,6 +22,7 @@ public sealed class RerunRequestEventArgs(string command, IReadOnlyList<string> 
 public abstract class HistoryRowHostBase : ViewModelBase, IHistoryRowHost
 {
     private enum NoticeSource { None, Folder, Rerun, Resume }
+    private const string CountParam = "count";
 
     private HistoryRowViewModel? _noticeRow;
     private NoticeSource _noticeSource;
@@ -112,11 +113,19 @@ public abstract class HistoryRowHostBase : ViewModelBase, IHistoryRowHost
 
         string? nearest = NearestExistingParent(folder);
         if (nearest is not null) OpenPath(nearest);
-        Show(row, NoticeSource.Folder, nearest is null
-            ? Strings.F("ui_history_missing_folder", ("name", Path.GetFileName(folder?.TrimEnd('\\', '/'))))
-            : Strings.F("ui_history_missing_folder_opened_parent",
-                ("name", Path.GetFileName(folder?.TrimEnd('\\', '/'))),
-                ("parent", Path.GetFileName(nearest.TrimEnd('\\', '/')) is { Length: > 0 } p ? p : nearest)));
+        string folderName = Path.GetFileName(folder?.TrimEnd('\\', '/')) ?? folder ?? "";
+        if (nearest is null)
+        {
+            Show(row, NoticeSource.Folder, Strings.F("ui_history_missing_folder", ("name", folderName)));
+        }
+        else
+        {
+            string parent = Path.GetFileName(nearest.TrimEnd('\\', '/'));
+            string parentName = string.IsNullOrEmpty(parent) ? nearest : parent;
+            Show(row, NoticeSource.Folder, Strings.F("ui_history_missing_folder_opened_parent",
+                ("name", folderName),
+                ("parent", parentName)));
+        }
     }
 
     // ----- 再轉一次 -----
@@ -160,7 +169,7 @@ public abstract class HistoryRowHostBase : ViewModelBase, IHistoryRowHost
             }
             else
             {
-                text = Strings.F("ui_history_missing_all", ("count", files.Count));
+                text = Strings.F("ui_history_missing_all", (CountParam, files.Count));
             }
             Show(row, NoticeSource.Rerun, text);
             return;
@@ -169,8 +178,8 @@ public abstract class HistoryRowHostBase : ViewModelBase, IHistoryRowHost
         List<string> present = files.Where(File.Exists).ToList();
         string names = Strings.ShortList(missing.Select(f => Path.GetFileName(f)).ToList());
         Show(row, NoticeSource.Rerun,
-            Strings.F("ui_history_missing_some", ("total", files.Count), ("count", missing.Count), ("names", names)),
-            Strings.F("ui_history_missing_process_others", ("count", present.Count)),
+            Strings.F("ui_history_missing_some", ("total", files.Count), (CountParam, missing.Count), ("names", names)),
+            Strings.F("ui_history_missing_process_others", (CountParam, present.Count)),
             () =>
             {
                 _noticeRow = null;
@@ -209,11 +218,19 @@ public abstract class HistoryRowHostBase : ViewModelBase, IHistoryRowHost
             string? root = Path.GetPathRoot(missing[0]);
             bool driveMissing = !string.IsNullOrEmpty(root) && !Directory.Exists(root) &&
                                 missing.All(f => string.Equals(Path.GetPathRoot(f), root, StringComparison.OrdinalIgnoreCase));
-            string text = driveMissing
-                ? MissingDriveText(root!)
-                : remaining.Count == 1
-                    ? Strings.F("ui_history_missing_file", ("name", Path.GetFileName(remaining[0])))
-                    : Strings.F("ui_history_resume_missing_all", ("count", remaining.Count));
+            string text;
+            if (driveMissing)
+            {
+                text = MissingDriveText(root!);
+            }
+            else if (remaining.Count == 1)
+            {
+                text = Strings.F("ui_history_missing_file", ("name", Path.GetFileName(remaining[0])));
+            }
+            else
+            {
+                text = Strings.F("ui_history_resume_missing_all", (CountParam, remaining.Count));
+            }
             Show(row, NoticeSource.Resume, text, Strings.T("ui_history_resume_remove_task"), () =>
             {
                 _noticeRow = null;
@@ -227,8 +244,8 @@ public abstract class HistoryRowHostBase : ViewModelBase, IHistoryRowHost
         int present = remaining.Count - missing.Count;
         string names = Strings.ShortList(missing.Select(f => Path.GetFileName(f)).ToList());
         Show(row, NoticeSource.Resume,
-            Strings.F("ui_history_resume_missing_some", ("total", remaining.Count), ("count", missing.Count), ("names", names)),
-            Strings.F("ui_history_missing_process_others", ("count", present)),
+            Strings.F("ui_history_resume_missing_some", ("total", remaining.Count), (CountParam, missing.Count), ("names", names)),
+            Strings.F("ui_history_missing_process_others", (CountParam, present)),
             () =>
             {
                 _noticeRow = null;

@@ -18,6 +18,7 @@ public sealed class SettingsViewModel : ViewModelBase
     private int _imageCompressionLevel = 2;
     private int _outputDirKind = 0;
     private string _customOutputDir = "";
+    private readonly string _startupLanguage = Strings.Language;
 
     private static readonly string[] Themes = [ClickraSettings.DesktopThemeLight, ClickraSettings.DesktopThemeDark, ClickraSettings.DesktopThemeSystem];
     private static readonly string[] Languages = ["", "zh-TW", "zh-CN", "en-US", "ja-JP", "ko-KR"];
@@ -68,7 +69,7 @@ public sealed class SettingsViewModel : ViewModelBase
     /// change applies after Clickra reopens (localization plan 3.2).
     /// </summary>
     public bool LanguageNeedsRestart =>
-        !string.Equals(Clickra.Core.Localization.NormalizeLanguageCode(SettingsController.Language), Strings.Language, StringComparison.OrdinalIgnoreCase);
+        !string.Equals(Clickra.Core.Localization.NormalizeLanguageCode(SettingsController.Language), _startupLanguage, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Set by the window: true while files are being processed, so reopening waits until they finish.</summary>
     public Func<bool>? IsBusy { get; set; }

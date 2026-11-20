@@ -83,6 +83,7 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
     private string _message = "";
     private CancellationTokenSource? _thumbnailsCts;
     private readonly SortedSet<int> _cuts = []; // cut after these page numbers
+    private readonly (string Before, string After) _everyPagesAround = Strings.Around("ui_split_every_n_pages_sentence", "n");
 
     public ObservableCollection<SplitPageViewModel> Pages { get; } = [];
 
@@ -140,8 +141,8 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
     public bool IsReady => !(IsCustom && _cuts.Count == 0);
     public string BlockingText => IsCustom && _cuts.Count == 0 ? Strings.T("ui_split_add_a_split_between_pages") : "";
     /// <summary>「每」 and 「頁一份」 around the page-count box, from one sentence 「每 {n} 頁一份」.</summary>
-    public string EveryPagesBefore => Strings.Around("ui_split_every_n_pages_sentence", "n").Before;
-    public string EveryPagesAfter => Strings.Around("ui_split_every_n_pages_sentence", "n").After;
+    public string EveryPagesBefore => _everyPagesAround.Before;
+    public string EveryPagesAfter => _everyPagesAround.After;
 
     public string StartText => IsSingleFile && PartCount > 0 ? Strings.Count("ui_split_start_parts", PartCount) : Strings.T("ui_split_split");
 
