@@ -16,6 +16,8 @@ namespace Clickra.Core.Modules.Pdf.Split.Processing;
 /// </summary>
 public class PdfSplitProcessor : SingleFileProcessorBase
 {
+    private const string PagesOptionKey = "pages";
+
     /// <summary>Returns the file-name suffix appended to split output files.</summary>
     protected override string GetOutputSuffix() => "_split.pdf";
 
@@ -34,7 +36,7 @@ public class PdfSplitProcessor : SingleFileProcessorBase
     protected override void ProcessSingleFile(string fullPath, string targetOutputPath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
     {
         string pagesSpec = "all";
-        if (options?.TryGetValue("pages", out var pObj) == true && pObj is string pStr && !string.IsNullOrWhiteSpace(pStr))
+        if (options?.TryGetValue(PagesOptionKey, out var pObj) == true && pObj is string pStr && !string.IsNullOrWhiteSpace(pStr))
         {
             pagesSpec = pStr.Trim();
         }
@@ -42,14 +44,15 @@ public class PdfSplitProcessor : SingleFileProcessorBase
 
         int progressBase = ProgressCalculator.GetProgressBase(fileIndex);
         int totalProgressMax = ProgressCalculator.GetProgressMax(totalFiles);
+        string language = ExecutionLocalizationOptions.ReadLanguage(options);
 
-        onProgress?.Invoke(progressBase + 10, totalProgressMax, "正在讀取 PDF 檔案...");
+        onProgress?.Invoke(progressBase + 10, totalProgressMax, ExecutionLocalizationOptions.Text(language, "core_progress_reading_pdf"));
 
         using var inDoc = OpenInputDocument(fullPath, password);
         int pageCount = inDoc.PageCount;
         if (pageCount == 0)
         {
-            throw new InvalidOperationException("PDF 檔案不包含任何頁面。");
+            throw new InvalidOperationException(ExecutionLocalizationOptions.Text(language, "core_pdf_no_pages"));
         }
 
         string baseDir = Path.GetDirectoryName(Path.GetFullPath(targetOutputPath)) ??
@@ -57,7 +60,7 @@ public class PdfSplitProcessor : SingleFileProcessorBase
                          ".";
         string baseFileName = Path.GetFileNameWithoutExtension(fullPath);
 
-        var ctx = new SplitContext(progressBase, totalProgressMax, onProgress, cancellationToken);
+        var ctx = new SplitContext(progressBase, totalProgressMax, onProgress, language, cancellationToken);
         bool splitEach = pagesSpec.Equals("all", StringComparison.OrdinalIgnoreCase) ||
                         pagesSpec.Equals("each", StringComparison.OrdinalIgnoreCase);
 
@@ -78,7 +81,7 @@ public class PdfSplitProcessor : SingleFileProcessorBase
             }
         }
 
-        ctx.OnProgress?.Invoke(ctx.ProgressBase + 100, ctx.TotalProgressMax, "PDF 分割完成！");
+        ctx.OnProgress?.Invoke(ctx.ProgressBase + 100, ctx.TotalProgressMax, ExecutionLocalizationOptions.Text(language, "core_split_done"));
     }
 
     /// <summary>Writes one output file per page ("all" / "each" spec).</summary>
@@ -88,7 +91,7 @@ public class PdfSplitProcessor : SingleFileProcessorBase
         {
             ctx.CancellationToken.ThrowIfCancellationRequested();
             int progress = ctx.ProgressBase + 10 + (int)((i + 1) * 85.0 / pageCount);
-            ctx.OnProgress?.Invoke(progress, ctx.TotalProgressMax, $"正在拆分第 {i + 1}/{pageCount} 頁...");
+            ctx.OnProgress?.Invoke(progress, ctx.TotalProgressMax, ExecutionLocalizationOptions.Text(ctx.Language, "core_split_progress_page", ("current", i + 1), ("total", pageCount)));
 
             using var outDoc = new PdfDocument();
             outDoc.AddPage(inDoc.Pages[i]);
@@ -109,11 +112,11 @@ public class PdfSplitProcessor : SingleFileProcessorBase
             List<int> targetPages = ParsePageRange(segSpec, inDoc.PageCount);
             if (targetPages.Count == 0)
             {
-                throw new ArgumentException($"指定的分頁範圍「{segSpec}」無效或超出頁數範圍 (1-{inDoc.PageCount})。");
+                throw new ArgumentException(ExecutionLocalizationOptions.Text(ctx.Language, "core_pages_invalid", (PagesOptionKey, segSpec), ("count", inDoc.PageCount)));
             }
 
             int progress = ctx.ProgressBase + 10 + (int)((s + 1) * 85.0 / segments.Length);
-            ctx.OnProgress?.Invoke(progress, ctx.TotalProgressMax, $"正在提取區段 {s + 1}/{segments.Length} ({targetPages[0]}-{targetPages[^1]}頁)...");
+            ctx.OnProgress?.Invoke(progress, ctx.TotalProgressMax, ExecutionLocalizationOptions.Text(ctx.Language, "core_split_progress_part", ("current", s + 1), ("total", segments.Length), ("first", targetPages[0]), ("last", targetPages[^1])));
 
             using var outDoc = new PdfDocument();
             foreach (int pageNum in targetPages)
@@ -124,7 +127,7 @@ public class PdfSplitProcessor : SingleFileProcessorBase
             string outPath = Path.Combine(baseDir, $"{baseFileName}_{targetPages[0]}-{targetPages[^1]}.pdf");
             if (!usedOutPaths.Add(Path.GetFullPath(outPath)))
             {
-                throw new ArgumentException($"區段「{segSpec}」與前面的區段產生相同輸出檔名，無法寫入。");
+                throw new ArgumentException(ExecutionLocalizationOptions.Text(ctx.Language, "core_split_duplicate_name", (PagesOptionKey, segSpec)));
             }
             outDoc.Save(outPath);
         }
@@ -136,10 +139,10 @@ public class PdfSplitProcessor : SingleFileProcessorBase
         List<int> targetPages = ParsePageRange(pagesSpec, inDoc.PageCount);
         if (targetPages.Count == 0)
         {
-            throw new ArgumentException($"指定的分頁範圍「{pagesSpec}」無效或超出頁數範圍 (1-{inDoc.PageCount})。");
+            throw new ArgumentException(ExecutionLocalizationOptions.Text(ctx.Language, "core_pages_invalid", (PagesOptionKey, pagesSpec), ("count", inDoc.PageCount)));
         }
 
-        ctx.OnProgress?.Invoke(ctx.ProgressBase + 40, ctx.TotalProgressMax, $"正在提取指定頁面 ({targetPages.Count} 頁)...");
+        ctx.OnProgress?.Invoke(ctx.ProgressBase + 40, ctx.TotalProgressMax, ExecutionLocalizationOptions.Text(ctx.Language, "core_split_progress_pages", ("count", targetPages.Count)));
 
         using var outDoc = new PdfDocument();
         foreach (int pageNum in targetPages)
@@ -148,13 +151,13 @@ public class PdfSplitProcessor : SingleFileProcessorBase
             outDoc.AddPage(inDoc.Pages[pageNum - 1]);
         }
 
-        ctx.OnProgress?.Invoke(ctx.ProgressBase + 90, ctx.TotalProgressMax, "正在儲存檔案...");
+        ctx.OnProgress?.Invoke(ctx.ProgressBase + 90, ctx.TotalProgressMax, ExecutionLocalizationOptions.Text(ctx.Language, "core_progress_saving"));
         outDoc.Save(targetOutputPath);
     }
 
     /// <summary>Bundles the progress-reporting and cancellation plumbing shared by the
     /// segment-extraction helpers.</summary>
-    private readonly record struct SplitContext(int ProgressBase, int TotalProgressMax, Action<int, int, string>? OnProgress, CancellationToken CancellationToken);
+    private readonly record struct SplitContext(int ProgressBase, int TotalProgressMax, Action<int, int, string>? OnProgress, string Language, CancellationToken CancellationToken);
 
     /// <summary>
     /// Returns the number of pages in the PDF at <paramref name="fullPath"/>, or 0 when the

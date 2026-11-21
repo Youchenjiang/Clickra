@@ -29,7 +29,7 @@ internal static class PdfParagraphTranslationStage
             onProgress?.Invoke(
                 30 + (int)(p * 40.0 / totalPages),
                 100,
-                string.Format(Localization.T("pdf_progress_translating_page", language), p + 1, totalPages));
+                Localization.Format("pdf_progress_translating_page", language, ("current", p + 1), ("total", totalPages)));
 
             var paragraphsToTranslate = new List<PdfParagraph>();
             var textsToTranslate = new List<string>();
@@ -131,7 +131,7 @@ internal static class PdfParagraphTranslationStage
                     if (TranslationProviderLimits.IsLimit(ex))
                         throw PdfTranslationBatchRunner.ProviderLimitedError(p, language, ex);
                     throw new InvalidOperationException(
-                        string.Format(Localization.T("pdf_error_translation_failed_page", language), p + 1),
+                        Localization.Format("pdf_error_translation_failed_page", language, ("page", p + 1)),
                         ex);
                 }
             }

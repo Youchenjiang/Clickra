@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.22.0.0.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.22.1.0.
 
 ---
 
@@ -15,10 +15,8 @@ Core document operations run completely offline on your local PC to keep your da
 Source Code: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- The new desktop interface preview is now available in five languages: Traditional Chinese, Simplified Chinese, English, Japanese, and Korean. A new language applies after Clickra reopens.
-- PDF compression keeps embedded fonts: even the Small level no longer removes fonts, so compressed files look the same on every computer; the font and structure toggles that are no longer needed have been removed.
-- If a file is moved or deleted while it is being processed, Clickra now reports a failure instead of claiming the batch finished.
-- New desktop interface preview: before continuing a paused task, Clickra checks that its files still exist and offers to process only the ones that are left.
+- Progress and error messages now appear in the interface language (all five languages) and have been rewritten to be shorter and to say what you can do next, such as installing HEIF Image Extensions or switching to LibreOffice when Office times out.
+- Fixed a garbled separator between the file name and the reason in the list of paused tasks.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*

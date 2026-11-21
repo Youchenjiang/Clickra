@@ -29,7 +29,6 @@ namespace Clickra.Core.Modules.Pdf.Translation.Pipeline.TextProcessing;
         {
             var results = new List<string>(textsToTranslate.Count);
             var chunks = BuildTranslationChunks(textsToTranslate, maxItems: 24, maxChars: 6000).ToList();
-            int translatedCount = 0;
 
             for (int chunkIndex = 0; chunkIndex < chunks.Count; chunkIndex++)
             {
@@ -39,15 +38,11 @@ namespace Clickra.Core.Modules.Pdf.Translation.Pipeline.TextProcessing;
                 context.OnProgress?.Invoke(
                     currentProgress,
                     100,
-                    string.Format(
-                        Localization.T("pdf_progress_translating_batch", context.Language),
-                        context.PageIndex + 1,
-                        context.TotalPages,
-                        chunkIndex + 1,
-                        chunks.Count,
-                        translatedCount + 1,
-                        translatedCount + chunk.Count,
-                        textsToTranslate.Count));
+                    Localization.Format(
+                        "pdf_progress_translating_page",
+                        context.Language,
+                        ("current", context.PageIndex + 1),
+                        ("total", context.TotalPages)));
 
                 var chunkContext = new TranslationChunkContext(context, chunkIndex, currentProgress);
                 var chunkResults = TranslateChunkWithRecovery(
@@ -58,7 +53,6 @@ namespace Clickra.Core.Modules.Pdf.Translation.Pipeline.TextProcessing;
                     cancellationToken);
 
                 results.AddRange(chunkResults);
-                translatedCount += chunk.Count;
             }
 
             return results;
@@ -127,7 +121,7 @@ namespace Clickra.Core.Modules.Pdf.Translation.Pipeline.TextProcessing;
                 if (TranslationProviderLimits.IsLimit(ex))
                     throw ProviderLimitedError(context.Batch.PageIndex, context.Batch.Language, ex);
                 throw new InvalidOperationException(
-                    string.Format(Localization.T("pdf_error_unable_paragraph", context.Batch.Language), context.Batch.PageIndex + 1),
+                    Localization.Format("pdf_error_unable_paragraph", context.Batch.Language, ("page", context.Batch.PageIndex + 1)),
                     ex);
             }
         }
@@ -177,7 +171,7 @@ namespace Clickra.Core.Modules.Pdf.Translation.Pipeline.TextProcessing;
                 context.Batch.OnProgress?.Invoke(
                     context.CurrentProgress,
                     100,
-                    string.Format(Localization.T("pdf_progress_provider_waiting", context.Batch.Language), context.Batch.PageIndex + 1, remaining));
+                    Localization.Format("pdf_progress_provider_waiting", context.Batch.Language, ("page", context.Batch.PageIndex + 1), ("seconds", remaining)));
                 int sleepMs = CalculateSleepMs(wait, remaining);
                 Task.Delay(sleepMs, cancellationToken).GetAwaiter().GetResult();
             }
@@ -214,7 +208,7 @@ namespace Clickra.Core.Modules.Pdf.Translation.Pipeline.TextProcessing;
 
         /// <summary>The user-facing error when every provider is still rate limited or out of quota.</summary>
         internal static InvalidOperationException ProviderLimitedError(int pageIndex, string language, Exception cause) =>
-            new(string.Format(Localization.T("pdf_error_provider_limited", language), pageIndex + 1), cause);
+            new(Localization.Format("pdf_error_provider_limited", language, ("page", pageIndex + 1)), cause);
 
         private static T RunWithTimeout<T>(
             Func<CancellationToken, Task<T>> operation,
@@ -231,7 +225,7 @@ namespace Clickra.Core.Modules.Pdf.Translation.Pipeline.TextProcessing;
             catch (OperationCanceledException) when (
                 !cancellationToken.IsCancellationRequested && timeoutCts.IsCancellationRequested)
             {
-                throw new TimeoutException(string.Format(Localization.T("pdf_error_provider_timeout", language), timeout.TotalSeconds.ToString("0")));
+                throw new TimeoutException(Localization.Format("pdf_error_provider_timeout", language, ("seconds", timeout.TotalSeconds.ToString("0", System.Globalization.CultureInfo.InvariantCulture))));
             }
         }
 
