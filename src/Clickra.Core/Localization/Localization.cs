@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Clickra.Core.Modules.Sys.Settings.Application;
 
 namespace Clickra.Core
@@ -108,11 +109,24 @@ namespace Clickra.Core
         public static string T(string key) =>
             T(key, SettingsController.Language);
 
+        private static readonly Regex NamedTokenRegex = new(@"\{([a-zA-Z0-9_]+)\}", RegexOptions.Compiled);
+
         /// <summary>
         /// Translates a resource key using the currently configured language setting and formats it with arguments.
         /// </summary>
-        public static string T(string key, params object[] args) =>
-            args is { Length: > 0 } ? string.Format(T(key), args) : T(key);
+        public static string T(string key, params object[] args)
+        {
+            string template = T(key);
+            if (args is not { Length: > 0 }) return template;
+            try
+            {
+                return string.Format(System.Globalization.CultureInfo.InvariantCulture, template, args);
+            }
+            catch (FormatException)
+            {
+                return template;
+            }
+        }
 
         /// <summary>
         /// Translates <paramref name="key"/> for <paramref name="langCode"/> and fills its named
@@ -122,12 +136,17 @@ namespace Clickra.Core
         public static string Format(string key, string langCode, params (string Name, object? Value)[] args)
         {
             string text = T(key, langCode);
+            if (args is not { Length: > 0 }) return text;
+            var dict = new Dictionary<string, string>(args.Length, StringComparer.Ordinal);
             foreach (var (name, value) in args)
             {
-                string replacement = Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? "";
-                text = text.Replace("{" + name + "}", replacement, StringComparison.Ordinal);
+                dict[name] = Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? "";
             }
-            return text;
+            return NamedTokenRegex.Replace(text, match =>
+            {
+                string tokenName = match.Groups[1].Value;
+                return dict.TryGetValue(tokenName, out string? val) ? val : match.Value;
+            });
         }
 
         /// <summary>Canonical list of the 5 supported language codes.</summary>

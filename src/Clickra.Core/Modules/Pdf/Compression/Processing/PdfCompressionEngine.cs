@@ -122,7 +122,10 @@ public sealed class NativePdfCompressionEngine : IPdfCompressionEngine
         System.IO.File.Move(tempOutput, outputPath);
     }
 
-    public static string FormatCompressionSummary(long inputBytes, long outputBytes, string language = "")
+    public static string FormatCompressionSummary(long inputBytes, long outputBytes) =>
+        FormatCompressionSummary(inputBytes, outputBytes, "");
+
+    public static string FormatCompressionSummary(long inputBytes, long outputBytes, string language)
     {
         string before = FormatFileSize(inputBytes);
         string after = FormatFileSize(outputBytes);

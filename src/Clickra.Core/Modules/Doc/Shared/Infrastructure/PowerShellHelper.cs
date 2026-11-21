@@ -267,6 +267,7 @@ exit 1
             throw new InvalidOperationException(Localization.Format("error_office_not_installed", request.Language, ("app", request.AppName)));
 
         throw new InvalidOperationException(
-            Localization.Format("error_office_failed", request.Language, ("app", request.AppName), ("reason", errorText.Trim())));
+            Localization.Format("error_office_failed", request.Language, ("app", request.AppName), ("reason", errorText.Trim())),
+            new InvalidOperationException(errorText.Trim()));
     }
 }
