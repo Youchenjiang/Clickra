@@ -1075,7 +1075,7 @@ public sealed class MarkdownToPdfProcessor : MarkdownSingleFileProcessorBase
         {
             if (!TryResolveLocalImagePath(url, out string imagePath)) return false;
 
-            XImage image;
+            XImage? image = null;
             try
             {
                 image = XImage.FromFile(imagePath);
@@ -1086,6 +1086,7 @@ public sealed class MarkdownToPdfProcessor : MarkdownSingleFileProcessorBase
             catch (InvalidOperationException) { return false; }
             catch (NotSupportedException) { return false; }
 
+            if (image is null) return false;
             using (image)
             {
                 double lineStart = _marginLeft + indent;

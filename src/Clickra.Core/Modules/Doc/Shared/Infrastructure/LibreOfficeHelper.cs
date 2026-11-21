@@ -13,6 +13,7 @@ namespace Clickra.Core.Modules.Doc.Shared.Infrastructure;
 
 public static class LibreOfficeHelper
 {
+    private const string LibreOfficeName = "LibreOffice";
     private const string LibreOfficeProgramDirectoryName = "program";
     private const uint SemFailCriticalErrors = 0x0001;
     private const uint SemNoGpFaultErrorBox = 0x0002;
@@ -140,7 +141,7 @@ public static class LibreOfficeHelper
             string output = outputTask.GetAwaiter().GetResult();
             string error = errorTask.GetAwaiter().GetResult();
             version = (output.Length > 0 ? output : error).Trim();
-            return version.Contains("LibreOffice", StringComparison.OrdinalIgnoreCase);
+            return version.Contains(LibreOfficeName, StringComparison.OrdinalIgnoreCase);
         }
         catch
         {
@@ -204,7 +205,7 @@ public static class LibreOfficeHelper
             Localization.Format(
                 "status_office_starting",
                 language,
-                ("app", "LibreOffice"),
+                ("app", LibreOfficeName),
                 ("current", progress.FileIndex + 1),
                 ("total", progress.TotalFiles)));
 
@@ -221,7 +222,7 @@ public static class LibreOfficeHelper
         });
         // The registration remains alive until conversion finishes.
         _ = registration;
-        Process process;
+        Process process = null!;
         lock (ConversionLaunchLock)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -500,9 +501,9 @@ public static class LibreOfficeHelper
             string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
             string programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
             if (!string.IsNullOrEmpty(programFiles))
-                yield return Path.Combine(programFiles, "LibreOffice", LibreOfficeProgramDirectoryName, exeName);
+                yield return Path.Combine(programFiles, LibreOfficeName, LibreOfficeProgramDirectoryName, exeName);
             if (!string.IsNullOrEmpty(programFilesX86))
-                yield return Path.Combine(programFilesX86, "LibreOffice", LibreOfficeProgramDirectoryName, exeName);
+                yield return Path.Combine(programFilesX86, LibreOfficeName, LibreOfficeProgramDirectoryName, exeName);
         }
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {

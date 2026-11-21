@@ -35,7 +35,7 @@ public class PdfMergeProcessor : MultiFileProcessorBase
     protected override void ProcessFile(string filePath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
     {
         onProgress?.Invoke((fileIndex * 100) + 50, totalFiles * 100, ExecutionLocalizationOptions.Text(_language, "core_merge_progress_file", ("name", Path.GetFileName(filePath)), ("current", fileIndex + 1), ("total", totalFiles)));
-        PdfDocument inDoc;
+        PdfDocument inDoc = null!;
         try
         {
             inDoc = PdfReader.Open(filePath, PdfDocumentOpenMode.Import);
