@@ -109,8 +109,6 @@ namespace Clickra.Core
         public static string T(string key) =>
             T(key, SettingsController.Language);
 
-        private static readonly Regex NamedTokenRegex = new(@"\{([a-zA-Z0-9_]+)\}", RegexOptions.Compiled);
-
         /// <summary>
         /// Translates a resource key using the currently configured language setting and formats it with arguments.
         /// </summary>
@@ -127,6 +125,9 @@ namespace Clickra.Core
                 return template;
             }
         }
+
+        private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(1);
+        private static readonly Regex NamedTokenRegex = new(@"\{([a-zA-Z0-9_]+)\}", RegexOptions.Compiled, RegexTimeout);
 
         /// <summary>
         /// Translates <paramref name="key"/> for <paramref name="langCode"/> and fills its named
