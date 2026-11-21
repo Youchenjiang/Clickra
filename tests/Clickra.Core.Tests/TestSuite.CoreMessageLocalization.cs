@@ -65,11 +65,15 @@ static partial class TestSuite
             if (!Directory.Exists(full)) continue;
             foreach (string file in Directory.EnumerateFiles(full, "*.cs", SearchOption.TopDirectoryOnly))
             {
-                string[] lines = WithoutComments(File.ReadAllText(file)).Split('\n');
-                for (int i = 0; i < lines.Length; i++)
+                using var reader = new StringReader(WithoutComments(File.ReadAllText(file)));
+                string? currentLine;
+                while ((currentLine = reader.ReadLine()) != null)
                 {
-                    if (DesktopCjk.IsMatch(lines[i]))
-                        hits.Add($"{Path.GetRelativePath(root, file).Replace('\\', '/')}: {lines[i].Trim()}");
+                    if (DesktopCjk.IsMatch(currentLine))
+                    {
+                        string rel = Path.GetRelativePath(root, file).Replace('\\', '/');
+                        hits.Add($"{rel}: {currentLine.Trim()}");
+                    }
                 }
             }
         }

@@ -48,19 +48,19 @@ static partial class TestSuite
         runner.Run("OpenAI translator parses batch JSON array responses", () =>
         {
             var valid = OpenAiTranslator.ParseJsonArray("[\"一\", \"二\", \"三\"]", 3);
-            Assert.True(valid != null && valid.Count == 3, "Valid JSON array of 3 items should parse successfully");
+            Assert.True(valid?.Count == 3, "Valid JSON array of 3 items should parse successfully");
             Assert.Equal("一", valid![0]);
             Assert.Equal("二", valid[1]);
             Assert.Equal("三", valid[2]);
 
             var fenced = OpenAiTranslator.ParseJsonArray("```json\n[\"一\", \"二\"]\n```", 2);
-            Assert.True(fenced != null && fenced.Count == 2, "Markdown fenced JSON array should parse successfully");
+            Assert.True(fenced?.Count == 2, "Markdown fenced JSON array should parse successfully");
 
             var countMismatch = OpenAiTranslator.ParseJsonArray("[\"一\"]", 2);
-            Assert.True(countMismatch == null, "Count mismatch should return null");
+            Assert.True(countMismatch is null, "Count mismatch should return null");
 
             var nonJson = OpenAiTranslator.ParseJsonArray("Just text", 1);
-            Assert.True(nonJson == null, "Non-JSON response should return null");
+            Assert.True(nonJson is null, "Non-JSON response should return null");
         });
 
         runner.Run("Translation guard rejects a provider quota warning", () =>
