@@ -153,7 +153,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: clickra-nupkg
-          path: publish/nupkg/*.nupkg
+          path: publish/nupkg
           if-no-files-found: error
           retention-days: 1
 
@@ -353,15 +353,22 @@ jobs:
             clickra-cli-osx-arm64.tar.gz \
             clickra-cli-win-x64.zip
       - name: Publish to GitHub Packages (NuGet)
-        shell: bash
+        shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
         run: |
-          dotnet nuget push "publish/nupkg/*.nupkg" \
-            --source "https://nuget.pkg.github.com/$OWNER/index.json" \
-            --api-key "$GH_TOKEN" \
-            --skip-duplicate
+          $packages = Get-ChildItem -Path "publish" -Filter "*.nupkg" -Recurse
+          if (-not $packages) {
+              throw "No .nupkg package found under publish directory."
+          }
+          foreach ($pkg in $packages) {
+              Write-Host "Publishing $($pkg.FullName) to GitHub Packages..."
+              dotnet nuget push $pkg.FullName `
+                --source "https://nuget.pkg.github.com/$env:OWNER/index.json" `
+                --api-key "$env:GH_TOKEN" `
+                --skip-duplicate
+          }
 
 
   store-publish:
