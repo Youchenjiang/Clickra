@@ -1,5 +1,10 @@
 # Changelog
 
+## [v3.22.1.0] - 2026-11-21
+
+- **Core 進度與錯誤訊息多語系 (Localized Core Progress and Error Messages)**：壓縮、解密、合併、分割、PDF 轉圖片、列印、圖片轉格式、壓縮圖片、拼接、圖片轉 PDF、Markdown、Office／LibreOffice 與翻譯的進度與錯誤訊息全部改由語系檔取字，依任務語言顯示五種語言。約 40 條寫死在處理器裡的中文與 2 條英文錯誤改為 `core_*` 鍵；既有訊息鍵改用具名參數（`{name}`、`{page}`、`{app}`），並依《介面文字寫法》重寫：用詞統一、拿掉內部步驟（批次、段落、結束碼）、可以自己處理的錯誤加上做法（安裝 HEIF 影像延伸模組、改用另一種 Office 引擎、先分割再翻譯）。Office 與 LibreOffice 的結束碼與輸出改放在內部例外，不再顯示給使用者。新增 `Localization.Format` 與 `TestSuite.CoreMessageLocalization` 三項架構測試。
+- **修正待繼續清單的分隔符號亂碼 (Fix Garbled Separator in Paused Tasks)**：`HistoryFeed.cs` 在 3.20 的重構中編碼損壞，Fluent 介面與經典儀表板「待繼續」第二行的「·」顯示成「繚」；同時還原檔案內的中文註解。
+
 ## [v3.22.0.0] - 2026-11-20
 
 - **預覽桌面版多語系 (Desktop Preview in Five Languages)**：`Clickra.Desktop` 約 420 條介面文字全部改為語系鍵（`ui_*`），補齊繁中、簡中、英文、日文、韓文；介面依語言選用系統字型（日文漢字、簡體字與韓文使用各自字形），換語言後於設定頁提示「重新開啟 Clickra 後套用」並提供「立即重新開啟」。繁中文字依新訂的《介面文字寫法》逐條審過：用詞統一（處理、停止、完成／沒有完成、使用限制）、拿掉多餘的猜測與說明、檔名加「」、不用稱呼。新增架構測試，擋下寫死在畫面裡的中日韓文字、缺翻譯、各語言參數不一致與被拆開的半句。

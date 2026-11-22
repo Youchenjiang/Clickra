@@ -84,6 +84,7 @@ TestSuite.RegisterCliHeadlessTests(runner);
 TestSuite.RegisterUniversalPackageTests(runner);
 TestSuite.RegisterDesktopArchitectureTests(runner);
 TestSuite.RegisterDesktopLocalizationTests(runner);
+TestSuite.RegisterCoreMessageLocalizationTests(runner);
 
 // Print an explicit summary so CI logs show the actual executed test count
 // instead of only a build-success signal. Skipped counts fixture-dependent

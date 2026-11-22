@@ -13,12 +13,14 @@ public class ImageToPdfProcessor : MultiFileProcessorBase
 {
     private PdfDocument? _doc;
     private string? _outputPath;
+    private string _language = "";
     private readonly List<IDisposable> _pageResources = new();
 
     public new void Process(List<string> files, string? outputPath, Dictionary<string, object>? options = null, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(outputPath)) throw new ArgumentException("Output path is required for image to PDF conversion.");
         _outputPath = outputPath;
+        _language = ExecutionLocalizationOptions.ReadLanguage(options);
         _doc = new PdfDocument();
         _pageResources.Clear();
         try
@@ -38,7 +40,7 @@ public class ImageToPdfProcessor : MultiFileProcessorBase
 
     protected override void ProcessFile(string filePath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
     {
-        onProgress?.Invoke((fileIndex * 100) + 50, totalFiles * 100, $"正在處理圖片: {Path.GetFileName(filePath)} ({fileIndex + 1}/{totalFiles})...");
+        onProgress?.Invoke((fileIndex * 100) + 50, totalFiles * 100, ExecutionLocalizationOptions.Text(_language, "core_image_progress_file", ("name", Path.GetFileName(filePath)), ("current", fileIndex + 1), ("total", totalFiles)));
         if (!System.IO.File.Exists(filePath)) throw new FileNotFoundException("Image file not found", filePath);
 
         var holder = LoadXImageSafely(filePath);
@@ -100,7 +102,7 @@ public class ImageToPdfProcessor : MultiFileProcessorBase
     protected override void OnAllFilesProcessed(string? outputPath, int totalFiles, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        onProgress?.Invoke(totalFiles * 100, totalFiles * 100, "轉換完成，正在儲存 PDF...");
+        onProgress?.Invoke(totalFiles * 100, totalFiles * 100, ExecutionLocalizationOptions.Text(_language, "core_image_to_pdf_saving"));
         _doc!.Save(outputPath!);
     }
 }

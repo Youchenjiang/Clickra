@@ -12,28 +12,35 @@ namespace Clickra.Core.Modules.Pdf.Merge.Processing;
 
 public class PdfMergeProcessor : MultiFileProcessorBase
 {
+    private readonly object _syncLock = new();
     private PdfDocument? _outDoc;
     private string? _outputPath;
+    private string _language = "";
 
     public new void Process(List<string> files, string? outputPath, Dictionary<string, object>? options = null, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(outputPath)) throw new ArgumentException("Output path is required for PDF merge.");
-        _outputPath = outputPath;
-        _outDoc = new PdfDocument();
-        try
+        lock (_syncLock)
         {
-            base.Process(files, outputPath, options, onProgress, cancellationToken);
-        }
-        finally
-        {
-            _outDoc?.Dispose();
+            _outputPath = outputPath;
+            _language = ExecutionLocalizationOptions.ReadLanguage(options);
+            _outDoc = new PdfDocument();
+            try
+            {
+                base.Process(files, outputPath, options, onProgress, cancellationToken);
+            }
+            finally
+            {
+                _outDoc?.Dispose();
+            }
         }
     }
 
     protected override void ProcessFile(string filePath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
     {
-        onProgress?.Invoke((fileIndex * 100) + 50, totalFiles * 100, $"正在合併: {Path.GetFileName(filePath)} ({fileIndex + 1}/{totalFiles})...");
-        PdfDocument inDoc;
+        string language = ExecutionLocalizationOptions.ReadLanguage(options);
+        onProgress?.Invoke((fileIndex * 100) + 50, totalFiles * 100, ExecutionLocalizationOptions.Text(language, "core_merge_progress_file", ("name", Path.GetFileName(filePath)), ("current", fileIndex + 1), ("total", totalFiles)));
+        PdfDocument inDoc = null!;
         try
         {
             inDoc = PdfReader.Open(filePath, PdfDocumentOpenMode.Import);
@@ -54,7 +61,7 @@ public class PdfMergeProcessor : MultiFileProcessorBase
     protected override void OnAllFilesProcessed(string? outputPath, int totalFiles, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        onProgress?.Invoke(totalFiles * 100, totalFiles * 100, "合併完成，正在儲存檔案...");
+        onProgress?.Invoke(totalFiles * 100, totalFiles * 100, ExecutionLocalizationOptions.Text(_language, "core_merge_progress_saving"));
         _outDoc!.Save(outputPath!);
     }
 }

@@ -95,10 +95,11 @@ internal sealed class OfficeConversionStrategyResolver
         onProgress?.Invoke(
             request.FileIndex * 100,
             request.TotalFiles * 100,
-            string.Format(
-                Localization.T("status_office_fallback_to_libreoffice", settings.Language),
-                request.AppType,
-                Path.GetFileName(request.FullPath)));
+            Localization.Format(
+                "status_office_fallback_to_libreoffice",
+                settings.Language,
+                ("app", request.AppType),
+                ("name", Path.GetFileName(request.FullPath))));
         cancellationToken.ThrowIfCancellationRequested();
         _libreOfficeStrategy.ConvertToPdf(request, settings, onProgress, cancellationToken);
     }

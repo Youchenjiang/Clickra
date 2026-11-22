@@ -11,10 +11,10 @@ internal static class ImageOutputSafety
             .FirstOrDefault(group => group.Count() > 1);
         if (duplicate is null) return;
 
-        string template = Localization.T(
+        throw new InvalidOperationException(Localization.Format(
             "error_image_output_collision",
-            language ?? SettingsController.Language);
-        throw new InvalidOperationException(string.Format(template, duplicate.Key));
+            language ?? SettingsController.Language,
+            ("name", Path.GetFileName(duplicate.Key))));
     }
 
     public static void EnsureOutputsDoNotOverwriteInputs(
@@ -30,9 +30,9 @@ internal static class ImageOutputSafety
             .FirstOrDefault(inputPaths.Contains);
         if (collision is null) return;
 
-        string template = Localization.T(
+        throw new InvalidOperationException(Localization.Format(
             "error_image_output_overwrites_input",
-            language ?? SettingsController.Language);
-        throw new InvalidOperationException(string.Format(template, collision));
+            language ?? SettingsController.Language,
+            ("name", Path.GetFileName(collision))));
     }
 }

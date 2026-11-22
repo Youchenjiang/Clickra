@@ -141,7 +141,7 @@ exit 1
         }
         else
         {
-            throw new NotSupportedException(string.Format(Localization.T("error_office_unsupported", language), appType));
+            throw new NotSupportedException(Localization.Format("error_office_unsupported", language, ("app", appType)));
         }
 
         RunOfficeInteropScript(
@@ -157,7 +157,7 @@ exit 1
 
         if (!System.IO.File.Exists(outputPdfPath))
         {
-            throw new InvalidOperationException(string.Format(Localization.T("error_office_output_missing", language), appType));
+            throw new InvalidOperationException(Localization.Format("error_office_output_missing", language, ("app", appType)));
         }
     }
 
@@ -178,7 +178,7 @@ exit 1
         };
 
         using var process = System.Diagnostics.Process.Start(startInfo)
-            ?? throw new InvalidOperationException(string.Format(Localization.T("error_office_powershell_start", request.Language), request.AppName));
+            ?? throw new InvalidOperationException(Localization.Format("error_office_powershell_start", request.Language, ("app", request.AppName)));
 
         // skipcq: CS-W1100 — the registration is kept alive only to dispose it.
         using var registration = cancellationToken.Register(() =>
@@ -216,7 +216,7 @@ exit 1
             {
                 throw new OfficeProcessTerminationException("Unable to terminate the timed-out Microsoft Office process; refusing concurrent fallback.", ex);
             }
-            throw new TimeoutException(string.Format(Localization.T("error_office_timeout", request.Language), request.AppName));
+            throw new TimeoutException(Localization.Format("error_office_timeout", request.Language, ("app", request.AppName)));
         }
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -237,11 +237,11 @@ exit 1
         string fileName = Path.GetFileName(request.FilePath);
         string statusMessage = subProgress switch
         {
-            20 => string.Format(Localization.T("status_office_starting", request.Language), request.AppName, request.FileIndex + 1, request.TotalFiles),
-            50 => string.Format(Localization.T("status_office_reading", request.Language), fileName),
-            80 => string.Format(Localization.T("status_office_exporting", request.Language), fileName),
-            100 => string.Format(Localization.T("status_office_completed", request.Language), fileName),
-            _ => string.Format(Localization.T("status_office_converting", request.Language), request.AppName, fileName)
+            20 => Localization.Format("status_office_starting", request.Language, ("app", request.AppName), ("current", request.FileIndex + 1), ("total", request.TotalFiles)),
+            50 => Localization.Format("core_progress_reading_file", request.Language, ("name", fileName)),
+            80 => Localization.T("status_office_exporting", request.Language),
+            100 => Localization.Format("status_office_completed", request.Language, ("name", fileName)),
+            _ => Localization.Format("status_office_converting", request.Language, ("app", request.AppName), ("name", fileName))
         };
         onProgress?.Invoke(
             (request.FileIndex * 100) + subProgress,
@@ -258,13 +258,16 @@ exit 1
             return;
 
         if (string.IsNullOrWhiteSpace(errorText))
-            throw new InvalidOperationException(string.Format(Localization.T("error_office_exit_code", request.Language), request.AppName, exitCode));
+            throw new InvalidOperationException(
+                Localization.Format("error_office_exit_code", request.Language, ("app", request.AppName)),
+                new InvalidOperationException($"{request.AppName} exit code {exitCode}"));
 
         if (errorText.Contains("0x80040154", StringComparison.Ordinal) ||
             errorText.Contains("New-Object", StringComparison.Ordinal))
-            throw new InvalidOperationException(string.Format(Localization.T("error_office_not_installed", request.Language), request.AppName));
+            throw new InvalidOperationException(Localization.Format("error_office_not_installed", request.Language, ("app", request.AppName)));
 
         throw new InvalidOperationException(
-            string.Format(Localization.T("error_office_failed", request.Language), request.AppName, errorText.Trim()));
+            Localization.Format("error_office_failed", request.Language, ("app", request.AppName), ("reason", errorText.Trim())),
+            new InvalidOperationException(errorText.Trim()));
     }
 }

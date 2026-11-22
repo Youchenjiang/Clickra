@@ -33,8 +33,8 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
         Action<int, int, string>? onProgress,
         CancellationToken cancellationToken)
     {
-        MarkdownDocument document = ParseMarkdownFile(filePath, "md_word_progress_parsing", Language, onProgress, cancellationToken);
-        onProgress?.Invoke(45, 100, ExecutionLocalizationOptions.Text(Language, "md_word_progress_rendering", Path.GetFileName(filePath)));
+        MarkdownDocument document = ParseMarkdownFile(filePath, "core_progress_reading_file", Language, onProgress, cancellationToken);
+        onProgress?.Invoke(45, 100, ExecutionLocalizationOptions.Text(Language, "md_progress_layout", ("name", Path.GetFileName(filePath))));
         string baseDirectory = Path.GetDirectoryName(Path.GetFullPath(filePath)) ?? Directory.GetCurrentDirectory();
         MarkdownRenderProfile profile = MarkdownRenderProfile.Resolve(options);
         var writer = new DocxWriter(
@@ -43,7 +43,7 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
             cancellationToken);
 
         cancellationToken.ThrowIfCancellationRequested();
-        onProgress?.Invoke(90, 100, ExecutionLocalizationOptions.Text(Language, "md_word_progress_saving", Path.GetFileName(OutputPath)));
+        onProgress?.Invoke(90, 100, ExecutionLocalizationOptions.Text(Language, "core_progress_saving_file", ("name", Path.GetFileName(OutputPath))));
         writer.Save(document, OutputPath);
     }
 
@@ -53,7 +53,7 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
         int totalFiles,
         Action<int, int, string>? onProgress,
         CancellationToken cancellationToken) =>
-        onProgress?.Invoke(100, 100, ExecutionLocalizationOptions.Text(Language, "md_word_progress_done", Path.GetFileName(outputPath ?? "")));
+        onProgress?.Invoke(100, 100, ExecutionLocalizationOptions.Text(Language, "md_progress_done", ("name", Path.GetFileName(outputPath ?? ""))));
 
     private sealed class DocxWriter
     {
