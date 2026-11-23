@@ -1501,8 +1501,8 @@ public partial class ProgressWindow
         float pdfPageWidthPt, float pdfPageHeightPt,
         SizeF targetPaperSize)
     {
-        float pageDrawW;
-        float pageDrawH;
+        float pageDrawW = 0f;
+        float pageDrawH = 0f;
         float targetPaperW = Math.Max(1f, targetPaperSize.Width);
         float targetPaperH = Math.Max(1f, targetPaperSize.Height);
         if (fitToPage)
