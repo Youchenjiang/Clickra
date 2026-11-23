@@ -1,6 +1,6 @@
 # Microsoft Store 목록 - 한국어
 
-다음은 Microsoft 파트너 센터 (Partner Center)에 직접 복사하여 붙여넣을 수 있는 전체 정보입니다 (v3.22.1.0 기준).
+다음은 Microsoft 파트너 센터 (Partner Center)에 직접 복사하여 붙여넣을 수 있는 전체 정보입니다 (v3.22.2.0 기준).
 
 ---
 
@@ -15,8 +15,7 @@ Clickra는 Windows 파일 탐색기를 위한 네이티브 우클릭 확장 프�
 소스 코드: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 처리 중 진행 상황과 오류 메시지가 UI 언어(5개 언어)로 표시됩니다. 문구도 다시 써서 더 짧아졌고, 다음에 할 수 있는 일(HEIC에 필요한 확장 설치, Office 시간 초과 시 LibreOffice로 전환 등)을 알려 줍니다.
-- 일시 중지된 작업 목록에서 파일 이름과 이유 사이의 구분 기호가 깨져 보이던 문제를 수정했습니다.
+- 인쇄 창에서 방향을 '자동'으로 선택해도 가로 페이지가 세로로 인쇄되던 문제를 수정했습니다. '단면'과 글자 진하게 옵션도 항상 화면에서 선택한 대로 인쇄됩니다.
 
 ## Product Features
 *(최대 20개, 글머리 기호로 표시)*

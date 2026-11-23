@@ -1,5 +1,9 @@
 # Changelog
 
+## [v3.22.2.0] - 2026-11-23
+
+- **修正列印視窗的「自動」方向被預設值蓋掉 (Fix Print Dialog Choices Overridden by Saved Defaults)**：經典列印視窗選「自動」方向、「單面」或不勾「加深字跡」時，這些選項等於預設值而沒有傳給列印，改由「設定 › 功能預設值」補上；若預設值存的是「直向」，預覽顯示橫向的頁面仍會以直向印出（縮小置中）。列印視窗現在一律傳出畫面上的每個選項（`PrintPdfOptions.ToExplicitDictionary`），並新增測試確保明確傳入的選項不會被預設值取代。
+
 ## [v3.22.1.0] - 2026-11-21
 
 - **Core 進度與錯誤訊息多語系 (Localized Core Progress and Error Messages)**：壓縮、解密、合併、分割、PDF 轉圖片、列印、圖片轉格式、壓縮圖片、拼接、圖片轉 PDF、Markdown、Office／LibreOffice 與翻譯的進度與錯誤訊息全部改由語系檔取字，依任務語言顯示五種語言。約 40 條寫死在處理器裡的中文與 2 條英文錯誤改為 `core_*` 鍵；既有訊息鍵改用具名參數（`{name}`、`{page}`、`{app}`），並依《介面文字寫法》重寫：用詞統一、拿掉內部步驟（批次、段落、結束碼）、可以自己處理的錯誤加上做法（安裝 HEIF 影像延伸模組、改用另一種 Office 引擎、先分割再翻譯）。Office 與 LibreOffice 的結束碼與輸出改放在內部例外，不再顯示給使用者。新增 `Localization.Format` 與 `TestSuite.CoreMessageLocalization` 三項架構測試。
