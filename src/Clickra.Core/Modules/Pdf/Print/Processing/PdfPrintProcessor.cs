@@ -265,53 +265,6 @@ public static class PdfPrintProcessor
     /// <summary>
     /// Parses page range specification (e.g., "1-3, 5, 8-10", "all", "") into sorted 1-based page numbers.
     /// </summary>
-    public static List<int> ResolvePageNumbers(string? pageRange, int totalPages)
-    {
-        if (string.IsNullOrWhiteSpace(pageRange) || string.Equals(pageRange.Trim(), "all", StringComparison.OrdinalIgnoreCase))
-        {
-            var all = new List<int>(totalPages);
-            for (int i = 1; i <= totalPages; i++) all.Add(i);
-            return all;
-        }
-
-        var result = new HashSet<int>();
-        string[] parts = pageRange.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-        foreach (string part in parts)
-        {
-            ParsePageToken(part, totalPages, result);
-        }
-
-        var list = result.ToList();
-        list.Sort();
-        return list;
-    }
-
-    private static void ParsePageToken(string token, int totalPages, HashSet<int> result)
-    {
-        if (int.TryParse(token, out int singlePage))
-        {
-            if (singlePage >= 1 && singlePage <= totalPages)
-            {
-                result.Add(singlePage);
-            }
-            return;
-        }
-
-        int dashIdx = token.IndexOf('-');
-        if (dashIdx < 0) return;
-
-        string[] rangeParts = token.Split('-');
-        if (rangeParts.Length == 2 &&
-            int.TryParse(rangeParts[0].Trim(), out int start) &&
-            int.TryParse(rangeParts[1].Trim(), out int end))
-        {
-            int rStart = Math.Max(1, Math.Min(start, end));
-            int rEnd = Math.Min(totalPages, Math.Max(start, end));
-            for (int p = rStart; p <= rEnd; p++)
-            {
-                result.Add(p);
-            }
-        }
-    }
+    public static List<int> ResolvePageNumbers(string? pageRange, int totalPages) =>
+        PrintLayoutPlanner.ResolvePageNumbers(pageRange, totalPages);
 }

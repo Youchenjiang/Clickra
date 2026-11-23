@@ -81,6 +81,13 @@ public sealed class PrintPdfUseCase : PerFileConversionUseCaseBase
         source.TryAdd(PrintPdfOptions.OrientationKey, SettingsController.PrintOrientation);
         source.TryAdd(PrintPdfOptions.FitToPageKey, SettingsController.PrintFitToPage);
         source.TryAdd(PrintPdfOptions.DarkenTextKey, SettingsController.PrintDarkenText);
+        source.TryAdd(PrintPdfOptions.PagesPerSheetKey, SettingsController.PrintPagesPerSheet);
+        source.TryAdd(PrintPdfOptions.PageOrderKey, SettingsController.PrintPageOrder);
+        source.TryAdd(PrintPdfOptions.PageBorderKey, SettingsController.PrintPageBorder);
+        source.TryAdd(PrintPdfOptions.ScaleKey, SettingsController.PrintScale);
+        source.TryAdd(PrintPdfOptions.ScalePercentKey, SettingsController.PrintScalePercent);
+        source.TryAdd(PrintPdfOptions.GrayscaleKey, SettingsController.PrintGrayscale);
+        source.TryAdd(PrintPdfOptions.CollateKey, SettingsController.PrintCollate);
         if (!source.ContainsKey(PrintPdfOptions.PaperSizeKey) && !string.IsNullOrWhiteSpace(SettingsController.PrintPaper))
         {
             source[PrintPdfOptions.PaperSizeKey] = SettingsController.PrintPaper;
