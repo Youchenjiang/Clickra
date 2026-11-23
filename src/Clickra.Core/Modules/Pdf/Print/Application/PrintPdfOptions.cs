@@ -165,4 +165,19 @@ public sealed record PrintPdfOptions(
         if (!string.IsNullOrWhiteSpace(Language)) dict[ExecutionLocalizationOptions.LanguageKey] = Language;
         return dict;
     }
+
+    /// <summary>
+    /// Like <see cref="ToDictionary"/>, but also writes duplex, orientation and darken-text when they
+    /// equal the type defaults. A dialog that shows every choice must pass them all: a key left out is
+    /// filled from the saved defaults by <c>PrintPdfUseCase</c>, so "Auto" on screen could print as a
+    /// saved "Portrait".
+    /// </summary>
+    public Dictionary<string, object> ToExplicitDictionary()
+    {
+        var dict = ToDictionary();
+        dict[DuplexKey] = Duplex.ToString();
+        dict[OrientationKey] = Orientation.ToString();
+        dict[DarkenTextKey] = DarkenText;
+        return dict;
+    }
 }

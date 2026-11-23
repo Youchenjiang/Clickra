@@ -71,8 +71,16 @@ internal class FallbackTranslator : ITranslationEngine
             catch (Exception ex) // skipcq: CS-R1008, CS-R1084
                 when (!cancellationToken.IsCancellationRequested)
             {
-                await Console.Error.WriteLineAsync(
-                    $"[Translate] {_primary.Name} batch failed ({ex.Message}); falling back to {_fallback.Name}.");
+                try
+                {
+                    await Console.Error.WriteLineAsync(
+                        $"[Translate] {_primary.Name} batch failed ({ex.Message}); falling back to {_fallback.Name}.".AsMemory(),
+                        cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // Best-effort diagnostic logging; do not block fallback
+                }
                 try
                 {
                     translated = await RunProviderCallAsync(

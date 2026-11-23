@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.22.1.0.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.22.2.0.
 
 ---
 
@@ -15,8 +15,7 @@ Core document operations run completely offline on your local PC to keep your da
 Source Code: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- Progress and error messages now appear in the interface language (all five languages) and have been rewritten to be shorter and to say what you can do next, such as installing HEIF Image Extensions or switching to LibreOffice when Office times out.
-- Fixed a garbled separator between the file name and the reason in the list of paused tasks.
+- Fixed landscape pages printing in portrait when the print window was set to Auto orientation; single-sided printing and the darken-text option now also always follow what the window shows.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*

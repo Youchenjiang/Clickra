@@ -31,6 +31,7 @@ static partial class TestSuite
 
     public static void RegisterPdfPrintTests(TestRunner runner)
     {
+        const string defaultLaserPrinter = "Default Laser";
         runner.Run("PDF print: resolve page numbers parses ranges and keywords correctly", () =>
         {
             var pagesAll = PdfPrintProcessor.ResolvePageNumbers("all", 10);
@@ -69,14 +70,49 @@ static partial class TestSuite
             Assert.False(resInvalid.IsValid, "Expected uninstalled printer to fail validation.");
         });
 
+        runner.Run("PDF print: choices passed explicitly are not replaced by the saved defaults", () =>
+        {
+            string origOrientation = SettingsController.PrintOrientation;
+            string origDuplex = SettingsController.PrintDuplex;
+            bool origDarken = SettingsController.PrintDarkenText;
+            try
+            {
+                // Set saved defaults to conflicting values (Portrait, DuplexVertical, Darken on)
+                SettingsController.PrintOrientation = "Portrait";
+                SettingsController.PrintDuplex = "DuplexVertical";
+                SettingsController.PrintDarkenText = true;
+
+                // The classic print dialog shows Auto / single-sided / no darkening; whatever the saved
+                // defaults say, those on-screen choices must be what gets printed.
+                var shown = PrintPdfOptions.FromDictionary(new Dictionary<string, object>());
+                var dict = shown.ToExplicitDictionary();
+                Assert.True(dict.ContainsKey(PrintPdfOptions.OrientationKey), "Orientation must be written even when it is Auto.");
+                Assert.True(dict.ContainsKey(PrintPdfOptions.DuplexKey), "Duplex must be written even when it is single-sided.");
+                Assert.True(dict.ContainsKey(PrintPdfOptions.DarkenTextKey), "Darken-text must be written even when it is off.");
+
+                var mockDiscovery = new MockPrinterDiscoveryService(new[] { defaultLaserPrinter }, defaultLaserPrinter);
+                var plan = new PrintPdfUseCase(mockDiscovery).Plan(new ConversionRequest(PrintPdfUseCase.CommandName, new[] { "doc.pdf" }, dict));
+                var planned = PrintPdfOptions.FromDictionary(plan.NormalizedOptions);
+                Assert.True(planned.Orientation == PrintOrientation.Auto, $"Expected Auto, got {planned.Orientation}.");
+                Assert.True(planned.Duplex == PrintDuplexMode.Simplex, $"Expected Simplex, got {planned.Duplex}.");
+                Assert.False(planned.DarkenText, "Expected darken-text to stay off.");
+            }
+            finally
+            {
+                SettingsController.PrintOrientation = origOrientation;
+                SettingsController.PrintDuplex = origDuplex;
+                SettingsController.PrintDarkenText = origDarken;
+            }
+        });
+
         runner.Run("PDF print: use case populates default printer when unspecified", () =>
         {
-            var mockDiscovery = new MockPrinterDiscoveryService(new[] { "Default Laser", "Secondary" }, "Default Laser");
+            var mockDiscovery = new MockPrinterDiscoveryService(new[] { defaultLaserPrinter, "Secondary" }, defaultLaserPrinter);
             var useCase = new PrintPdfUseCase(mockDiscovery);
 
             var plan = useCase.Plan(new ConversionRequest(PrintPdfUseCase.CommandName, new[] { "doc.pdf" }));
             Assert.True(plan.NormalizedOptions.ContainsKey(PrintPdfOptions.PrinterNameKey), "Default printer must be present.");
-            Assert.Equal("Default Laser", plan.NormalizedOptions[PrintPdfOptions.PrinterNameKey]?.ToString() ?? "");
+            Assert.Equal(defaultLaserPrinter, plan.NormalizedOptions[PrintPdfOptions.PrinterNameKey]?.ToString() ?? "");
         });
 
         runner.Run("PDF contrast enhancer: blue pen boost darkens blue ink and bleaches background", () =>
@@ -232,6 +268,33 @@ static partial class TestSuite
                 var orientations = PdfPrintProcessor.ReadPageOrientations(tempPdf, new[] { 1, 2 });
                 Assert.True(orientations[1], "Page 1 should be detected as landscape");
                 Assert.False(orientations[2], "Page 2 should be detected as portrait");
+            }
+            finally
+            {
+                if (File.Exists(tempPdf)) File.Delete(tempPdf);
+            }
+        });
+
+        runner.Run("PDF print: a portrait page rotated 90 degrees prints as landscape at its displayed size", () =>
+        {
+            // Forms exported by iText often store an A4 portrait MediaBox with /Rotate 90.
+            string tempPdf = Path.Combine(Path.GetTempPath(), $"clickra_rotate_test_{Guid.NewGuid():N}.pdf");
+            try
+            {
+                using (var doc = new PdfSharp.Pdf.PdfDocument())
+                {
+                    var page = doc.AddPage();
+                    page.Width = PdfSharp.Drawing.XUnit.FromPoint(595);
+                    page.Height = PdfSharp.Drawing.XUnit.FromPoint(842);
+                    page.Elements.SetInteger("/Rotate", 90);
+                    doc.Save(tempPdf);
+                }
+
+                var dims = PdfPrintProcessor.ReadPageDimensions(tempPdf, new[] { 1 });
+                Assert.True(Math.Abs(dims[1].widthPt - 842) < 1 && Math.Abs(dims[1].heightPt - 595) < 1,
+                    $"Expected the displayed size 842 x 595, got {dims[1].widthPt} x {dims[1].heightPt}.");
+                Assert.True(PdfPrintProcessor.ReadPageOrientations(tempPdf, new[] { 1 })[1],
+                    "A portrait page with /Rotate 90 is displayed, and must print, as landscape.");
             }
             finally
             {

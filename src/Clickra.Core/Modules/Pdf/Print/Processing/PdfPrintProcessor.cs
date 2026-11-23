@@ -226,7 +226,10 @@ public static class PdfPrintProcessor
     }
 
     /// <summary>
-    /// Reads physical page dimensions in points (width, height) accounting for PDF rotation.
+    /// Reads the page size in points (width, height) as the page is displayed. PdfPig already
+    /// applies /Rotate to Page.Width and Page.Height (its page factory transforms the media and
+    /// crop boxes by the rotation), so they are used as they are; swapping them again for a
+    /// 90 or 270 degree page turned landscape pages into portrait ones.
     /// </summary>
     public static Dictionary<int, (float widthPt, float heightPt)> ReadPageDimensions(string pdfPath, IEnumerable<int> pages)
     {
@@ -239,11 +242,7 @@ public static class PdfPrintProcessor
                 if (pageNum >= 1 && pageNum <= doc.NumberOfPages)
                 {
                     var page = doc.GetPage(pageNum);
-                    int rot = page.Rotation.Value;
-                    bool isRotated = rot == 90 || rot == 270;
-                    float visualW = (float)(isRotated ? page.Height : page.Width);
-                    float visualH = (float)(isRotated ? page.Width : page.Height);
-                    result[pageNum] = (visualW, visualH);
+                    result[pageNum] = ((float)page.Width, (float)page.Height);
                 }
             }
         }
