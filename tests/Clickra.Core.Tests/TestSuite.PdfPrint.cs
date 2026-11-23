@@ -31,6 +31,7 @@ static partial class TestSuite
 
     public static void RegisterPdfPrintTests(TestRunner runner)
     {
+        const string defaultLaserPrinter = "Default Laser";
         runner.Run("PDF print: resolve page numbers parses ranges and keywords correctly", () =>
         {
             var pagesAll = PdfPrintProcessor.ResolvePageNumbers("all", 10);
@@ -89,7 +90,6 @@ static partial class TestSuite
                 Assert.True(dict.ContainsKey(PrintPdfOptions.DuplexKey), "Duplex must be written even when it is single-sided.");
                 Assert.True(dict.ContainsKey(PrintPdfOptions.DarkenTextKey), "Darken-text must be written even when it is off.");
 
-                const string defaultLaserPrinter = "Default Laser";
                 var mockDiscovery = new MockPrinterDiscoveryService(new[] { defaultLaserPrinter }, defaultLaserPrinter);
                 var plan = new PrintPdfUseCase(mockDiscovery).Plan(new ConversionRequest(PrintPdfUseCase.CommandName, new[] { "doc.pdf" }, dict));
                 var planned = PrintPdfOptions.FromDictionary(plan.NormalizedOptions);
@@ -107,12 +107,12 @@ static partial class TestSuite
 
         runner.Run("PDF print: use case populates default printer when unspecified", () =>
         {
-            var mockDiscovery = new MockPrinterDiscoveryService(new[] { "Default Laser", "Secondary" }, "Default Laser");
+            var mockDiscovery = new MockPrinterDiscoveryService(new[] { defaultLaserPrinter, "Secondary" }, defaultLaserPrinter);
             var useCase = new PrintPdfUseCase(mockDiscovery);
 
             var plan = useCase.Plan(new ConversionRequest(PrintPdfUseCase.CommandName, new[] { "doc.pdf" }));
             Assert.True(plan.NormalizedOptions.ContainsKey(PrintPdfOptions.PrinterNameKey), "Default printer must be present.");
-            Assert.Equal("Default Laser", plan.NormalizedOptions[PrintPdfOptions.PrinterNameKey]?.ToString() ?? "");
+            Assert.Equal(defaultLaserPrinter, plan.NormalizedOptions[PrintPdfOptions.PrinterNameKey]?.ToString() ?? "");
         });
 
         runner.Run("PDF contrast enhancer: blue pen boost darkens blue ink and bleaches background", () =>
