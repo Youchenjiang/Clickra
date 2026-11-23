@@ -23,35 +23,60 @@ public static class PrintPreviewQuery
 {
     public static PrintPageSizesResult ReadPageSizes(string file, string? pageRange)
     {
-        if (string.IsNullOrWhiteSpace(file) || !System.IO.File.Exists(file))
+        var allPages = ReadAllPageSizes(file);
+        if (allPages.Count == 0)
         {
             return new PrintPageSizesResult(Array.Empty<PrintPageSize>(), 0);
+        }
+
+        List<int> pages = PrintLayoutPlanner.ResolvePageNumbers(pageRange, allPages.Count);
+        var list = new List<PrintPageSize>(pages.Count);
+        foreach (int pageNum in pages)
+        {
+            if (pageNum >= 1 && pageNum <= allPages.Count)
+            {
+                list.Add(allPages[pageNum - 1]);
+            }
+            else
+            {
+                list.Add(new PrintPageSize(pageNum, 595.28f, 841.89f));
+            }
+        }
+
+        return new PrintPageSizesResult(list, allPages.Count);
+    }
+
+    public static IReadOnlyList<PrintPageSize> ReadAllPageSizes(string file)
+    {
+        if (string.IsNullOrWhiteSpace(file) || !System.IO.File.Exists(file))
+        {
+            return Array.Empty<PrintPageSize>();
         }
 
         int totalDocPages = PdfPageCountQuery.Get(file);
         if (totalDocPages <= 0)
         {
-            return new PrintPageSizesResult(Array.Empty<PrintPageSize>(), 0);
+            return Array.Empty<PrintPageSize>();
         }
 
-        List<int> pages = PrintLayoutPlanner.ResolvePageNumbers(pageRange, totalDocPages);
-        var dimensions = Processing.PdfPrintProcessor.ReadPageDimensions(file, pages);
+        var allPageIndices = new List<int>(totalDocPages);
+        for (int i = 1; i <= totalDocPages; i++) allPageIndices.Add(i);
 
-        var list = new List<PrintPageSize>(pages.Count);
-        foreach (int pageNum in pages)
+        var dimensions = Processing.PdfPrintProcessor.ReadPageDimensions(file, allPageIndices);
+        var list = new List<PrintPageSize>(totalDocPages);
+        for (int i = 1; i <= totalDocPages; i++)
         {
-            if (dimensions.TryGetValue(pageNum, out var dim) && dim.widthPt > 0 && dim.heightPt > 0)
+            if (dimensions.TryGetValue(i, out var dim) && dim.widthPt > 0 && dim.heightPt > 0)
             {
-                list.Add(new PrintPageSize(pageNum, dim.widthPt, dim.heightPt));
+                list.Add(new PrintPageSize(i, dim.widthPt, dim.heightPt));
             }
             else
             {
-                // Standard A4 default in points (595.28 x 841.89)
-                list.Add(new PrintPageSize(pageNum, 595.28f, 841.89f));
+                list.Add(new PrintPageSize(i, 595.28f, 841.89f));
             }
         }
 
-        return new PrintPageSizesResult(list, totalDocPages);
+        return list;
     }
 
     public static Bitmap? RenderPage(

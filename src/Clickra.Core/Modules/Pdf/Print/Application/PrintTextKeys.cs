@@ -28,6 +28,8 @@ public static class PrintTextKeys
     public const string PreviewTitle = "ui_print_preview_title";
     public const string PreviewDoubleClick = "ui_print_preview_double_click";
     public const string SheetOf = "ui_print_sheet_of";
+    public const string SheetFrontOf = "ui_print_sheet_front_of";
+    public const string SheetBackOf = "ui_print_sheet_back_of";
     public const string FileOf = "ui_print_file_of";
     public const string PreviousFile = "ui_print_previous_file";
     public const string NextFile = "ui_print_next_file";

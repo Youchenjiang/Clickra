@@ -106,7 +106,14 @@ public static class PdfPrintProcessor
             }
 
             var sheet = sheets[currentSheetIndex];
-            progress?.Invoke(currentSheetIndex + 1, totalSheets, $"Printing sheet {currentSheetIndex + 1} of {totalSheets}...");
+            progress?.Invoke(
+                currentSheetIndex + 1,
+                totalSheets,
+                ExecutionLocalizationOptions.Text(
+                    options.Language ?? "",
+                    "core_print_progress_sheet",
+                    ("current", currentSheetIndex + 1),
+                    ("total", totalSheets)));
 
             RenderAndDrawSheet(e, pdfPath, sheet, defaultFontName, options, portraitWidthPt, portraitHeightPt);
 
@@ -115,7 +122,10 @@ public static class PdfPrintProcessor
         };
 
         printDoc.Print();
-        progress?.Invoke(totalSheets, totalSheets, "Print job sent successfully.");
+        progress?.Invoke(
+            totalSheets,
+            totalSheets,
+            ExecutionLocalizationOptions.Text(options.Language ?? "", "core_print_sent"));
         return true;
     }
 
@@ -242,35 +252,6 @@ public static class PdfPrintProcessor
         }
     }
 
-    /// <summary>
-    /// Preserved for backward compatibility and testing bounds calculations.
-    /// </summary>
-    public static Rectangle CalculateDestinationBounds(
-        Rectangle pageBounds,
-        float pdfPageWidthPt,
-        float pdfPageHeightPt,
-        bool fitToPage)
-    {
-        if (fitToPage)
-        {
-            int margin = (int)Math.Round(Math.Min(pageBounds.Width, pageBounds.Height) * 0.03f);
-            int printAreaW = Math.Max(1, pageBounds.Width - (margin * 2));
-            int printAreaH = Math.Max(1, pageBounds.Height - (margin * 2));
-            float scale = Math.Min((float)printAreaW / pdfPageWidthPt, (float)printAreaH / pdfPageHeightPt);
-            int destW = (int)Math.Round(pdfPageWidthPt * scale);
-            int destH = (int)Math.Round(pdfPageHeightPt * scale);
-            int destX = pageBounds.X + margin + (printAreaW - destW) / 2;
-            int destY = pageBounds.Y + margin + (printAreaH - destH) / 2;
-            return new Rectangle(destX, destY, destW, destH);
-        }
-
-        // 1 pt = 1/72 inch = 100/72 hundredths of an inch in PrintDocument physical coordinates
-        int fallbackW = (int)Math.Round(pdfPageWidthPt * (100f / 72f));
-        int fallbackH = (int)Math.Round(pdfPageHeightPt * (100f / 72f));
-        int fallbackX = pageBounds.X + (pageBounds.Width - fallbackW) / 2;
-        int fallbackY = pageBounds.Y + (pageBounds.Height - fallbackH) / 2;
-        return new Rectangle(fallbackX, fallbackY, fallbackW, fallbackH);
-    }
 
     /// <summary>
     /// Reads the page size in points (width, height) as the page is displayed. PdfPig already

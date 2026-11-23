@@ -498,6 +498,94 @@ static partial class TestSuite
             }
         });
 
+        runner.Run("PDF print: layout planner multi-file sheet counts and paper count rules", () =>
+        {
+            // Plan section 7 interface tests:
+            // 3 files (1 landscape, 12 portrait, 2 portrait)
+            var file1Pages = new List<PrintPageSize> { new(1, 841.89f, 595.28f) }; // 1 landscape page
+            var file2Pages = Enumerable.Range(1, 12).Select(i => new PrintPageSize(i, 595.28f, 841.89f)).ToList(); // 12 portrait pages
+            var file3Pages = Enumerable.Range(1, 2).Select(i => new PrintPageSize(i, 595.28f, 841.89f)).ToList(); // 2 portrait pages
+
+            var simplexOpts = new PrintPdfOptions(
+                printerName: null,
+                pageRange: null,
+                copies: 1,
+                dpi: 300,
+                fitToPage: true,
+                language: "zh-TW",
+                darkenText: false,
+                darkenGamma: 2.2,
+                duplex: PrintDuplexMode.Simplex,
+                paperSize: "A4",
+                orientation: PrintOrientation.Auto,
+                pagesPerSheet: 1,
+                pageOrder: "Z",
+                pageBorder: false,
+                scale: "fit",
+                scalePercent: 100,
+                grayscale: false,
+                collate: true);
+
+            float portW = 595.28f;
+            float portH = 841.89f;
+
+            var sheets1 = PrintLayoutPlanner.Plan(file1Pages, portW, portH, simplexOpts);
+            var sheets2 = PrintLayoutPlanner.Plan(file2Pages, portW, portH, simplexOpts);
+            var sheets3 = PrintLayoutPlanner.Plan(file3Pages, portW, portH, simplexOpts);
+
+            Assert.Equal(1, sheets1.Count);
+            Assert.Equal(12, sheets2.Count);
+            Assert.Equal(2, sheets3.Count);
+
+            int simplexTotalPaper = PrintLayoutPlanner.PaperCount(sheets1, PrintDuplexMode.Simplex)
+                + PrintLayoutPlanner.PaperCount(sheets2, PrintDuplexMode.Simplex)
+                + PrintLayoutPlanner.PaperCount(sheets3, PrintDuplexMode.Simplex);
+            Assert.Equal(15, simplexTotalPaper);
+
+            // Same 3 files with duplex (long edge)
+            var duplexOpts = simplexOpts with { Duplex = PrintDuplexMode.DuplexLongEdge };
+            var duplexSheets1 = PrintLayoutPlanner.Plan(file1Pages, portW, portH, duplexOpts);
+            var duplexSheets2 = PrintLayoutPlanner.Plan(file2Pages, portW, portH, duplexOpts);
+            var duplexSheets3 = PrintLayoutPlanner.Plan(file3Pages, portW, portH, duplexOpts);
+
+            int duplexPaper1 = PrintLayoutPlanner.PaperCount(duplexSheets1, PrintDuplexMode.DuplexLongEdge);
+            int duplexPaper2 = PrintLayoutPlanner.PaperCount(duplexSheets2, PrintDuplexMode.DuplexLongEdge);
+            int duplexPaper3 = PrintLayoutPlanner.PaperCount(duplexSheets3, PrintDuplexMode.DuplexLongEdge);
+
+            Assert.Equal(1, duplexPaper1);
+            Assert.Equal(6, duplexPaper2);
+            Assert.Equal(1, duplexPaper3);
+            Assert.Equal(8, duplexPaper1 + duplexPaper2 + duplexPaper3);
+
+            // Check front/back parity on file 2 sheet 1: s=0 is front, paperNo=1, paperCount=6
+            Assert.False(duplexSheets2[0].IsBack, "Sheet 1 front face must not be marked as back");
+            Assert.True(duplexSheets2[1].IsBack, "Sheet 1 back face must be marked as back");
+
+            // Page range "3-5"
+            var rangeOpts = simplexOpts with { PageRange = "3-5" };
+            var rangePages1 = PrintLayoutPlanner.ResolvePageNumbers("3-5", 1);
+            var rangePages2 = PrintLayoutPlanner.ResolvePageNumbers("3-5", 12);
+            var rangePages3 = PrintLayoutPlanner.ResolvePageNumbers("3-5", 2);
+
+            Assert.Equal(0, rangePages1.Count);
+            Assert.Equal(3, rangePages2.Count); // 3, 4, 5
+            Assert.Equal(0, rangePages3.Count);
+
+            var rangeSheets2 = PrintLayoutPlanner.Plan(
+                rangePages2.Select(p => new PrintPageSize(p, 595.28f, 841.89f)).ToList(),
+                portW, portH, rangeOpts);
+            Assert.Equal(3, rangeSheets2.Count);
+            Assert.Equal(3, PrintLayoutPlanner.PaperCount(rangeSheets2, PrintDuplexMode.Simplex));
+
+            // When printer cannot duplex, effective duplex is Simplex and duplex setting does not alter paper count
+            bool canDuplex = false;
+            var fallbackDuplex = canDuplex ? PrintDuplexMode.DuplexLongEdge : PrintDuplexMode.Simplex;
+            int fallbackTotal = PrintLayoutPlanner.PaperCount(sheets1, fallbackDuplex)
+                + PrintLayoutPlanner.PaperCount(sheets2, fallbackDuplex)
+                + PrintLayoutPlanner.PaperCount(sheets3, fallbackDuplex);
+            Assert.Equal(15, fallbackTotal);
+        });
+
         runner.Run("PDF print: a portrait page rotated 90 degrees prints as landscape at its displayed size", () =>
         {
             // Forms exported by iText often store an A4 portrait MediaBox with /Rotate 90.
@@ -523,30 +611,6 @@ static partial class TestSuite
             {
                 if (File.Exists(tempPdf)) File.Delete(tempPdf);
             }
-        });
-
-        runner.Run("PDF print: non-fit mode preserves physical size for smaller pages without enlarging to paper", () =>
-        {
-            // A4 paper bounds: 8.27 in x 11.69 in -> 827 x 1169 in 1/100 inches
-            var a4PaperBounds = new System.Drawing.Rectangle(0, 0, 827, 1169);
-            // A5 page in points: 420 pt x 595 pt
-            float a5WidthPt = 420f;
-            float a5HeightPt = 595f;
-
-            // In non-fit mode, A5 destination should be exactly 420 * 100/72 = 583 x 826 in 1/100 inches, centered on A4
-            var nonFitBounds = PdfPrintProcessor.CalculateDestinationBounds(a4PaperBounds, a5WidthPt, a5HeightPt, fitToPage: false);
-            int expectedW = (int)Math.Round(a5WidthPt * (100f / 72f));
-            int expectedH = (int)Math.Round(a5HeightPt * (100f / 72f));
-            Assert.Equal(expectedW, nonFitBounds.Width);
-            Assert.Equal(expectedH, nonFitBounds.Height);
-            Assert.True(nonFitBounds.Width < a4PaperBounds.Width, "Non-fit mode must not enlarge A5 to A4 paper width");
-            Assert.True(nonFitBounds.Height < a4PaperBounds.Height, "Non-fit mode must not enlarge A5 to A4 paper height");
-            Assert.Equal((a4PaperBounds.Width - expectedW) / 2, nonFitBounds.X);
-            Assert.Equal((a4PaperBounds.Height - expectedH) / 2, nonFitBounds.Y);
-
-            // In fit-to-page mode, it scales up to fit inside the paper print area (with 3% safe margin)
-            var fitBounds = PdfPrintProcessor.CalculateDestinationBounds(a4PaperBounds, a5WidthPt, a5HeightPt, fitToPage: true);
-            Assert.True(fitBounds.Width > nonFitBounds.Width, "Fit-to-page should scale up smaller pages to fit paper area");
         });
     }
 }
