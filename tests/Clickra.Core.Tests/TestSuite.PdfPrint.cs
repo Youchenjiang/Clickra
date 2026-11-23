@@ -257,6 +257,33 @@ static partial class TestSuite
             }
         });
 
+        runner.Run("PDF print: a portrait page rotated 90 degrees prints as landscape at its displayed size", () =>
+        {
+            // Forms exported by iText often store an A4 portrait MediaBox with /Rotate 90.
+            string tempPdf = Path.Combine(Path.GetTempPath(), $"clickra_rotate_test_{Guid.NewGuid():N}.pdf");
+            try
+            {
+                using (var doc = new PdfSharp.Pdf.PdfDocument())
+                {
+                    var page = doc.AddPage();
+                    page.Width = PdfSharp.Drawing.XUnit.FromPoint(595);
+                    page.Height = PdfSharp.Drawing.XUnit.FromPoint(842);
+                    page.Elements.SetInteger("/Rotate", 90);
+                    doc.Save(tempPdf);
+                }
+
+                var dims = PdfPrintProcessor.ReadPageDimensions(tempPdf, new[] { 1 });
+                Assert.True(Math.Abs(dims[1].widthPt - 842) < 1 && Math.Abs(dims[1].heightPt - 595) < 1,
+                    $"Expected the displayed size 842 x 595, got {dims[1].widthPt} x {dims[1].heightPt}.");
+                Assert.True(PdfPrintProcessor.ReadPageOrientations(tempPdf, new[] { 1 })[1],
+                    "A portrait page with /Rotate 90 is displayed, and must print, as landscape.");
+            }
+            finally
+            {
+                if (File.Exists(tempPdf)) File.Delete(tempPdf);
+            }
+        });
+
         runner.Run("PDF print: non-fit mode preserves physical size for smaller pages without enlarging to paper", () =>
         {
             // A4 paper bounds: 8.27 in x 11.69 in -> 827 x 1169 in 1/100 inches

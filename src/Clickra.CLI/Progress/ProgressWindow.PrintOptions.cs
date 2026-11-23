@@ -176,10 +176,9 @@ public partial class ProgressWindow
             using var doc = PdfDocument.Open(_files[0]);
             totalPages = Math.Max(1, doc.NumberOfPages);
             var p1 = doc.GetPage(1);
-            int rot1 = p1.Rotation.Value;
-            bool isRotated = rot1 == 90 || rot1 == 270;
-            _pdfPageWidthPt = (float)(isRotated ? p1.Height : p1.Width);
-            _pdfPageHeightPt = (float)(isRotated ? p1.Width : p1.Height);
+            // PdfPig's Width and Height already include /Rotate (see PdfPrintProcessor.ReadPageDimensions).
+            _pdfPageWidthPt = (float)p1.Width;
+            _pdfPageHeightPt = (float)p1.Height;
         }
         catch
         {
@@ -240,10 +239,9 @@ public partial class ProgressWindow
         if (page >= 1 && page <= doc.NumberOfPages)
         {
             var p = doc.GetPage(page);
-            int rot = p.Rotation.Value;
-            bool isRotated = rot == 90 || rot == 270;
-            _pdfPageWidthPt = (float)(isRotated ? p.Height : p.Width);
-            _pdfPageHeightPt = (float)(isRotated ? p.Width : p.Height);
+            // PdfPig's Width and Height already include /Rotate (see PdfPrintProcessor.ReadPageDimensions).
+            _pdfPageWidthPt = (float)p.Width;
+            _pdfPageHeightPt = (float)p.Height;
         }
     }
 
