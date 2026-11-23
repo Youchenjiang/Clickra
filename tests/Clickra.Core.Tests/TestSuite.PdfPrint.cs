@@ -69,6 +69,24 @@ static partial class TestSuite
             Assert.False(resInvalid.IsValid, "Expected uninstalled printer to fail validation.");
         });
 
+        runner.Run("PDF print: choices passed explicitly are not replaced by the saved defaults", () =>
+        {
+            // The classic print dialog shows Auto / single-sided / no darkening; whatever the saved
+            // defaults say, those on-screen choices must be what gets printed.
+            var shown = PrintPdfOptions.FromDictionary(new Dictionary<string, object>());
+            var dict = shown.ToExplicitDictionary();
+            Assert.True(dict.ContainsKey(PrintPdfOptions.OrientationKey), "Orientation must be written even when it is Auto.");
+            Assert.True(dict.ContainsKey(PrintPdfOptions.DuplexKey), "Duplex must be written even when it is single-sided.");
+            Assert.True(dict.ContainsKey(PrintPdfOptions.DarkenTextKey), "Darken-text must be written even when it is off.");
+
+            var mockDiscovery = new MockPrinterDiscoveryService(new[] { "Default Laser" }, "Default Laser");
+            var plan = new PrintPdfUseCase(mockDiscovery).Plan(new ConversionRequest(PrintPdfUseCase.CommandName, new[] { "doc.pdf" }, dict));
+            var planned = PrintPdfOptions.FromDictionary(plan.NormalizedOptions);
+            Assert.True(planned.Orientation == PrintOrientation.Auto, $"Expected Auto, got {planned.Orientation}.");
+            Assert.True(planned.Duplex == PrintDuplexMode.Simplex, $"Expected Simplex, got {planned.Duplex}.");
+            Assert.False(planned.DarkenText, "Expected darken-text to stay off.");
+        });
+
         runner.Run("PDF print: use case populates default printer when unspecified", () =>
         {
             var mockDiscovery = new MockPrinterDiscoveryService(new[] { "Default Laser", "Secondary" }, "Default Laser");

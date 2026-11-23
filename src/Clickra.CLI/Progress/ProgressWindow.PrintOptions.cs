@@ -1220,7 +1220,7 @@ public partial class ProgressWindow
             2.2,
             duplexMode,
             selectedPaper,
-            _printOrientation).ToDictionary();
+            _printOrientation).ToExplicitDictionary();
 
         ResolvePrintDecision(true);
         _isPromptingPrintOptions = false;
