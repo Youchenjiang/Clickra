@@ -219,6 +219,60 @@ static partial class TestSuite
             Assert.Equal(0, file3Pages.Count);
         });
 
+        runner.Run("PDF print preview: PrintPreviewQuery resolves page sizes and total count", () =>
+        {
+            string tempPdf = Path.Combine(Path.GetTempPath(), $"clickra_preview_query_{Guid.NewGuid():N}.pdf");
+            try
+            {
+                using (var doc = new PdfSharp.Pdf.PdfDocument())
+                {
+                    var p1 = doc.AddPage();
+                    p1.Width = PdfSharp.Drawing.XUnit.FromPoint(400);
+                    p1.Height = PdfSharp.Drawing.XUnit.FromPoint(600);
+
+                    var p2 = doc.AddPage();
+                    p2.Width = PdfSharp.Drawing.XUnit.FromPoint(500);
+                    p2.Height = PdfSharp.Drawing.XUnit.FromPoint(700);
+
+                    doc.Save(tempPdf);
+                }
+
+                var (pages, total) = PrintPreviewQuery.ReadPageSizes(tempPdf, "2");
+                Assert.Equal(2, total);
+                Assert.Equal(1, pages.Count);
+                Assert.Equal(2, pages[0].PageNumber);
+                Assert.True(Math.Abs(pages[0].WidthPt - 500f) < 1f, "Width mismatch.");
+                Assert.True(Math.Abs(pages[0].HeightPt - 700f) < 1f, "Height mismatch.");
+            }
+            finally
+            {
+                if (File.Exists(tempPdf)) File.Delete(tempPdf);
+            }
+        });
+
+        runner.Run("PDF print preview: RenderPage produces bitmap and applies grayscale enhancement", () =>
+        {
+            string tempPdf = Path.Combine(Path.GetTempPath(), $"clickra_render_query_{Guid.NewGuid():N}.pdf");
+            try
+            {
+                using (var doc = new PdfSharp.Pdf.PdfDocument())
+                {
+                    var p1 = doc.AddPage();
+                    p1.Width = PdfSharp.Drawing.XUnit.FromPoint(300);
+                    p1.Height = PdfSharp.Drawing.XUnit.FromPoint(300);
+                    doc.Save(tempPdf);
+                }
+
+                using var bmp = PrintPreviewQuery.RenderPage(tempPdf, 1, 100, darken: true, grayscale: true);
+                Assert.True(bmp != null, "RenderPage must produce a bitmap.");
+                Assert.True(bmp?.Width > 0 && bmp?.Height > 0, "Rendered bitmap must have positive dimensions.");
+            }
+            finally
+            {
+                if (File.Exists(tempPdf)) File.Delete(tempPdf);
+            }
+        });
+
         runner.Run("PDF print: use case validates installed printers and rejects invalid ones", () =>
         {
             var mockDiscovery = new MockPrinterDiscoveryService(new[] { "HP OfficeJet", "PDF Writer" }, "HP OfficeJet");

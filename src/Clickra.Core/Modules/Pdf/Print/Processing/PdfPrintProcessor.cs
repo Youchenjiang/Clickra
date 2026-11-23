@@ -9,8 +9,8 @@ namespace Clickra.Core.Modules.Pdf.Print.Processing;
 
 /// <summary>
 /// Direct streaming PDF printer: renders PDF pages on-the-fly and sends them to the Windows
-/// Print Spooler via GDI+ PrintDocument. Avoids creating intermediate disk files and releases
-/// each rendered bitmap immediately after drawing to minimize memory consumption.
+/// Print Spooler via GDI+ PrintDocument. Page placement, multi-page grids, and sheet orientations
+/// are strictly calculated by PrintLayoutPlanner.
 /// </summary>
 public static class PdfPrintProcessor
 {
@@ -38,32 +38,55 @@ public static class PdfPrintProcessor
         };
 
         string effectiveLang = !string.IsNullOrWhiteSpace(options.Language) ? options.Language : "en";
-        string defaultFontName = PdfPageThumbnailRenderer.GetTextFontName(effectiveLang);
+        string defaultFontName = LocalizedUiFontSelector.GetTextFontName(effectiveLang);
+
+        ConfigurePrinter(printDoc, options);
+
+        PaperSize paper = printDoc.DefaultPageSettings.PaperSize;
+        float paperWidthHundredths = paper.Width > 0 ? paper.Width : 827;
+        float paperHeightHundredths = paper.Height > 0 ? paper.Height : 1169;
+        float portraitWidthPt = Math.Min(paperWidthHundredths, paperHeightHundredths) * 0.72f;
+        float portraitHeightPt = Math.Max(paperWidthHundredths, paperHeightHundredths) * 0.72f;
 
         var pageDimensions = ReadPageDimensions(pdfPath, pagesToPrint);
-        Dictionary<int, bool> pageOrientations = pageDimensions.ToDictionary(
-            kvp => kvp.Key,
-            kvp => kvp.Value.widthPt > kvp.Value.heightPt);
-        bool firstPageLandscape = pagesToPrint.Count > 0 &&
-                                  pageOrientations.TryGetValue(pagesToPrint[0], out bool fl) && fl;
+        var pageSizes = new List<PrintPageSize>(pagesToPrint.Count);
+        foreach (int pageNum in pagesToPrint)
+        {
+            if (pageDimensions.TryGetValue(pageNum, out var dim) && dim.widthPt > 0 && dim.heightPt > 0)
+            {
+                pageSizes.Add(new PrintPageSize(pageNum, dim.widthPt, dim.heightPt));
+            }
+            else
+            {
+                pageSizes.Add(new PrintPageSize(pageNum, 595.28f, 841.89f));
+            }
+        }
 
-        ConfigurePrinter(printDoc, options, firstPageLandscape);
+        var sheets = PrintLayoutPlanner.Plan(pageSizes, portraitWidthPt, portraitHeightPt, options);
+        if (sheets.Count == 0)
+        {
+            return true;
+        }
 
-        int currentIndex = 0;
-        int totalPrintCount = pagesToPrint.Count;
+        printDoc.DefaultPageSettings.Landscape = sheets[0].Landscape;
+        if (options.Grayscale)
+        {
+            printDoc.DefaultPageSettings.Color = false;
+        }
+
+        int currentSheetIndex = 0;
+        int totalSheets = sheets.Count;
 
         printDoc.QueryPageSettings += (sender, e) =>
         {
-            if (currentIndex < totalPrintCount)
+            if (currentSheetIndex < totalSheets)
             {
-                int pageNum = pagesToPrint[currentIndex];
-                bool isLandscape = options.Orientation switch
+                var sheet = sheets[currentSheetIndex];
+                e.PageSettings.Landscape = sheet.Landscape;
+                if (options.Grayscale)
                 {
-                    PrintOrientation.Landscape => true,
-                    PrintOrientation.Portrait => false,
-                    _ => pageOrientations.TryGetValue(pageNum, out bool l) && l
-                };
-                e.PageSettings.Landscape = isLandscape;
+                    e.PageSettings.Color = false;
+                }
             }
         };
 
@@ -76,27 +99,27 @@ public static class PdfPrintProcessor
                 return;
             }
 
-            if (currentIndex >= totalPrintCount)
+            if (currentSheetIndex >= totalSheets)
             {
                 e.HasMorePages = false;
                 return;
             }
 
-            int pageNum = pagesToPrint[currentIndex];
-            progress?.Invoke(currentIndex + 1, totalPrintCount, $"Printing page {pageNum} of {totalDocPages}...");
+            var sheet = sheets[currentSheetIndex];
+            progress?.Invoke(currentSheetIndex + 1, totalSheets, $"Printing sheet {currentSheetIndex + 1} of {totalSheets}...");
 
-            RenderAndDrawPage(e, pdfPath, pageNum, defaultFontName, options, pageDimensions);
+            RenderAndDrawSheet(e, pdfPath, sheet, defaultFontName, options, portraitWidthPt, portraitHeightPt);
 
-            currentIndex++;
-            e.HasMorePages = currentIndex < totalPrintCount;
+            currentSheetIndex++;
+            e.HasMorePages = currentSheetIndex < totalSheets;
         };
 
         printDoc.Print();
-        progress?.Invoke(totalPrintCount, totalPrintCount, "Print job sent successfully.");
+        progress?.Invoke(totalSheets, totalSheets, "Print job sent successfully.");
         return true;
     }
 
-    private static void ConfigurePrinter(PrintDocument printDoc, PrintPdfOptions options, bool firstPageLandscape)
+    private static void ConfigurePrinter(PrintDocument printDoc, PrintPdfOptions options)
     {
         if (!string.IsNullOrWhiteSpace(options.PrinterName))
         {
@@ -109,6 +132,7 @@ public static class PdfPrintProcessor
         }
 
         printDoc.PrinterSettings.Copies = (short)Math.Clamp(options.Copies, 1, 999);
+        printDoc.PrinterSettings.Collate = options.Collate;
         printDoc.PrintController = new StandardPrintController(); // Suppress the default WinForms printing status dialog
 
         if (printDoc.PrinterSettings.CanDuplex)
@@ -126,14 +150,6 @@ public static class PdfPrintProcessor
         {
             printDoc.DefaultPageSettings.PaperSize = targetPaper;
         }
-
-        bool isLandscape = options.Orientation switch
-        {
-            PrintOrientation.Landscape => true,
-            PrintOrientation.Portrait => false,
-            _ => firstPageLandscape
-        };
-        printDoc.DefaultPageSettings.Landscape = isLandscape;
 
         printDoc.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
         printDoc.OriginAtMargins = false;
@@ -163,6 +179,72 @@ public static class PdfPrintProcessor
         return null;
     }
 
+    private static void RenderAndDrawSheet(
+        PrintPageEventArgs e,
+        string pdfPath,
+        PrintSheet sheet,
+        string defaultFontName,
+        PrintPdfOptions options,
+        float portraitWidthPt,
+        float portraitHeightPt)
+    {
+        if (e.Graphics == null) return;
+
+        float sheetWidthPt = sheet.Landscape ? portraitHeightPt : portraitWidthPt;
+        float sheetHeightPt = sheet.Landscape ? portraitWidthPt : portraitHeightPt;
+
+        Rectangle pageBounds = e.PageBounds;
+        float scaleX = sheetWidthPt > 0 ? (float)pageBounds.Width / sheetWidthPt : 1f;
+        float scaleY = sheetHeightPt > 0 ? (float)pageBounds.Height / sheetHeightPt : 1f;
+
+        float toGdiX(float xPt) => pageBounds.X + (xPt * scaleX);
+        float toGdiY(float yPt) => pageBounds.Y + (yPt * scaleY);
+        float toGdiW(float wPt) => wPt * scaleX;
+        float toGdiH(float hPt) => hPt * scaleY;
+
+        foreach (var cell in sheet.Cells)
+        {
+            int renderWidth = (int)Math.Round((cell.Page.Width / 72f) * options.Dpi);
+            renderWidth = Math.Max(100, renderWidth);
+
+            using Bitmap? pageBmp = PdfPageThumbnailRenderer.RenderPageFromFile(pdfPath, cell.PageNumber, renderWidth, defaultFontName);
+            if (pageBmp == null) continue;
+
+            if (options.DarkenText)
+            {
+                PdfContrastEnhancer.Enhance(pageBmp, options.DarkenGamma);
+            }
+
+            if (options.Grayscale)
+            {
+                PdfContrastEnhancer.ConvertToGrayscale(pageBmp);
+            }
+
+            var gdiCell = new RectangleF(toGdiX(cell.Cell.X), toGdiY(cell.Cell.Y), toGdiW(cell.Cell.Width), toGdiH(cell.Cell.Height));
+            var gdiPage = new RectangleF(toGdiX(cell.Page.X), toGdiY(cell.Page.Y), toGdiW(cell.Page.Width), toGdiH(cell.Page.Height));
+
+            var state = e.Graphics.Save();
+            try
+            {
+                e.Graphics.SetClip(gdiCell);
+                e.Graphics.DrawImage(pageBmp, gdiPage);
+
+                if (options.PageBorder && options.PagesPerSheet >= 2)
+                {
+                    using var borderPen = new Pen(Color.FromArgb(180, 180, 180), Math.Max(0.5f, 0.5f * scaleX));
+                    e.Graphics.DrawRectangle(borderPen, gdiPage.X, gdiPage.Y, gdiPage.Width, gdiPage.Height);
+                }
+            }
+            finally
+            {
+                e.Graphics.Restore(state);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Preserved for backward compatibility and testing bounds calculations.
+    /// </summary>
     public static Rectangle CalculateDestinationBounds(
         Rectangle pageBounds,
         float pdfPageWidthPt,
@@ -190,46 +272,10 @@ public static class PdfPrintProcessor
         return new Rectangle(fallbackX, fallbackY, fallbackW, fallbackH);
     }
 
-    private static void RenderAndDrawPage(
-        PrintPageEventArgs e,
-        string pdfPath,
-        int pageNum,
-        string defaultFontName,
-        PrintPdfOptions options,
-        Dictionary<int, (float widthPt, float heightPt)>? pageDimensions = null)
-    {
-        Rectangle pageBounds = e.PageBounds;
-        float pdfW = pageBounds.Width / 100f * 72f;
-        float pdfH = pageBounds.Height / 100f * 72f;
-        if (pageDimensions is not null && pageDimensions.TryGetValue(pageNum, out var dim) && dim.widthPt > 0 && dim.heightPt > 0)
-        {
-            pdfW = dim.widthPt;
-            pdfH = dim.heightPt;
-        }
-
-        Rectangle destRect = CalculateDestinationBounds(pageBounds, pdfW, pdfH, options.FitToPage);
-
-        int renderWidth = options.FitToPage
-            ? (int)Math.Round((destRect.Width / 100f) * options.Dpi)
-            : (int)Math.Round((pdfW / 72f) * options.Dpi);
-        renderWidth = Math.Max(100, renderWidth);
-
-        using Bitmap? pageBmp = PdfPageThumbnailRenderer.RenderPageFromFile(pdfPath, pageNum, renderWidth, defaultFontName);
-        if (pageBmp == null) return;
-
-        if (options.DarkenText)
-        {
-            PdfContrastEnhancer.Enhance(pageBmp, options.DarkenGamma);
-        }
-
-        e.Graphics?.DrawImage(pageBmp, destRect);
-    }
-
     /// <summary>
     /// Reads the page size in points (width, height) as the page is displayed. PdfPig already
     /// applies /Rotate to Page.Width and Page.Height (its page factory transforms the media and
-    /// crop boxes by the rotation), so they are used as they are; swapping them again for a
-    /// 90 or 270 degree page turned landscape pages into portrait ones.
+    /// crop boxes by the rotation), so they are used as they are.
     /// </summary>
     public static Dictionary<int, (float widthPt, float heightPt)> ReadPageDimensions(string pdfPath, IEnumerable<int> pages)
     {
