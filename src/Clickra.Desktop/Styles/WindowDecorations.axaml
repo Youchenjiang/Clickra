@@ -86,9 +86,8 @@
                 <Button x:Name="PART_MinimizeButton"
                         Theme="{StaticResource Clk.CaptionButton}"
                         WindowDecorationProperties.ElementRole="MinimizeButton">
-                  <Path Data="M2048 1229v-205h-2048v205h2048z"
-                        Width="10" Height="10" Stretch="Uniform"
-                        Fill="{Binding $parent[Button].Foreground}" />
+                  <Rectangle Width="10" Height="1"
+                             Fill="{Binding $parent[Button].Foreground}" />
                 </Button>
                 <Button x:Name="PART_MaximizeButton"
                         Theme="{StaticResource Clk.CaptionButton}"
