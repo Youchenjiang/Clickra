@@ -41,25 +41,77 @@ public sealed class SystemPrinterDiscoveryService : IPrinterDiscoveryService
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, IReadOnlyList<string>> PaperSizesCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> DuplexCache = new(StringComparer.OrdinalIgnoreCase);
 
+    private static volatile IReadOnlyList<string>? _installedPrintersCache;
+    private static volatile string? _defaultPrinterCache;
+    private static readonly object SyncLock = new();
+    private static DateTime _lastRefreshUtc = DateTime.MinValue;
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(60);
+
+    public static bool HasCache => _installedPrintersCache != null && (DateTime.UtcNow - _lastRefreshUtc) < CacheTtl;
+
+    public static void WarmUp()
+    {
+        System.Threading.Tasks.Task.Run(() =>
+        {
+            try
+            {
+                var service = new SystemPrinterDiscoveryService();
+                var printers = service.GetInstalledPrinters();
+                var def = service.GetDefaultPrinter();
+                if (!string.IsNullOrEmpty(def))
+                {
+                    service.CanDuplex(def);
+                    service.GetSupportedPaperSizes(def);
+                }
+            }
+            catch
+            {
+                // Best effort background warm-up
+            }
+        });
+    }
+
     public IReadOnlyList<string> GetInstalledPrinters()
     {
-        var list = new List<string>();
-        foreach (string printer in PrinterSettings.InstalledPrinters)
+        if (_installedPrintersCache != null && (DateTime.UtcNow - _lastRefreshUtc) < CacheTtl)
         {
-            if (!string.IsNullOrWhiteSpace(printer))
-            {
-                list.Add(printer);
-            }
+            return _installedPrintersCache;
         }
-        return list;
+
+        lock (SyncLock)
+        {
+            if (_installedPrintersCache != null && (DateTime.UtcNow - _lastRefreshUtc) < CacheTtl)
+            {
+                return _installedPrintersCache;
+            }
+
+            var list = new List<string>();
+            foreach (string printer in PrinterSettings.InstalledPrinters)
+            {
+                if (!string.IsNullOrWhiteSpace(printer))
+                {
+                    list.Add(printer);
+                }
+            }
+            _installedPrintersCache = list;
+            _lastRefreshUtc = DateTime.UtcNow;
+            return list;
+        }
     }
 
     public string? GetDefaultPrinter()
     {
+        if (_defaultPrinterCache != null && (DateTime.UtcNow - _lastRefreshUtc) < CacheTtl)
+        {
+            return _defaultPrinterCache;
+        }
+
         try
         {
             var settings = new PrinterSettings();
-            return settings.IsValid ? settings.PrinterName : null;
+            string? name = settings.IsValid ? settings.PrinterName : null;
+            _defaultPrinterCache = name;
+            return name;
         }
         catch
         {
@@ -71,7 +123,8 @@ public sealed class SystemPrinterDiscoveryService : IPrinterDiscoveryService
     {
         if (string.IsNullOrWhiteSpace(printerName)) return false;
 
-        foreach (string printer in PrinterSettings.InstalledPrinters)
+        var installed = GetInstalledPrinters();
+        foreach (string printer in installed)
         {
             if (string.Equals(printer, printerName, StringComparison.OrdinalIgnoreCase))
             {
