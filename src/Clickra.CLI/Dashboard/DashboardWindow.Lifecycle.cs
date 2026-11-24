@@ -26,7 +26,7 @@ namespace Clickra.UI
                 }
             }
 
-            bool createdNew;
+            bool createdNew = false;
             _mutex = new System.Threading.Mutex(true, "Global\\Clickra_Dashboard_Mutex", out createdNew);
             if (!createdNew)
             {
