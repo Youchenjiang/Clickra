@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using Clickra.Core.Modules.Sys.HistoryTasks.Application;
@@ -220,10 +221,30 @@ public sealed class HistoryFeed
         foreach (var task in HistoryQueryController.GetParked())
             items.Add(new HistoryItem(HistoryItemKind.Parked, task, HistoryQueryController.GetParkedRetention(task.Id), language));
 
+        var completed = new List<HistoryItem>();
         foreach (var entry in HistoryQueryController.GetCompleted(completedLimit))
-            items.Add(new HistoryItem(HistoryItemKind.Completed, entry, null, language));
+            completed.Add(new HistoryItem(HistoryItemKind.Completed, entry, null, language));
+
+        completed.Sort((a, b) =>
+        {
+            DateTime timeA = ParseEntryTime(a.Entry);
+            DateTime timeB = ParseEntryTime(b.Entry);
+            int comp = timeB.CompareTo(timeA);
+            return comp != 0 ? comp : string.CompareOrdinal(b.Entry.Id, a.Entry.Id);
+        });
+
+        items.AddRange(completed);
 
         return new HistoryFeed(items.ToArray());
+    }
+
+    private static DateTime ParseEntryTime(HistoryQueryRecord entry)
+    {
+        if (DateTime.TryParse(entry.Time, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var dt))
+            return dt;
+        if (DateTime.TryParse(entry.EndTime, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var et))
+            return et;
+        return DateTime.MinValue;
     }
 
     /// <summary>指定種類的項目，維持顯示順序。</summary>
