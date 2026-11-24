@@ -822,6 +822,7 @@
   "ui_print_choose_a_printer_first": "先选择打印机",
   "ui_print_copies": "份数",
   "ui_print_darken_light_text": "加深浅色文字",
+  "ui_print_fit_to_paper": "缩放到纸张大小",
   "ui_print_pages": "页面",
   "ui_print_all_pages": "全部页面",
   "ui_print_paper": "纸张",

@@ -822,6 +822,7 @@
   "ui_print_choose_a_printer_first": "먼저 프린터를 선택하세요",
   "ui_print_copies": "매수",
   "ui_print_darken_light_text": "흐린 텍스트 진하게",
+  "ui_print_fit_to_paper": "용지에 맞춤",
   "ui_print_pages": "페이지",
   "ui_print_all_pages": "모든 페이지",
   "ui_print_paper": "용지",

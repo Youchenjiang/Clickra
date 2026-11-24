@@ -822,6 +822,7 @@
   "ui_print_choose_a_printer_first": "先にプリンターを選択してください",
   "ui_print_copies": "部数",
   "ui_print_darken_light_text": "薄い文字を濃くする",
+  "ui_print_fit_to_paper": "用紙サイズに合わせる",
   "ui_print_pages": "ページ",
   "ui_print_all_pages": "すべてのページ",
   "ui_print_paper": "用紙",
