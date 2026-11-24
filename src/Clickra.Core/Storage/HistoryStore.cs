@@ -18,7 +18,7 @@ internal static class HistoryStore
                 try
                 {
                     string[] lines = File.ReadAllLines(StorageRuntime.HistoryFilePath);
-                    int start = Math.Max(0, lines.Length - limit);
+                    int start = limit <= 0 ? 0 : Math.Max(0, lines.Length - limit);
                     for (int index = lines.Length - 1; index >= start; index--)
                     {
                         if (TryParseEntry(lines[index], out HistoryEntry entry))

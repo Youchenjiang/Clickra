@@ -222,7 +222,7 @@ public sealed class HistoryFeed
             items.Add(new HistoryItem(HistoryItemKind.Parked, task, HistoryQueryController.GetParkedRetention(task.Id), language));
 
         var completed = new List<HistoryItem>();
-        foreach (var entry in HistoryQueryController.GetCompleted(completedLimit))
+        foreach (var entry in HistoryQueryController.GetCompleted(0))
             completed.Add(new HistoryItem(HistoryItemKind.Completed, entry, null, language));
 
         completed.Sort((a, b) =>
@@ -232,6 +232,11 @@ public sealed class HistoryFeed
             int comp = timeB.CompareTo(timeA);
             return comp != 0 ? comp : string.CompareOrdinal(b.Entry.Id, a.Entry.Id);
         });
+
+        if (completedLimit > 0 && completed.Count > completedLimit)
+        {
+            completed.RemoveRange(completedLimit, completed.Count - completedLimit);
+        }
 
         items.AddRange(completed);
 
