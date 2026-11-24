@@ -130,6 +130,7 @@ namespace Clickra.UI.Native
         [DllImport("shell32.dll", EntryPoint = "Shell_NotifyIconW", CharSet = CharSet.Unicode)] public static extern bool Shell_NotifyIcon(uint dwMessage, ref NOTIFYICONDATAW lpData);
         [DllImport("shell32.dll", EntryPoint = "ExtractIconW", CharSet = CharSet.Unicode)] public static extern IntPtr ExtractIcon(IntPtr h, string path, int idx);
         [DllImport("shell32.dll")] public static extern void DragAcceptFiles(IntPtr hwnd, bool accept);
+        [DllImport("user32.dll", SetLastError = true)] public static extern bool ChangeWindowMessageFilterEx(IntPtr hWnd, uint msg, uint action, IntPtr pChangeFilterStruct);
         [DllImport("shell32.dll", CharSet = CharSet.Unicode)] public static extern uint DragQueryFileW(IntPtr hDrop, uint iFile, IntPtr lpszFile, uint cch);
         [DllImport("shell32.dll")] public static extern void DragFinish(IntPtr hDrop);
         [DllImport("shell32.dll", EntryPoint = "SHBrowseForFolderW", CharSet = CharSet.Unicode)] public static extern IntPtr SHBrowseForFolder(ref BROWSEINFO lpbi);
@@ -148,6 +149,14 @@ namespace Clickra.UI.Native
         public const uint WS_OVERLAPPED_FIXED = (0x00CF0000 | 0x02000000) & ~0x00040000u & ~0x00010000u;
         /// <summary>DWM attribute identifier for immersive dark mode.</summary>
         public const int DWMWA_DARK_MODE = 20;
+        /// <summary>Action flag to allow message through UIPI filter.</summary>
+        public const uint MSGFLT_ALLOW = 1;
+        /// <summary>Window message for global memory copy across processes.</summary>
+        public const uint WM_COPYGLOBALDATA = 0x0049;
+        /// <summary>Window message for data copy across processes.</summary>
+        public const uint WM_COPYDATA = 0x004A;
+        /// <summary>Window message for dropped files.</summary>
+        public const uint WM_DROPFILES = 0x0233;
         /// <summary>Requests the system default window position or dimension.</summary>
         public const int CW_USEDEFAULT = unchecked((int)0x80000000);
         /// <summary>Application message emitted by the notification-area icon.</summary>
