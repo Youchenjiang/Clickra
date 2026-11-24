@@ -178,6 +178,13 @@ public sealed class HistoryViewModel : HistoryRowHostBase
         foreach (var item in active) ActiveRows.Add(new HistoryRowViewModel(item, this));
         foreach (var item in parked) ParkedRows.Add(new HistoryRowViewModel(item, this));
         foreach (var item in completed) _completed.Add(new HistoryRowViewModel(item, this));
+        _completed.Sort((a, b) =>
+        {
+            DateTime timeA = a.Started ?? a.Finished ?? DateTime.MinValue;
+            DateTime timeB = b.Started ?? b.Finished ?? DateTime.MinValue;
+            int comp = timeB.CompareTo(timeA);
+            return comp != 0 ? comp : string.CompareOrdinal(b.Id, a.Id);
+        });
         OnSessionChanged(null, EventArgs.Empty);
 
         if (keepExpanded is not null)
