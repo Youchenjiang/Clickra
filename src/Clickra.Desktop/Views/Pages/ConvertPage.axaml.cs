@@ -441,7 +441,16 @@ public partial class ConvertPage : UserControl
 
     private void OnDragEnter(object? sender, DragEventArgs e)
     {
-        if (GetViewModel() is not { IsExecuting: false } vm) return;
+        if (GetViewModel() is not { IsExecuting: false } vm)
+        {
+            e.DragEffects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        e.DragEffects = DragDropEffects.Copy;
+        e.Handled = true;
+
         List<string> paths = e.DataTransfer.TryGetFiles()?.Select(f => f.Path.LocalPath).ToList() ?? [];
         if (paths.Count == 0) return;
         ShowDragOverlay(vm, paths);
@@ -521,6 +530,7 @@ public partial class ConvertPage : UserControl
 
     private void OnDrop(object? sender, DragEventArgs e)
     {
+        e.Handled = true;
         List<string> paths = e.DataTransfer.TryGetFiles()?.Select(f => f.Path.LocalPath).ToList() ?? [];
         if (paths.Count > 0 && !ConvertViewModel.ExpandFolders(paths).Any())
         {

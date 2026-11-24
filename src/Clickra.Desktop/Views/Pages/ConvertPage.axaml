@@ -1022,7 +1022,7 @@
             </Panel>
         </Border>
         <!-- State D (spec 4.1): files dragged over the window. Covers the whole page; not part of the layout rows. -->
-        <Panel Grid.Row="0" Grid.RowSpan="3" Name="DragOverlay" IsVisible="False">
+        <Panel Grid.Row="0" Grid.RowSpan="3" Name="DragOverlay" IsVisible="False" IsHitTestVisible="False">
             <Border Background="{DynamicResource Clk.BgTranslucent}" CornerRadius="16" />
             <Rectangle Name="DragOverlayFrame" Stroke="{DynamicResource Clk.Accent}" StrokeThickness="2"
                        StrokeDashArray="5,4" RadiusX="16" RadiusY="16" />
