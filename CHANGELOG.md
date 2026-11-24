@@ -1,5 +1,11 @@
 # Changelog
 
+## [v3.22.3.0] - 2026-11-25
+
+- **Window Titlebar**: Fix window caption minimize button icon vertical optical centering.
+- **Drag & Drop**: Allow WM_DROPFILES through UIPI message filter for native dashboard and drag overlay.
+- **History Sort**: Sort completed task history items strictly by task started time descending.
+
 ## [v3.22.2.0] - 2026-11-23
 
 - **修正列印視窗的「自動」方向被預設值蓋掉 (Fix Print Dialog Choices Overridden by Saved Defaults)**：經典列印視窗選「自動」方向、「單面」或不勾「加深字跡」時，這些選項等於預設值而沒有傳給列印，改由「設定 › 功能預設值」補上；若預設值存的是「直向」，預覽顯示橫向的頁面仍會以直向印出（縮小置中）。列印視窗現在一律傳出畫面上的每個選項（`PrintPdfOptions.ToExplicitDictionary`），並新增測試確保明確傳入的選項不會被預設值取代。
