@@ -76,7 +76,8 @@ public partial class MainWindow : Window
 
     private void OnWindowDragEnter(object? sender, DragEventArgs e)
     {
-        if (DataContext is MainWindowViewModel { Convert.IsExecuting: false })
+        if (DataContext is MainWindowViewModel { Convert.IsExecuting: false } &&
+            e.DataTransfer.Contains(DataFormats.Files))
         {
             e.DragEffects = DragDropEffects.Copy;
             e.Handled = true;
@@ -90,7 +91,8 @@ public partial class MainWindow : Window
 
     private void OnWindowDragOver(object? sender, DragEventArgs e)
     {
-        if (DataContext is MainWindowViewModel { Convert.IsExecuting: false })
+        if (DataContext is MainWindowViewModel { Convert.IsExecuting: false } &&
+            e.DataTransfer.Contains(DataFormats.Files))
         {
             e.DragEffects = DragDropEffects.Copy;
             e.Handled = true;

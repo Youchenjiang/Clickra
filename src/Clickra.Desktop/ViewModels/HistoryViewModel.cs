@@ -180,29 +180,14 @@ public sealed class HistoryViewModel : HistoryRowHostBase
         foreach (var item in completed) _completed.Add(new HistoryRowViewModel(item, this));
         _completed.Sort((a, b) =>
         {
-            DateTime timeA = a.Started ?? a.Finished ?? DateTime.MinValue;
-            DateTime timeB = b.Started ?? b.Finished ?? DateTime.MinValue;
+            DateTime timeA = a.EffectiveTime ?? DateTime.MinValue;
+            DateTime timeB = b.EffectiveTime ?? DateTime.MinValue;
             int comp = timeB.CompareTo(timeA);
             return comp != 0 ? comp : string.CompareOrdinal(b.Id, a.Id);
         });
         OnSessionChanged(null, EventArgs.Empty);
 
-        if (keepExpanded is not null)
-        {
-            HistoryRowViewModel? row = ActiveRows.Concat(ParkedRows).Concat(_completed).FirstOrDefault(r => r.Id == keepExpanded);
-            if (row is not null)
-            {
-                // The task must be visible: a filter that hides it goes back to 全部.
-                if ((_filter == HistoryFilter.Success && !row.IsSuccess) || (_filter == HistoryFilter.Failed && !row.IsFailed))
-                {
-                    _filter = HistoryFilter.All;
-                    OnPropertyChanged(nameof(Filter));
-                    OnPropertyChanged(nameof(FilterIndex));
-                }
-                row.IsExpanded = true;
-                _expandedRow = row;
-            }
-        }
+        RestoreExpandedRow(keepExpanded);
 
         OnPropertyChanged(nameof(SuccessCount));
         OnPropertyChanged(nameof(FailedCount));
@@ -211,6 +196,23 @@ public sealed class HistoryViewModel : HistoryRowHostBase
         OnPropertyChanged(nameof(HasCompleted));
         OnPropertyChanged(nameof(IsEmpty));
         ApplyFilter();
+    }
+
+    private void RestoreExpandedRow(string? keepExpanded)
+    {
+        if (keepExpanded is null) return;
+        HistoryRowViewModel? row = ActiveRows.Concat(ParkedRows).Concat(_completed).FirstOrDefault(r => r.Id == keepExpanded);
+        if (row is null) return;
+
+        // The task must be visible: a filter that hides it goes back to 全部.
+        if ((_filter == HistoryFilter.Success && !row.IsSuccess) || (_filter == HistoryFilter.Failed && !row.IsFailed))
+        {
+            _filter = HistoryFilter.All;
+            OnPropertyChanged(nameof(Filter));
+            OnPropertyChanged(nameof(FilterIndex));
+        }
+        row.IsExpanded = true;
+        _expandedRow = row;
     }
 
     private void ApplyFilter()
