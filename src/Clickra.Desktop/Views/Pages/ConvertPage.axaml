@@ -19,6 +19,11 @@
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Foreground" Value="{DynamicResource Clk.TextSecondary}" />
         </Style>
+        <Style Selector="Button.offstage">
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="Focusable" Value="False" />
+        </Style>
         <Style Selector="Border.fileNarrowRow">
             <Setter Property="Background" Value="{DynamicResource Clk.Card}" />
             <Setter Property="BorderBrush" Value="{DynamicResource Clk.CardBorder}" />
@@ -198,9 +203,29 @@
 
             <!-- State B-F: File summary narrow row (Height 72 DIP) -->
             <Border Name="FileNarrowRow" Classes="fileNarrowRow" IsVisible="{Binding HasFiles}" VerticalAlignment="Top">
-                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                    <!-- Back to the drop zone (重新選檔案). Only on the catalog: on an action page the one way
+                         back is 「‹ 所有動作」, so the window never shows two back buttons (spec 4.9, 2026-11-24).
+                         Elsewhere it fades out but keeps its place, so the file row never shifts sideways. -->
+                    <Button Grid.Column="0" Classes="icon subtle" Name="BackToStartButton"
+                            Classes.offstage="{Binding !IsActionCatalog}"
+                            Width="44" Height="44" Margin="-8,0,6,0" VerticalAlignment="Center"
+                            ToolTip.Tip="{l:T ui_files_choose_other_files}"
+                            AutomationProperties.Name="{l:T ui_files_choose_other_files}">
+                        <Button.Transitions>
+                            <Transitions>
+                                <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+                            </Transitions>
+                        </Button.Transitions>
+                        <Viewbox>
+                            <Canvas Width="24" Height="24">
+                                <Path Data="M15,5 L8,12 L15,19" Fill="Transparent" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+
                     <!-- File domain icon plate -->
-                    <Border Grid.Column="0" Width="44" Height="44" CornerRadius="10"
+                    <Border Grid.Column="1" Width="44" Height="44" CornerRadius="10"
                             Background="{Binding PrimaryDomainColor}" Margin="0,0,14,0"
                             VerticalAlignment="Center">
                         <Viewbox Classes="ic" Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -213,17 +238,14 @@
                     </Border>
 
                     <!-- File Summary Texts -->
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
                         <TextBlock Text="{Binding FileSummaryHeader}" FontSize="16" FontWeight="SemiBold" />
                         <TextBlock Text="{Binding FileSummarySubtext}" Classes="secondary" FontSize="13" TextTrimming="CharacterEllipsis" MaxWidth="500" HorizontalAlignment="Left" />
                     </StackPanel>
 
-                    <!-- Actions: Manage Files and Re-pick -->
-                    <Button Grid.Column="2" Classes="secondary" Name="ManageFilesButton"
-                            Content="{l:T ui_files_manage_files}" Margin="0,0,8,0" VerticalAlignment="Center"
-                            IsEnabled="{Binding !IsExecuting}" />
-                    <Button Grid.Column="3" Classes="subtle" Name="RePickFilesButton"
-                            Content="{l:T ui_files_choose_other_files}" VerticalAlignment="Center"
+                    <!-- Action: Manage Files (重新選檔案 moved to the back button on the left) -->
+                    <Button Grid.Column="3" Classes="secondary" Name="ManageFilesButton"
+                            Content="{l:T ui_files_manage_files}" VerticalAlignment="Center"
                             IsEnabled="{Binding !IsExecuting}" />
                 </Grid>
             </Border>

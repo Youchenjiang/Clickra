@@ -98,7 +98,7 @@ public partial class ConvertPage : UserControl
         PickFilesButton.Click += async (_, _) => await PickFilesAsync();
         ManageFilesButton.Click += (_, _) => GetViewModel()?.ToggleManageFiles();
         DoneManageFilesButton.Click += (_, _) => GetViewModel()?.ToggleManageFiles();
-        RePickFilesButton.Click += (_, _) => GetViewModel()?.ResetToStart();
+        BackToStartButton.Click += (_, _) => GetViewModel()?.ResetToStart();
         BackToCatalogButton.Click += (_, _) => GetViewModel()?.BackToCatalog();
         StartConversionButton.Click += async (_, _) =>
         {
@@ -294,7 +294,7 @@ public partial class ConvertPage : UserControl
 
         if (to == ConvertWorkflowState.DropZone)
         {
-            // 重新選: the same animation played backwards — the box grows downward from the 72 row and
+            // Back to the drop zone (the ‹ on the file row): the same animation played backwards — the box grows downward from the 72 row and
             // pushes the section below down with it, instead of the section jumping to the bottom first.
             UpdateLayout(); // lay out state A once to learn how tall the drop zone will be
             double target = TopArea.Bounds.Height;
