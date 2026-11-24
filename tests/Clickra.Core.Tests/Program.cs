@@ -54,6 +54,7 @@ TestSuite.RegisterPdfCompressionTests(runner);
 TestSuite.RegisterPdfMergeTests(runner);
 TestSuite.RegisterPdfSplitTests(runner);
 TestSuite.RegisterPdfPrintTests(runner);
+TestSuite.RegisterPrintBatchTests(runner);
 TestSuite.RegisterPdfToImageTests(runner);
 TestSuite.RegisterBatchRenameTests(runner);
 TestSuite.RegisterVisualSplitterParityTests(runner);
