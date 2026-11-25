@@ -487,7 +487,7 @@ public static class NativeDialogs
     {
         if (_hFontChild == IntPtr.Zero)
         {
-            _hFontChild = CreateFontW((int)(14.5 * s), 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 0, 0, _currentFontName);
+            _hFontChild = CreateFontW((int)(14.5 * s), 400, _currentFontName);
         }
 
         string resolvedOkText = options.OkText ?? Localization.T("dialog_ok", _currentLanguage);

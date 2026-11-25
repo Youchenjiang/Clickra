@@ -487,7 +487,7 @@ namespace Clickra.UI
 
         static IntPtr HandleTimer(IntPtr hwnd, IntPtr w)
         {
-            if (w == TIMER_ID_REFRESH)
+            if (w == (IntPtr)TIMER_ID_REFRESH)
             {
                 SettingsPresentationController.Shared.EnsureFresh();
                 RefreshHistoryData();
@@ -601,7 +601,7 @@ namespace Clickra.UI
         {
             try
             {
-                KillTimer(hwnd, TIMER_ID_REFRESH);
+                KillTimer(hwnd, (IntPtr)TIMER_ID_REFRESH);
                 CleanupResources();
             }
             finally

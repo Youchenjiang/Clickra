@@ -140,8 +140,7 @@ namespace Clickra.UI.Native
 
         [DllImport("gdi32.dll", EntryPoint = "CreateFontW", CharSet = CharSet.Unicode)] private static extern IntPtr CreateFontWNative(int cHeight, int cWidth, int cEscapement, int cOrientation, int cWeight, uint bItalic, uint bUnderline, uint bStrikeOut, uint iCharSet, uint iOutPrecision, uint iClipPrecision, uint iQuality, uint iPitchAndFamily, string pszFaceName); // skipcq: CS-W1059
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S107", Justification = "Win32 interop wrapper matches CreateFontW signature.")]
-        public static IntPtr CreateFontW(int cHeight, int cWidth, int cEscapement, int cOrientation, int cWeight, uint bItalic, uint bUnderline, uint bStrikeOut, uint iCharSet, uint iOutPrecision, uint iClipPrecision, uint iQuality, uint iPitchAndFamily, string pszFaceName) => CreateFontWNative(cHeight, cWidth, cEscapement, cOrientation, cWeight, bItalic, bUnderline, bStrikeOut, iCharSet, iOutPrecision, iClipPrecision, iQuality, iPitchAndFamily, pszFaceName);
+        public static IntPtr CreateFontW(int height, int weight, string faceName) => CreateFontWNative(height, 0, 0, 0, weight, 0, 0, 0, 1, 0, 0, 0, 0, faceName);
 
         [DllImport("shell32.dll", EntryPoint = "Shell_NotifyIconW", CharSet = CharSet.Unicode)] private static extern bool Shell_NotifyIconNative(uint dwMessage, ref NOTIFYICONDATAW lpData);
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
@@ -312,9 +311,9 @@ namespace Clickra.UI.Native
         }
 
         /// <summary>Managed signature for the native window procedure callback.</summary>
-        public delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
+        internal delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
         /// <summary>Timer identifier reserved for periodic progress-window refreshes.</summary>
-        public static readonly IntPtr TIMER_ID_REFRESH = (IntPtr)1001;
+        internal const int TIMER_ID_REFRESH = 1001;
         private const uint MF_STRING = 0x00000000;
         private const uint MF_SEPARATOR = 0x00000800;
         private const uint TPM_RETURNCMD = 0x00000100;
