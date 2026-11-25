@@ -13,10 +13,15 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import branch_policy
+
 MAIN_BRANCH_REF = "refs/heads/main"
 REMOTE_MAIN_REF = "refs/remotes/origin/main"
 PORCELAIN_STATUS = "--porcelain=v1"
 BRANCH_PATTERN = re.compile(r"^(feature|fix|refactor|docs|test)/[a-z0-9][a-z0-9-]*$")
+ERR_REQ_AUTH = "execution requires current preview authorization"
+ERR_REPO_CHANGED = "repository changed since authorization"
 
 
 def git(*args, check=True):
@@ -177,9 +182,9 @@ def lifecycle_run(action, *, pr=None, branch=None, execute=False, authorize=None
         print(json.dumps({"preview": state, "authorize": token}, indent=2))
         return
     if token != authorize:
-        raise ValueError("execution requires current preview authorization")
+        raise ValueError(ERR_REQ_AUTH)
     if lifecycle_snapshot(action, pr=pr, branch=branch) != state:
-        raise ValueError("repository changed since authorization")
+        raise ValueError(ERR_REPO_CHANGED)
     if state["main"] != state["remote_main"]:
         git("update-ref", MAIN_BRANCH_REF, state["remote_main"], state["main"])
     if action == "cleanup":
@@ -213,16 +218,16 @@ def ancestor(older, newer):
 
 
 def check_action_branch(action, branch, local_base, remote_head, current_head):
-    if branch == "main":
-        raise ValueError("sync must run from a separate worktree" if action == "sync"
-                         else "cannot rebase main")
     if action == "sync":
         if not ancestor(local_base, remote_head):
             raise ValueError("local main cannot fast-forward")
-        worktrees = output("worktree", "list", "--porcelain")
-        if f"branch {MAIN_BRANCH_REF}\n" in worktrees + "\n":
-            raise ValueError("main is checked out in another worktree")
+        if branch != "main":
+            worktrees = output("worktree", "list", "--porcelain")
+            if f"branch {MAIN_BRANCH_REF}\n" in worktrees + "\n":
+                raise ValueError("main is checked out in another worktree")
         return
+    if branch == "main":
+        raise ValueError("cannot rebase main")
     if output("ls-remote", "--heads", "origin", branch):
         raise ValueError("branch exists on origin; refuse to rewrite published history")
     if not ancestor(local_base, current_head):
@@ -240,7 +245,7 @@ def snapshot(action):
     remote_base = output("ls-remote", "--heads", "origin", "main").split()
     if len(remote_base) != 2 or remote_base[1] != MAIN_BRANCH_REF:
         raise ValueError("cannot verify remote main")
-    if output("rev-parse", "refs/remotes/origin/main") != remote_base[0]:
+    if output("rev-parse", REMOTE_MAIN_REF) != remote_base[0]:
         raise ValueError("origin/main is stale; fetch origin main first")
     current_head = output("rev-parse", "HEAD")
     check_action_branch(action, branch, local_base, remote_base[0], current_head)
@@ -263,6 +268,24 @@ def status():
                       "worktrees": output("worktree", "list").splitlines()}, indent=2))
 
 
+def execute_sync(state):
+    if state["main"] == state["remote_main"]:
+        return
+    if state["branch"] == "main":
+        git("merge", "--ff-only", "origin/main")
+    else:
+        git("update-ref", MAIN_BRANCH_REF, state["remote_main"], state["main"])
+
+
+def execute_rebase(state):
+    if state["head"] == state["remote_main"]:
+        return
+    result = git("rebase", "--no-autostash", "origin/main", check=False)
+    if result.returncode:
+        raise RuntimeError("rebase stopped; resolve or abort in this worktree: " +
+                           result.stderr.strip())
+
+
 def run(action, execute=False, authorize=None):
     state = snapshot(action)
     token = authorization(state)
@@ -270,21 +293,87 @@ def run(action, execute=False, authorize=None):
         print(json.dumps({"preview": state, "authorize": token}, indent=2))
         return
     if authorize != token:
-        raise ValueError("execution requires current preview authorization")
+        raise ValueError(ERR_REQ_AUTH)
     # Re-read immediately before mutation so an earlier preview cannot authorize
     # a changed branch or upstream SHA.
     if snapshot(action) != state:
-        raise ValueError("repository changed since authorization")
+        raise ValueError(ERR_REPO_CHANGED)
     if action == "sync":
-        if state["main"] != state["remote_main"]:
-            git("update-ref", MAIN_BRANCH_REF, state["remote_main"], state["main"])
+        execute_sync(state)
     else:
-        if state["head"] != state["remote_main"]:
-            result = git("rebase", "--no-autostash", "origin/main", check=False)
-            if result.returncode:
-                raise RuntimeError("rebase stopped; resolve or abort in this worktree: " +
-                                   result.stderr.strip())
+        execute_rebase(state)
     print(json.dumps({"executed": action, "branch": state["branch"]}))
+
+
+def start_snapshot(branch):
+    if not branch:
+        raise ValueError("start requires a target branch name")
+    errors = branch_policy.validate_branch_name(branch)
+    if errors:
+        raise ValueError("invalid branch name: " + "; ".join(errors))
+    assert_clean()
+    if git("show-ref", "--verify", "--quiet", f"refs/heads/{branch}", check=False).returncode == 0:
+        raise ValueError("branch already exists locally; refuse to overwrite")
+    if output("ls-remote", "--heads", "origin", branch):
+        raise ValueError("branch already exists on remote origin")
+    remote_base = output("ls-remote", "--heads", "origin", "main").split()
+    if len(remote_base) != 2 or remote_base[1] != MAIN_BRANCH_REF:
+        raise ValueError("cannot verify remote main")
+    if output("rev-parse", REMOTE_MAIN_REF) != remote_base[0]:
+        raise ValueError("origin/main is stale; fetch origin main first")
+    return {
+        "action": "start",
+        "branch": branch,
+        "base": remote_base[0],
+        "root": output("rev-parse", "--show-toplevel"),
+    }
+
+
+def start_run(branch, execute=False, authorize=None):
+    state = start_snapshot(branch)
+    token = authorization(state)
+    if not execute:
+        print(json.dumps({"preview": state, "authorize": token}, indent=2))
+        return
+    if authorize != token:
+        raise ValueError(ERR_REQ_AUTH)
+    if start_snapshot(branch) != state:
+        raise ValueError(ERR_REPO_CHANGED)
+    git("checkout", "-b", branch, state["base"])
+    print(json.dumps({"executed": "start", "branch": branch, "base": state["base"]}))
+
+
+def pick_snapshot(commit):
+    if not commit:
+        raise ValueError("pick requires a commit SHA")
+    branch = output("branch", "--show-current")
+    if not branch or branch == "main":
+        raise ValueError("pick must run on a dedicated feature branch, not main or detached HEAD")
+    assert_clean()
+    commit_sha = output("rev-parse", "--verify", f"{commit}^{{commit}}")
+    current_head = output("rev-parse", "HEAD")
+    return {
+        "action": "pick",
+        "branch": branch,
+        "commit": commit_sha,
+        "head": current_head,
+    }
+
+
+def pick_run(commit, execute=False, authorize=None):
+    state = pick_snapshot(commit)
+    token = authorization(state)
+    if not execute:
+        print(json.dumps({"preview": state, "authorize": token}, indent=2))
+        return
+    if authorize != token:
+        raise ValueError(ERR_REQ_AUTH)
+    if pick_snapshot(commit) != state:
+        raise ValueError(ERR_REPO_CHANGED)
+    result = git("cherry-pick", state["commit"], check=False)
+    if result.returncode != 0:
+        raise RuntimeError("cherry-pick stopped; resolve or abort in this worktree: " + result.stderr.strip())
+    print(json.dumps({"executed": "pick", "branch": state["branch"], "commit": state["commit"]}))
 
 
 def main():
@@ -301,6 +390,15 @@ def main():
         command.add_argument("--branch")
         command.add_argument("--execute", action="store_true")
         command.add_argument("--authorize")
+    start_cmd = sub.add_parser("start")
+    start_cmd.add_argument("--branch", required=True)
+    start_cmd.add_argument("--execute", action="store_true")
+    start_cmd.add_argument("--authorize")
+
+    pick_cmd = sub.add_parser("pick")
+    pick_cmd.add_argument("--commit", required=True)
+    pick_cmd.add_argument("--execute", action="store_true")
+    pick_cmd.add_argument("--authorize")
     args = parser.parse_args()
     try:
         if args.action == "status":
@@ -308,6 +406,10 @@ def main():
         elif args.action in ("cleanup", "next"):
             lifecycle_run(args.action, pr=args.pr, branch=args.branch,
                           execute=args.execute, authorize=args.authorize)
+        elif args.action == "start":
+            start_run(args.branch, execute=args.execute, authorize=args.authorize)
+        elif args.action == "pick":
+            pick_run(args.commit, execute=args.execute, authorize=args.authorize)
         else:
             run(args.action, args.execute, args.authorize)
     except (ValueError, RuntimeError, subprocess.TimeoutExpired) as exc:

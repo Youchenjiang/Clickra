@@ -14,6 +14,7 @@ static partial class TestSuite
         runner.RunGuard("Universal desktop: launcher preserves packaged fluent priority and isolates desktop preview contracts", GuardDesktopLauncherRouting);
         runner.RunGuard("Universal desktop: motion and shell navigation wire destination highlighting and dynamic motion preference contracts", GuardDesktopMotionAndNavigation);
         runner.RunGuard("Universal desktop: history resume guards busy state and returns claimed tasks on concurrency", GuardDesktopResumeConcurrencyContracts);
+        runner.RunGuard("Universal desktop: ConvertPage enforces file row back button and drag overlay hit test invariants", GuardDesktopConvertPageInvariants);
     }
 
     private static void GuardDesktopProjectContracts()
@@ -147,5 +148,39 @@ static partial class TestSuite
         string convertText = File.ReadAllText(convertPath);
         Assert.True(convertText.Contains("ReturnToParked(task.TaskId", StringComparison.Ordinal),
             "ConvertViewModel must return claimed tasks to parked when execution cannot proceed.");
+    }
+
+    private static void GuardDesktopConvertPageInvariants()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string axamlPath = Path.Combine(root, "src", DesktopProjectDir, "Views", "Pages", "ConvertPage.axaml");
+        Assert.True(File.Exists(axamlPath), "ConvertPage.axaml must exist.");
+        string axamlText = File.ReadAllText(axamlPath);
+
+        // 1. Back button and offstage style
+        Assert.True(axamlText.Contains("<Style Selector=\"Button.offstage\">", StringComparison.Ordinal),
+            "ConvertPage.axaml must declare Style Selector='Button.offstage' with Opacity 0 and IsHitTestVisible False.");
+        Assert.True(axamlText.Contains("Name=\"BackToStartButton\"", StringComparison.Ordinal),
+            "ConvertPage.axaml must contain BackToStartButton in the file summary row.");
+        Assert.True(axamlText.Contains("Classes.offstage=\"{Binding !IsActionCatalog}\"", StringComparison.Ordinal),
+            "BackToStartButton must bind Classes.offstage to !IsActionCatalog to prevent layout shifting.");
+        Assert.False(axamlText.Contains("RePickFilesButton", StringComparison.Ordinal),
+            "ConvertPage.axaml must not contain obsolete RePickFilesButton.");
+
+        // 2. Drag overlay hit-test
+        Assert.True(axamlText.Contains("Name=\"DragOverlay\"", StringComparison.Ordinal),
+            "ConvertPage.axaml must contain DragOverlay Panel.");
+        Assert.True(axamlText.Contains("IsHitTestVisible=\"False\"", StringComparison.Ordinal) &&
+                    axamlText.Contains("Name=\"DragOverlay\"", StringComparison.Ordinal),
+            "DragOverlay Panel must set IsHitTestVisible='False' to avoid blocking file drop routing.");
+
+        // 3. Code-behind click handler
+        string csPath = Path.Combine(root, "src", DesktopProjectDir, "Views", "Pages", "ConvertPage.axaml.cs");
+        Assert.True(File.Exists(csPath), "ConvertPage.axaml.cs must exist.");
+        string csText = File.ReadAllText(csPath);
+        Assert.True(csText.Contains("BackToStartButton.Click += (_, _) => GetViewModel()?.ResetToStart();", StringComparison.Ordinal),
+            "ConvertPage.axaml.cs must wire BackToStartButton.Click to ResetToStart().");
     }
 }

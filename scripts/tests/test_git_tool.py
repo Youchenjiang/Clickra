@@ -58,6 +58,15 @@ class GitToolTests(unittest.TestCase):
 
     @patch.object(git_tool, "snapshot")
     @patch.object(git_tool, "git")
+    def test_sync_on_main_uses_ff_only(self, command, snapshot):
+        state = dict(self.state(), branch="main")
+        snapshot.return_value = state
+        with contextlib.redirect_stdout(io.StringIO()):
+            git_tool.run("sync", True, git_tool.authorization(state))
+        command.assert_called_once_with("merge", "--ff-only", "origin/main")
+
+    @patch.object(git_tool, "snapshot")
+    @patch.object(git_tool, "git")
     def test_rebase_only_current_worktree_without_autostash(self, command, snapshot):
         state = self.state("rebase")
         snapshot.return_value = state
@@ -169,6 +178,35 @@ class GitToolTests(unittest.TestCase):
             git_tool.lifecycle_run("cleanup", pr=185, execute=True,
                                    authorize=git_tool.authorization(state))
         command.assert_any_call("update-ref", "-d", "refs/heads/feature/old", "a" * 40)
+
+    @patch.object(git_tool, "start_snapshot")
+    @patch.object(git_tool, "git")
+    def test_start_creates_branch_from_base(self, command, snapshot):
+        state = {"action": "start", "branch": "fix/test-branch", "base": "c" * 40, "root": "C:/Clickra"}
+        snapshot.return_value = state
+        with contextlib.redirect_stdout(io.StringIO()) as captured:
+            git_tool.start_run("fix/test-branch")
+        self.assertIn("preview", captured.getvalue())
+        command.assert_not_called()
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            git_tool.start_run("fix/test-branch", execute=True, authorize=git_tool.authorization(state))
+        command.assert_called_once_with("checkout", "-b", "fix/test-branch", "c" * 40)
+
+    @patch.object(git_tool, "pick_snapshot")
+    @patch.object(git_tool, "git")
+    def test_pick_executes_cherry_pick(self, command, snapshot):
+        state = {"action": "pick", "branch": "fix/test-branch", "commit": "d" * 40, "head": "a" * 40}
+        snapshot.return_value = state
+        command.return_value.returncode = 0
+        with contextlib.redirect_stdout(io.StringIO()) as captured:
+            git_tool.pick_run("d" * 40)
+        self.assertIn("preview", captured.getvalue())
+        command.assert_not_called()
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            git_tool.pick_run("d" * 40, execute=True, authorize=git_tool.authorization(state))
+        command.assert_called_once_with("cherry-pick", "d" * 40, check=False)
 
 
 class GitToolIntegrationTests(unittest.TestCase):

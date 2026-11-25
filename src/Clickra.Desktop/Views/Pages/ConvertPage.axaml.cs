@@ -98,7 +98,7 @@ public partial class ConvertPage : UserControl
         PickFilesButton.Click += async (_, _) => await PickFilesAsync();
         ManageFilesButton.Click += (_, _) => GetViewModel()?.ToggleManageFiles();
         DoneManageFilesButton.Click += (_, _) => GetViewModel()?.ToggleManageFiles();
-        RePickFilesButton.Click += (_, _) => GetViewModel()?.ResetToStart();
+        BackToStartButton.Click += (_, _) => GetViewModel()?.ResetToStart();
         BackToCatalogButton.Click += (_, _) => GetViewModel()?.BackToCatalog();
         StartConversionButton.Click += async (_, _) =>
         {
