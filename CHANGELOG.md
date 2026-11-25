@@ -1,5 +1,9 @@
 # Changelog
 
+## [v3.22.5.0] - 2026-11-25
+
+- **列印排版引擎與預覽計算 (Print Layout Planner & Batch Planner)**：於 Core 實作共用列印排版規劃器（`PrintLayoutPlanner`）與批次用紙預估（`PrintBatchPlanner`），支援每張 1/2/4/6/9/16 頁、橫向 Z/直向 N 排列、頁框、符合紙張/實際大小/自訂比例、色彩模式與多份分份，並提供 `PrintPreviewQuery` 即時預覽查詢與系統印表機探索快取。
+
 ## [v3.22.4.0] - 2026-11-25
 
 - **檔案列返回按鈕 (File Row Back Button)**：將轉檔畫面檔案窄列右側的「重新選檔案」文字按鈕改為最左側的「‹」圖示按鈕，維持層次單一返回路徑，並於進入動作頁時淡出保留位置。
