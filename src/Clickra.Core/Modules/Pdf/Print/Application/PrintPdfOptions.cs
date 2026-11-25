@@ -57,6 +57,10 @@ public sealed record PrintPdfOptions
     public string? PaperSize { get; init; }
     public PrintOrientation Orientation { get; init; }
     public int PagesPerSheet { get; init; }
+    private const string ScaleFit = "fit";
+    private const string ScaleActual = "actual";
+    private const string ScaleCustom = "custom";
+
     public string PageOrder { get; init; }
     public bool PageBorder { get; init; }
     public string Scale { get; init; }
@@ -64,6 +68,7 @@ public sealed record PrintPdfOptions
     public bool Grayscale { get; init; }
     public bool Collate { get; init; }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S107", Justification = "Print options encapsulate all document printing settings with default parameters.")]
     public PrintPdfOptions(
         string? printerName = null,
         string? pageRange = null,
@@ -91,12 +96,12 @@ public sealed record PrintPdfOptions
         if (!string.IsNullOrWhiteSpace(scale))
         {
             Scale = NormalizeScale(scale);
-            FitToPage = string.Equals(Scale, "fit", StringComparison.OrdinalIgnoreCase);
+            FitToPage = string.Equals(Scale, ScaleFit, StringComparison.OrdinalIgnoreCase);
         }
         else
         {
             FitToPage = fitToPage;
-            Scale = fitToPage ? "fit" : "actual";
+            Scale = fitToPage ? ScaleFit : ScaleActual;
         }
         Language = language;
         DarkenText = darkenText;
@@ -114,13 +119,13 @@ public sealed record PrintPdfOptions
 
     public static string NormalizeScale(string? str)
     {
-        if (string.IsNullOrWhiteSpace(str)) return "fit";
+        if (string.IsNullOrWhiteSpace(str)) return ScaleFit;
         string s = str.Trim().ToLowerInvariant();
         return s switch
         {
-            "actual" => "actual",
-            "custom" => "custom",
-            _ => "fit"
+            ScaleActual => ScaleActual,
+            ScaleCustom => ScaleCustom,
+            _ => ScaleFit
         };
     }
 

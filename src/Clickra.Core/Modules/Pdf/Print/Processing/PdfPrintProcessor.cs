@@ -20,6 +20,44 @@ public static class PdfPrintProcessor
         Action<int, int, string>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        List<int> pagesToPrint = ValidateAndResolvePages(pdfPath, options);
+
+        using var printDoc = new PrintDocument
+        {
+            DocumentName = Path.GetFileNameWithoutExtension(pdfPath)
+        };
+
+        string effectiveLang = !string.IsNullOrWhiteSpace(options.Language) ? options.Language : "en";
+        string defaultFontName = LocalizedUiFontSelector.GetTextFontName(effectiveLang);
+
+        ConfigurePrinter(printDoc, options);
+        var (portraitWidthPt, portraitHeightPt) = CalculatePortraitDimensions(printDoc);
+
+        var pageSizes = CollectPageSizes(pdfPath, pagesToPrint);
+        var sheets = PrintLayoutPlanner.Plan(pageSizes, portraitWidthPt, portraitHeightPt, options);
+        if (sheets.Count == 0)
+        {
+            return true;
+        }
+
+        printDoc.DefaultPageSettings.Landscape = sheets[0].Landscape;
+        if (options.Grayscale)
+        {
+            printDoc.DefaultPageSettings.Color = false;
+        }
+
+        AttachPrintEvents(printDoc, pdfPath, sheets, defaultFontName, options, portraitWidthPt, portraitHeightPt, progress, cancellationToken);
+
+        printDoc.Print();
+        progress?.Invoke(
+            sheets.Count,
+            sheets.Count,
+            ExecutionLocalizationOptions.Text(options.Language ?? "", "core_print_sent"));
+        return true;
+    }
+
+    private static List<int> ValidateAndResolvePages(string pdfPath, PrintPdfOptions options)
+    {
         if (!System.IO.File.Exists(pdfPath))
             throw new FileNotFoundException("PDF file not found", pdfPath);
 
@@ -31,23 +69,21 @@ public static class PdfPrintProcessor
         if (pagesToPrint.Count == 0)
             throw new InvalidOperationException(ExecutionLocalizationOptions.Text(options.Language ?? "", "core_print_no_pages"));
 
-        string docName = Path.GetFileNameWithoutExtension(pdfPath);
-        using var printDoc = new PrintDocument
-        {
-            DocumentName = docName
-        };
+        return pagesToPrint;
+    }
 
-        string effectiveLang = !string.IsNullOrWhiteSpace(options.Language) ? options.Language : "en";
-        string defaultFontName = LocalizedUiFontSelector.GetTextFontName(effectiveLang);
-
-        ConfigurePrinter(printDoc, options);
-
+    private static (float PortraitWidthPt, float PortraitHeightPt) CalculatePortraitDimensions(PrintDocument printDoc)
+    {
         PaperSize paper = printDoc.DefaultPageSettings.PaperSize;
         float paperWidthHundredths = paper.Width > 0 ? paper.Width : 827;
         float paperHeightHundredths = paper.Height > 0 ? paper.Height : 1169;
         float portraitWidthPt = Math.Min(paperWidthHundredths, paperHeightHundredths) * 0.72f;
         float portraitHeightPt = Math.Max(paperWidthHundredths, paperHeightHundredths) * 0.72f;
+        return (portraitWidthPt, portraitHeightPt);
+    }
 
+    private static List<PrintPageSize> CollectPageSizes(string pdfPath, List<int> pagesToPrint)
+    {
         var pageDimensions = ReadPageDimensions(pdfPath, pagesToPrint);
         var pageSizes = new List<PrintPageSize>(pagesToPrint.Count);
         foreach (int pageNum in pagesToPrint)
@@ -61,19 +97,20 @@ public static class PdfPrintProcessor
                 pageSizes.Add(new PrintPageSize(pageNum, 595.28f, 841.89f));
             }
         }
+        return pageSizes;
+    }
 
-        var sheets = PrintLayoutPlanner.Plan(pageSizes, portraitWidthPt, portraitHeightPt, options);
-        if (sheets.Count == 0)
-        {
-            return true;
-        }
-
-        printDoc.DefaultPageSettings.Landscape = sheets[0].Landscape;
-        if (options.Grayscale)
-        {
-            printDoc.DefaultPageSettings.Color = false;
-        }
-
+    private static void AttachPrintEvents(
+        PrintDocument printDoc,
+        string pdfPath,
+        IReadOnlyList<PrintSheet> sheets,
+        string defaultFontName,
+        PrintPdfOptions options,
+        float portraitWidthPt,
+        float portraitHeightPt,
+        Action<int, int, string>? progress,
+        CancellationToken cancellationToken)
+    {
         int currentSheetIndex = 0;
         int totalSheets = sheets.Count;
 
@@ -120,13 +157,6 @@ public static class PdfPrintProcessor
             currentSheetIndex++;
             e.HasMorePages = currentSheetIndex < totalSheets;
         };
-
-        printDoc.Print();
-        progress?.Invoke(
-            totalSheets,
-            totalSheets,
-            ExecutionLocalizationOptions.Text(options.Language ?? "", "core_print_sent"));
-        return true;
     }
 
     private static void ConfigurePrinter(PrintDocument printDoc, PrintPdfOptions options)

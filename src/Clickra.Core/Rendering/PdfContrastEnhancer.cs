@@ -20,24 +20,8 @@ public static class PdfContrastEnhancer
     /// </summary>
     public static void Enhance(Bitmap bitmap, double gamma = DefaultGamma)
     {
-        if (bitmap == null) return;
-
-        int width = bitmap.Width;
-        int height = bitmap.Height;
-        if (width <= 0 || height <= 0) return;
-
-        BitmapData data = bitmap.LockBits(
-            new Rectangle(0, 0, width, height),
-            ImageLockMode.ReadWrite,
-            PixelFormat.Format32bppArgb);
-
-        try
+        Mutate32bppPixels(bitmap, (buffer, width, height, stride) =>
         {
-            int stride = Math.Abs(data.Stride);
-            int totalBytes = stride * height;
-            byte[] buffer = new byte[totalBytes];
-            Marshal.Copy(data.Scan0, buffer, 0, totalBytes);
-
             int totalPixels = width * height;
             int[] hist = BuildLuminanceHistogram(buffer, width, height, stride);
 
@@ -48,13 +32,7 @@ public static class PdfContrastEnhancer
 
             byte[] lut = BuildGammaLut(blackPt, whitePt, gamma);
             ApplyLut(buffer, width, height, stride, lut);
-
-            Marshal.Copy(buffer, 0, data.Scan0, totalBytes);
-        }
-        finally
-        {
-            bitmap.UnlockBits(data);
-        }
+        });
     }
 
     private static int[] BuildLuminanceHistogram(byte[] buffer, int width, int height, int stride)
@@ -167,6 +145,28 @@ public static class PdfContrastEnhancer
     /// </summary>
     public static void ConvertToGrayscale(Bitmap bitmap)
     {
+        Mutate32bppPixels(bitmap, (buffer, width, height, stride) =>
+        {
+            for (int y = 0; y < height; y++)
+            {
+                int rowOffset = y * stride;
+                for (int x = 0; x < width; x++)
+                {
+                    int idx = rowOffset + (x * 4);
+                    byte b = buffer[idx];
+                    byte g = buffer[idx + 1];
+                    byte r = buffer[idx + 2];
+                    byte gray = (byte)Math.Clamp((int)Math.Round((0.299f * r) + (0.587f * g) + (0.114f * b)), 0, 255);
+                    buffer[idx] = gray;
+                    buffer[idx + 1] = gray;
+                    buffer[idx + 2] = gray;
+                }
+            }
+        });
+    }
+
+    private static void Mutate32bppPixels(Bitmap? bitmap, Action<byte[], int, int, int> mutate)
+    {
         if (bitmap == null) return;
         int width = bitmap.Width;
         int height = bitmap.Height;
@@ -184,21 +184,7 @@ public static class PdfContrastEnhancer
             byte[] buffer = new byte[totalBytes];
             Marshal.Copy(data.Scan0, buffer, 0, totalBytes);
 
-            for (int y = 0; y < height; y++)
-            {
-                int rowOffset = y * stride;
-                for (int x = 0; x < width; x++)
-                {
-                    int idx = rowOffset + (x * 4);
-                    byte b = buffer[idx];
-                    byte g = buffer[idx + 1];
-                    byte r = buffer[idx + 2];
-                    byte gray = (byte)Math.Clamp((int)Math.Round((0.299f * r) + (0.587f * g) + (0.114f * b)), 0, 255);
-                    buffer[idx] = gray;
-                    buffer[idx + 1] = gray;
-                    buffer[idx + 2] = gray;
-                }
-            }
+            mutate(buffer, width, height, stride);
 
             Marshal.Copy(buffer, 0, data.Scan0, totalBytes);
         }
