@@ -50,7 +50,7 @@ namespace Clickra.UI.Native
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         public struct BROWSEINFO { public IntPtr hwndOwner; public IntPtr pidlRoot; public IntPtr pszDisplayName; public IntPtr lpszTitle; public uint ulFlags; public IntPtr lpfn; public IntPtr lParam; public int iImage; }
 
-        [DllImport("user32.dll", EntryPoint = "AdjustWindowRectEx", CharSet = CharSet.Unicode)] public static extern bool AdjustWindowRectEx(ref RECT lpRect, uint dwStyle, bool bMenu, uint dwExStyle);
+        [DllImport("user32.dll", EntryPoint = "AdjustWindowRectEx", CharSet = CharSet.Unicode)] public static extern bool AdjustWindowRectEx(ref RECT lpRect, uint dwStyle, bool bMenu, uint dwExStyle); // skipcq: CS-R1138 — Win32 ABI requires RECT first.
         [DllImport("user32.dll", EntryPoint = "AdjustWindowRectExForDpi", CharSet = CharSet.Unicode)]
         private static extern bool AdjustWindowRectExForDpiNative(ref RECT lpRect, uint dwStyle, bool bMenu, uint dwExStyle, uint dpi); // skipcq: CS-R1138 — Win32 ABI requires RECT first.
         /// <summary>Adjusts a client rectangle for the specified window styles at an explicit DPI.</summary>
@@ -140,6 +140,7 @@ namespace Clickra.UI.Native
 
         [DllImport("gdi32.dll", EntryPoint = "CreateFontW", CharSet = CharSet.Unicode)] private static extern IntPtr CreateFontWNative(int cHeight, int cWidth, int cEscapement, int cOrientation, int cWeight, uint bItalic, uint bUnderline, uint bStrikeOut, uint iCharSet, uint iOutPrecision, uint iClipPrecision, uint iQuality, uint iPitchAndFamily, string pszFaceName); // skipcq: CS-W1059
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S107", Justification = "Win32 interop wrapper matches CreateFontW signature.")]
         public static IntPtr CreateFontW(int cHeight, int cWidth, int cEscapement, int cOrientation, int cWeight, uint bItalic, uint bUnderline, uint bStrikeOut, uint iCharSet, uint iOutPrecision, uint iClipPrecision, uint iQuality, uint iPitchAndFamily, string pszFaceName) => CreateFontWNative(cHeight, cWidth, cEscapement, cOrientation, cWeight, bItalic, bUnderline, bStrikeOut, iCharSet, iOutPrecision, iClipPrecision, iQuality, iPitchAndFamily, pszFaceName);
 
         [DllImport("shell32.dll", EntryPoint = "Shell_NotifyIconW", CharSet = CharSet.Unicode)] private static extern bool Shell_NotifyIconNative(uint dwMessage, ref NOTIFYICONDATAW lpData);
@@ -174,9 +175,9 @@ namespace Clickra.UI.Native
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
         public static bool SHGetPathFromIDList(IntPtr pidl, IntPtr pszPath) => SHGetPathFromIDListNative(pidl, pszPath);
 
-        [DllImport("dwmapi.dll", EntryPoint = "DwmSetWindowAttribute")] private static extern int DwmSetWindowAttributeNative(IntPtr h, int attr, ref int val, int size); // skipcq: CS-W1059
+        [DllImport("dwmapi.dll", EntryPoint = "DwmSetWindowAttribute")] private static extern int DwmSetWindowAttributeNative(IntPtr h, int attr, ref int val, int size); // skipcq: CS-W1059, CS-R1138 — Win32 ABI requires ref val in order.
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
-        public static int DwmSetWindowAttribute(IntPtr h, int attr, ref int val, int size) => DwmSetWindowAttributeNative(h, attr, ref val, size);
+        public static int DwmSetWindowAttribute(IntPtr h, int attr, ref int val, int size) => DwmSetWindowAttributeNative(h, attr, ref val, size); // skipcq: CS-R1138 — Win32 ABI requires ref val in order.
 
         [DllImport("dwmapi.dll", EntryPoint = "DwmGetColorizationColor", PreserveSig = false)] private static extern void DwmGetColorizationColorNative(out uint pcrColorization, out bool pfOpaqueBlend); // skipcq: CS-W1059
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
