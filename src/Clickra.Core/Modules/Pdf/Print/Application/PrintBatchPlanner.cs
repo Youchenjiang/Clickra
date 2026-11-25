@@ -74,6 +74,6 @@ public static class PrintBatchPlanner
     {
         int count = PrintLayoutPlanner.PaperCount(sheets, duplex);
         if (duplex == PrintDuplexMode.Simplex) return new PrintSidePosition(sideIndex + 1, count, false);
-        return new PrintSidePosition(sideIndex / 2 + 1, count, sideIndex % 2 == 1);
+        return new PrintSidePosition(sideIndex / 2 + 1, count, (sideIndex & 1) != 0);
     }
 }

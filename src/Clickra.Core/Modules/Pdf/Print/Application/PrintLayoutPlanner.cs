@@ -38,8 +38,8 @@ public static class PrintLayoutPlanner
         int pps = options.PagesPerSheet is 1 or 2 or 4 or 6 or 9 or 16 ? options.PagesPerSheet : 1;
         bool orderN = string.Equals(options.PageOrder, "N", StringComparison.OrdinalIgnoreCase);
 
-        var sheets = new List<PrintSheet>();
         int totalSheets = (pages.Count + pps - 1) / pps;
+        var sheets = new List<PrintSheet>(totalSheets);
 
         for (int s = 0; s < totalSheets; s++)
         {
@@ -51,67 +51,102 @@ public static class PrintLayoutPlanner
                 sheetPages.Add(pages[startIdx + i]);
             }
 
-            var firstPage = sheetPages[0];
-            bool isLandscape = DetermineSheetOrientation(options.Orientation, firstPage, portW, portH, pps);
-
-            float sheetWidth = isLandscape ? portH : portW;
-            float sheetHeight = isLandscape ? portW : portH;
-            float shortSide = Math.Min(sheetWidth, sheetHeight);
-            float margin = shortSide * MarginRatio;
-            float availW = Math.Max(0f, sheetWidth - 2f * margin);
-            float availH = Math.Max(0f, sheetHeight - 2f * margin);
-
-            (int cols, int rows) = GetGrid(pps, isLandscape);
-            float gap = pps >= 2 ? shortSide * GapRatio : 0f;
-            float cellW = Math.Max(0f, (availW - (cols - 1) * gap) / cols);
-            float cellH = Math.Max(0f, (availH - (rows - 1) * gap) / rows);
-
-            var cells = new List<PrintCell>(sheetPages.Count);
-            for (int i = 0; i < sheetPages.Count; i++)
-            {
-                var page = sheetPages[i];
-                int col = orderN ? i / rows : i % cols;
-                int row = orderN ? i % rows : i / cols;
-
-                float cellX = margin + col * (cellW + gap);
-                float cellY = margin + row * (cellH + gap);
-                var cellRect = new PrintRect(cellX, cellY, cellW, cellH);
-
-                PrintRect pageRect;
-                bool overflows = false;
-
-                if (pps > 1)
-                {
-                    pageRect = CalculateFitRect(page, cellX, cellY, cellW, cellH);
-                }
-                else
-                {
-                    string scaleMode = options.Scale?.ToLowerInvariant() ?? "fit";
-                    if (scaleMode == "actual")
-                    {
-                        pageRect = CalculateActualRect(page, cellX, cellY, cellW, cellH);
-                        overflows = pageRect.Width > cellW + 1e-3f || pageRect.Height > cellH + 1e-3f;
-                    }
-                    else if (scaleMode == "custom")
-                    {
-                        float factor = (options.ScalePercent <= 0 ? 100 : options.ScalePercent) / 100f;
-                        pageRect = CalculateCustomRect(page, cellX, cellY, cellW, cellH, factor);
-                        overflows = pageRect.Width > cellW + 1e-3f || pageRect.Height > cellH + 1e-3f;
-                    }
-                    else
-                    {
-                        pageRect = CalculateFitRect(page, cellX, cellY, cellW, cellH);
-                    }
-                }
-
-                cells.Add(new PrintCell(page.PageNumber, cellRect, pageRect, overflows));
-            }
-
-            bool isBack = (s % 2 == 1);
-            sheets.Add(new PrintSheet(isLandscape, isBack, cells));
+            sheets.Add(BuildSheet(s, sheetPages, pps, orderN, portW, portH, options));
         }
 
         return sheets;
+    }
+
+    private static PrintSheet BuildSheet(
+        int s,
+        IReadOnlyList<PrintPageSize> sheetPages,
+        int pps,
+        bool orderN,
+        float portW,
+        float portH,
+        PrintPdfOptions options)
+    {
+        var firstPage = sheetPages[0];
+        bool isLandscape = DetermineSheetOrientation(options.Orientation, firstPage, portW, portH, pps);
+
+        float sheetWidth = isLandscape ? portH : portW;
+        float sheetHeight = isLandscape ? portW : portH;
+        float shortSide = Math.Min(sheetWidth, sheetHeight);
+        float margin = shortSide * MarginRatio;
+        float availW = Math.Max(0f, sheetWidth - 2f * margin);
+        float availH = Math.Max(0f, sheetHeight - 2f * margin);
+
+        (int cols, int rows) = GetGrid(pps, isLandscape);
+        float gap = pps >= 2 ? shortSide * GapRatio : 0f;
+        float cellW = Math.Max(0f, (availW - (cols - 1) * gap) / cols);
+        float cellH = Math.Max(0f, (availH - (rows - 1) * gap) / rows);
+
+        var cells = BuildSheetCells(sheetPages, pps, orderN, cols, rows, margin, gap, cellW, cellH, options);
+        bool isBack = (s & 1) != 0;
+        return new PrintSheet(isLandscape, isBack, cells);
+    }
+
+    private static List<PrintCell> BuildSheetCells(
+        IReadOnlyList<PrintPageSize> sheetPages,
+        int pps,
+        bool orderN,
+        int cols,
+        int rows,
+        float margin,
+        float gap,
+        float cellW,
+        float cellH,
+        PrintPdfOptions options)
+    {
+        var cells = new List<PrintCell>(sheetPages.Count);
+        for (int i = 0; i < sheetPages.Count; i++)
+        {
+            var page = sheetPages[i];
+            int col = orderN ? i / rows : i % cols;
+            int row = orderN ? i % rows : i / cols;
+
+            float cellX = margin + col * (cellW + gap);
+            float cellY = margin + row * (cellH + gap);
+            var cellRect = new PrintRect(cellX, cellY, cellW, cellH);
+
+            var (pageRect, overflows) = CalculatePagePlacement(page, cellX, cellY, cellW, cellH, pps, options);
+            cells.Add(new PrintCell(page.PageNumber, cellRect, pageRect, overflows));
+        }
+
+        return cells;
+    }
+
+    private static (PrintRect PageRect, bool Overflows) CalculatePagePlacement(
+        PrintPageSize page,
+        float cellX,
+        float cellY,
+        float cellW,
+        float cellH,
+        int pps,
+        PrintPdfOptions options)
+    {
+        if (pps > 1)
+        {
+            return (CalculateFitRect(page, cellX, cellY, cellW, cellH), false);
+        }
+
+        string scaleMode = options.Scale?.ToLowerInvariant() ?? "fit";
+        if (scaleMode == "actual")
+        {
+            var pageRect = CalculateActualRect(page, cellX, cellY, cellW, cellH);
+            bool overflows = pageRect.Width > cellW + 1e-3f || pageRect.Height > cellH + 1e-3f;
+            return (pageRect, overflows);
+        }
+
+        if (scaleMode == "custom")
+        {
+            float factor = (options.ScalePercent <= 0 ? 100 : options.ScalePercent) / 100f;
+            var pageRect = CalculateCustomRect(page, cellX, cellY, cellW, cellH, factor);
+            bool overflows = pageRect.Width > cellW + 1e-3f || pageRect.Height > cellH + 1e-3f;
+            return (pageRect, overflows);
+        }
+
+        return (CalculateFitRect(page, cellX, cellY, cellW, cellH), false);
     }
 
     public static int PaperCount(IReadOnlyList<PrintSheet> sheets, PrintDuplexMode duplex)
