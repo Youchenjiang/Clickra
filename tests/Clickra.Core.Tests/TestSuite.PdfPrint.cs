@@ -29,9 +29,19 @@ static partial class TestSuite
         public bool CanDuplex(string? printerName = null) => _canDuplex;
     }
 
+    private const string ScaleActual = "actual";
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3776", Justification = "Registers independent PDF print test cases.")]
     public static void RegisterPdfPrintTests(TestRunner runner)
     {
         const string defaultLaserPrinter = "Default Laser";
+        RegisterLayoutPlannerTests(runner, defaultLaserPrinter);
+        RegisterPreviewAndSettingsTests(runner, defaultLaserPrinter);
+        RegisterProcessorAndOrientationTests(runner, defaultLaserPrinter);
+    }
+
+    private static void RegisterLayoutPlannerTests(TestRunner runner, string defaultLaserPrinter)
+    {
         runner.Run("PDF print: resolve page numbers parses ranges and keywords correctly", () =>
         {
             var pagesAll = PdfPrintProcessor.ResolvePageNumbers("all", 10);
@@ -136,7 +146,7 @@ static partial class TestSuite
         runner.Run("PDF print: layout planner: actual size overflows for oversized page and custom scale halves dimensions", () =>
         {
             var a3Pages = new[] { new PrintPageSize(1, 842f, 1191f) };
-            var actualSheets = PrintLayoutPlanner.Plan(a3Pages, 595f, 842f, new PrintPdfOptions(orientation: PrintOrientation.Portrait, scale: "actual", pagesPerSheet: 1));
+            var actualSheets = PrintLayoutPlanner.Plan(a3Pages, 595f, 842f, new PrintPdfOptions(orientation: PrintOrientation.Portrait, scale: ScaleActual, pagesPerSheet: 1));
             Assert.True(actualSheets[0].Cells[0].Overflows, "A3 on A4 actual size must overflow.");
 
             var customSheets = PrintLayoutPlanner.Plan(a3Pages, 595f, 842f, new PrintPdfOptions(orientation: PrintOrientation.Portrait, scale: "custom", scalePercent: 50, pagesPerSheet: 1));
@@ -148,7 +158,7 @@ static partial class TestSuite
         runner.Run("PDF print: layout planner: 2 or more pages per sheet treats scale mode as fit", () =>
         {
             var pages = new[] { new PrintPageSize(1, 842f, 1191f), new PrintPageSize(2, 842f, 1191f) };
-            var sheets = PrintLayoutPlanner.Plan(pages, 595f, 842f, new PrintPdfOptions(scale: "actual", pagesPerSheet: 2));
+            var sheets = PrintLayoutPlanner.Plan(pages, 595f, 842f, new PrintPdfOptions(scale: ScaleActual, pagesPerSheet: 2));
             Assert.False(sheets[0].Cells[0].Overflows, "Scale mode must be treated as fit when pages per sheet > 1.");
             Assert.False(sheets[0].Cells[1].Overflows, "Cell 1 must not overflow.");
             Assert.True(sheets[0].Cells[0].Page.Width <= sheets[0].Cells[0].Cell.Width + 0.01f, "Width within cell.");
@@ -160,7 +170,7 @@ static partial class TestSuite
             // fit_to_page=false and no scale -> actual
             var dictLegacy = new Dictionary<string, object> { [PrintPdfOptions.FitToPageKey] = false };
             var optsLegacy = PrintPdfOptions.FromDictionary(dictLegacy);
-            Assert.Equal("actual", optsLegacy.Scale);
+            Assert.Equal(ScaleActual, optsLegacy.Scale);
             Assert.False(optsLegacy.FitToPage, "Legacy fit to page should be false.");
 
             // ToExplicitDictionary writes every new field
@@ -218,25 +228,15 @@ static partial class TestSuite
             Assert.True(file2Pages.SequenceEqual(new[] { 3, 4, 5 }), "File 2 pages mismatch.");
             Assert.Equal(0, file3Pages.Count);
         });
+    }
 
+    private static void RegisterPreviewAndSettingsTests(TestRunner runner, string defaultLaserPrinter)
+    {
         runner.Run("PDF print preview: PrintPreviewQuery resolves page sizes and total count", () =>
         {
-            string tempPdf = Path.Combine(Path.GetTempPath(), $"clickra_preview_query_{Guid.NewGuid():N}.pdf");
+            string tempPdf = CreateTwoPagePdf((400, 600), (500, 700));
             try
             {
-                using (var doc = new PdfSharp.Pdf.PdfDocument())
-                {
-                    var p1 = doc.AddPage();
-                    p1.Width = PdfSharp.Drawing.XUnit.FromPoint(400);
-                    p1.Height = PdfSharp.Drawing.XUnit.FromPoint(600);
-
-                    var p2 = doc.AddPage();
-                    p2.Width = PdfSharp.Drawing.XUnit.FromPoint(500);
-                    p2.Height = PdfSharp.Drawing.XUnit.FromPoint(700);
-
-                    doc.Save(tempPdf);
-                }
-
                 var (pages, total) = PrintPreviewQuery.ReadPageSizes(tempPdf, "2");
                 Assert.Equal(2, total);
                 Assert.Equal(1, pages.Count);
@@ -263,9 +263,9 @@ static partial class TestSuite
                     doc.Save(tempPdf);
                 }
 
-                using var bmp = PrintPreviewQuery.RenderPage(tempPdf, 1, 100, darken: true, grayscale: true);
-                Assert.True(bmp != null, "RenderPage must produce a bitmap.");
-                Assert.True(bmp?.Width > 0 && bmp?.Height > 0, "Rendered bitmap must have positive dimensions.");
+                using var bmp = PrintPreviewQuery.RenderPage(tempPdf, 1, 100, darken: true, grayscale: true)
+                    ?? throw new InvalidOperationException("RenderPage returned null bitmap.");
+                Assert.True(bmp.Width > 0 && bmp.Height > 0, "Rendered bitmap must have positive dimensions.");
             }
             finally
             {
@@ -376,7 +376,10 @@ static partial class TestSuite
             var textPixel = bmp.GetPixel(25, 2);
             Assert.True(textPixel.R < 100, $"Text ink was not darkened enough: actual {textPixel.R}");
         });
+    }
 
+    private static void RegisterProcessorAndOrientationTests(TestRunner runner, string defaultLaserPrinter)
+    {
         runner.Run("PDF print: options parse and serialize duplex and paper size correctly", () =>
         {
             var dict = new Dictionary<string, object>
@@ -472,22 +475,9 @@ static partial class TestSuite
 
         runner.Run("PDF print: processor correctly detects per-page landscape orientation", () =>
         {
-            string tempPdf = Path.Combine(Path.GetTempPath(), $"clickra_orient_test_{Guid.NewGuid():N}.pdf");
+            string tempPdf = CreateTwoPagePdf((800, 600), (600, 800));
             try
             {
-                using (var doc = new PdfSharp.Pdf.PdfDocument())
-                {
-                    var p1 = doc.AddPage();
-                    p1.Width = PdfSharp.Drawing.XUnit.FromPoint(800);
-                    p1.Height = PdfSharp.Drawing.XUnit.FromPoint(600); // Landscape
-
-                    var p2 = doc.AddPage();
-                    p2.Width = PdfSharp.Drawing.XUnit.FromPoint(600);
-                    p2.Height = PdfSharp.Drawing.XUnit.FromPoint(800); // Portrait
-
-                    doc.Save(tempPdf);
-                }
-
                 var orientations = PdfPrintProcessor.ReadPageOrientations(tempPdf, new[] { 1, 2 });
                 Assert.True(orientations[1], "Page 1 should be detected as landscape");
                 Assert.False(orientations[2], "Page 2 should be detected as portrait");
@@ -578,8 +568,7 @@ static partial class TestSuite
             Assert.Equal(3, PrintLayoutPlanner.PaperCount(rangeSheets2, PrintDuplexMode.Simplex));
 
             // When printer cannot duplex, effective duplex is Simplex and duplex setting does not alter paper count
-            bool canDuplex = false;
-            var fallbackDuplex = canDuplex ? PrintDuplexMode.DuplexLongEdge : PrintDuplexMode.Simplex;
+            var fallbackDuplex = ResolveEffectiveDuplex(canDuplex: false, PrintDuplexMode.DuplexLongEdge);
             int fallbackTotal = PrintLayoutPlanner.PaperCount(sheets1, fallbackDuplex)
                 + PrintLayoutPlanner.PaperCount(sheets2, fallbackDuplex)
                 + PrintLayoutPlanner.PaperCount(sheets3, fallbackDuplex);
@@ -613,4 +602,23 @@ static partial class TestSuite
             }
         });
     }
+
+    private static string CreateTwoPagePdf((float w, float h) page1, (float w, float h) page2)
+    {
+        string tempPdf = Path.Combine(Path.GetTempPath(), $"clickra_test_doc_{Guid.NewGuid():N}.pdf");
+        using var doc = new PdfSharp.Pdf.PdfDocument();
+        var p1 = doc.AddPage();
+        p1.Width = PdfSharp.Drawing.XUnit.FromPoint(page1.w);
+        p1.Height = PdfSharp.Drawing.XUnit.FromPoint(page1.h);
+
+        var p2 = doc.AddPage();
+        p2.Width = PdfSharp.Drawing.XUnit.FromPoint(page2.w);
+        p2.Height = PdfSharp.Drawing.XUnit.FromPoint(page2.h);
+
+        doc.Save(tempPdf);
+        return tempPdf;
+    }
+
+    private static PrintDuplexMode ResolveEffectiveDuplex(bool canDuplex, PrintDuplexMode requested) =>
+        canDuplex ? requested : PrintDuplexMode.Simplex;
 }
