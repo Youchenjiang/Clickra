@@ -46,7 +46,16 @@ public static class PdfPrintProcessor
             printDoc.DefaultPageSettings.Color = false;
         }
 
-        AttachPrintEvents(printDoc, pdfPath, sheets, defaultFontName, options, portraitWidthPt, portraitHeightPt, progress, cancellationToken);
+        var executionContext = new PrintExecutionContext(
+            pdfPath,
+            sheets,
+            defaultFontName,
+            options,
+            portraitWidthPt,
+            portraitHeightPt,
+            progress,
+            cancellationToken);
+        AttachPrintEvents(printDoc, executionContext);
 
         printDoc.Print();
         progress?.Invoke(
@@ -100,27 +109,28 @@ public static class PdfPrintProcessor
         return pageSizes;
     }
 
-    private static void AttachPrintEvents(
-        PrintDocument printDoc,
-        string pdfPath,
-        IReadOnlyList<PrintSheet> sheets,
-        string defaultFontName,
-        PrintPdfOptions options,
-        float portraitWidthPt,
-        float portraitHeightPt,
-        Action<int, int, string>? progress,
-        CancellationToken cancellationToken)
+    private sealed record PrintExecutionContext(
+        string PdfPath,
+        IReadOnlyList<PrintSheet> Sheets,
+        string DefaultFontName,
+        PrintPdfOptions Options,
+        float PortraitWidthPt,
+        float PortraitHeightPt,
+        Action<int, int, string>? Progress,
+        CancellationToken CancellationToken);
+
+    private static void AttachPrintEvents(PrintDocument printDoc, PrintExecutionContext ctx)
     {
         int currentSheetIndex = 0;
-        int totalSheets = sheets.Count;
+        int totalSheets = ctx.Sheets.Count;
 
         printDoc.QueryPageSettings += (sender, e) =>
         {
             if (currentSheetIndex < totalSheets)
             {
-                var sheet = sheets[currentSheetIndex];
+                var sheet = ctx.Sheets[currentSheetIndex];
                 e.PageSettings.Landscape = sheet.Landscape;
-                if (options.Grayscale)
+                if (ctx.Options.Grayscale)
                 {
                     e.PageSettings.Color = false;
                 }
@@ -129,7 +139,7 @@ public static class PdfPrintProcessor
 
         printDoc.PrintPage += (sender, e) =>
         {
-            if (cancellationToken.IsCancellationRequested)
+            if (ctx.CancellationToken.IsCancellationRequested)
             {
                 e.Cancel = true;
                 e.HasMorePages = false;
@@ -142,17 +152,17 @@ public static class PdfPrintProcessor
                 return;
             }
 
-            var sheet = sheets[currentSheetIndex];
-            progress?.Invoke(
+            var sheet = ctx.Sheets[currentSheetIndex];
+            ctx.Progress?.Invoke(
                 currentSheetIndex + 1,
                 totalSheets,
                 ExecutionLocalizationOptions.Text(
-                    options.Language ?? "",
+                    ctx.Options.Language ?? "",
                     "core_print_progress_sheet",
                     ("current", currentSheetIndex + 1),
                     ("total", totalSheets)));
 
-            RenderAndDrawSheet(e, pdfPath, sheet, defaultFontName, options, portraitWidthPt, portraitHeightPt);
+            RenderAndDrawSheet(e, ctx.PdfPath, sheet, ctx.DefaultFontName, ctx.Options, ctx.PortraitWidthPt, ctx.PortraitHeightPt);
 
             currentSheetIndex++;
             e.HasMorePages = currentSheetIndex < totalSheets;

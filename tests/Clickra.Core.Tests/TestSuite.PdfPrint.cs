@@ -37,7 +37,7 @@ static partial class TestSuite
         const string defaultLaserPrinter = "Default Laser";
         RegisterLayoutPlannerTests(runner, defaultLaserPrinter);
         RegisterPreviewAndSettingsTests(runner, defaultLaserPrinter);
-        RegisterProcessorAndOrientationTests(runner, defaultLaserPrinter);
+        RegisterProcessorAndOrientationTests(runner);
     }
 
     private static void RegisterLayoutPlannerTests(TestRunner runner, string defaultLaserPrinter)
@@ -378,7 +378,7 @@ static partial class TestSuite
         });
     }
 
-    private static void RegisterProcessorAndOrientationTests(TestRunner runner, string defaultLaserPrinter)
+    private static void RegisterProcessorAndOrientationTests(TestRunner runner)
     {
         runner.Run("PDF print: options parse and serialize duplex and paper size correctly", () =>
         {

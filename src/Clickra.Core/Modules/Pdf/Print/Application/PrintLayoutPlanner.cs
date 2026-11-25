@@ -80,36 +80,34 @@ public static class PrintLayoutPlanner
         float gap = pps >= 2 ? shortSide * GapRatio : 0f;
         float cellW = Math.Max(0f, (availW - (cols - 1) * gap) / cols);
         float cellH = Math.Max(0f, (availH - (rows - 1) * gap) / rows);
+        var metrics = new SheetGridMetrics(cols, rows, margin, gap, cellW, cellH);
 
-        var cells = BuildSheetCells(sheetPages, pps, orderN, cols, rows, margin, gap, cellW, cellH, options);
+        var cells = BuildSheetCells(sheetPages, pps, orderN, metrics, options);
         bool isBack = (s & 1) != 0;
         return new PrintSheet(isLandscape, isBack, cells);
     }
+
+    private readonly record struct SheetGridMetrics(int Cols, int Rows, float Margin, float Gap, float CellW, float CellH);
 
     private static List<PrintCell> BuildSheetCells(
         IReadOnlyList<PrintPageSize> sheetPages,
         int pps,
         bool orderN,
-        int cols,
-        int rows,
-        float margin,
-        float gap,
-        float cellW,
-        float cellH,
+        SheetGridMetrics metrics,
         PrintPdfOptions options)
     {
         var cells = new List<PrintCell>(sheetPages.Count);
         for (int i = 0; i < sheetPages.Count; i++)
         {
             var page = sheetPages[i];
-            int col = orderN ? i / rows : i % cols;
-            int row = orderN ? i % rows : i / cols;
+            int col = orderN ? i / metrics.Rows : i % metrics.Cols;
+            int row = orderN ? i % metrics.Rows : i / metrics.Cols;
 
-            float cellX = margin + col * (cellW + gap);
-            float cellY = margin + row * (cellH + gap);
-            var cellRect = new PrintRect(cellX, cellY, cellW, cellH);
+            float cellX = metrics.Margin + col * (metrics.CellW + metrics.Gap);
+            float cellY = metrics.Margin + row * (metrics.CellH + metrics.Gap);
+            var cellRect = new PrintRect(cellX, cellY, metrics.CellW, metrics.CellH);
 
-            var (pageRect, overflows) = CalculatePagePlacement(page, cellX, cellY, cellW, cellH, pps, options);
+            var (pageRect, overflows) = CalculatePagePlacement(page, cellX, cellY, metrics.CellW, metrics.CellH, pps, options);
             cells.Add(new PrintCell(page.PageNumber, cellRect, pageRect, overflows));
         }
 

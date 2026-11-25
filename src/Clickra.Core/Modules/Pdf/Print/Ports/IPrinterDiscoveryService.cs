@@ -44,28 +44,31 @@ public sealed class SystemPrinterDiscoveryService : IPrinterDiscoveryService
 
     private static class CacheHolder
     {
-        internal static volatile IReadOnlyList<string>? InstalledPrinters;
-        internal static volatile string? DefaultPrinter;
-        internal static DateTime LastRefreshUtc = DateTime.MinValue;
+        private static volatile IReadOnlyList<string>? s_installedPrinters;
+        private static volatile string? s_defaultPrinter;
+        private static DateTime s_lastRefreshUtc = DateTime.MinValue;
         internal static readonly object SyncLock = new();
 
-        internal static bool HasCache => InstalledPrinters != null && (DateTime.UtcNow - LastRefreshUtc) < CacheTtl;
-        internal static bool IsCacheValid => InstalledPrinters != null && (DateTime.UtcNow - LastRefreshUtc) < CacheTtl;
-        internal static bool IsDefaultCacheValid => DefaultPrinter != null && (DateTime.UtcNow - LastRefreshUtc) < CacheTtl;
+        internal static IReadOnlyList<string>? InstalledPrinters => s_installedPrinters;
+        internal static string? DefaultPrinter => s_defaultPrinter;
+
+        internal static bool IsCacheAvailable => s_installedPrinters != null && (DateTime.UtcNow - s_lastRefreshUtc) < CacheTtl;
+        internal static bool IsCacheValid => s_installedPrinters != null && (DateTime.UtcNow - s_lastRefreshUtc) < CacheTtl;
+        internal static bool IsDefaultCacheValid => s_defaultPrinter != null && (DateTime.UtcNow - s_lastRefreshUtc) < CacheTtl;
 
         internal static void SetInstalledPrinters(IReadOnlyList<string> list)
         {
-            InstalledPrinters = list;
-            LastRefreshUtc = DateTime.UtcNow;
+            s_installedPrinters = list;
+            s_lastRefreshUtc = DateTime.UtcNow;
         }
 
         internal static void SetDefaultPrinter(string? name)
         {
-            DefaultPrinter = name;
+            s_defaultPrinter = name;
         }
     }
 
-    public static bool HasCache => CacheHolder.HasCache;
+    public static bool HasCache => CacheHolder.IsCacheAvailable;
 
     public static void WarmUp()
     {
