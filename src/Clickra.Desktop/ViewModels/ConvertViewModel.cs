@@ -380,7 +380,21 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     public bool IsPrintAction => string.Equals(SelectedAction?.Command, "print-pdf", StringComparison.OrdinalIgnoreCase);
 
     public bool IsZoomPreviewOpen => (IsSplitAction && Split.IsPreviewOpen) || (IsPrintAction && PrintPreview.IsPreviewOpen);
-    public ZoomPreviewViewModel? ActiveZoomPreview => IsSplitAction && Split.IsPreviewOpen ? Split.Zoom : IsPrintAction && PrintPreview.IsPreviewOpen ? PrintPreview.Zoom : null;
+    public ZoomPreviewViewModel? ActiveZoomPreview
+    {
+        get
+        {
+            if (IsSplitAction && Split.IsPreviewOpen)
+            {
+                return Split.Zoom;
+            }
+            if (IsPrintAction && PrintPreview.IsPreviewOpen)
+            {
+                return PrintPreview.Zoom;
+            }
+            return null;
+        }
+    }
 
     public bool CanStart => !IsExecuting && SelectedAction is not null && _workspace.CanStart &&
                             (!IsRenameAction || Rename.CanRename) && (!IsOrderAction || Order.HasOutputName) && (!IsSplitAction || Split.IsReady) && Options.IsReady &&

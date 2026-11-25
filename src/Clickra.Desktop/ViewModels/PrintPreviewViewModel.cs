@@ -231,14 +231,12 @@ public sealed class PrintPreviewViewModel : ViewModelBase
             }
             if (_pagesPerSheet > 1)
             {
-                string key = sheet.Landscape ? "ui_print_sheet_landscape_multi" : "ui_print_sheet_portrait_multi";
-                return Strings.F(key, ("paper", _paperName), ("count", _pagesPerSheet));
+                string multiKey = sheet.Landscape ? "ui_print_sheet_landscape_multi" : "ui_print_sheet_portrait_multi";
+                return Strings.F(multiKey, ("paper", _paperName), ("count", _pagesPerSheet));
             }
-            else
-            {
-                string key = sheet.Landscape ? "ui_print_sheet_landscape" : "ui_print_sheet_portrait";
-                return Strings.F(key, ("paper", _paperName));
-            }
+
+            string key = sheet.Landscape ? "ui_print_sheet_landscape" : "ui_print_sheet_portrait";
+            return Strings.F(key, ("paper", _paperName));
         }
     }
 

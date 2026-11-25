@@ -566,7 +566,7 @@ public sealed class ActionOptionsViewModel : ViewModelBase
     public bool CanDuplex { get; private set; } = true;
     /// <summary>0 自動, 1 直向, 2 橫向.</summary>
     public int OrientationIndex { get => _orientation; set { _orientation = Math.Clamp(value, 0, 2); Changed(nameof(OrientationIndex), nameof(PrintIsDefault)); } }
-    public bool FitToPage { get => ScaleMode == "fit"; set { ScaleModeIndex = value ? 0 : 1; } }
+    public bool FitToPage { get => ScaleMode == "fit"; set => ScaleModeIndex = value ? 0 : 1; }
     public bool DarkenText { get => _darkenText; set { _darkenText = value; Changed(nameof(DarkenText), nameof(PrintIsDefault)); } }
     public IReadOnlyList<string> PaperSizes => _paperSizes;
     public int PaperIndex { get => _paperIndex; set { _paperIndex = Math.Clamp(value, 0, Math.Max(0, _paperSizes.Count - 1)); Changed(nameof(PaperIndex), nameof(PrintIsDefault)); } }
@@ -752,8 +752,8 @@ public sealed class ActionOptionsViewModel : ViewModelBase
 
         System.Threading.Tasks.Task.Run(() =>
         {
-            IReadOnlyList<string> installed;
-            string? def;
+            IReadOnlyList<string> installed = Array.Empty<string>();
+            string? def = null;
             try
             {
                 installed = PrinterDiscovery.GetInstalledPrinters();
@@ -761,14 +761,9 @@ public sealed class ActionOptionsViewModel : ViewModelBase
             }
             catch (Exception) // skipcq: CS-R1008
             {
-                installed = Array.Empty<string>();
-                def = null;
             }
 
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-            {
-                ApplyDiscoveredPrinters(installed, def);
-            });
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyDiscoveredPrinters(installed, def));
         });
     }
 
