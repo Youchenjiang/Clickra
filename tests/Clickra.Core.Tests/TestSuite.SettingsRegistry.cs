@@ -83,7 +83,7 @@ static partial class TestSuite
             "LibreOfficeManagedProductCode", "LibreOfficeManagedSofficePath",
             "TranslateTargetLang", "TranslateEngine", "TranslateAiEndpoint", "TranslateAiApiKey", "TranslateAiModel",
             "PdfCompressImageLevel",
-            "ImageCompressLevel", "ImageCompressMaxDimension", "ParkedTaskRetention",
+            "ImageCompressLevel", "ImageCompressMaxDimension",
             "ContextMenuEnabled", "ContextMenuHidden",
             "PdfToImageFormat", "MarkdownTheme", "MarkdownPaper", "MarkdownTextSize", "MarkdownTemplatePath",
             "MarkdownCodeTheme", "PdfToImageDpi", "PdfToImageStitch",
@@ -183,10 +183,8 @@ static partial class TestSuite
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(
             RepoRootNotFoundMessage);
-        string parkedCoordinator = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryCoreProjectDirectory, "Storage", "ParkedTaskCoordinator.cs"));
         string settings = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryCoreProjectDirectory, "Storage", "ClickraSettings.cs"));
 
-        AssertNumericAccessorUsesRegistry("GetRetentionDays", parkedCoordinator);
         AssertNumericAccessorUsesRegistry("NormalizePdfCompressLevel", settings);
     }
 
@@ -262,19 +260,11 @@ static partial class TestSuite
             "Fluent must derive CompressionSlider.Minimum from the shared Presentation settings owner.");
         Assert.True(fluentCode.Contains("CompressionSlider.Maximum = SettingsPresentationController.Shared.MaxPdfCompressionLevel", StringComparison.Ordinal),
             "Fluent must derive CompressionSlider.Maximum from the shared Presentation settings owner.");
-        Assert.True(fluentCode.Contains("ParkedRetentionBox.Minimum = SettingsPresentationController.Shared.MinParkedRetentionDays", StringComparison.Ordinal),
-            "Fluent must derive ParkedRetentionBox.Minimum from the shared Presentation settings owner.");
-        Assert.True(fluentCode.Contains("ParkedRetentionBox.Maximum = SettingsPresentationController.Shared.MaxParkedRetentionDays", StringComparison.Ordinal),
-            "Fluent must derive ParkedRetentionBox.Maximum from the shared Presentation settings owner.");
 
         Assert.True(fluentXaml.Contains("x:Name=\"CompressionSlider\"", StringComparison.Ordinal) &&
                     !fluentXaml.Contains("x:Name=\"CompressionSlider\" Minimum=", StringComparison.Ordinal) &&
                     !fluentXaml.Contains("x:Name=\"CompressionSlider\" Maximum=", StringComparison.Ordinal),
             "Fluent XAML must not duplicate CompressionSlider bounds; LoadSettings owns the centralized range.");
-        Assert.True(fluentXaml.Contains("x:Name=\"ParkedRetentionBox\"", StringComparison.Ordinal) &&
-                    !fluentXaml.Contains("x:Name=\"ParkedRetentionBox\" Grid.Column=\"1\" MinWidth=\"160\" Minimum=", StringComparison.Ordinal) &&
-                    !fluentXaml.Contains("x:Name=\"ParkedRetentionBox\" Grid.Column=\"1\" MinWidth=\"160\" Maximum=", StringComparison.Ordinal),
-            "Fluent XAML must not duplicate ParkedRetentionBox bounds; LoadSettings owns the centralized range.");
 
         Assert.True(cliDynamicPaint.Contains("descriptor.GetEffectiveNumericRange()", StringComparison.Ordinal),
             "CLI descriptor controls must derive numeric bounds from SettingDescriptor.");
@@ -290,9 +280,6 @@ static partial class TestSuite
         Assert.True(cliClick.Contains("GetRequiredNumericRange(descriptor)", StringComparison.Ordinal) &&
                     cliClick.Contains("SettingsPresentationController.Shared.WriteInt(descriptor, clamped)", StringComparison.Ordinal),
             "CLI ApplyPdfCompressLevel must clamp through the registered descriptor and persist through the shared Presentation settings owner.");
-        Assert.True(cliClick.Contains("SettingsPresentationController.Shared.MinParkedRetentionDays", StringComparison.Ordinal) &&
-                    cliClick.Contains("SettingsPresentationController.Shared.MaxParkedRetentionDays", StringComparison.Ordinal),
-            "CLI SetParkedRetention must clamp against shared Presentation retention bounds.");
     }
 
     private static void TestRetiredKeysStayDisjoint()
@@ -391,13 +378,13 @@ static partial class TestSuite
                 ClickraStorage.SettingsReloaded -= onReloaded;
             }
 
-            string newConfig = "QuietMode=false\nParkedTaskRetention=42\n";
+            string newConfig = "QuietMode=false\nPdfCompressImageLevel=2\n";
             File.WriteAllText(settingsFile, newConfig, System.Text.Encoding.UTF8);
             File.SetLastWriteTimeUtc(settingsFile, DateTime.UtcNow.AddSeconds(1));
 
             Assert.False(ClickraStorage.GetSettingBool(ClickraSettings.QuietMode),
                 "GetSetting must immediately bust stale cache when external process changes settings file.");
-            Assert.Equal(42, ClickraStorage.GetParkedRetentionDays());
+            Assert.Equal("2", ClickraStorage.GetSetting(ClickraSettings.PdfCompressImageLevel));
 
             string root = FindRepoRoot() ?? throw new TestSkippedException(RepoRootNotFoundMessage);
             string storageSource = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryCoreProjectDirectory, "Storage", "SettingsStore.cs"));

@@ -26,20 +26,6 @@ public static partial class ClickraStorage
     public static ResumedTaskInfo? ClaimParkedTaskForResume(string taskId) =>
         ParkedTaskCoordinator.ClaimForResume(taskId);
 
-    public static int GetParkedRetentionDays() => ParkedTaskCoordinator.GetRetentionDays();
-
-    public static void SetParkedRetentionOverride(string taskId, int? days) =>
-        ParkedTaskCoordinator.SetRetentionOverride(taskId, days);
-
-    public static int? AdjustParkedRetention(string taskId, int deltaDays) =>
-        ParkedTaskCoordinator.AdjustRetention(taskId, deltaDays);
-
-    public static ParkedRetentionInfo CalculateRetentionInfo(int retentionDays, TimeSpan age, bool isTaskOverride = false) =>
-        TaskRetentionPolicy.CalculateInfo(retentionDays, age, isTaskOverride);
-
-    public static ParkedRetentionInfo GetParkedRetentionInfo(string taskId) =>
-        ParkedTaskCoordinator.GetRetentionInfo(taskId);
-
     public static void DeleteTask(string taskId) => TaskQueueStore.Delete(taskId);
 
     public static HistoryEntry? GetTask(string taskId) => TaskQueueStore.Get(taskId);

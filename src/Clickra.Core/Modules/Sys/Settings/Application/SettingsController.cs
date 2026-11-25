@@ -282,12 +282,6 @@ public static class SettingsController
         set => WriteInt(ClickraSettings.ImageCompressMaxDimension, ClickraSettings.ClampNumericSetting(ClickraSettings.ImageCompressMaxDimension, value));
     }
 
-    public static int ParkedTaskRetentionDays
-    {
-        get => ReadClampedInt(ClickraSettings.ParkedTaskRetention);
-        set => WriteInt(ClickraSettings.ParkedTaskRetention, ClickraSettings.ClampNumericSetting(ClickraSettings.ParkedTaskRetention, value));
-    }
-
     public static OfficeEnginePreference OfficeEngine
     {
         get => ReadText(ClickraSettings.OfficeEngine).ToLowerInvariant() switch

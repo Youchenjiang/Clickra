@@ -58,7 +58,6 @@ internal static class TaskRecordStore
                 writer.WriteLine($"EndTime={data.EndTime ?? ""}");
                 writer.WriteLine($"ElapsedMs={data.ElapsedMs}");
                 writer.WriteLine($"Pid={data.Pid}");
-                if (data.ParkedRetentionDays.HasValue) writer.WriteLine($"ParkedRetentionDays={data.ParkedRetentionDays.Value}");
                 if (!string.IsNullOrEmpty(data.ParkedSince)) writer.WriteLine($"ParkedSince={data.ParkedSince}");
                 return true;
             }
@@ -83,7 +82,6 @@ internal static class TaskRecordStore
                 if (!int.TryParse(values.GetValueOrDefault("CurrentIndex", "0"), out int currentIndex)) currentIndex = 0;
                 if (!long.TryParse(values.GetValueOrDefault("ElapsedMs", "-1"), out long elapsedMs)) elapsedMs = -1;
                 if (!int.TryParse(values.GetValueOrDefault("Pid", "0"), out int pid)) pid = 0;
-                int? parkedDays = int.TryParse(values.GetValueOrDefault("ParkedRetentionDays", ""), out int parsedDays) ? parsedDays : null;
 
                 return new HistoryEntry
                 {
@@ -99,7 +97,6 @@ internal static class TaskRecordStore
                     EndTime = values.GetValueOrDefault("EndTime", ""),
                     ElapsedMs = elapsedMs,
                     Pid = pid,
-                    ParkedRetentionDays = parkedDays,
                     ParkedSince = values.GetValueOrDefault("ParkedSince", "")
                 };
             }
@@ -130,7 +127,6 @@ internal static class TaskRecordStore
         EndTime = endTime ?? entry.EndTime,
         ElapsedMs = elapsedMs >= 0 ? elapsedMs : entry.ElapsedMs,
         Pid = pidOverride ?? entry.Pid,
-        ParkedRetentionDays = entry.ParkedRetentionDays,
         ParkedSince = entry.ParkedSince
     };
 

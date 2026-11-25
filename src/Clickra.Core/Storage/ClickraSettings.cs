@@ -44,7 +44,6 @@ public static class ClickraSettings
     public const string ImageCompressMaxDimension = "ImageCompressMaxDimension";
 
     // ─── 任務佇列 ──────────────────────────────────────────────────────────
-    public const string ParkedTaskRetention = "ParkedTaskRetention";
 
     // ─── 功能預設值（4.0 桌面端設定頁 › 功能預設值）──────────────────────
     public const string PdfToImageFormat = "PdfToImageFormat";
@@ -93,7 +92,6 @@ public static class ClickraSettings
     public const string DefaultPdfCompressLevel = "1";
     public const string DefaultImageCompressLevel = "1";
     public const string DefaultImageCompressMaxDimension = "0";
-    public const string DefaultParkedTaskRetention = "7";
     public const string DefaultPdfToImageFormat = "png";
     public const string DefaultMarkdownTheme = "default";
     public const string DefaultMarkdownPaper = "a4";
@@ -115,10 +113,6 @@ public static class ClickraSettings
     public const string DesktopThemeLight = "light";
     public const string DesktopThemeDark = "dark";
     public const string DesktopThemeSystem = "system";
-    public const int MaxParkedTaskRetentionDays = 365;
-    public const int MinParkedRetentionDays = 0;
-    public const int MaxParkedRetentionDays = MaxParkedTaskRetentionDays;
-    public const int ParkedRetentionStepDays = 7;
     public const int MinPdfCompressLevel = 0;
     public const int MaxPdfCompressLevel = 2;
     public const int MinImageCompressLevel = 0;
@@ -159,7 +153,6 @@ public static class ClickraSettings
         new ClickraSetting(PdfCompressImageLevel, DefaultPdfCompressLevel, "PDF 圖片壓縮等級 0-2（1 = 平衡）"),
         new ClickraSetting(ImageCompressLevel, DefaultImageCompressLevel, "圖片壓縮品質等級 0-3"),
         new ClickraSetting(ImageCompressMaxDimension, DefaultImageCompressMaxDimension, "圖片壓縮最大長邊（0 = 保持原尺寸）"),
-        new ClickraSetting(ParkedTaskRetention, DefaultParkedTaskRetention, "已暫存任務保留天數（0 = 無限期）"),
         new ClickraSetting(PdfToImageFormat, DefaultPdfToImageFormat, "PDF 轉成圖片的預設格式：png / jpg / webp"),
         new ClickraSetting(MarkdownTheme, DefaultMarkdownTheme, "Markdown 轉換的預設文件範本：default / minimal / academic"),
         new ClickraSetting(MarkdownPaper, DefaultMarkdownPaper, "Markdown 轉成 PDF 的預設紙張：a4 / letter"),
@@ -213,7 +206,6 @@ public static class ClickraSettings
     public static readonly IReadOnlyDictionary<string, NumericSettingRange> NumericRanges =
         new Dictionary<string, NumericSettingRange>(StringComparer.OrdinalIgnoreCase)
         {
-            [ParkedTaskRetention] = new(MinParkedRetentionDays, MaxParkedRetentionDays, 7),
             [PdfCompressImageLevel] = new(MinPdfCompressLevel, MaxPdfCompressLevel, 1),
             [ImageCompressLevel] = new(MinImageCompressLevel, MaxImageCompressLevel, 1),
             [ImageCompressMaxDimension] = new(MinImageCompressMaxDimension, MaxImageCompressMaxDimension, 0),
@@ -263,6 +255,7 @@ public static class ClickraSettings
     /// </summary>
     public static readonly IReadOnlyCollection<string> RetiredKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
+        "ParkedTaskRetention",
         "PdfCompressTargetDpi",
         "PdfCompressJpegQuality",
         "PdfCompressDpi",

@@ -41,7 +41,6 @@ public struct HistoryEntry
     public string OutputPath { get; set; }
     public int CurrentIndex { get; set; }
     public int Pid { get; set; }
-    public int? ParkedRetentionDays { get; set; }
     public string ParkedSince { get; set; }
 }
 
@@ -60,15 +59,6 @@ public record CompleteTaskRequest
 /// <summary>Resume data returned when claiming a parked task.</summary>
 public record ResumedTaskInfo(string TaskId, string Command, List<string> Files, int StartIndex);
 
-/// <summary>Calculated retention status for a parked task.</summary>
-public readonly record struct ParkedRetentionInfo(
-    bool IsUnlimited,
-    int RemainingDays,
-    TimeSpan RemainingTime,
-    bool IsExpiringSoon,
-    bool HasExpired,
-    bool IsTaskOverride = false);
-
 internal sealed record TaskFileData
 {
     internal string TaskId { get; init; } = string.Empty;
@@ -83,7 +73,6 @@ internal sealed record TaskFileData
     internal string? EndTime { get; init; }
     internal long ElapsedMs { get; init; } = -1;
     internal int Pid { get; init; }
-    internal int? ParkedRetentionDays { get; init; }
     internal string? ParkedSince { get; init; }
 }
 

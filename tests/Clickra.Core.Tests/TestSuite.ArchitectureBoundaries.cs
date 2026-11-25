@@ -1101,10 +1101,7 @@ static partial class TestSuite
             ("public static void ParkTask(", "ParkedTaskCoordinator.Park("),
             ("public static List<HistoryEntry> GetParkedTasks()", "ParkedTaskCoordinator.GetAll("),
             ("public static void CancelParkedTask(", "ParkedTaskCoordinator.Cancel("),
-            ("public static ResumedTaskInfo? ClaimParkedTaskForResume(", "ParkedTaskCoordinator.ClaimForResume("),
-            ("public static void SetParkedRetentionOverride(", "ParkedTaskCoordinator.SetRetentionOverride("),
-            ("public static int? AdjustParkedRetention(", "ParkedTaskCoordinator.AdjustRetention("),
-            ("public static ParkedRetentionInfo GetParkedRetentionInfo(", "ParkedTaskCoordinator.GetRetentionInfo(")
+            ("public static ResumedTaskInfo? ClaimParkedTaskForResume(", "ParkedTaskCoordinator.ClaimForResume(")
         })
         {
             int start = facade.IndexOf(publicCall, StringComparison.Ordinal);
@@ -1119,12 +1116,8 @@ static partial class TestSuite
 
         Assert.True(coordinator.Contains("StorageRuntime.RunWithMutex", StringComparison.Ordinal),
             "ParkedTaskCoordinator must own atomic parked-task transitions.");
-        Assert.True(coordinator.Contains("TaskRetentionPolicy.CalculateAdjustedDays(", StringComparison.Ordinal),
-            "ParkedTaskCoordinator must own retention-policy orchestration.");
         Assert.True(coordinator.Contains("HistoryStore.AppendCanceled(", StringComparison.Ordinal),
             "ParkedTaskCoordinator must own parked-task cancellation bookkeeping.");
-        Assert.False(facade.Contains("TaskRetentionPolicy.CalculateAdjustedDays(", StringComparison.Ordinal),
-            "ClickraStorage.ActiveRecord must not take parked retention orchestration back from the coordinator.");
     }
 
     private static void TestTaskPruningHasSingleOwner()
@@ -1145,14 +1138,14 @@ static partial class TestSuite
         {
             "Process.GetProcessById(",
             "AbandonedTaskTtlHours",
-            "TaskRetentionPolicy.IsExpired("
+            "CompletedTaskTtlMinutes"
         })
         {
             Assert.True(pruner.Contains(pruningOwner, StringComparison.Ordinal),
                 $"TaskPruningCoordinator must own {pruningOwner}.");
             Assert.False(facade.Contains(pruningOwner, StringComparison.Ordinal),
                 $"ClickraStorage.ActiveRecord must not reclaim {pruningOwner}.");
-            Assert.False(queue.Contains(pruningOwner, StringComparison.Ordinal) && pruningOwner != "TaskRetentionPolicy.IsExpired(",
+            Assert.False(queue.Contains(pruningOwner, StringComparison.Ordinal) && pruningOwner != "CompletedTaskTtlMinutes",
                 $"TaskQueueStore must not reclaim pruning policy {pruningOwner}.");
             Assert.False(parked.Contains(pruningOwner, StringComparison.Ordinal),
                 $"ParkedTaskCoordinator must not own {pruningOwner}.");
@@ -1608,7 +1601,7 @@ static partial class TestSuite
     }
 
     private static readonly Regex DirectParkedTaskActionStorageAccess =
-        new(@"\bClickraStorage\.(?:GetParkedRetentionDays|AdjustParkedRetention|SetParkedRetentionOverride|CancelParkedTask|ClaimParkedTaskForResume)\b",
+        new(@"\bClickraStorage\.(?:CancelParkedTask|ClaimParkedTaskForResume)\b",
             RegexOptions.Compiled, ArchitectureRegexTimeout);
 
     private static readonly Regex ParkedTaskGatewayStorageAccess =
@@ -1618,9 +1611,6 @@ static partial class TestSuite
     private static readonly IReadOnlySet<string> AllowedParkedTaskGatewayMembers =
         new HashSet<string>(StringComparer.Ordinal)
         {
-            "GetParkedRetentionDays",
-            "AdjustParkedRetention",
-            "SetParkedRetentionOverride",
             "CancelParkedTask",
             "ClaimParkedTaskForResume",
             "ParkTask"

@@ -30,13 +30,6 @@ namespace Clickra.UI;
                 case 34: SettingsPresentationController.Shared.OfficeEngine = OfficeEnginePreference.LibreOffice;
                          SettingsPresentationController.Shared.LibreOfficePath = string.Empty;
                          InvalidateRect(hwnd, IntPtr.Zero, false); break;
-                case 90: AdjustParkedRetention(hwnd, -1); break;
-                case 91: AdjustParkedRetention(hwnd, 1); break;
-                case 92: SetParkedRetention(hwnd, 0); break;
-                case 93: SetParkedRetention(hwnd, 3); break;
-                case 94: SetParkedRetention(hwnd, GetDefaultParkedRetentionDays()); break;
-                case 95: SetParkedRetention(hwnd, 14); break;
-                case 96: SetParkedRetention(hwnd, 30); break;
                 default: break; // Unhandled settings element — ignore.
             }
         }
@@ -119,27 +112,6 @@ namespace Clickra.UI;
                     // Ignore unsupported future editor kinds until they have an interaction handler.
                     break;
             }
-        }
-
-        private static void AdjustParkedRetention(IntPtr hwnd, int delta)
-        {
-            int current = SettingsPresentationController.Shared.ParkedTaskRetentionDays;
-            SetParkedRetention(hwnd, current + delta);
-        }
-
-        private static int GetDefaultParkedRetentionDays()
-            => SettingsPresentationController.Shared.DefaultParkedRetentionDays;
-
-        private static void SetParkedRetention(IntPtr hwnd, int days)
-        {
-            // Same range as the Fluent settings page, from one place: a second copy of the bound
-            // would let the two settings pages drift apart.
-            int clamped = Math.Clamp(
-                days,
-                SettingsPresentationController.Shared.MinParkedRetentionDays,
-                SettingsPresentationController.Shared.MaxParkedRetentionDays);
-            SettingsPresentationController.Shared.ParkedTaskRetentionDays = clamped;
-            InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
         private static void BrowseOutputDir(IntPtr hwnd)

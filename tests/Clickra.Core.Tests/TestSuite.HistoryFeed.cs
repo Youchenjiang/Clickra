@@ -36,9 +36,6 @@ static partial class TestSuite
             Assert.True(typeof(HistoryItem).GetProperty(nameof(HistoryItem.Entry))?.PropertyType
                 == typeof(Clickra.Core.Modules.Sys.HistoryTasks.Application.HistoryQueryRecord),
                 "HistoryItem.Entry must use the application query record without a second snapshot type.");
-            Assert.True(typeof(HistoryItem).GetProperty(nameof(HistoryItem.Retention))?.PropertyType
-                == typeof(Clickra.Core.Modules.Sys.HistoryTasks.Application.ParkedRetentionQueryState?),
-                "Parked retention must use the application query state without a presentation copy.");
         });
         runner.Run("History feed: one list carries active, parked and completed items in display order",
             TestHistoryFeedCarriesAllThreeKinds);
@@ -179,14 +176,12 @@ static partial class TestSuite
                 $"The parked subtitle parts are separated by a middle dot, got '{parked.Subtitle}'.");
             Assert.True(parked.FileCountText.StartsWith("one.pdf + 2 ", StringComparison.Ordinal),
                 $"A multi-file row shows the first file plus the remainder, got '{parked.FileCountText}'.");
-            Assert.True(parked.RetentionText.Length > 0, "Every parked row carries its own remaining retention.");
             Assert.False(parked.NeedsAttention, "A freshly parked task with the default retention is not expiring yet.");
             Assert.True(parked.StatusKey.Length == 0, "A parked row shows its deadline instead of a status word.");
 
             var single = feed.OfKind(HistoryItemKind.Active).First(i => i.Entry.Id == singleId);
             Assert.True(single.StoppedOnText.Length == 0, "A single-file task has no 'file i/n' phrase.");
             Assert.True(single.FileCountText == "solo.pdf", $"A single input is shown by its name, got '{single.FileCountText}'.");
-            Assert.True(single.RetentionText.Length == 0, "Only parked rows carry a retention phrase.");
             Assert.True(single.CommandLabelKey != single.Entry.Command && Localization.T(single.CommandLabelKey) != single.CommandLabelKey,
                 $"The command tag must resolve through the registry, got '{single.CommandLabelKey}'.");
         }
@@ -250,10 +245,10 @@ static partial class TestSuite
 
         // 清單本身住在 Core，兩個介面才可能共用；放進任一個介面就不可能被另一個使用。
         string feed = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Modules", "Sys", "HistoryTasks", "Presentation", "HistoryFeed.cs"));
-        foreach (string member in new[] { "HistoryItemKind.Active", "HistoryItemKind.Parked", "HistoryItemKind.Completed", "DescribeRetention" })
+        foreach (string member in new[] { "HistoryItemKind.Active", "HistoryItemKind.Parked", "HistoryItemKind.Completed" })
         {
             Assert.True(feed.Contains(member, StringComparison.Ordinal),
-                $"HistoryFeed must carry all three kinds and reuse the shared wording ({member}).");
+                $"HistoryFeed must carry all three kinds ({member}).");
         }
     }
 
@@ -281,10 +276,6 @@ static partial class TestSuite
             ("item.CommandLabelKey", fluent, FluentHistorySurface),
             ("item.Subtitle", cli, CliDashboardSurface),
             ("item.Subtitle", fluent, FluentHistorySurface),
-            ("item.RetentionText", cli, CliDashboardSurface),
-            ("item.RetentionText", fluent, FluentHistorySurface),
-            ("item.NeedsAttention", cli, CliDashboardSurface),
-            ("item.NeedsAttention", fluent, FluentHistorySurface),
         })
         {
             Assert.True(source.Contains(fact, StringComparison.Ordinal),

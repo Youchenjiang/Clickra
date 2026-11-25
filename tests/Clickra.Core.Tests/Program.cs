@@ -76,7 +76,6 @@ TestSuite.RegisterProgressWindowTests(runner);
 TestSuite.RegisterProgressLayoutTests(runner);
 TestSuite.RegisterDashboardLayoutTests(runner);
 TestSuite.RegisterHistoryFeedTests(runner);
-TestSuite.RegisterParkedRetentionTests(runner);
 TestSuite.RegisterLocalizationOrphanTests(runner);
 TestSuite.RegisterUiResourceCoverageTests(runner);
 TestSuite.RegisterMsixToolingTests(runner);

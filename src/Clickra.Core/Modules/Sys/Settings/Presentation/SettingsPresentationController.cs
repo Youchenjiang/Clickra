@@ -132,12 +132,6 @@ public sealed class SettingsPresentationController : ISettingsPresentationContro
         set => SettingsController.ImageCompressionMaxDimension = value;
     }
 
-    public int ParkedTaskRetentionDays
-    {
-        get => SettingsController.ParkedTaskRetentionDays;
-        set => SettingsController.ParkedTaskRetentionDays = value;
-    }
-
     public OfficeEnginePreference OfficeEngine
     {
         get => SettingsController.OfficeEngine;
@@ -237,9 +231,6 @@ public sealed class SettingsPresentationController : ISettingsPresentationContro
             : "setting_pdf_compress_level_std";
     }
 
-    public int MinParkedRetentionDays => SettingsContract.MinParkedRetentionDays;
-    public int MaxParkedRetentionDays => SettingsContract.MaxParkedRetentionDays;
-    public int DefaultParkedRetentionDays => SettingsContract.DefaultParkedRetentionDays;
     public int MinPdfCompressionLevel => SettingsContract.MinPdfCompressionLevel;
     public int MaxPdfCompressionLevel => SettingsContract.MaxPdfCompressionLevel;
     public string DefaultTranslationTargetLanguage => SettingsContract.DefaultTranslationTargetLanguage;

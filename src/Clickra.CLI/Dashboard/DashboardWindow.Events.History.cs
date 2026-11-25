@@ -25,23 +25,10 @@ namespace Clickra.UI;
             string taskId = parkedItems[rowIndex].Entry.Id;
             if (string.IsNullOrEmpty(taskId)) return;
 
-            if (action is ParkedActionShorten or ParkedActionExtend)
-                HandleParkedRetentionAdjustment(hwnd, taskId, action);
-            else if (action == ParkedActionCancel)
+            if (action == ParkedActionCancel)
                 HandleParkedCancel(hwnd, taskId);
             else if (action == ParkedActionResume)
                 HandleParkedResume(hwnd, taskId);
-        }
-
-        static void HandleParkedRetentionAdjustment(IntPtr hwnd, string taskId, int action)
-        {
-            int delta = action == ParkedActionExtend
-                ? _historyPresentation.RetentionStepDays
-                : -_historyPresentation.RetentionStepDays;
-            if (!_historyPresentation.AdjustRetention(taskId, delta)) return;
-
-            RefreshHistoryData();
-            InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
         static void HandleParkedCancel(IntPtr hwnd, string taskId)

@@ -24,7 +24,6 @@ public interface ISettingsPresentationController
     int PdfCompressionImageLevel { get; set; }
     int ImageCompressionLevel { get; set; }
     int ImageCompressionMaxDimension { get; set; }
-    int ParkedTaskRetentionDays { get; set; }
     OfficeEnginePreference OfficeEngine { get; set; }
     string OfficeEngineValue { get; }
     OutputDirectoryPreference OutputDirectory { get; set; }
@@ -47,9 +46,6 @@ public interface ISettingsPresentationController
     void EnsureFresh();
     string GetPdfCompressionSliderLabelKey(int sliderValue);
 
-    int MinParkedRetentionDays { get; }
-    int MaxParkedRetentionDays { get; }
-    int DefaultParkedRetentionDays { get; }
     int MinPdfCompressionLevel { get; }
     int MaxPdfCompressionLevel { get; }
     string DefaultTranslationTargetLanguage { get; }

@@ -21,7 +21,6 @@ public static class SettingsContract
     public const string PdfCompressionImageLevel = ClickraSettings.PdfCompressImageLevel;
     public const string ImageCompressionLevel = ClickraSettings.ImageCompressLevel;
     public const string ImageCompressionMaxDimension = ClickraSettings.ImageCompressMaxDimension;
-    public const string ParkedTaskRetention = ClickraSettings.ParkedTaskRetention;
 
     public const string OutputDirectorySource = ClickraSettings.DefaultOutputDirSource;
     public const string OutputDirectoryDesktop = ClickraSettings.OutputDirDesktop;
@@ -41,9 +40,6 @@ public static class SettingsContract
 
     public static int ClampNumeric(string key, int value) => ClickraSettings.ClampNumericSetting(key, value);
 
-    public static int MinParkedRetentionDays => ClickraSettings.MinParkedRetentionDays;
-    public static int MaxParkedRetentionDays => ClickraSettings.MaxParkedRetentionDays;
-    public static int DefaultParkedRetentionDays => ClickraSettings.GetDefaultInt(ClickraSettings.ParkedTaskRetention);
     public static int MinPdfCompressionLevel => ClickraSettings.MinPdfCompressLevel;
     public static int MaxPdfCompressionLevel => ClickraSettings.MaxPdfCompressLevel;
     public static string DefaultTranslationTargetLanguage => ClickraSettings.DefaultTranslateTargetLang;

@@ -57,9 +57,6 @@ public static class SettingsLayout
     public const int ChoiceCardExpandedHeight = 96;
     public const int EngineCardHeight = 118;
     public const int EngineLibreOfficeCardHeight = 180;
-    public const int RetentionCardHeight = 128;
-    public const int RetentionPresetGap = 6;
-    public const int RetentionGroupGap = 12;
 
     public static bool IsWide(int logW) => logW >= WideBreakpoint;
 

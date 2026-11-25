@@ -31,26 +31,12 @@ public sealed class HistoryPresentationController : IHistoryPresentationControll
 
     public bool IsEmpty => ActiveItems.Count == 0 && ParkedItems.Count == 0 && CompletedItems.Count == 0;
 
-    public int RetentionStepDays => ParkedTaskController.RetentionStepDays;
-
     public void Refresh(string language, int completedLimit = 50)
     {
         _feed = HistoryFeed.Load(language, completedLimit);
     }
 
     public void Reset() => _feed = HistoryFeed.Empty;
-
-    public bool AdjustRetention(string taskId, int deltaDays)
-    {
-        if (string.IsNullOrWhiteSpace(taskId)) return false;
-        return ParkedTaskController.AdjustRetention(taskId, deltaDays).HasValue;
-    }
-
-    public void ResetRetention(string taskId)
-    {
-        if (!string.IsNullOrWhiteSpace(taskId))
-            ParkedTaskController.ResetRetention(taskId);
-    }
 
     public void CancelParked(string taskId)
     {
