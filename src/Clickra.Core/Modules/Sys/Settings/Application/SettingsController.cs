@@ -114,7 +114,76 @@ public static class SettingsController
     public static bool PrintFitToPage
     {
         get => ReadBool(ClickraSettings.PrintFitToPage);
-        set => WriteBool(ClickraSettings.PrintFitToPage, value);
+        set
+        {
+            WriteBool(ClickraSettings.PrintFitToPage, value);
+            WriteText(ClickraSettings.PrintScale, value ? "fit" : "actual");
+        }
+    }
+
+    public static string PrintScale
+    {
+        get
+        {
+            string val = ReadText(ClickraSettings.PrintScale);
+            if (!string.IsNullOrWhiteSpace(val)) return val;
+            return PrintFitToPage ? "fit" : "actual";
+        }
+        set
+        {
+            string normalized = string.IsNullOrWhiteSpace(value) ? "fit" : value.Trim().ToLowerInvariant();
+            WriteText(ClickraSettings.PrintScale, normalized);
+            WriteBool(ClickraSettings.PrintFitToPage, normalized == "fit");
+        }
+    }
+
+    public static int PrintPagesPerSheet
+    {
+        get
+        {
+            if (int.TryParse(ReadText(ClickraSettings.PrintPagesPerSheet), out int pps) && pps is 1 or 2 or 4 or 6 or 9 or 16)
+            {
+                return pps;
+            }
+            return 1;
+        }
+        set => WriteText(ClickraSettings.PrintPagesPerSheet, (value is 1 or 2 or 4 or 6 or 9 or 16 ? value : 1).ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    public static string PrintPageOrder
+    {
+        get
+        {
+            string val = ReadText(ClickraSettings.PrintPageOrder);
+            return string.Equals(val, "N", StringComparison.OrdinalIgnoreCase) ? "N" : "Z";
+        }
+        set => WriteText(ClickraSettings.PrintPageOrder, string.Equals(value, "N", StringComparison.OrdinalIgnoreCase) ? "N" : "Z");
+    }
+
+    public static bool PrintPageBorder
+    {
+        get => ReadBool(ClickraSettings.PrintPageBorder);
+        set => WriteBool(ClickraSettings.PrintPageBorder, value);
+    }
+
+    public static int PrintScalePercent
+    {
+        get => int.TryParse(ReadText(ClickraSettings.PrintScalePercent), out int pct)
+            ? ClickraSettings.ClampNumericSetting(ClickraSettings.PrintScalePercent, pct)
+            : 100;
+        set => WriteText(ClickraSettings.PrintScalePercent, ClickraSettings.ClampNumericSetting(ClickraSettings.PrintScalePercent, value).ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    public static bool PrintGrayscale
+    {
+        get => ReadBool(ClickraSettings.PrintGrayscale);
+        set => WriteBool(ClickraSettings.PrintGrayscale, value);
+    }
+
+    public static bool PrintCollate
+    {
+        get => ReadBool(ClickraSettings.PrintCollate);
+        set => WriteBool(ClickraSettings.PrintCollate, value);
     }
 
     public static bool PrintDarkenText

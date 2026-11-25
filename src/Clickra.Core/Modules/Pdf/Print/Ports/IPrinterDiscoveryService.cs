@@ -40,26 +40,98 @@ public sealed class SystemPrinterDiscoveryService : IPrinterDiscoveryService
 {
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, IReadOnlyList<string>> PaperSizesCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> DuplexCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(60);
+
+    private static class CacheHolder
+    {
+        private static volatile IReadOnlyList<string>? s_installedPrinters;
+        private static volatile string? s_defaultPrinter;
+        private static DateTime s_lastRefreshUtc = DateTime.MinValue;
+        internal static readonly object SyncLock = new();
+
+        internal static IReadOnlyList<string>? InstalledPrinters => s_installedPrinters;
+        internal static string? DefaultPrinter => s_defaultPrinter;
+
+        internal static bool IsCacheAvailable => s_installedPrinters != null && (DateTime.UtcNow - s_lastRefreshUtc) < CacheTtl;
+        internal static bool IsCacheValid => s_installedPrinters != null && (DateTime.UtcNow - s_lastRefreshUtc) < CacheTtl;
+        internal static bool IsDefaultCacheValid => s_defaultPrinter != null && (DateTime.UtcNow - s_lastRefreshUtc) < CacheTtl;
+
+        internal static void SetInstalledPrinters(IReadOnlyList<string> list)
+        {
+            s_installedPrinters = list;
+            s_lastRefreshUtc = DateTime.UtcNow;
+        }
+
+        internal static void SetDefaultPrinter(string? name)
+        {
+            s_defaultPrinter = name;
+        }
+    }
+
+    public static bool HasCache => CacheHolder.IsCacheAvailable;
+
+    public static void WarmUp()
+    {
+        System.Threading.Tasks.Task.Run(() =>
+        {
+            try
+            {
+                var service = new SystemPrinterDiscoveryService();
+                service.GetInstalledPrinters();
+                var def = service.GetDefaultPrinter();
+                if (!string.IsNullOrEmpty(def))
+                {
+                    service.CanDuplex(def);
+                    service.GetSupportedPaperSizes(def);
+                }
+            }
+            catch
+            {
+                // Best effort background warm-up
+            }
+        });
+    }
 
     public IReadOnlyList<string> GetInstalledPrinters()
     {
-        var list = new List<string>();
-        foreach (string printer in PrinterSettings.InstalledPrinters)
+        if (CacheHolder.IsCacheValid)
         {
-            if (!string.IsNullOrWhiteSpace(printer))
-            {
-                list.Add(printer);
-            }
+            return CacheHolder.InstalledPrinters!;
         }
-        return list;
+
+        lock (CacheHolder.SyncLock)
+        {
+            if (CacheHolder.IsCacheValid)
+            {
+                return CacheHolder.InstalledPrinters!;
+            }
+
+            var list = new List<string>();
+            foreach (string printer in PrinterSettings.InstalledPrinters)
+            {
+                if (!string.IsNullOrWhiteSpace(printer))
+                {
+                    list.Add(printer);
+                }
+            }
+            CacheHolder.SetInstalledPrinters(list);
+            return list;
+        }
     }
 
     public string? GetDefaultPrinter()
     {
+        if (CacheHolder.IsDefaultCacheValid)
+        {
+            return CacheHolder.DefaultPrinter;
+        }
+
         try
         {
             var settings = new PrinterSettings();
-            return settings.IsValid ? settings.PrinterName : null;
+            string? name = settings.IsValid ? settings.PrinterName : null;
+            CacheHolder.SetDefaultPrinter(name);
+            return name;
         }
         catch
         {
@@ -70,15 +142,7 @@ public sealed class SystemPrinterDiscoveryService : IPrinterDiscoveryService
     public bool IsPrinterInstalled(string printerName)
     {
         if (string.IsNullOrWhiteSpace(printerName)) return false;
-
-        foreach (string printer in PrinterSettings.InstalledPrinters)
-        {
-            if (string.Equals(printer, printerName, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-        return false;
+        return GetInstalledPrinters().Any(p => string.Equals(p, printerName, StringComparison.OrdinalIgnoreCase));
     }
 
     public IReadOnlyList<string> GetSupportedPaperSizes(string? printerName = null)

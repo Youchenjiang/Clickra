@@ -62,6 +62,13 @@ public static class ClickraSettings
     public const string PrintOrientation = "PrintOrientation";
     public const string PrintFitToPage = "PrintFitToPage";
     public const string PrintDarkenText = "PrintDarkenText";
+    public const string PrintPagesPerSheet = "PrintPagesPerSheet";
+    public const string PrintPageOrder = "PrintPageOrder";
+    public const string PrintPageBorder = "PrintPageBorder";
+    public const string PrintScale = "PrintScale";
+    public const string PrintScalePercent = "PrintScalePercent";
+    public const string PrintGrayscale = "PrintGrayscale";
+    public const string PrintCollate = "PrintCollate";
 
     // ─── 4.0 桌面端外觀與視窗 ─────────────────────────────────────────────
     public const string DesktopTheme = "DesktopTheme";
@@ -97,6 +104,14 @@ public static class ClickraSettings
     public const string DefaultPrintCopies = "1";
     public const string DefaultPrintDuplex = "Simplex";
     public const string DefaultPrintOrientation = "Auto";
+    public const string DefaultPrintPagesPerSheet = "1";
+    public const string DefaultPrintPageOrder = "Z";
+    public const string DefaultPrintScale = "";
+    public const string DefaultPrintScalePercent = "100";
+    public const int MinPrintScalePercent = 10;
+    public const int MaxPrintScalePercent = 400;
+    public const int MinPrintPagesPerSheet = 1;
+    public const int MaxPrintPagesPerSheet = 16;
     public const string DesktopThemeLight = "light";
     public const string DesktopThemeDark = "dark";
     public const string DesktopThemeSystem = "system";
@@ -160,6 +175,13 @@ public static class ClickraSettings
         new ClickraSetting(PrintOrientation, DefaultPrintOrientation, "列印的預設方向：Auto / Portrait / Landscape"),
         new ClickraSetting(PrintFitToPage, ValueTrue, "列印時預設縮放至紙張大小"),
         new ClickraSetting(PrintDarkenText, ValueFalse, "列印時預設加深淺色文字"),
+        new ClickraSetting(PrintPagesPerSheet, DefaultPrintPagesPerSheet, "列印的預設每張頁數：1 / 2 / 4 / 6 / 9 / 16"),
+        new ClickraSetting(PrintPageOrder, DefaultPrintPageOrder, "列印的預設排列順序：Z / N"),
+        new ClickraSetting(PrintPageBorder, ValueFalse, "列印每張多頁時預設繪製頁框"),
+        new ClickraSetting(PrintScale, DefaultPrintScale, "列印的預設縮放模式：fit / actual / custom（空 = 依 PrintFitToPage 換算）"),
+        new ClickraSetting(PrintScalePercent, DefaultPrintScalePercent, "列印自訂縮放百分比 10-400（預設 100）"),
+        new ClickraSetting(PrintGrayscale, ValueFalse, "列印時預設轉換為黑白"),
+        new ClickraSetting(PrintCollate, ValueTrue, "列印多份時預設逐份列印"),
         new ClickraSetting(DesktopTheme, DesktopThemeLight, $"4.0 桌面端外觀：{DesktopThemeLight} / {DesktopThemeDark} / {DesktopThemeSystem}"),
         new ClickraSetting(DesktopWindowBounds, DefaultEmpty, "4.0 桌面端上次的視窗位置與大小（x,y,寬,高,是否最大化；空 = 預設）"),
         new ClickraSetting(ContextMenuEnabled, ValueTrue, "在檔案總管右鍵選單顯示 Clickra"),
@@ -197,6 +219,8 @@ public static class ClickraSettings
             [ImageCompressMaxDimension] = new(MinImageCompressMaxDimension, MaxImageCompressMaxDimension, 0),
             [PdfToImageDpi] = new(MinPdfToImageDpi, MaxPdfToImageDpi, 150),
             [PrintCopies] = new(MinPrintCopies, MaxPrintCopies, 1),
+            [PrintPagesPerSheet] = new(MinPrintPagesPerSheet, MaxPrintPagesPerSheet, 1),
+            [PrintScalePercent] = new(MinPrintScalePercent, MaxPrintScalePercent, 100),
         };
 
     /// <summary>取得指定數值設定的合法範圍宣告；若未註冊則回傳 false。</summary>

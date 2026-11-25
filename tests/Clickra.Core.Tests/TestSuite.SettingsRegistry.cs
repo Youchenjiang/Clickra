@@ -88,6 +88,7 @@ static partial class TestSuite
             "PdfToImageFormat", "MarkdownTheme", "MarkdownPaper", "MarkdownTextSize", "MarkdownTemplatePath",
             "MarkdownCodeTheme", "PdfToImageDpi", "PdfToImageStitch",
             "PrintPrinter", "PrintCopies", "PrintDuplex", "PrintPaper", "PrintOrientation", "PrintFitToPage", "PrintDarkenText",
+            "PrintPagesPerSheet", "PrintPageOrder", "PrintPageBorder", "PrintScale", "PrintScalePercent", "PrintGrayscale", "PrintCollate",
             "DesktopTheme", "DesktopWindowBounds"
         };
         string[] actual = keys.OrderBy(k => k, StringComparer.Ordinal).ToArray();

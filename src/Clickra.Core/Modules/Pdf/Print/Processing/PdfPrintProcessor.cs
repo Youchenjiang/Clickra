@@ -9,8 +9,8 @@ namespace Clickra.Core.Modules.Pdf.Print.Processing;
 
 /// <summary>
 /// Direct streaming PDF printer: renders PDF pages on-the-fly and sends them to the Windows
-/// Print Spooler via GDI+ PrintDocument. Avoids creating intermediate disk files and releases
-/// each rendered bitmap immediately after drawing to minimize memory consumption.
+/// Print Spooler via GDI+ PrintDocument. Page placement, multi-page grids, and sheet orientations
+/// are strictly calculated by PrintLayoutPlanner.
 /// </summary>
 public static class PdfPrintProcessor
 {
@@ -19,6 +19,53 @@ public static class PdfPrintProcessor
         PrintPdfOptions options,
         Action<int, int, string>? progress = null,
         CancellationToken cancellationToken = default)
+    {
+        List<int> pagesToPrint = ValidateAndResolvePages(pdfPath, options);
+
+        using var printDoc = new PrintDocument
+        {
+            DocumentName = Path.GetFileNameWithoutExtension(pdfPath)
+        };
+
+        string effectiveLang = !string.IsNullOrWhiteSpace(options.Language) ? options.Language : "en";
+        string defaultFontName = LocalizedUiFontSelector.GetTextFontName(effectiveLang);
+
+        ConfigurePrinter(printDoc, options);
+        var (portraitWidthPt, portraitHeightPt) = CalculatePortraitDimensions(printDoc);
+
+        var pageSizes = CollectPageSizes(pdfPath, pagesToPrint);
+        var sheets = PrintLayoutPlanner.Plan(pageSizes, portraitWidthPt, portraitHeightPt, options);
+        if (sheets.Count == 0)
+        {
+            return true;
+        }
+
+        printDoc.DefaultPageSettings.Landscape = sheets[0].Landscape;
+        if (options.Grayscale)
+        {
+            printDoc.DefaultPageSettings.Color = false;
+        }
+
+        var executionContext = new PrintExecutionContext(
+            pdfPath,
+            sheets,
+            defaultFontName,
+            options,
+            portraitWidthPt,
+            portraitHeightPt,
+            progress,
+            cancellationToken);
+        AttachPrintEvents(printDoc, executionContext);
+
+        printDoc.Print();
+        progress?.Invoke(
+            sheets.Count,
+            sheets.Count,
+            ExecutionLocalizationOptions.Text(options.Language ?? "", "core_print_sent"));
+        return true;
+    }
+
+    private static List<int> ValidateAndResolvePages(string pdfPath, PrintPdfOptions options)
     {
         if (!System.IO.File.Exists(pdfPath))
             throw new FileNotFoundException("PDF file not found", pdfPath);
@@ -31,72 +78,98 @@ public static class PdfPrintProcessor
         if (pagesToPrint.Count == 0)
             throw new InvalidOperationException(ExecutionLocalizationOptions.Text(options.Language ?? "", "core_print_no_pages"));
 
-        string docName = Path.GetFileNameWithoutExtension(pdfPath);
-        using var printDoc = new PrintDocument
-        {
-            DocumentName = docName
-        };
+        return pagesToPrint;
+    }
 
-        string effectiveLang = !string.IsNullOrWhiteSpace(options.Language) ? options.Language : "en";
-        string defaultFontName = PdfPageThumbnailRenderer.GetTextFontName(effectiveLang);
+    private static (float PortraitWidthPt, float PortraitHeightPt) CalculatePortraitDimensions(PrintDocument printDoc)
+    {
+        PaperSize paper = printDoc.DefaultPageSettings.PaperSize;
+        float paperWidthHundredths = paper.Width > 0 ? paper.Width : 827;
+        float paperHeightHundredths = paper.Height > 0 ? paper.Height : 1169;
+        float portraitWidthPt = Math.Min(paperWidthHundredths, paperHeightHundredths) * 0.72f;
+        float portraitHeightPt = Math.Max(paperWidthHundredths, paperHeightHundredths) * 0.72f;
+        return (portraitWidthPt, portraitHeightPt);
+    }
 
+    private static List<PrintPageSize> CollectPageSizes(string pdfPath, List<int> pagesToPrint)
+    {
         var pageDimensions = ReadPageDimensions(pdfPath, pagesToPrint);
-        Dictionary<int, bool> pageOrientations = pageDimensions.ToDictionary(
-            kvp => kvp.Key,
-            kvp => kvp.Value.widthPt > kvp.Value.heightPt);
-        bool firstPageLandscape = pagesToPrint.Count > 0 &&
-                                  pageOrientations.TryGetValue(pagesToPrint[0], out bool fl) && fl;
+        var pageSizes = new List<PrintPageSize>(pagesToPrint.Count);
+        foreach (int pageNum in pagesToPrint)
+        {
+            if (pageDimensions.TryGetValue(pageNum, out var dim) && dim.widthPt > 0 && dim.heightPt > 0)
+            {
+                pageSizes.Add(new PrintPageSize(pageNum, dim.widthPt, dim.heightPt));
+            }
+            else
+            {
+                pageSizes.Add(new PrintPageSize(pageNum, 595.28f, 841.89f));
+            }
+        }
+        return pageSizes;
+    }
 
-        ConfigurePrinter(printDoc, options, firstPageLandscape);
+    private sealed record PrintExecutionContext(
+        string PdfPath,
+        IReadOnlyList<PrintSheet> Sheets,
+        string DefaultFontName,
+        PrintPdfOptions Options,
+        float PortraitWidthPt,
+        float PortraitHeightPt,
+        Action<int, int, string>? Progress,
+        CancellationToken CancellationToken);
 
-        int currentIndex = 0;
-        int totalPrintCount = pagesToPrint.Count;
+    private static void AttachPrintEvents(PrintDocument printDoc, PrintExecutionContext ctx)
+    {
+        int currentSheetIndex = 0;
+        int totalSheets = ctx.Sheets.Count;
 
         printDoc.QueryPageSettings += (sender, e) =>
         {
-            if (currentIndex < totalPrintCount)
+            if (currentSheetIndex < totalSheets)
             {
-                int pageNum = pagesToPrint[currentIndex];
-                bool isLandscape = options.Orientation switch
+                var sheet = ctx.Sheets[currentSheetIndex];
+                e.PageSettings.Landscape = sheet.Landscape;
+                if (ctx.Options.Grayscale)
                 {
-                    PrintOrientation.Landscape => true,
-                    PrintOrientation.Portrait => false,
-                    _ => pageOrientations.TryGetValue(pageNum, out bool l) && l
-                };
-                e.PageSettings.Landscape = isLandscape;
+                    e.PageSettings.Color = false;
+                }
             }
         };
 
         printDoc.PrintPage += (sender, e) =>
         {
-            if (cancellationToken.IsCancellationRequested)
+            if (ctx.CancellationToken.IsCancellationRequested)
             {
                 e.Cancel = true;
                 e.HasMorePages = false;
                 return;
             }
 
-            if (currentIndex >= totalPrintCount)
+            if (currentSheetIndex >= totalSheets)
             {
                 e.HasMorePages = false;
                 return;
             }
 
-            int pageNum = pagesToPrint[currentIndex];
-            progress?.Invoke(currentIndex + 1, totalPrintCount, $"Printing page {pageNum} of {totalDocPages}...");
+            var sheet = ctx.Sheets[currentSheetIndex];
+            ctx.Progress?.Invoke(
+                currentSheetIndex + 1,
+                totalSheets,
+                ExecutionLocalizationOptions.Text(
+                    ctx.Options.Language ?? "",
+                    "core_print_progress_sheet",
+                    ("current", currentSheetIndex + 1),
+                    ("total", totalSheets)));
 
-            RenderAndDrawPage(e, pdfPath, pageNum, defaultFontName, options, pageDimensions);
+            RenderAndDrawSheet(e, ctx.PdfPath, sheet, ctx.DefaultFontName, ctx.Options, ctx.PortraitWidthPt, ctx.PortraitHeightPt);
 
-            currentIndex++;
-            e.HasMorePages = currentIndex < totalPrintCount;
+            currentSheetIndex++;
+            e.HasMorePages = currentSheetIndex < totalSheets;
         };
-
-        printDoc.Print();
-        progress?.Invoke(totalPrintCount, totalPrintCount, "Print job sent successfully.");
-        return true;
     }
 
-    private static void ConfigurePrinter(PrintDocument printDoc, PrintPdfOptions options, bool firstPageLandscape)
+    private static void ConfigurePrinter(PrintDocument printDoc, PrintPdfOptions options)
     {
         if (!string.IsNullOrWhiteSpace(options.PrinterName))
         {
@@ -109,6 +182,7 @@ public static class PdfPrintProcessor
         }
 
         printDoc.PrinterSettings.Copies = (short)Math.Clamp(options.Copies, 1, 999);
+        printDoc.PrinterSettings.Collate = options.Collate;
         printDoc.PrintController = new StandardPrintController(); // Suppress the default WinForms printing status dialog
 
         if (printDoc.PrinterSettings.CanDuplex)
@@ -126,14 +200,6 @@ public static class PdfPrintProcessor
         {
             printDoc.DefaultPageSettings.PaperSize = targetPaper;
         }
-
-        bool isLandscape = options.Orientation switch
-        {
-            PrintOrientation.Landscape => true,
-            PrintOrientation.Portrait => false,
-            _ => firstPageLandscape
-        };
-        printDoc.DefaultPageSettings.Landscape = isLandscape;
 
         printDoc.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
         printDoc.OriginAtMargins = false;
@@ -163,73 +229,74 @@ public static class PdfPrintProcessor
         return null;
     }
 
-    public static Rectangle CalculateDestinationBounds(
-        Rectangle pageBounds,
-        float pdfPageWidthPt,
-        float pdfPageHeightPt,
-        bool fitToPage)
-    {
-        if (fitToPage)
-        {
-            int margin = (int)Math.Round(Math.Min(pageBounds.Width, pageBounds.Height) * 0.03f);
-            int printAreaW = Math.Max(1, pageBounds.Width - (margin * 2));
-            int printAreaH = Math.Max(1, pageBounds.Height - (margin * 2));
-            float scale = Math.Min((float)printAreaW / pdfPageWidthPt, (float)printAreaH / pdfPageHeightPt);
-            int destW = (int)Math.Round(pdfPageWidthPt * scale);
-            int destH = (int)Math.Round(pdfPageHeightPt * scale);
-            int destX = pageBounds.X + margin + (printAreaW - destW) / 2;
-            int destY = pageBounds.Y + margin + (printAreaH - destH) / 2;
-            return new Rectangle(destX, destY, destW, destH);
-        }
-
-        // 1 pt = 1/72 inch = 100/72 hundredths of an inch in PrintDocument physical coordinates
-        int fallbackW = (int)Math.Round(pdfPageWidthPt * (100f / 72f));
-        int fallbackH = (int)Math.Round(pdfPageHeightPt * (100f / 72f));
-        int fallbackX = pageBounds.X + (pageBounds.Width - fallbackW) / 2;
-        int fallbackY = pageBounds.Y + (pageBounds.Height - fallbackH) / 2;
-        return new Rectangle(fallbackX, fallbackY, fallbackW, fallbackH);
-    }
-
-    private static void RenderAndDrawPage(
+    private static void RenderAndDrawSheet(
         PrintPageEventArgs e,
         string pdfPath,
-        int pageNum,
+        PrintSheet sheet,
         string defaultFontName,
         PrintPdfOptions options,
-        Dictionary<int, (float widthPt, float heightPt)>? pageDimensions = null)
+        float portraitWidthPt,
+        float portraitHeightPt)
     {
+        if (e.Graphics == null) return;
+
+        float sheetWidthPt = sheet.Landscape ? portraitHeightPt : portraitWidthPt;
+        float sheetHeightPt = sheet.Landscape ? portraitWidthPt : portraitHeightPt;
+
         Rectangle pageBounds = e.PageBounds;
-        float pdfW = pageBounds.Width / 100f * 72f;
-        float pdfH = pageBounds.Height / 100f * 72f;
-        if (pageDimensions is not null && pageDimensions.TryGetValue(pageNum, out var dim) && dim.widthPt > 0 && dim.heightPt > 0)
+        float scaleX = sheetWidthPt > 0 ? (float)pageBounds.Width / sheetWidthPt : 1f;
+        float scaleY = sheetHeightPt > 0 ? (float)pageBounds.Height / sheetHeightPt : 1f;
+
+        float toGdiX(float xPt) => pageBounds.X + (xPt * scaleX);
+        float toGdiY(float yPt) => pageBounds.Y + (yPt * scaleY);
+        float toGdiW(float wPt) => wPt * scaleX;
+        float toGdiH(float hPt) => hPt * scaleY;
+
+        foreach (var cell in sheet.Cells)
         {
-            pdfW = dim.widthPt;
-            pdfH = dim.heightPt;
+            int renderWidth = (int)Math.Round((cell.Page.Width / 72f) * options.Dpi);
+            renderWidth = Math.Max(100, renderWidth);
+
+            using Bitmap? pageBmp = PdfPageThumbnailRenderer.RenderPageFromFile(pdfPath, cell.PageNumber, renderWidth, defaultFontName);
+            if (pageBmp == null) continue;
+
+            if (options.DarkenText)
+            {
+                PdfContrastEnhancer.Enhance(pageBmp, options.DarkenGamma);
+            }
+
+            if (options.Grayscale)
+            {
+                PdfContrastEnhancer.ConvertToGrayscale(pageBmp);
+            }
+
+            var gdiCell = new RectangleF(toGdiX(cell.Cell.X), toGdiY(cell.Cell.Y), toGdiW(cell.Cell.Width), toGdiH(cell.Cell.Height));
+            var gdiPage = new RectangleF(toGdiX(cell.Page.X), toGdiY(cell.Page.Y), toGdiW(cell.Page.Width), toGdiH(cell.Page.Height));
+
+            var state = e.Graphics.Save();
+            try
+            {
+                e.Graphics.SetClip(gdiCell);
+                e.Graphics.DrawImage(pageBmp, gdiPage);
+
+                if (options.PageBorder && options.PagesPerSheet >= 2)
+                {
+                    using var borderPen = new Pen(Color.FromArgb(180, 180, 180), Math.Max(0.5f, 0.5f * scaleX));
+                    e.Graphics.DrawRectangle(borderPen, gdiPage.X, gdiPage.Y, gdiPage.Width, gdiPage.Height);
+                }
+            }
+            finally
+            {
+                e.Graphics.Restore(state);
+            }
         }
-
-        Rectangle destRect = CalculateDestinationBounds(pageBounds, pdfW, pdfH, options.FitToPage);
-
-        int renderWidth = options.FitToPage
-            ? (int)Math.Round((destRect.Width / 100f) * options.Dpi)
-            : (int)Math.Round((pdfW / 72f) * options.Dpi);
-        renderWidth = Math.Max(100, renderWidth);
-
-        using Bitmap? pageBmp = PdfPageThumbnailRenderer.RenderPageFromFile(pdfPath, pageNum, renderWidth, defaultFontName);
-        if (pageBmp == null) return;
-
-        if (options.DarkenText)
-        {
-            PdfContrastEnhancer.Enhance(pageBmp, options.DarkenGamma);
-        }
-
-        e.Graphics?.DrawImage(pageBmp, destRect);
     }
+
 
     /// <summary>
     /// Reads the page size in points (width, height) as the page is displayed. PdfPig already
     /// applies /Rotate to Page.Width and Page.Height (its page factory transforms the media and
-    /// crop boxes by the rotation), so they are used as they are; swapping them again for a
-    /// 90 or 270 degree page turned landscape pages into portrait ones.
+    /// crop boxes by the rotation), so they are used as they are.
     /// </summary>
     public static Dictionary<int, (float widthPt, float heightPt)> ReadPageDimensions(string pdfPath, IEnumerable<int> pages)
     {
@@ -265,53 +332,6 @@ public static class PdfPrintProcessor
     /// <summary>
     /// Parses page range specification (e.g., "1-3, 5, 8-10", "all", "") into sorted 1-based page numbers.
     /// </summary>
-    public static List<int> ResolvePageNumbers(string? pageRange, int totalPages)
-    {
-        if (string.IsNullOrWhiteSpace(pageRange) || string.Equals(pageRange.Trim(), "all", StringComparison.OrdinalIgnoreCase))
-        {
-            var all = new List<int>(totalPages);
-            for (int i = 1; i <= totalPages; i++) all.Add(i);
-            return all;
-        }
-
-        var result = new HashSet<int>();
-        string[] parts = pageRange.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-        foreach (string part in parts)
-        {
-            ParsePageToken(part, totalPages, result);
-        }
-
-        var list = result.ToList();
-        list.Sort();
-        return list;
-    }
-
-    private static void ParsePageToken(string token, int totalPages, HashSet<int> result)
-    {
-        if (int.TryParse(token, out int singlePage))
-        {
-            if (singlePage >= 1 && singlePage <= totalPages)
-            {
-                result.Add(singlePage);
-            }
-            return;
-        }
-
-        int dashIdx = token.IndexOf('-');
-        if (dashIdx < 0) return;
-
-        string[] rangeParts = token.Split('-');
-        if (rangeParts.Length == 2 &&
-            int.TryParse(rangeParts[0].Trim(), out int start) &&
-            int.TryParse(rangeParts[1].Trim(), out int end))
-        {
-            int rStart = Math.Max(1, Math.Min(start, end));
-            int rEnd = Math.Min(totalPages, Math.Max(start, end));
-            for (int p = rStart; p <= rEnd; p++)
-            {
-                result.Add(p);
-            }
-        }
-    }
+    public static List<int> ResolvePageNumbers(string? pageRange, int totalPages) =>
+        PrintLayoutPlanner.ResolvePageNumbers(pageRange, totalPages);
 }
