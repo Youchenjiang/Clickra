@@ -441,7 +441,7 @@ public partial class ConvertPage : UserControl
 
     private void OnDragEnter(object? sender, DragEventArgs e)
     {
-        if (GetViewModel() is not { IsExecuting: false } vm || !e.DataTransfer.Contains(DataFormats.Files))
+        if (GetViewModel() is not { IsExecuting: false } vm)
         {
             e.DragEffects = DragDropEffects.None;
             e.Handled = true;
