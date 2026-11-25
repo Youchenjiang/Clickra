@@ -215,104 +215,63 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
     // ×1.25 like the 3.x preview, up to ×8; 符合寬度 is the zoom where the page fills the width.
     private string _file = "";
     private SplitPageViewModel? _preview;
-    private IImage? _previewImage;
     private CancellationTokenSource? _previewCts;
-    private double _zoom = 1;
-    private double _viewportWidth, _viewportHeight, _renderScaling = 1;
     private int _renderedWidth;
     private const int PreviewBaseRenderWidth = 1600;
     private const int PreviewMaxRenderWidth = 4800;
-    private const double ZoomStep = 1.25, ZoomMax = 8;
 
-    public bool IsPreviewOpen => _preview is not null;
+    public ZoomPreviewViewModel Zoom { get; } = new();
+
+    public bool IsPreviewOpen => Zoom.IsOpen;
     public IImage? PreviewImage
     {
-        get => _previewImage;
-        private set { _previewImage = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasPreviewImage)); RefreshPreviewSize(); }
+        get => Zoom.Image;
+        private set { Zoom.Image = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasPreviewImage)); }
     }
-    public bool HasPreviewImage => _previewImage is not null;
-    public string PreviewTitle => _preview is null ? "" : Strings.F("ui_preview_page_of", ("page", _preview.Number), ("total", _totalPages));
-    /// <summary>The start button is hidden under the preview, so the part count is said here.</summary>
-    public string PreviewPartText => _preview is null ? "" : Strings.F("ui_preview_part_of", ("part", _preview.Part), ("total", PartCount));
+    public bool HasPreviewImage => Zoom.HasImage;
+    public string PreviewTitle => Zoom.Title;
+    public string PreviewPartText => Zoom.SubTitle;
     public bool PreviewHasGap => _preview?.HasGap == true;
     public bool PreviewIsCut => _preview?.CutAfter == true;
 
-    /// <summary>Height ÷ width of the page; taken from the image so a landscape slide stays landscape.</summary>
-    private double PageAspect
-    {
-        get
-        {
-            Size size = _previewImage?.Size ?? _preview?.Thumbnail?.Size ?? default;
-            return size.Width > 0 && size.Height > 0 ? size.Height / size.Width : 297.0 / 210.0;
-        }
-    }
+    public double PreviewPageWidth => Zoom.PageWidth;
+    public double PreviewPageHeight => Zoom.PageHeight;
+    public string PreviewZoomText => Zoom.ZoomText;
 
-    /// <summary>Width of the page at zoom 1: the whole page fits the viewport.</summary>
-    private double WholePageWidth =>
-        _viewportWidth <= 0 || _viewportHeight <= 0 ? 0 : Math.Min(_viewportWidth, _viewportHeight / PageAspect);
-    private double FitWidthZoom => WholePageWidth <= 0 ? 1 : Math.Max(1, _viewportWidth / WholePageWidth);
+    public void TogglePreviewFit() => Zoom.ToggleFit();
+    public void ZoomInPreview() => Zoom.ZoomIn();
+    public void ZoomOutPreview() => Zoom.ZoomOut();
 
-    /// <summary>The white page is exactly the size of the page (no minimum width), so A4 portrait stays portrait.</summary>
-    public double PreviewPageWidth => Math.Max(1, WholePageWidth * _zoom);
-    public double PreviewPageHeight => Math.Max(1, WholePageWidth * _zoom * PageAspect);
-
-    public string PreviewZoomText
-    {
-        get
-        {
-            if (Math.Abs(_zoom - 1) < 0.01) return Strings.T("ui_preview_whole_page");
-            if (Math.Abs(_zoom - FitWidthZoom) < 0.01) return Strings.T("ui_preview_fit_width");
-            return $"{Math.Round(_zoom * 100)}%";
-        }
-    }
-
-    /// <summary>The middle zoom button: 整頁 ⇄ 符合寬度.</summary>
-    public void TogglePreviewFit() => SetZoom(Math.Abs(_zoom - 1) < 0.01 ? FitWidthZoom : 1);
-    public void ZoomInPreview() => SetZoom(StepZoom(+1));
-    public void ZoomOutPreview() => SetZoom(StepZoom(-1));
-
-    /// <summary>×1.25 per step, stopping at 符合寬度 on the way when it lies between two steps.</summary>
-    private double StepZoom(int direction)
-    {
-        double next = direction > 0 ? _zoom * ZoomStep : _zoom / ZoomStep;
-        double fit = FitWidthZoom;
-        if (direction > 0 && _zoom < fit - 0.01 && next > fit + 0.01) next = fit;
-        if (direction < 0 && _zoom > fit + 0.01 && next < fit - 0.01) next = fit;
-        return Math.Clamp(next, 1, ZoomMax);
-    }
-
-    private void SetZoom(double zoom)
-    {
-        _zoom = Math.Clamp(zoom, 1, ZoomMax);
-        RefreshPreviewSize();
-    }
-
-    /// <summary>Called by the view when the preview area is resized (size without the page margin, in DIP).</summary>
     internal void SetPreviewViewport(double width, double height, double renderScaling)
     {
-        bool wasFit = Math.Abs(_zoom - FitWidthZoom) < 0.01 && Math.Abs(_zoom - 1) >= 0.01;
-        _viewportWidth = Math.Max(0, width);
-        _viewportHeight = Math.Max(0, height);
-        _renderScaling = renderScaling > 0 ? renderScaling : 1;
-        if (wasFit) _zoom = FitWidthZoom; // 符合寬度 stays 符合寬度 when the window is resized
-        RefreshPreviewSize();
-    }
-
-    private void RefreshPreviewSize()
-    {
-        OnPropertyChanged(nameof(PreviewPageWidth));
-        OnPropertyChanged(nameof(PreviewPageHeight));
-        OnPropertyChanged(nameof(PreviewZoomText));
+        Zoom.SetViewport(width, height, renderScaling);
         EnsurePreviewResolution();
     }
 
     internal void OpenPreview(SplitPageViewModel page)
     {
-        bool wasOpen = _preview is not null;
+        bool wasOpen = Zoom.IsOpen;
         _preview = page;
-        if (!wasOpen) _zoom = 1; // opens at 整頁; turning pages keeps the zoom
+        if (!wasOpen) Zoom.SetZoom(1);
         _renderedWidth = 0;
-        PreviewImage = page.Thumbnail; // the small one at once, the sharp one when it is ready
+
+        Zoom.Aspect = page.Aspect;
+        Zoom.Image = page.Thumbnail;
+        Zoom.Title = Strings.F("ui_preview_page_of", ("page", page.Number), ("total", _totalPages));
+        Zoom.SubTitle = Strings.F("ui_preview_part_of", ("part", page.Part), ("total", PartCount));
+        Zoom.CanPrevious = page.Number > 1;
+        Zoom.CanNext = page.Number < _totalPages;
+        Zoom.HasCustomAction = page.HasGap;
+        Zoom.CustomActionText = Strings.T("ui_preview_split_after_this_page");
+        Zoom.CustomActionActiveText = Strings.T("ui_preview_split_after_this_page_2");
+        Zoom.CustomActionTooltip = Strings.T("ui_preview_click_again_to_remove_the");
+        Zoom.IsCustomActionActive = page.CutAfter;
+        Zoom.OnPrevious = PreviousPage;
+        Zoom.OnNext = NextPage;
+        Zoom.OnClose = ClosePreview;
+        Zoom.OnCustomAction = TogglePreviewCut;
+        Zoom.IsOpen = true;
+
         OnPropertyChanged(nameof(IsPreviewOpen));
         RefreshPreviewTexts();
         RenderPreview(PreviewBaseRenderWidth);
@@ -322,7 +281,7 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
     private void EnsurePreviewResolution()
     {
         if (_preview is null || _renderedWidth <= 0) return;
-        double needed = PreviewPageWidth * _renderScaling;
+        double needed = Zoom.NeededRenderWidth;
         if (needed <= _renderedWidth * 1.05 || _renderedWidth >= PreviewMaxRenderWidth) return;
         int width = (int)Math.Min(PreviewMaxRenderWidth, Math.Ceiling(needed / 400) * 400);
         RenderPreview(width);
@@ -357,6 +316,7 @@ public sealed class SplitWorkspaceViewModel : ViewModelBase
         _preview = null;
         _renderedWidth = 0;
         PreviewImage = null;
+        Zoom.IsOpen = false;
         OnPropertyChanged(nameof(IsPreviewOpen));
     }
     public void TogglePreviewCut()

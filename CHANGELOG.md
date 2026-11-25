@@ -1,5 +1,9 @@
 # Changelog
 
+## [v3.22.6.0] - 2026-11-25
+
+- **桌面端列印預覽工作區 (Desktop Print Preview Workspace)**：桌面端新增即時列印預覽工作區，支援每張多頁向量排版、縮圖格子、超出可列印範圍警示、多檔案批次切換與用紙統計，並提供全螢幕放大預覽與設定頁列印預設值。
+
 ## [v3.22.5.0] - 2026-11-25
 
 - **列印排版引擎與預覽計算 (Print Layout Planner & Batch Planner)**：於 Core 實作共用列印排版規劃器（`PrintLayoutPlanner`）與批次用紙預估（`PrintBatchPlanner`），支援每張 1/2/4/6/9/16 頁、橫向 Z/直向 N 排列、頁框、符合紙張/實際大小/自訂比例、色彩模式與多份分份，並提供 `PrintPreviewQuery` 即時預覽查詢與系統印表機探索快取。

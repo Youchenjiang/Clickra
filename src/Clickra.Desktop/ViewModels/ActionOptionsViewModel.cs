@@ -516,32 +516,150 @@ public sealed class ActionOptionsViewModel : ViewModelBase
     private int _copies = 1;
     private string _printPages = "";
     private int _duplex, _orientation;
-    private bool _fitToPage = true, _darkenText;
+    private bool _darkenText;
     private IReadOnlyList<string> _paperSizes = [Strings.T("ui_print_printer_setting")];
     private int _paperIndex;
 
+    private bool _isLoadingPrinters;
+    public bool IsLoadingPrinters
+    {
+        get => _isLoadingPrinters;
+        private set
+        {
+            if (_isLoadingPrinters != value)
+            {
+                _isLoadingPrinters = value;
+                Changed(nameof(IsLoadingPrinters), nameof(HasPrinters), nameof(IsReady), nameof(BlockingText), nameof(PrintIsDefault));
+            }
+        }
+    }
+
     public IReadOnlyList<string> Printers => _printers;
-    public bool HasPrinters => _printers.Count > 0;
+    public bool HasPrinters => _isLoadingPrinters || _printers.Count > 0;
     public int PrinterIndex
     {
         get => _printerIndex;
         set
         {
             _printerIndex = value >= 0 && value < _printers.Count ? value : -1;
-            Changed(nameof(PrinterIndex), nameof(IsReady), nameof(BlockingText), nameof(PrintIsDefault));
+            CanDuplex = _printerIndex >= 0 && PrinterDiscovery.CanDuplex(_printers[_printerIndex]);
+            if (!CanDuplex)
+            {
+                _duplex = 0;
+            }
+            Changed(nameof(PrinterIndex), nameof(CanDuplex), nameof(DuplexIndex), nameof(IsReady), nameof(BlockingText), nameof(PrintIsDefault));
             LoadPaperSizes();
         }
     }
-    public decimal Copies { get => _copies; set { _copies = (int)Math.Clamp(value, 1, 99); Changed(nameof(Copies), nameof(PrintIsDefault)); } }
+    public decimal Copies
+    {
+        get => _copies;
+        set
+        {
+            _copies = (int)Math.Clamp(value, 1, 99);
+            Changed(nameof(Copies), nameof(CanCollate), nameof(PrintIsDefault));
+        }
+    }
     public string PrintPages { get => _printPages; set { _printPages = value ?? ""; OnPropertyChanged(); } }
     /// <summary>0 單面, 1 雙面（長邊翻頁）, 2 雙面（短邊翻頁）.</summary>
     public int DuplexIndex { get => _duplex; set { _duplex = Math.Clamp(value, 0, 2); Changed(nameof(DuplexIndex), nameof(PrintIsDefault)); } }
+    public bool CanDuplex { get; private set; } = true;
     /// <summary>0 自動, 1 直向, 2 橫向.</summary>
     public int OrientationIndex { get => _orientation; set { _orientation = Math.Clamp(value, 0, 2); Changed(nameof(OrientationIndex), nameof(PrintIsDefault)); } }
-    public bool FitToPage { get => _fitToPage; set { _fitToPage = value; Changed(nameof(FitToPage), nameof(PrintIsDefault)); } }
+    public bool FitToPage { get => ScaleMode == "fit"; set => ScaleModeIndex = value ? 0 : 1; }
     public bool DarkenText { get => _darkenText; set { _darkenText = value; Changed(nameof(DarkenText), nameof(PrintIsDefault)); } }
     public IReadOnlyList<string> PaperSizes => _paperSizes;
     public int PaperIndex { get => _paperIndex; set { _paperIndex = Math.Clamp(value, 0, Math.Max(0, _paperSizes.Count - 1)); Changed(nameof(PaperIndex), nameof(PrintIsDefault)); } }
+
+    private static readonly int[] PagesPerSheetValues = [1, 2, 4, 6, 9, 16];
+    private int _pagesPerSheetIndex;
+    public int PagesPerSheetIndex
+    {
+        get => _pagesPerSheetIndex;
+        set
+        {
+            _pagesPerSheetIndex = Math.Clamp(value, 0, PagesPerSheetValues.Length - 1);
+            Changed(nameof(PagesPerSheetIndex), nameof(PagesPerSheet), nameof(IsMultiPagePerSheet), nameof(PrintIsDefault));
+        }
+    }
+    public int PagesPerSheet => PagesPerSheetValues[_pagesPerSheetIndex];
+    public bool IsMultiPagePerSheet => PagesPerSheet >= 2;
+
+    private int _pageOrderIndex;
+    public int PageOrderIndex
+    {
+        get => _pageOrderIndex;
+        set
+        {
+            _pageOrderIndex = Math.Clamp(value, 0, 1);
+            Changed(nameof(PageOrderIndex), nameof(PageOrder), nameof(PrintIsDefault));
+        }
+    }
+    public string PageOrder => _pageOrderIndex == 1 ? "N" : "Z";
+
+    private bool _pageBorder;
+    public bool PageBorder
+    {
+        get => _pageBorder;
+        set
+        {
+            _pageBorder = value;
+            Changed(nameof(PageBorder), nameof(PrintIsDefault));
+        }
+    }
+
+    private int _scaleModeIndex;
+    public int ScaleModeIndex
+    {
+        get => _scaleModeIndex;
+        set
+        {
+            _scaleModeIndex = Math.Clamp(value, 0, 2);
+            Changed(nameof(ScaleModeIndex), nameof(ScaleMode), nameof(IsCustomScale), nameof(FitToPage), nameof(PrintIsDefault));
+        }
+    }
+    public string ScaleMode => _scaleModeIndex switch
+    {
+        1 => "actual",
+        2 => "custom",
+        _ => "fit"
+    };
+    public bool IsCustomScale => _scaleModeIndex == 2;
+
+    private decimal _scalePercent = 100;
+    public decimal ScalePercent
+    {
+        get => _scalePercent;
+        set
+        {
+            _scalePercent = Math.Clamp(value, 1, 500);
+            Changed(nameof(ScalePercent), nameof(PrintIsDefault));
+        }
+    }
+
+    private int _colorModeIndex;
+    public int ColorModeIndex
+    {
+        get => _colorModeIndex;
+        set
+        {
+            _colorModeIndex = Math.Clamp(value, 0, 1);
+            Changed(nameof(ColorModeIndex), nameof(Grayscale), nameof(PrintIsDefault));
+        }
+    }
+    public bool Grayscale => _colorModeIndex == 1;
+
+    private bool _collate = true;
+    public bool Collate
+    {
+        get => _collate;
+        set
+        {
+            _collate = value;
+            Changed(nameof(Collate), nameof(PrintIsDefault));
+        }
+    }
+    public bool CanCollate => _copies >= 2;
 
     /// <summary>Everything but the page range has a feature default; an empty printer or paper means 「跟隨系統／印表機」.</summary>
     public bool PrintIsDefault =>
@@ -550,7 +668,13 @@ public sealed class ActionOptionsViewModel : ViewModelBase
         ((PrintDuplexMode)_duplex).ToString() == SettingsController.PrintDuplex &&
         PaperForSave() == SettingsController.PrintPaper &&
         ((PrintOrientation)_orientation).ToString() == SettingsController.PrintOrientation &&
-        _fitToPage == SettingsController.PrintFitToPage &&
+        PagesPerSheet == SettingsController.PrintPagesPerSheet &&
+        PageOrder == SettingsController.PrintPageOrder &&
+        _pageBorder == SettingsController.PrintPageBorder &&
+        ScaleMode == SettingsController.PrintScale &&
+        (int)_scalePercent == SettingsController.PrintScalePercent &&
+        Grayscale == SettingsController.PrintGrayscale &&
+        _collate == SettingsController.PrintCollate &&
         _darkenText == SettingsController.PrintDarkenText;
     public void SavePrintDefault()
     {
@@ -560,7 +684,13 @@ public sealed class ActionOptionsViewModel : ViewModelBase
         SettingsController.PrintDuplex = ((PrintDuplexMode)_duplex).ToString();
         SettingsController.PrintPaper = PaperForSave();
         SettingsController.PrintOrientation = ((PrintOrientation)_orientation).ToString();
-        SettingsController.PrintFitToPage = _fitToPage;
+        SettingsController.PrintPagesPerSheet = PagesPerSheet;
+        SettingsController.PrintPageOrder = PageOrder;
+        SettingsController.PrintPageBorder = _pageBorder;
+        SettingsController.PrintScale = ScaleMode;
+        SettingsController.PrintScalePercent = (int)_scalePercent;
+        SettingsController.PrintGrayscale = Grayscale;
+        SettingsController.PrintCollate = _collate;
         SettingsController.PrintDarkenText = _darkenText;
         OnPropertyChanged(nameof(PrintIsDefault));
     }
@@ -586,13 +716,68 @@ public sealed class ActionOptionsViewModel : ViewModelBase
 
     private void LoadPrinters()
     {
+        _copies = SettingsController.PrintCopies;
+        _printPages = "";
+        _duplex = Enum.TryParse(SettingsController.PrintDuplex, out PrintDuplexMode duplex) ? (int)duplex : 0;
+        _orientation = Enum.TryParse(SettingsController.PrintOrientation, out PrintOrientation orientation) ? (int)orientation : 0;
+        _pagesPerSheetIndex = Array.IndexOf(PagesPerSheetValues, SettingsController.PrintPagesPerSheet);
+        if (_pagesPerSheetIndex < 0) _pagesPerSheetIndex = 0;
+        _pageOrderIndex = string.Equals(SettingsController.PrintPageOrder, "N", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        _pageBorder = SettingsController.PrintPageBorder;
+        _scaleModeIndex = SettingsController.PrintScale switch
+        {
+            "actual" => 1,
+            "custom" => 2,
+            _ => 0
+        };
+        _scalePercent = Math.Clamp(SettingsController.PrintScalePercent, 1, 500);
+        _colorModeIndex = SettingsController.PrintGrayscale ? 1 : 0;
+        _collate = SettingsController.PrintCollate;
+        _darkenText = SettingsController.PrintDarkenText;
+
+        if (SystemPrinterDiscoveryService.HasCache)
+        {
+            ApplyDiscoveredPrinters(
+                PrinterDiscovery.GetInstalledPrinters(),
+                PrinterDiscovery.GetDefaultPrinter());
+            return;
+        }
+
+        IsLoadingPrinters = true;
+        _printers = new[] { Strings.T("ui_print_searching_printers") };
+        _printerIndex = 0;
+        _paperSizes = new[] { Strings.T("ui_print_printer_setting") };
+        _paperIndex = 0;
+        CanDuplex = false;
+
+        System.Threading.Tasks.Task.Run(() =>
+        {
+            IReadOnlyList<string> installed = Array.Empty<string>();
+            string? def = null;
+            try
+            {
+                installed = PrinterDiscovery.GetInstalledPrinters();
+                def = PrinterDiscovery.GetDefaultPrinter();
+            }
+            catch (Exception ex) // skipcq: CS-R1008
+            {
+                // Fall back to empty installed list and no default printer if discovery fails on unsupported or restricted systems.
+                System.Diagnostics.Debug.WriteLine(ex.Message);
+            }
+
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyDiscoveredPrinters(installed, def));
+        });
+    }
+
+    private void ApplyDiscoveredPrinters(IReadOnlyList<string> installed, string? def)
+    {
         try
         {
-            _printers = PrinterDiscovery.GetInstalledPrinters();
+            _printers = installed;
             // The saved printer when it is still installed, else the system default.
             string saved = SettingsController.PrintPrinter;
             string? fallback = saved.Length > 0 && _printers.Any(p => p.Equals(saved, StringComparison.OrdinalIgnoreCase))
-                ? saved : PrinterDiscovery.GetDefaultPrinter();
+                ? saved : def;
             if (fallback is null)
             {
                 _printerIndex = _printers.Count > 0 ? 0 : -1;
@@ -616,13 +801,12 @@ public sealed class ActionOptionsViewModel : ViewModelBase
             _printers = Array.Empty<string>(); // no printing support on this system
             _printerIndex = -1;
         }
-        _copies = SettingsController.PrintCopies;
-        _printPages = "";
-        _duplex = Enum.TryParse(SettingsController.PrintDuplex, out PrintDuplexMode duplex) ? (int)duplex : 0;
-        _orientation = Enum.TryParse(SettingsController.PrintOrientation, out PrintOrientation orientation) ? (int)orientation : 0;
-        _fitToPage = SettingsController.PrintFitToPage;
-        _darkenText = SettingsController.PrintDarkenText;
+
+        IsLoadingPrinters = false;
+        CanDuplex = _printerIndex >= 0 && PrinterDiscovery.CanDuplex(_printers[_printerIndex]);
+        if (!CanDuplex) _duplex = 0;
         LoadPaperSizes();
+        Changed(nameof(Printers), nameof(PrinterIndex), nameof(HasPrinters), nameof(IsLoadingPrinters), nameof(CanDuplex), nameof(DuplexIndex), nameof(PaperSizes), nameof(PaperIndex), nameof(IsReady), nameof(BlockingText), nameof(PrintIsDefault));
     }
 
     private void LoadPaperSizes()
@@ -645,7 +829,7 @@ public sealed class ActionOptionsViewModel : ViewModelBase
 
     // ----- start button -----
     /// <summary>False while a required choice is missing (spec 4.1: 必選選項).</summary>
-    public bool IsReady => !(IsMarkdown && UsesWordTemplate && HasTemplateError) && !(IsDecrypt && _decryptNeedsPassword && _password.Length == 0) && !(IsImageFormat && _imageFormat < 0) && !(IsPrint && _printerIndex < 0) && !(IsTranslate && AiIncomplete);
+    public bool IsReady => !(IsMarkdown && UsesWordTemplate && HasTemplateError) && !(IsDecrypt && _decryptNeedsPassword && _password.Length == 0) && !(IsImageFormat && _imageFormat < 0) && !(IsPrint && (_isLoadingPrinters || _printerIndex < 0)) && !(IsTranslate && AiIncomplete);
 
     /// <summary>What the start button says while it is disabled.</summary>
     public string BlockingText => GetBlockingText();
@@ -655,8 +839,15 @@ public sealed class ActionOptionsViewModel : ViewModelBase
         if (IsMarkdown && UsesWordTemplate && HasTemplateError) return Strings.T("ui_markdown_choose_a_template_that_works");
         if (IsDecrypt && _decryptNeedsPassword && _password.Length == 0) return Strings.T("ui_decrypt_enter_the_password_first");
         if (IsImageFormat && _imageFormat < 0) return Strings.T("ui_img_format_choose_a_format_first");
-        if (IsPrint && _printerIndex < 0) return HasPrinters ? Strings.T("ui_print_choose_a_printer_first") : Strings.T("ui_print_cant_find_the_printer");
+        if (IsPrint) return GetPrintBlockingText();
         if (IsTranslate && AiIncomplete) return Strings.T("ui_translate_enter_the_ai_service_url");
+        return "";
+    }
+
+    private string GetPrintBlockingText()
+    {
+        if (_isLoadingPrinters) return Strings.T("ui_print_searching_printers");
+        if (_printerIndex < 0) return HasPrinters ? Strings.T("ui_print_choose_a_printer_first") : Strings.T("ui_print_cant_find_the_printer");
         return "";
     }
 
@@ -746,7 +937,13 @@ public sealed class ActionOptionsViewModel : ViewModelBase
         if (!string.IsNullOrWhiteSpace(_printPages)) options[PrintPdfOptions.PageRangeKey] = _printPages.Trim();
         options[PrintPdfOptions.DuplexKey] = ((PrintDuplexMode)_duplex).ToString();
         options[PrintPdfOptions.OrientationKey] = ((PrintOrientation)_orientation).ToString();
-        options[PrintPdfOptions.FitToPageKey] = _fitToPage;
+        options[PrintPdfOptions.PagesPerSheetKey] = PagesPerSheet;
+        options[PrintPdfOptions.PageOrderKey] = PageOrder;
+        options[PrintPdfOptions.PageBorderKey] = _pageBorder;
+        options[PrintPdfOptions.ScaleKey] = ScaleMode;
+        options[PrintPdfOptions.ScalePercentKey] = (int)_scalePercent;
+        options[PrintPdfOptions.GrayscaleKey] = Grayscale;
+        options[PrintPdfOptions.CollateKey] = _collate;
         options[PrintPdfOptions.DarkenTextKey] = _darkenText;
         if (_paperIndex > 0) options[PrintPdfOptions.PaperSizeKey] = _paperSizes[_paperIndex];
     }

@@ -229,7 +229,7 @@ public sealed class SettingsViewModel : ViewModelBase
         }
     }
 
-    // ----- 列印：印表機清單在打開設定頁時讀一次；第一項「系統預設印表機」存成空字串 -----
+    // ----- Print: printer choices loaded once when opening settings; first item (system default) stored as empty string -----
     private IReadOnlyList<string>? _printerChoices;
     public IReadOnlyList<string> PrinterChoices => _printerChoices ??= LoadPrinterChoices();
     private static IReadOnlyList<string> LoadPrinterChoices()
@@ -285,6 +285,85 @@ public sealed class SettingsViewModel : ViewModelBase
     {
         get => SettingsController.PrintDarkenText;
         set { SettingsController.PrintDarkenText = value; OnPropertyChanged(); }
+    }
+
+    public int PrintPagesPerSheetIndex
+    {
+        get => SettingsController.PrintPagesPerSheet switch
+        {
+            2 => 1,
+            4 => 2,
+            6 => 3,
+            9 => 4,
+            16 => 5,
+            _ => 0,
+        };
+        set
+        {
+            SettingsController.PrintPagesPerSheet = value switch
+            {
+                1 => 2,
+                2 => 4,
+                3 => 6,
+                4 => 9,
+                5 => 16,
+                _ => 1,
+            };
+            OnPropertyChanged();
+        }
+    }
+
+    public int PrintPageOrderIndex
+    {
+        get => string.Equals(SettingsController.PrintPageOrder, "N", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        set { SettingsController.PrintPageOrder = value == 1 ? "N" : "Z"; OnPropertyChanged(); }
+    }
+
+    public bool PrintPageBorder
+    {
+        get => SettingsController.PrintPageBorder;
+        set { SettingsController.PrintPageBorder = value; OnPropertyChanged(); }
+    }
+
+    public int PrintScaleIndex
+    {
+        get => SettingsController.PrintScale switch
+        {
+            "actual" => 1,
+            "custom" => 2,
+            _ => 0,
+        };
+        set
+        {
+            SettingsController.PrintScale = value switch
+            {
+                1 => "actual",
+                2 => "custom",
+                _ => "fit",
+            };
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(PrintIsCustomScale));
+        }
+    }
+
+    public bool PrintIsCustomScale => PrintScaleIndex == 2;
+
+    public decimal PrintScalePercent
+    {
+        get => SettingsController.PrintScalePercent;
+        set { SettingsController.PrintScalePercent = (int)Math.Clamp(value, 10, 400); OnPropertyChanged(); }
+    }
+
+    public int PrintColorIndex
+    {
+        get => SettingsController.PrintGrayscale ? 1 : 0;
+        set { SettingsController.PrintGrayscale = value == 1; OnPropertyChanged(); }
+    }
+
+    public bool PrintCollate
+    {
+        get => SettingsController.PrintCollate;
+        set { SettingsController.PrintCollate = value; OnPropertyChanged(); }
     }
 
     public string CustomOutputDirText => string.IsNullOrWhiteSpace(_customOutputDir) ? "" : _customOutputDir;

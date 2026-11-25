@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.22.5.0.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.22.6.0.
 
 ---
 
@@ -15,7 +15,7 @@ Core document operations run completely offline on your local PC to keep your da
 Source Code: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- Fixed landscape pages printing in portrait when the print window was set to Auto orientation; single-sided printing and the darken-text option now also always follow what the window shows.
+- Desktop Print Preview Workspace: real-time vector sheet layout, N-up tiling, scaling, color modes, multi-file sheet preview, and total paper usage calculation.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*

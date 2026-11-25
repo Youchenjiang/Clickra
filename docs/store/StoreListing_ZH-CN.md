@@ -1,6 +1,6 @@
 # Microsoft Store 清单 - 中文 (简体)
 
-以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.22.5.0。
+以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.22.6.0。
 
 ---
 
@@ -15,7 +15,7 @@ Clickra 是一款专为 Windows 资源管理器打造的原生右键扩展工具
 源代码：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 修复打印窗口选择“自动”方向时，横向页面仍以纵向打印的问题；“单面”与“加深字迹”也一律按界面上的选择打印。
+- 桌面端打印预览工作区：支持即时矢量纸张排版、每张多页、缩放与色彩模式，并可一次选择多份文件一起预览与统计纸张。
 
 ## Product Features
 *(最多 20 个，以项目符号显示)*
