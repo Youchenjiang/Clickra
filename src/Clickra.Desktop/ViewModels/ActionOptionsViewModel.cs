@@ -759,8 +759,10 @@ public sealed class ActionOptionsViewModel : ViewModelBase
                 installed = PrinterDiscovery.GetInstalledPrinters();
                 def = PrinterDiscovery.GetDefaultPrinter();
             }
-            catch (Exception) // skipcq: CS-R1008
+            catch (Exception ex) // skipcq: CS-R1008
             {
+                // Fall back to empty installed list and no default printer if discovery fails on unsupported or restricted systems.
+                System.Diagnostics.Debug.WriteLine(ex.Message);
             }
 
             Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyDiscoveredPrinters(installed, def));
