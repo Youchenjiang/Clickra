@@ -1,5 +1,9 @@
 # Changelog
 
+## [v3.22.4.0] - 2026-11-25
+
+- **檔案列返回按鈕 (File Row Back Button)**：將轉檔畫面檔案窄列右側的「重新選檔案」文字按鈕改為最左側的「‹」圖示按鈕，維持層次單一返回路徑，並於進入動作頁時淡出保留位置。
+
 ## [v3.22.3.0] - 2026-11-25
 
 - **Window Titlebar**: Fix window caption minimize button icon vertical optical centering.

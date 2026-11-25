@@ -167,7 +167,7 @@
     <Setter Property="Stroke" Value="{Binding $parent[Button].Foreground}" />
   </Style>
 
-  <!-- Subtle: no border, used for low-emphasis actions such as 重新選. -->
+  <!-- Subtle: no border, used for low-emphasis actions such as the back button on the file row. -->
   <Style Selector="Button.subtle">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource Clk.TextSecondary}" />
