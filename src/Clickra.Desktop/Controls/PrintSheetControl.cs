@@ -64,27 +64,7 @@ public sealed class PrintSheetControl : Control
 
         if (sheet is null || sheet.WidthPt <= 0 || sheet.HeightPt <= 0)
         {
-            double placeholderW = Math.Min(availW * 0.7, 300);
-            double placeholderH = placeholderW * 1.414;
-            if (placeholderH > availH * 0.85)
-            {
-                placeholderH = availH * 0.85;
-                placeholderW = placeholderH / 1.414;
-            }
-            double placeholderLeft = (availW - placeholderW) / 2;
-            double placeholderTop = (availH - placeholderH) / 2;
-            var rect = new Rect(placeholderLeft, placeholderTop, placeholderW, placeholderH);
-            var dashPen = new Pen(new SolidColorBrush(Color.FromRgb(0xE5, 0xE7, 0xEB)), 1.5, new DashStyle(new double[] { 3, 3 }, 0));
-            context.DrawRectangle(new SolidColorBrush(Color.FromRgb(0xFA, 0xFA, 0xFA)), dashPen, rect);
-
-            var loadingText = new FormattedText(
-                Clickra.Desktop.L10n.Strings.T("ui_print_loading_preview"),
-                CultureInfo.InvariantCulture,
-                FlowDirection.LeftToRight,
-                new Typeface(FontFamily.Default),
-                13,
-                new SolidColorBrush(Color.FromRgb(0x9C, 0xA3, 0xAF)));
-            context.DrawText(loadingText, new Point(rect.Center.X - loadingText.Width / 2, rect.Center.Y - loadingText.Height / 2));
+            RenderPlaceholder(context, availW, availH);
             return;
         }
 
@@ -102,48 +82,77 @@ public sealed class PrintSheetControl : Control
         // Clip rendering to paper rectangle
         using (context.PushClip(paperRect))
         {
-            // Draw cells
-            var borderPen = new Pen(new SolidColorBrush(Color.FromRgb(0xD0, 0xD5, 0xDD)), 0.5);
-            var pageNumTypeface = new Typeface(FontFamily.Default);
+            RenderCells(context, sheet, left, top, scale);
+        }
+    }
 
-            foreach (var cell in sheet.Cells)
+    private static void RenderPlaceholder(DrawingContext context, double availW, double availH)
+    {
+        double placeholderW = Math.Min(availW * 0.7, 300);
+        double placeholderH = placeholderW * 1.414;
+        if (placeholderH > availH * 0.85)
+        {
+            placeholderH = availH * 0.85;
+            placeholderW = placeholderH / 1.414;
+        }
+        double placeholderLeft = (availW - placeholderW) / 2;
+        double placeholderTop = (availH - placeholderH) / 2;
+        var rect = new Rect(placeholderLeft, placeholderTop, placeholderW, placeholderH);
+        var dashPen = new Pen(new SolidColorBrush(Color.FromRgb(0xE5, 0xE7, 0xEB)), 1.5, new DashStyle(new double[] { 3, 3 }, 0));
+        context.DrawRectangle(new SolidColorBrush(Color.FromRgb(0xFA, 0xFA, 0xFA)), dashPen, rect);
+
+        var loadingText = new FormattedText(
+            Clickra.Desktop.L10n.Strings.T("ui_print_loading_preview"),
+            CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight,
+            new Typeface(FontFamily.Default),
+            13,
+            new SolidColorBrush(Color.FromRgb(0x9C, 0xA3, 0xAF)));
+        context.DrawText(loadingText, new Point(rect.Center.X - loadingText.Width / 2, rect.Center.Y - loadingText.Height / 2));
+    }
+
+    private static void RenderCells(DrawingContext context, PrintSheetViewModel sheet, double left, double top, double scale)
+    {
+        var borderPen = new Pen(new SolidColorBrush(Color.FromRgb(0xD0, 0xD5, 0xDD)), 0.5);
+        var pageNumTypeface = new Typeface(FontFamily.Default);
+
+        foreach (var cell in sheet.Cells)
+        {
+            var pageRect = new Rect(left + cell.Page.X * scale, top + cell.Page.Y * scale, cell.Page.Width * scale, cell.Page.Height * scale);
+            if (cell.Thumbnail is not null)
             {
-                var pageRect = new Rect(left + cell.Page.X * scale, top + cell.Page.Y * scale, cell.Page.Width * scale, cell.Page.Height * scale);
-                if (cell.Thumbnail is not null)
-                {
-                    context.DrawImage(cell.Thumbnail, pageRect);
-                }
-                else
-                {
-                    context.DrawRectangle(new SolidColorBrush(Color.FromRgb(0xF3, 0xF4, 0xF6)), null, pageRect);
-                    var placeholderText = new FormattedText(cell.PageNumber.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture, FlowDirection.LeftToRight, pageNumTypeface, 11, Brushes.Gray);
-                    context.DrawText(placeholderText, new Point(pageRect.Center.X - placeholderText.Width / 2, pageRect.Center.Y - placeholderText.Height / 2));
-                }
-
-                if (sheet.PageBorder && sheet.PagesPerSheet > 1)
-                {
-                    context.DrawRectangle(null, borderPen, pageRect);
-                }
-
-                if (sheet.PagesPerSheet > 1)
-                {
-                    var numText = new FormattedText(cell.PageNumber.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture, FlowDirection.LeftToRight, pageNumTypeface, 10, new SolidColorBrush(Color.FromRgb(0x4B, 0x55, 0x63)));
-                    double numX = left + (cell.Cell.X + cell.Cell.Width) * scale - numText.Width - 4;
-                    double numY = top + (cell.Cell.Y + cell.Cell.Height) * scale - numText.Height - 2;
-                    context.DrawRectangle(new SolidColorBrush(Color.FromArgb(0xC0, 0xFF, 0xFF, 0xFF)), null, new Rect(numX - 1, numY - 1, numText.Width + 2, numText.Height + 2), 2, 2);
-                    context.DrawText(numText, new Point(numX, numY));
-                }
+                context.DrawImage(cell.Thumbnail, pageRect);
+            }
+            else
+            {
+                context.DrawRectangle(new SolidColorBrush(Color.FromRgb(0xF3, 0xF4, 0xF6)), null, pageRect);
+                var placeholderText = new FormattedText(cell.PageNumber.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture, FlowDirection.LeftToRight, pageNumTypeface, 11, Brushes.Gray);
+                context.DrawText(placeholderText, new Point(pageRect.Center.X - placeholderText.Width / 2, pageRect.Center.Y - placeholderText.Height / 2));
             }
 
-            // Orange dashed printable area overlay if overflow (drawn on top of cells)
-            if (sheet.Overflows)
+            if (sheet.PageBorder && sheet.PagesPerSheet > 1)
             {
-                float shortSide = Math.Min(sheet.WidthPt, sheet.HeightPt);
-                float margin = shortSide * 0.03f;
-                var dashPen = new Pen(new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B)), 1.5, new DashStyle(new double[] { 4, 4 }, 0));
-                var printArea = new Rect(left + margin * scale, top + margin * scale, (sheet.WidthPt - 2 * margin) * scale, (sheet.HeightPt - 2 * margin) * scale);
-                context.DrawRectangle(null, dashPen, printArea);
+                context.DrawRectangle(null, borderPen, pageRect);
             }
+
+            if (sheet.PagesPerSheet > 1)
+            {
+                var numText = new FormattedText(cell.PageNumber.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture, FlowDirection.LeftToRight, pageNumTypeface, 10, new SolidColorBrush(Color.FromRgb(0x4B, 0x55, 0x63)));
+                double numX = left + (cell.Cell.X + cell.Cell.Width) * scale - numText.Width - 4;
+                double numY = top + (cell.Cell.Y + cell.Cell.Height) * scale - numText.Height - 2;
+                context.DrawRectangle(new SolidColorBrush(Color.FromArgb(0xC0, 0xFF, 0xFF, 0xFF)), null, new Rect(numX - 1, numY - 1, numText.Width + 2, numText.Height + 2), 2, 2);
+                context.DrawText(numText, new Point(numX, numY));
+            }
+        }
+
+        // Orange dashed printable area overlay if overflow (drawn on top of cells)
+        if (sheet.Overflows)
+        {
+            float shortSide = Math.Min(sheet.WidthPt, sheet.HeightPt);
+            float margin = shortSide * 0.03f;
+            var dashPen = new Pen(new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B)), 1.5, new DashStyle(new double[] { 4, 4 }, 0));
+            var printArea = new Rect(left + margin * scale, top + margin * scale, (sheet.WidthPt - 2 * margin) * scale, (sheet.HeightPt - 2 * margin) * scale);
+            context.DrawRectangle(null, dashPen, printArea);
         }
     }
 }

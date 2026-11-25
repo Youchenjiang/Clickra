@@ -21,11 +21,7 @@ public partial class App : Application
             var vm = new MainWindowViewModel();
             if (desktop.Args is { Length: > 0 } args)
             {
-                var files = new System.Collections.Generic.List<string>();
-                foreach (string a in args)
-                {
-                    if (System.IO.File.Exists(a)) files.Add(System.IO.Path.GetFullPath(a));
-                }
+                var files = args.Where(System.IO.File.Exists).Select(System.IO.Path.GetFullPath).ToList();
                 if (files.Count > 0)
                 {
                     vm.Convert.AddFiles(files);

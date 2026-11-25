@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -220,70 +221,77 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
 
     public void Stop() => CancelConversion();
 
+    private const string PrintPdfCommand = "print-pdf";
+
     public ConvertViewModel()
     {
         IsBusy = () => IsExecuting;
-        Options.PropertyChanged += (_, e) =>
-        {
-            if (IsPrintAction && IsPreviewAffectingProperty(e.PropertyName))
-            {
-                PrintPreview.Update(SelectedFiles.Select(f => f.Path).ToList(), Options);
-            }
-            if (e.PropertyName is "" or nameof(ActionOptionsViewModel.IsReady) or nameof(ActionOptionsViewModel.BlockingText))
-            {
-                OnPropertyChanged(nameof(CanStart));
-                OnPropertyChanged(nameof(StartButtonText));
-            }
-        };
-        PrintPreview.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName is "" or nameof(PrintPreviewViewModel.CanPrint) or nameof(PrintPreviewViewModel.BlockingText))
-            {
-                OnPropertyChanged(nameof(CanStart));
-                OnPropertyChanged(nameof(StartButtonText));
-            }
-        };
-        Split.Zoom.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(ZoomPreviewViewModel.IsOpen))
-            {
-                OnPropertyChanged(nameof(IsZoomPreviewOpen));
-                OnPropertyChanged(nameof(ActiveZoomPreview));
-            }
-        };
-        PrintPreview.Zoom.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(ZoomPreviewViewModel.IsOpen))
-            {
-                OnPropertyChanged(nameof(IsZoomPreviewOpen));
-                OnPropertyChanged(nameof(ActiveZoomPreview));
-            }
-        };
-        Split.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName is "" or nameof(SplitWorkspaceViewModel.IsReady) or nameof(SplitWorkspaceViewModel.StartText))
-            {
-                OnPropertyChanged(nameof(CanStart));
-                OnPropertyChanged(nameof(StartButtonText));
-            }
-        };
-        Order.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(OrderWorkspaceViewModel.HasOutputName))
-            {
-                OnPropertyChanged(nameof(CanStart));
-                OnPropertyChanged(nameof(StartButtonText));
-            }
-        };
-        Rename.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName is nameof(RenameWorkspaceViewModel.CanRename) or nameof(RenameWorkspaceViewModel.RenameButtonText))
-            {
-                OnPropertyChanged(nameof(CanStart));
-                OnPropertyChanged(nameof(StartButtonText));
-            }
-        };
+        Options.PropertyChanged += OnOptionsPropertyChanged;
+        PrintPreview.PropertyChanged += OnPrintPreviewPropertyChanged;
+        Split.Zoom.PropertyChanged += OnZoomPropertyChanged;
+        PrintPreview.Zoom.PropertyChanged += OnZoomPropertyChanged;
+        Split.PropertyChanged += OnSplitPropertyChanged;
+        Order.PropertyChanged += OnOrderPropertyChanged;
+        Rename.PropertyChanged += OnRenamePropertyChanged;
         RefreshRecentHistory();
+    }
+
+    private void OnOptionsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (IsPrintAction && IsPreviewAffectingProperty(e.PropertyName))
+        {
+            PrintPreview.Update(SelectedFiles.Select(f => f.Path).ToList(), Options);
+        }
+        if (e.PropertyName is "" or nameof(ActionOptionsViewModel.IsReady) or nameof(ActionOptionsViewModel.BlockingText))
+        {
+            OnPropertyChanged(nameof(CanStart));
+            OnPropertyChanged(nameof(StartButtonText));
+        }
+    }
+
+    private void OnPrintPreviewPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is "" or nameof(PrintPreviewViewModel.CanPrint) or nameof(PrintPreviewViewModel.BlockingText))
+        {
+            OnPropertyChanged(nameof(CanStart));
+            OnPropertyChanged(nameof(StartButtonText));
+        }
+    }
+
+    private void OnZoomPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ZoomPreviewViewModel.IsOpen))
+        {
+            OnPropertyChanged(nameof(IsZoomPreviewOpen));
+            OnPropertyChanged(nameof(ActiveZoomPreview));
+        }
+    }
+
+    private void OnSplitPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is "" or nameof(SplitWorkspaceViewModel.IsReady) or nameof(SplitWorkspaceViewModel.StartText))
+        {
+            OnPropertyChanged(nameof(CanStart));
+            OnPropertyChanged(nameof(StartButtonText));
+        }
+    }
+
+    private void OnOrderPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(OrderWorkspaceViewModel.HasOutputName))
+        {
+            OnPropertyChanged(nameof(CanStart));
+            OnPropertyChanged(nameof(StartButtonText));
+        }
+    }
+
+    private void OnRenamePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(RenameWorkspaceViewModel.CanRename) or nameof(RenameWorkspaceViewModel.RenameButtonText))
+        {
+            OnPropertyChanged(nameof(CanStart));
+            OnPropertyChanged(nameof(StartButtonText));
+        }
     }
 
     private static bool IsPreviewAffectingProperty(string? propertyName) =>
@@ -377,7 +385,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
 
     /// <summary>Print preview layout and sheet planning (spec 4.9, print_preview_plan.md).</summary>
     public PrintPreviewViewModel PrintPreview { get; } = new();
-    public bool IsPrintAction => string.Equals(SelectedAction?.Command, "print-pdf", StringComparison.OrdinalIgnoreCase);
+    public bool IsPrintAction => string.Equals(SelectedAction?.Command, PrintPdfCommand, StringComparison.OrdinalIgnoreCase);
 
     public bool IsZoomPreviewOpen => (IsSplitAction && Split.IsPreviewOpen) || (IsPrintAction && PrintPreview.IsPreviewOpen);
     public ZoomPreviewViewModel? ActiveZoomPreview
@@ -409,7 +417,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     public SplitWorkspaceViewModel Split { get; } = new();
     public bool IsSplitAction => SelectedAction?.Command == "split-pdf";
     /// <summary>Printing and renaming produce no new file, so the page has no 「存到…」 line.</summary>
-    public bool ShowsOutputLocation => SelectedAction is not null && !IsRenameAction && SelectedAction.Command != "print-pdf";
+    public bool ShowsOutputLocation => SelectedAction is not null && !IsRenameAction && SelectedAction.Command != PrintPdfCommand;
 
     /// <summary>合併與拼接: the order list workspace (spec 4.6).</summary>
     public OrderWorkspaceViewModel Order { get; } = new();
@@ -612,7 +620,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             Order.SetFiles(action.Command, SelectedFiles.Select(f => f.Path));
         if (action.Command == "split-pdf")
             Split.SetFiles(SelectedFiles.Select(f => f.Path).ToList());
-        if (action.Command == "print-pdf")
+        if (action.Command == PrintPdfCommand)
             PrintPreview.Update(SelectedFiles.Select(f => f.Path).ToList(), Options);
         Options.SetAllowedImageFormats(_workspace.IsCommandCompatible);
     }
@@ -1037,7 +1045,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     /// <summary>Core refuses protected PDFs for these (they need the file's content unlocked first); split and
     /// PDF → image ask for the password while running, so they stay available.</summary>
     private static bool NeedsUnprotectedInput(string command) =>
-        command is "merge-pdf" or "compress-pdf" or "translate-pdf" or "print-pdf";
+        command is "merge-pdf" or "compress-pdf" or "translate-pdf" or PrintPdfCommand;
 
     private PdfProtection ProtectionOf(string path) =>
         _protection.TryGetValue(path, out PdfProtection value) ? value : PdfProtection.None;

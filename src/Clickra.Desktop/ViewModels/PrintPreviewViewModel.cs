@@ -97,8 +97,10 @@ public sealed class PrintPreviewViewModel : ViewModelBase
     private CancellationTokenSource? _renderCts;
     private readonly Dictionary<(string File, int Page, bool Darken, bool Grayscale), IImage> _thumbnailCache = new();
     private readonly LinkedList<(string File, int Page, bool Darken, bool Grayscale)> _thumbnailLruList = new();
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S9422", Justification = "Project targets .NET 8.0 where System.Threading.Lock is not available.")]
     private readonly object _thumbnailLock = new();
     private const int MaxThumbnailCacheSize = 48;
+    private const string CountParam = "count";
 
     private static readonly ConcurrentDictionary<(string Path, DateTime LastWriteUtc), IReadOnlyList<PrintPageSize>> _pageSizesCache = new();
     private CancellationTokenSource? _updateCts;
@@ -147,7 +149,7 @@ public sealed class PrintPreviewViewModel : ViewModelBase
     }
 
     public string FileIndicatorText =>
-        _files.Count == 0 ? "" : Strings.F("ui_print_file_of", ("no", _currentFileIndex + 1), ("count", _files.Count));
+        _files.Count == 0 ? "" : Strings.F("ui_print_file_of", ("no", _currentFileIndex + 1), (CountParam, _files.Count));
 
     public string FileDetailsText
     {
@@ -161,7 +163,7 @@ public sealed class PrintPreviewViewModel : ViewModelBase
             }
             if (cur.SelectedPagesCount < cur.TotalPages)
             {
-                return Strings.F("ui_print_file_pages_selected", ("count", cur.TotalPages), ("selected", cur.SelectedPagesCount));
+                return Strings.F("ui_print_file_pages_selected", (CountParam, cur.TotalPages), ("selected", cur.SelectedPagesCount));
             }
             return Strings.Count("ui_print_file_pages", cur.TotalPages);
         }
@@ -209,13 +211,13 @@ public sealed class PrintPreviewViewModel : ViewModelBase
             if (SheetCount == 0 || CurrentSheet is null) return "";
             if (!_isDuplex)
             {
-                return Strings.F("ui_print_sheet_of", ("no", _currentSheetIndex + 1), ("count", SheetCount));
+                return Strings.F("ui_print_sheet_of", ("no", _currentSheetIndex + 1), (CountParam, SheetCount));
             }
 
             int paperNo = (_currentSheetIndex / 2) + 1;
             int paperCount = (SheetCount + 1) / 2;
             string key = CurrentSheet.IsBack ? "ui_print_sheet_back_of" : "ui_print_sheet_front_of";
-            return Strings.F(key, ("no", paperNo), ("count", paperCount));
+            return Strings.F(key, ("no", paperNo), (CountParam, paperCount));
         }
     }
 
@@ -232,7 +234,7 @@ public sealed class PrintPreviewViewModel : ViewModelBase
             if (_pagesPerSheet > 1)
             {
                 string multiKey = sheet.Landscape ? "ui_print_sheet_landscape_multi" : "ui_print_sheet_portrait_multi";
-                return Strings.F(multiKey, ("paper", _paperName), ("count", _pagesPerSheet));
+                return Strings.F(multiKey, ("paper", _paperName), (CountParam, _pagesPerSheet));
             }
 
             string key = sheet.Landscape ? "ui_print_sheet_landscape" : "ui_print_sheet_portrait";
@@ -275,25 +277,49 @@ public sealed class PrintPreviewViewModel : ViewModelBase
             ? options.PaperSizes[options.PaperIndex]
             : "A4";
 
-        bool newDarken = options.DarkenText;
-        bool newGrayscale = options.Grayscale;
+        UpdateStylingOptions(options.DarkenText, options.Grayscale);
+
+        var paperDim = PaperSizeRegistry.GetDimensions(_paperName);
+        float portW = Math.Min(paperDim.WidthPt, paperDim.HeightPt);
+        float portH = Math.Max(paperDim.WidthPt, paperDim.HeightPt);
+
+        var printOptions = CreatePrintOptions(options, effectiveDuplex);
+
+        // Cancel previous background update if still in-flight
+        _updateCts?.Cancel();
+        _updateCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _updateCts = cts;
+        var token = cts.Token;
+
+        if (CustomPageSizesReader != null || AreAllPageSizesCached(_filePaths))
+        {
+            ApplyLayoutPlan(_filePaths, printOptions, portW, portH, options.PageBorder, effectiveDuplex);
+        }
+        else
+        {
+            WarmUpAndApplyLayoutPlan(_filePaths, printOptions, portW, portH, options.PageBorder, effectiveDuplex, token);
+        }
+    }
+
+    private void UpdateStylingOptions(bool newDarken, bool newGrayscale)
+    {
         if (newDarken != _darkenText || newGrayscale != _grayscale)
         {
             ClearThumbnailCache();
             _darkenText = newDarken;
             _grayscale = newGrayscale;
         }
+    }
 
-        var paperDim = PaperSizeRegistry.GetDimensions(_paperName);
-        float portW = Math.Min(paperDim.WidthPt, paperDim.HeightPt);
-        float portH = Math.Max(paperDim.WidthPt, paperDim.HeightPt);
-
+    private PrintPdfOptions CreatePrintOptions(ActionOptionsViewModel options, bool effectiveDuplex)
+    {
         var duplexMode = effectiveDuplex
             ? (PrintDuplexMode)Math.Clamp(options.DuplexIndex, 0, 2)
             : PrintDuplexMode.Simplex;
         var orientationMode = (PrintOrientation)Math.Clamp(options.OrientationIndex, 0, 2);
 
-        var printOptions = new PrintPdfOptions(
+        return new PrintPdfOptions(
             printerName: null,
             pageRange: options.PrintPages,
             copies: _copies,
@@ -312,62 +338,55 @@ public sealed class PrintPreviewViewModel : ViewModelBase
             scalePercent: (int)options.ScalePercent,
             grayscale: _grayscale,
             collate: options.Collate);
+    }
 
-        // Cancel previous background update if still in-flight
-        _updateCts?.Cancel();
-        _updateCts?.Dispose();
-        var cts = new CancellationTokenSource();
-        _updateCts = cts;
-        var token = cts.Token;
-
-        // Check if all files have their page sizes cached or if custom reader is supplied
-        bool allCached = true;
-        if (CustomPageSizesReader == null)
+    private static bool AreAllPageSizesCached(IReadOnlyList<string> filePaths)
+    {
+        foreach (string file in filePaths)
         {
-            foreach (string file in _filePaths)
+            if (!File.Exists(file)) continue;
+            var lastWrite = File.GetLastWriteTimeUtc(file);
+            if (!_pageSizesCache.ContainsKey((file, lastWrite)))
             {
-                if (!File.Exists(file)) continue;
-                var lastWrite = File.GetLastWriteTimeUtc(file);
-                if (!_pageSizesCache.ContainsKey((file, lastWrite)))
-                {
-                    allCached = false;
-                    break;
-                }
+                return false;
             }
         }
+        return true;
+    }
 
-        if (allCached || CustomPageSizesReader != null)
+    private void WarmUpAndApplyLayoutPlan(
+        IReadOnlyList<string> filePaths,
+        PrintPdfOptions printOptions,
+        float portW,
+        float portH,
+        bool pageBorder,
+        bool effectiveDuplex,
+        CancellationToken token)
+    {
+        var capturedFilePaths = filePaths.ToList();
+        Task.Run(() =>
         {
-            ApplyLayoutPlan(_filePaths, printOptions, portW, portH, options.PageBorder, effectiveDuplex);
-        }
-        else
-        {
-            // Initial read or missing cache: do on background thread
-            var capturedFilePaths = _filePaths.ToList();
-            Task.Run(() =>
+            foreach (string file in capturedFilePaths)
             {
-                foreach (string file in capturedFilePaths)
+                if (token.IsCancellationRequested) return;
+                if (File.Exists(file))
                 {
-                    if (token.IsCancellationRequested) return;
-                    if (File.Exists(file))
-                    {
-                        var lastWrite = File.GetLastWriteTimeUtc(file);
-                        _pageSizesCache.GetOrAdd((file, lastWrite), _ => PrintPreviewQuery.ReadAllPageSizes(file));
-                    }
+                    var lastWrite = File.GetLastWriteTimeUtc(file);
+                    _pageSizesCache.GetOrAdd((file, lastWrite), _ => PrintPreviewQuery.ReadAllPageSizes(file));
                 }
+            }
 
-                if (!token.IsCancellationRequested)
+            if (!token.IsCancellationRequested)
+            {
+                Dispatcher.UIThread.Post(() =>
                 {
-                    Dispatcher.UIThread.Post(() =>
+                    if (!token.IsCancellationRequested)
                     {
-                        if (!token.IsCancellationRequested)
-                        {
-                            ApplyLayoutPlan(capturedFilePaths, printOptions, portW, portH, options.PageBorder, effectiveDuplex);
-                        }
-                    });
-                }
-            }, token);
-        }
+                        ApplyLayoutPlan(capturedFilePaths, printOptions, portW, portH, pageBorder, effectiveDuplex);
+                    }
+                });
+            }
+        }, token);
     }
 
     private void ApplyLayoutPlan(
@@ -385,53 +404,9 @@ public sealed class PrintPreviewViewModel : ViewModelBase
 
         foreach (string file in filePaths)
         {
-            PrintPageSizesResult result;
-            if (CustomPageSizesReader != null)
-            {
-                result = CustomPageSizesReader(file, printOptions.PageRange);
-            }
-            else
-            {
-                IReadOnlyList<PrintPageSize> allPages;
-                if (File.Exists(file))
-                {
-                    var lastWrite = File.GetLastWriteTimeUtc(file);
-                    allPages = _pageSizesCache.GetOrAdd((file, lastWrite), _ => PrintPreviewQuery.ReadAllPageSizes(file));
-                }
-                else
-                {
-                    allPages = Array.Empty<PrintPageSize>();
-                }
-
-                if (allPages.Count == 0)
-                {
-                    result = new PrintPageSizesResult(Array.Empty<PrintPageSize>(), 0);
-                }
-                else
-                {
-                    List<int> resolvedPages = PrintLayoutPlanner.ResolvePageNumbers(printOptions.PageRange, allPages.Count);
-                    var selected = new List<PrintPageSize>(resolvedPages.Count);
-                    foreach (int pNum in resolvedPages)
-                    {
-                        if (pNum >= 1 && pNum <= allPages.Count)
-                            selected.Add(allPages[pNum - 1]);
-                        else
-                            selected.Add(new PrintPageSize(pNum, 595.28f, 841.89f));
-                    }
-                    result = new PrintPageSizesResult(selected, allPages.Count);
-                }
-            }
-
-            var (pages, totalDocPages) = result;
+            var (pages, totalDocPages) = ResolveFilePageSizes(file, printOptions.PageRange);
             var plannedSheets = PrintLayoutPlanner.Plan(pages, portW, portH, printOptions);
-
-            var sheetVms = new List<PrintSheetViewModel>(plannedSheets.Count);
-            foreach (var s in plannedSheets)
-            {
-                float w = s.Landscape ? portH : portW;
-                float h = s.Landscape ? portW : portH;
-                sheetVms.Add(new PrintSheetViewModel(s, w, h, pageBorder, _pagesPerSheet));
-            }
+            var sheetVms = CreateSheetViewModels(plannedSheets, portW, portH, pageBorder);
 
             int selCount = pages.Count;
             totalSelectedPages += selCount;
@@ -450,7 +425,62 @@ public sealed class PrintPreviewViewModel : ViewModelBase
         if (_currentFileIndex >= _files.Count) _currentFileIndex = Math.Max(0, _files.Count - 1);
         if (_currentSheetIndex >= SheetCount) _currentSheetIndex = Math.Max(0, SheetCount - 1);
 
-        // Build details tokens
+        _summaryText = BuildSummaryText(totalSelectedPages, totalPaperSheets, effectiveDuplex);
+        _skippedWarningText = BuildSkippedWarningText(skippedFiles);
+
+        _canPrint = totalSelectedPages > 0 && _hasPrinters;
+        _blockingText = totalSelectedPages == 0 && _files.Count > 0 ? Strings.T("ui_print_no_selected_pages") : "";
+
+        NotifyAllProperties();
+        TriggerThumbnailRendering();
+    }
+
+    private PrintPageSizesResult ResolveFilePageSizes(string file, string? pageRange)
+    {
+        if (CustomPageSizesReader != null)
+        {
+            return CustomPageSizesReader(file, pageRange);
+        }
+
+        IReadOnlyList<PrintPageSize> allPages = File.Exists(file)
+            ? _pageSizesCache.GetOrAdd((file, File.GetLastWriteTimeUtc(file)), _ => PrintPreviewQuery.ReadAllPageSizes(file))
+            : Array.Empty<PrintPageSize>();
+
+        if (allPages.Count == 0)
+        {
+            return new PrintPageSizesResult(Array.Empty<PrintPageSize>(), 0);
+        }
+
+        List<int> resolvedPages = PrintLayoutPlanner.ResolvePageNumbers(pageRange, allPages.Count);
+        var selected = new List<PrintPageSize>(resolvedPages.Count);
+        foreach (int pNum in resolvedPages)
+        {
+            if (pNum >= 1 && pNum <= allPages.Count)
+                selected.Add(allPages[pNum - 1]);
+            else
+                selected.Add(new PrintPageSize(pNum, 595.28f, 841.89f));
+        }
+        return new PrintPageSizesResult(selected, allPages.Count);
+    }
+
+    private List<PrintSheetViewModel> CreateSheetViewModels(
+        IReadOnlyList<PrintSheet> plannedSheets,
+        float portW,
+        float portH,
+        bool pageBorder)
+    {
+        var sheetVms = new List<PrintSheetViewModel>(plannedSheets.Count);
+        foreach (var s in plannedSheets)
+        {
+            float w = s.Landscape ? portH : portW;
+            float h = s.Landscape ? portW : portH;
+            sheetVms.Add(new PrintSheetViewModel(s, w, h, pageBorder, _pagesPerSheet));
+        }
+        return sheetVms;
+    }
+
+    private string BuildSummaryText(int totalSelectedPages, int totalPaperSheets, bool effectiveDuplex)
+    {
         var detailsList = new List<string>();
         if (_files.Count >= 2)
         {
@@ -459,7 +489,7 @@ public sealed class PrintPreviewViewModel : ViewModelBase
         detailsList.Add(Strings.Count("ui_print_summary_pages", totalSelectedPages));
         if (_pagesPerSheet >= 2)
         {
-            detailsList.Add(Strings.F("ui_print_summary_per_sheet", ("count", _pagesPerSheet)));
+            detailsList.Add(Strings.F("ui_print_summary_per_sheet", (CountParam, _pagesPerSheet)));
         }
         if (effectiveDuplex)
         {
@@ -471,26 +501,20 @@ public sealed class PrintPreviewViewModel : ViewModelBase
         }
 
         string detailsJoined = Strings.List(detailsList);
-        _summaryText = Strings.Count("ui_print_summary", totalPaperSheets, ("details", detailsJoined), ("sheets", totalPaperSheets));
+        return Strings.Count("ui_print_summary", totalPaperSheets, ("details", detailsJoined), ("sheets", totalPaperSheets));
+    }
 
+    private static string BuildSkippedWarningText(IReadOnlyList<string> skippedFiles)
+    {
         if (skippedFiles.Count == 1)
         {
-            _skippedWarningText = Strings.F("ui_print_skipped_one", ("name", skippedFiles[0]));
+            return Strings.F("ui_print_skipped_one", ("name", skippedFiles[0]));
         }
-        else if (skippedFiles.Count > 1)
+        if (skippedFiles.Count > 1)
         {
-            _skippedWarningText = Strings.F("ui_print_skipped_many", ("names", Strings.ShortList(skippedFiles)));
+            return Strings.F("ui_print_skipped_many", ("names", Strings.ShortList(skippedFiles)));
         }
-        else
-        {
-            _skippedWarningText = "";
-        }
-
-        _canPrint = totalSelectedPages > 0 && _hasPrinters;
-        _blockingText = totalSelectedPages == 0 && _files.Count > 0 ? Strings.T("ui_print_no_selected_pages") : "";
-
-        NotifyAllProperties();
-        TriggerThumbnailRendering();
+        return "";
     }
 
     private void NotifyAllProperties()
@@ -609,21 +633,7 @@ public sealed class PrintPreviewViewModel : ViewModelBase
         var sheet = CurrentSheet;
         if (file is null || sheet is null) return;
 
-        // Check which cells need rendering
-        var needRendering = new List<PrintCellViewModel>();
-        foreach (var cell in sheet.Cells)
-        {
-            var key = (file.FilePath, cell.PageNumber, _darkenText, _grayscale);
-            if (TryGetThumbnail(key, out var cached))
-            {
-                cell.Thumbnail = cached;
-            }
-            else
-            {
-                needRendering.Add(cell);
-            }
-        }
-
+        var needRendering = GatherCellsNeedingRendering(file, sheet);
         sheet.NotifyInvalidated();
         if (needRendering.Count == 0) return;
 
@@ -639,38 +649,67 @@ public sealed class PrintPreviewViewModel : ViewModelBase
             foreach (var cell in needRendering)
             {
                 if (token.IsCancellationRequested) break;
-                try
-                {
-#pragma warning disable CA1416
-                    using System.Drawing.Bitmap? bmp = PrintPreviewQuery.RenderPage(filePath, cell.PageNumber, 600, darken, grayscale);
-                    if (bmp is null) continue;
-
-                    using var ms = new MemoryStream();
-                    bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-                    ms.Position = 0;
-                    var avaloniaBmp = new Avalonia.Media.Imaging.Bitmap(ms);
-                    var key = (filePath, cell.PageNumber, darken, grayscale);
-                    PutThumbnail(key, avaloniaBmp);
-
-                    if (!token.IsCancellationRequested)
-                    {
-                        Dispatcher.UIThread.Post(() =>
-                        {
-                            if (!token.IsCancellationRequested)
-                            {
-                                cell.Thumbnail = avaloniaBmp;
-                                sheet.NotifyInvalidated();
-                            }
-                        });
-                    }
-#pragma warning restore CA1416
-                }
-                catch
-                {
-                    // Ignore decoding failures
-                }
+                RenderAndCacheCellThumbnail(filePath, cell, sheet, darken, grayscale, token);
             }
         }, token);
+    }
+
+    private List<PrintCellViewModel> GatherCellsNeedingRendering(PrintPreviewFileItem file, PrintSheetViewModel sheet)
+    {
+        var needRendering = new List<PrintCellViewModel>();
+        foreach (var cell in sheet.Cells)
+        {
+            var key = (file.FilePath, cell.PageNumber, _darkenText, _grayscale);
+            if (TryGetThumbnail(key, out var cached))
+            {
+                cell.Thumbnail = cached;
+            }
+            else
+            {
+                needRendering.Add(cell);
+            }
+        }
+        return needRendering;
+    }
+
+    private void RenderAndCacheCellThumbnail(
+        string filePath,
+        PrintCellViewModel cell,
+        PrintSheetViewModel sheet,
+        bool darken,
+        bool grayscale,
+        CancellationToken token)
+    {
+        try
+        {
+#pragma warning disable CA1416
+            using System.Drawing.Bitmap? bmp = PrintPreviewQuery.RenderPage(filePath, cell.PageNumber, 600, darken, grayscale);
+            if (bmp is null) return;
+
+            using var ms = new MemoryStream();
+            bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+            ms.Position = 0;
+            var avaloniaBmp = new Avalonia.Media.Imaging.Bitmap(ms);
+            var key = (filePath, cell.PageNumber, darken, grayscale);
+            PutThumbnail(key, avaloniaBmp);
+
+            if (!token.IsCancellationRequested)
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (!token.IsCancellationRequested)
+                    {
+                        cell.Thumbnail = avaloniaBmp;
+                        sheet.NotifyInvalidated();
+                    }
+                });
+            }
+#pragma warning restore CA1416
+        }
+        catch
+        {
+            // Ignore decoding failures
+        }
     }
 
     public void OpenZoom()

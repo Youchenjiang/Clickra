@@ -837,12 +837,15 @@ public sealed class ActionOptionsViewModel : ViewModelBase
         if (IsMarkdown && UsesWordTemplate && HasTemplateError) return Strings.T("ui_markdown_choose_a_template_that_works");
         if (IsDecrypt && _decryptNeedsPassword && _password.Length == 0) return Strings.T("ui_decrypt_enter_the_password_first");
         if (IsImageFormat && _imageFormat < 0) return Strings.T("ui_img_format_choose_a_format_first");
-        if (IsPrint)
-        {
-            if (_isLoadingPrinters) return Strings.T("ui_print_searching_printers");
-            if (_printerIndex < 0) return HasPrinters ? Strings.T("ui_print_choose_a_printer_first") : Strings.T("ui_print_cant_find_the_printer");
-        }
+        if (IsPrint) return GetPrintBlockingText();
         if (IsTranslate && AiIncomplete) return Strings.T("ui_translate_enter_the_ai_service_url");
+        return "";
+    }
+
+    private string GetPrintBlockingText()
+    {
+        if (_isLoadingPrinters) return Strings.T("ui_print_searching_printers");
+        if (_printerIndex < 0) return HasPrinters ? Strings.T("ui_print_choose_a_printer_first") : Strings.T("ui_print_cant_find_the_printer");
         return "";
     }
 
