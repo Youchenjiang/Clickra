@@ -74,7 +74,7 @@ public sealed class HistoryRowViewModel : ViewModelBase
         {
             HistoryRowKind.Parked => DescribeParked(item.Entry.ParkedSince),
             HistoryRowKind.Active => "",
-            _ => Started?.ToString("HH:mm", CultureInfo.InvariantCulture) ?? item.Time,
+            _ => EffectiveTime?.ToString("HH:mm", CultureInfo.InvariantCulture) ?? item.Time,
         };
         Reason = DetermineReason(Kind, State, item);
         if (Kind == HistoryRowKind.Active && item.FileCount > 0)
@@ -110,6 +110,7 @@ public sealed class HistoryRowViewModel : ViewModelBase
     public HistoryRowState State { get; }
     public DateTime? Started { get; }
     public DateTime? Finished { get; }
+    public DateTime? EffectiveTime => Started ?? Finished;
 
     public bool IsSuccess => State == HistoryRowState.Success;
     public bool IsFailed => State == HistoryRowState.Failed;
@@ -231,7 +232,7 @@ public sealed class HistoryRowViewModel : ViewModelBase
     }
 
     /// <summary>"今天", "昨天", or the date (spec 4.2 依日期分組).</summary>
-    public string DayGroup => Started is { } s ? DescribeDay(s) : "";
+    public string DayGroup => EffectiveTime is { } s ? DescribeDay(s) : "";
 
     internal static string DescribeDay(DateTime when)
     {

@@ -50,7 +50,7 @@ namespace Clickra.UI.Native
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         public struct BROWSEINFO { public IntPtr hwndOwner; public IntPtr pidlRoot; public IntPtr pszDisplayName; public IntPtr lpszTitle; public uint ulFlags; public IntPtr lpfn; public IntPtr lParam; public int iImage; }
 
-        [DllImport("user32.dll", EntryPoint = "AdjustWindowRectEx", CharSet = CharSet.Unicode)] public static extern bool AdjustWindowRectEx(ref RECT lpRect, uint dwStyle, bool bMenu, uint dwExStyle);
+        [DllImport("user32.dll", EntryPoint = "AdjustWindowRectEx", CharSet = CharSet.Unicode)] public static extern bool AdjustWindowRectEx(ref RECT lpRect, uint dwStyle, bool bMenu, uint dwExStyle); // skipcq: CS-R1138 — Win32 ABI requires RECT first.
         [DllImport("user32.dll", EntryPoint = "AdjustWindowRectExForDpi", CharSet = CharSet.Unicode)]
         private static extern bool AdjustWindowRectExForDpiNative(ref RECT lpRect, uint dwStyle, bool bMenu, uint dwExStyle, uint dpi); // skipcq: CS-R1138 — Win32 ABI requires RECT first.
         /// <summary>Adjusts a client rectangle for the specified window styles at an explicit DPI.</summary>
@@ -117,30 +117,80 @@ namespace Clickra.UI.Native
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
         public static bool GetWindowRect(IntPtr hWnd, out RECT lpRect) => GetWindowRectNative(hWnd, out lpRect);
 
-        [DllImport("gdi32.dll")] public static extern IntPtr CreateSolidBrush(uint crColor);
-        [DllImport("gdi32.dll")] public static extern bool DeleteObject(IntPtr hObject);
-        [DllImport("gdi32.dll", EntryPoint = "SetTextColor")] public static extern uint SetTextColor(IntPtr hdc, uint crColor);
-        [DllImport("gdi32.dll", EntryPoint = "SetBkColor")] public static extern uint SetBkColor(IntPtr hdc, uint crColor);
+        [DllImport("gdi32.dll", EntryPoint = "CreateSolidBrush")] private static extern IntPtr CreateSolidBrushNative(uint crColor); // skipcq: CS-W1059
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static IntPtr CreateSolidBrush(uint crColor) => CreateSolidBrushNative(crColor);
+
+        [DllImport("gdi32.dll", EntryPoint = "DeleteObject")] private static extern bool DeleteObjectNative(IntPtr hObject); // skipcq: CS-W1059
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static bool DeleteObject(IntPtr hObject) => DeleteObjectNative(hObject);
+
+        [DllImport("gdi32.dll", EntryPoint = "SetTextColor")] private static extern uint SetTextColorNative(IntPtr hdc, uint crColor); // skipcq: CS-W1059
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static uint SetTextColor(IntPtr hdc, uint crColor) => SetTextColorNative(hdc, crColor);
+
+        [DllImport("gdi32.dll", EntryPoint = "SetBkColor")] private static extern uint SetBkColorNative(IntPtr hdc, uint crColor); // skipcq: CS-W1059
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static uint SetBkColor(IntPtr hdc, uint crColor) => SetBkColorNative(hdc, crColor);
+
         [DllImport("gdi32.dll", EntryPoint = "SetBkMode")] private static extern int SetBkModeNative(IntPtr hdc, int iBkMode);
         /// <summary>Sets the background mix mode of the specified device context.</summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
         public static int SetBkMode(IntPtr hdc, int iBkMode) => SetBkModeNative(hdc, iBkMode);
-        [DllImport("gdi32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr CreateFontW(int cHeight, int cWidth, int cEscapement, int cOrientation, int cWeight, uint bItalic, uint bUnderline, uint bStrikeOut, uint iCharSet, uint iOutPrecision, uint iClipPrecision, uint iQuality, uint iPitchAndFamily, string pszFaceName);
 
-        [DllImport("shell32.dll", EntryPoint = "Shell_NotifyIconW", CharSet = CharSet.Unicode)] public static extern bool Shell_NotifyIcon(uint dwMessage, ref NOTIFYICONDATAW lpData);
-        [DllImport("shell32.dll", EntryPoint = "ExtractIconW", CharSet = CharSet.Unicode)] public static extern IntPtr ExtractIcon(IntPtr h, string path, int idx);
-        [DllImport("shell32.dll")] public static extern void DragAcceptFiles(IntPtr hwnd, bool accept);
-        [DllImport("shell32.dll", CharSet = CharSet.Unicode)] public static extern uint DragQueryFileW(IntPtr hDrop, uint iFile, IntPtr lpszFile, uint cch);
-        [DllImport("shell32.dll")] public static extern void DragFinish(IntPtr hDrop);
-        [DllImport("shell32.dll", EntryPoint = "SHBrowseForFolderW", CharSet = CharSet.Unicode)] public static extern IntPtr SHBrowseForFolder(ref BROWSEINFO lpbi);
-        [DllImport("shell32.dll", EntryPoint = "SHGetPathFromIDListW", CharSet = CharSet.Unicode)] public static extern bool SHGetPathFromIDList(IntPtr pidl, IntPtr pszPath);
+        [DllImport("gdi32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr CreateFontW(int cHeight, int cWidth, int cEscapement, int cOrientation, int cWeight, uint bItalic, uint bUnderline, uint bStrikeOut, uint iCharSet, uint iOutPrecision, uint iClipPrecision, uint iQuality, uint iPitchAndFamily, string pszFaceName); // skipcq: CS-W1059
 
-        [DllImport("dwmapi.dll")] public static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int val, int size);
-        [DllImport("dwmapi.dll", PreserveSig = false)] public static extern void DwmGetColorizationColor(out uint pcrColorization, out bool pfOpaqueBlend);
+        [DllImport("shell32.dll", EntryPoint = "Shell_NotifyIconW", CharSet = CharSet.Unicode)] private static extern bool Shell_NotifyIconNative(uint dwMessage, ref NOTIFYICONDATAW lpData);
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static bool Shell_NotifyIcon(uint dwMessage, ref NOTIFYICONDATAW lpData) => Shell_NotifyIconNative(dwMessage, ref lpData);
 
-        [DllImport("kernel32.dll", EntryPoint = "GetModuleHandleW", CharSet = CharSet.Unicode)] public static extern IntPtr GetModuleHandle(string? lpModuleName);
-        [DllImport("comdlg32.dll", EntryPoint = "GetOpenFileNameW", CharSet = CharSet.Unicode)] public static extern bool GetOpenFileName(ref OPENFILENAME ofn);
-        [DllImport("ole32.dll")] public static extern void CoTaskMemFree(IntPtr pv);
+        [DllImport("shell32.dll", EntryPoint = "ExtractIconW", CharSet = CharSet.Unicode)] private static extern IntPtr ExtractIconNative(IntPtr h, string path, int idx);
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static IntPtr ExtractIcon(IntPtr h, string path, int idx) => ExtractIconNative(h, path, idx);
+
+        [DllImport("shell32.dll", EntryPoint = "DragAcceptFiles")] private static extern void DragAcceptFilesNative(IntPtr hwnd, bool accept);
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static void DragAcceptFiles(IntPtr hwnd, bool accept) => DragAcceptFilesNative(hwnd, accept);
+
+        [DllImport("user32.dll", EntryPoint = "ChangeWindowMessageFilterEx", SetLastError = true)] private static extern bool ChangeWindowMessageFilterExNative(IntPtr hWnd, uint msg, uint action, IntPtr pChangeFilterStruct);
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static bool ChangeWindowMessageFilterEx(IntPtr hWnd, uint msg, uint action, IntPtr pChangeFilterStruct) => ChangeWindowMessageFilterExNative(hWnd, msg, action, pChangeFilterStruct);
+
+        [DllImport("shell32.dll", EntryPoint = "DragQueryFileW", CharSet = CharSet.Unicode)] private static extern uint DragQueryFileWNative(IntPtr hDrop, uint iFile, IntPtr lpszFile, uint cch);
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static uint DragQueryFileW(IntPtr hDrop, uint iFile, IntPtr lpszFile, uint cch) => DragQueryFileWNative(hDrop, iFile, lpszFile, cch);
+
+        [DllImport("shell32.dll", EntryPoint = "DragFinish")] private static extern void DragFinishNative(IntPtr hDrop);
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static void DragFinish(IntPtr hDrop) => DragFinishNative(hDrop);
+
+        [DllImport("shell32.dll", EntryPoint = "SHBrowseForFolderW", CharSet = CharSet.Unicode)] private static extern IntPtr SHBrowseForFolderNative(ref BROWSEINFO lpbi);
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static IntPtr SHBrowseForFolder(ref BROWSEINFO lpbi) => SHBrowseForFolderNative(ref lpbi);
+
+        [DllImport("shell32.dll", EntryPoint = "SHGetPathFromIDListW", CharSet = CharSet.Unicode)] private static extern bool SHGetPathFromIDListNative(IntPtr pidl, IntPtr pszPath);
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static bool SHGetPathFromIDList(IntPtr pidl, IntPtr pszPath) => SHGetPathFromIDListNative(pidl, pszPath);
+
+        [DllImport("dwmapi.dll", EntryPoint = "DwmSetWindowAttribute")] private static extern int DwmSetWindowAttributeNative(IntPtr h, int attr, ref int val, int size); // skipcq: CS-W1059, CS-R1138 — Win32 ABI requires ref val in order.
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static int DwmSetWindowAttribute(IntPtr h, int attr, ref int val, int size) => DwmSetWindowAttributeNative(h, attr, ref val, size); // skipcq: CS-R1138 — Win32 ABI requires ref val in order.
+
+        [DllImport("dwmapi.dll", EntryPoint = "DwmGetColorizationColor", PreserveSig = false)] private static extern void DwmGetColorizationColorNative(out uint pcrColorization, out bool pfOpaqueBlend); // skipcq: CS-W1059
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static void DwmGetColorizationColor(out uint pcrColorization, out bool pfOpaqueBlend) => DwmGetColorizationColorNative(out pcrColorization, out pfOpaqueBlend);
+
+        [DllImport("kernel32.dll", EntryPoint = "GetModuleHandleW", CharSet = CharSet.Unicode)] private static extern IntPtr GetModuleHandleNative(string? lpModuleName); // skipcq: CS-W1059
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static IntPtr GetModuleHandle(string? lpModuleName) => GetModuleHandleNative(lpModuleName);
+
+        [DllImport("comdlg32.dll", EntryPoint = "GetOpenFileNameW", CharSet = CharSet.Unicode)] private static extern bool GetOpenFileNameNative(ref OPENFILENAME ofn); // skipcq: CS-W1059
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static bool GetOpenFileName(ref OPENFILENAME ofn) => GetOpenFileNameNative(ref ofn);
+
+        [DllImport("ole32.dll", EntryPoint = "CoTaskMemFree")] private static extern void CoTaskMemFreeNative(IntPtr pv); // skipcq: CS-W1059
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
+        public static void CoTaskMemFree(IntPtr pv) => CoTaskMemFreeNative(pv);
 
         /// <summary>Standard overlapped top-level window style.</summary>
         public const uint WS_OVERLAPPEDWINDOW = 0x00CF0000;
@@ -148,6 +198,14 @@ namespace Clickra.UI.Native
         public const uint WS_OVERLAPPED_FIXED = (0x00CF0000 | 0x02000000) & ~0x00040000u & ~0x00010000u;
         /// <summary>DWM attribute identifier for immersive dark mode.</summary>
         public const int DWMWA_DARK_MODE = 20;
+        /// <summary>Action flag to allow message through UIPI filter.</summary>
+        public const uint MSGFLT_ALLOW = 1;
+        /// <summary>Window message for global memory copy across processes.</summary>
+        public const uint WM_COPYGLOBALDATA = 0x0049;
+        /// <summary>Window message for data copy across processes.</summary>
+        public const uint WM_COPYDATA = 0x004A;
+        /// <summary>Window message for dropped files.</summary>
+        public const uint WM_DROPFILES = 0x0233;
         /// <summary>Requests the system default window position or dimension.</summary>
         public const int CW_USEDEFAULT = unchecked((int)0x80000000);
         /// <summary>Application message emitted by the notification-area icon.</summary>
@@ -251,9 +309,9 @@ namespace Clickra.UI.Native
         }
 
         /// <summary>Managed signature for the native window procedure callback.</summary>
-        public delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
+        internal delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
         /// <summary>Timer identifier reserved for periodic progress-window refreshes.</summary>
-        public static readonly IntPtr TIMER_ID_REFRESH = (IntPtr)1001;
+        internal const int TIMER_ID_REFRESH = 1001;
         private const uint MF_STRING = 0x00000000;
         private const uint MF_SEPARATOR = 0x00000800;
         private const uint TPM_RETURNCMD = 0x00000100;

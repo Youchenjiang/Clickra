@@ -26,7 +26,7 @@ namespace Clickra.UI
                 }
             }
 
-            bool createdNew;
+            bool createdNew = false;
             _mutex = new System.Threading.Mutex(true, "Global\\Clickra_Dashboard_Mutex", out createdNew);
             if (!createdNew)
             {
@@ -88,6 +88,9 @@ namespace Clickra.UI
             }
 
             DragAcceptFiles(hwnd, true);
+            ChangeWindowMessageFilterEx(hwnd, WM_DROPFILES, MSGFLT_ALLOW, IntPtr.Zero);
+            ChangeWindowMessageFilterEx(hwnd, WM_COPYGLOBALDATA, MSGFLT_ALLOW, IntPtr.Zero);
+            ChangeWindowMessageFilterEx(hwnd, WM_COPYDATA, MSGFLT_ALLOW, IntPtr.Zero);
 
             int dark = 1;
             DwmSetWindowAttribute(hwnd, DWMWA_DARK_MODE, ref dark, sizeof(int));
@@ -117,7 +120,7 @@ namespace Clickra.UI
             });
             SettingsPresentationController.Shared.Reloaded += onSettingsReloaded;
 
-            SetTimer(hwnd, TIMER_ID_REFRESH, 250, IntPtr.Zero);
+            SetTimer(hwnd, (IntPtr)TIMER_ID_REFRESH, 250, IntPtr.Zero);
 
             while (GetMessage(out var msg, IntPtr.Zero, 0, 0) > 0)
             {

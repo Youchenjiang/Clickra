@@ -4,6 +4,7 @@ using Avalonia;
 using System.Collections.Generic;
 using Avalonia.Controls;
 using Avalonia.Data;
+using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia.Media;
 using Avalonia.Platform;
@@ -61,12 +62,56 @@ public partial class MainWindow : Window
         }
         ConfigureBackdrop();
         ConfigureTitleBar();
+
+        AddHandler(DragDrop.DragEnterEvent, OnWindowDragEnter);
+        AddHandler(DragDrop.DragOverEvent, OnWindowDragOver);
+        AddHandler(DragDrop.DropEvent, OnWindowDrop);
     }
 
     private static double ComputeSlideOffset(int current, int index)
     {
         if (current < 0 || index == current) return 0;
         return index > current ? 16 : -16;
+    }
+
+    private void OnWindowDragEnter(object? sender, DragEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel { Convert.IsExecuting: false } &&
+            e.DataTransfer.TryGetFiles()?.Any() == true)
+        {
+            e.DragEffects = DragDropEffects.Copy;
+            e.Handled = true;
+        }
+        else
+        {
+            e.DragEffects = DragDropEffects.None;
+            e.Handled = true;
+        }
+    }
+
+    private void OnWindowDragOver(object? sender, DragEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel { Convert.IsExecuting: false } &&
+            e.DataTransfer.TryGetFiles()?.Any() == true)
+        {
+            e.DragEffects = DragDropEffects.Copy;
+            e.Handled = true;
+        }
+        else
+        {
+            e.DragEffects = DragDropEffects.None;
+            e.Handled = true;
+        }
+    }
+
+    private void OnWindowDrop(object? sender, DragEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel { Convert.IsExecuting: false } vm) return;
+        List<string> paths = e.DataTransfer.TryGetFiles()?.Select(f => f.Path.LocalPath).ToList() ?? [];
+        if (paths.Count == 0) return;
+        e.Handled = true;
+        vm.CurrentPage = MainPage.Convert;
+        vm.Convert.AddFiles(paths);
     }
 
     protected override void OnOpened(EventArgs e)

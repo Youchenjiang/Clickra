@@ -307,26 +307,46 @@ namespace Clickra.UI
         static IntPtr HandleDropFiles(IntPtr hwnd, IntPtr w)
         {
             IntPtr hDrop = w;
-            uint fileCount = DragQueryFileW(hDrop, 0xFFFFFFFF, IntPtr.Zero, 0);
+            const uint MaxDropFiles = 1000;
+            const int MaxTotalPathLength = 260 * 1000;
+            const uint MaxSinglePathLength = 32767;
+
             var droppedFiles = new List<string>();
-            for (uint i = 0; i < fileCount; i++)
+            try
             {
-                uint length = DragQueryFileW(hDrop, i, IntPtr.Zero, 0);
-                if (length > 0)
+                uint fileCount = DragQueryFileW(hDrop, 0xFFFFFFFF, IntPtr.Zero, 0);
+                uint boundedCount = Math.Min(fileCount, MaxDropFiles);
+                int totalChars = 0;
+
+                for (uint i = 0; i < boundedCount; i++)
                 {
+                    uint length = DragQueryFileW(hDrop, i, IntPtr.Zero, 0);
+                    if (length == 0 || length > MaxSinglePathLength) continue;
+                    if (totalChars + (int)length > MaxTotalPathLength) break;
+
                     IntPtr buffer = Marshal.AllocHGlobal((int)(length + 1) * 2);
-                    if (DragQueryFileW(hDrop, i, buffer, length + 1) > 0)
+                    try
                     {
-                        string? file = Marshal.PtrToStringUni(buffer);
-                        if (!string.IsNullOrEmpty(file))
+                        if (DragQueryFileW(hDrop, i, buffer, length + 1) > 0)
                         {
-                            droppedFiles.Add(file);
+                            string? file = Marshal.PtrToStringUni(buffer);
+                            if (!string.IsNullOrEmpty(file))
+                            {
+                                droppedFiles.Add(file);
+                                totalChars += file.Length;
+                            }
                         }
                     }
-                    Marshal.FreeHGlobal(buffer);
+                    finally
+                    {
+                        Marshal.FreeHGlobal(buffer);
+                    }
                 }
             }
-            DragFinish(hDrop);
+            finally
+            {
+                DragFinish(hDrop);
+            }
 
             if (droppedFiles.Count > 0)
             {
@@ -467,7 +487,7 @@ namespace Clickra.UI
 
         static IntPtr HandleTimer(IntPtr hwnd, IntPtr w)
         {
-            if (w == TIMER_ID_REFRESH)
+            if (w == (IntPtr)TIMER_ID_REFRESH)
             {
                 SettingsPresentationController.Shared.EnsureFresh();
                 RefreshHistoryData();
@@ -581,7 +601,7 @@ namespace Clickra.UI
         {
             try
             {
-                KillTimer(hwnd, TIMER_ID_REFRESH);
+                KillTimer(hwnd, (IntPtr)TIMER_ID_REFRESH);
                 CleanupResources();
             }
             finally
