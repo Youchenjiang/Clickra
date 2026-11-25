@@ -360,13 +360,61 @@
                                 </Grid>
                                 <Border Classes="rowLine" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="{l:T ui_print_fit_to_paper}" />
-                                    <CheckBox Grid.Column="1" IsChecked="{Binding PrintFitToPage}" />
+                                    <TextBlock Text="{l:T ui_print_per_sheet}" />
+                                    <ComboBox Grid.Column="1" SelectedIndex="{Binding PrintPagesPerSheetIndex, Mode=TwoWay}">
+                                        <ComboBoxItem Content="{l:T ui_print_one_page}" />
+                                        <ComboBoxItem Content="2" />
+                                        <ComboBoxItem Content="4" />
+                                        <ComboBoxItem Content="6" />
+                                        <ComboBoxItem Content="9" />
+                                        <ComboBoxItem Content="16" />
+                                    </ComboBox>
+                                </Grid>
+                                <Border Classes="rowLine" />
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="{l:T ui_print_order}" />
+                                    <ComboBox Grid.Column="1" SelectedIndex="{Binding PrintPageOrderIndex, Mode=TwoWay}">
+                                        <ComboBoxItem Content="{l:T ui_print_order_rows}" />
+                                        <ComboBoxItem Content="{l:T ui_print_order_columns}" />
+                                    </ComboBox>
+                                </Grid>
+                                <Border Classes="rowLine" />
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="{l:T ui_print_page_border}" />
+                                    <CheckBox Grid.Column="1" IsChecked="{Binding PrintPageBorder}" />
+                                </Grid>
+                                <Border Classes="rowLine" />
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="{l:T ui_print_size}" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                        <ComboBox SelectedIndex="{Binding PrintScaleIndex, Mode=TwoWay}">
+                                            <ComboBoxItem Content="{l:T ui_print_size_fit}" />
+                                            <ComboBoxItem Content="{l:T ui_print_size_actual}" />
+                                            <ComboBoxItem Content="{l:T ui_print_size_custom}" />
+                                        </ComboBox>
+                                        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" IsVisible="{Binding PrintIsCustomScale}">
+                                            <NumericUpDown Value="{Binding PrintScalePercent, Mode=TwoWay}" Minimum="10" Maximum="400" Increment="5" FormatString="0" Width="110" />
+                                            <TextBlock Text="%" VerticalAlignment="Center" Classes="secondary" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                                <Border Classes="rowLine" />
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="{l:T ui_print_color}" />
+                                    <ComboBox Grid.Column="1" SelectedIndex="{Binding PrintColorIndex, Mode=TwoWay}">
+                                        <ComboBoxItem Content="{l:T ui_print_color_color}" />
+                                        <ComboBoxItem Content="{l:T ui_print_color_gray}" />
+                                    </ComboBox>
                                 </Grid>
                                 <Border Classes="rowLine" />
                                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
                                     <TextBlock Text="{l:T ui_print_darken_light_text}" />
                                     <CheckBox Grid.Column="1" IsChecked="{Binding PrintDarkenText}" />
+                                </Grid>
+                                <Border Classes="rowLine" />
+                                <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="{l:T ui_print_collate}" />
+                                    <CheckBox Grid.Column="1" IsChecked="{Binding PrintCollate}" />
                                 </Grid>
                             </StackPanel>
                         </Grid>

@@ -19,11 +19,6 @@
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Foreground" Value="{DynamicResource Clk.TextSecondary}" />
         </Style>
-        <Style Selector="Button.offstage">
-            <Setter Property="Opacity" Value="0" />
-            <Setter Property="IsHitTestVisible" Value="False" />
-            <Setter Property="Focusable" Value="False" />
-        </Style>
         <Style Selector="Border.fileNarrowRow">
             <Setter Property="Background" Value="{DynamicResource Clk.Card}" />
             <Setter Property="BorderBrush" Value="{DynamicResource Clk.CardBorder}" />
@@ -162,6 +157,12 @@
             <Setter Property="Background" Value="{DynamicResource Clk.CardHover}" />
             <Setter Property="BorderBrush" Value="{DynamicResource Clk.CardBorder}" />
         </Style>
+        <Style Selector="ProgressBar.minimalSpinner">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="IsIndeterminate" Value="True" />
+            <Setter Property="Foreground" Value="{DynamicResource Clk.TextTertiary}" />
+        </Style>
     </UserControl.Styles>
 
     <Panel>
@@ -203,29 +204,9 @@
 
             <!-- State B-F: File summary narrow row (Height 72 DIP) -->
             <Border Name="FileNarrowRow" Classes="fileNarrowRow" IsVisible="{Binding HasFiles}" VerticalAlignment="Top">
-                <Grid ColumnDefinitions="Auto,Auto,*,Auto">
-                    <!-- Back to the drop zone (重新選檔案). Only on the catalog: on an action page the one way
-                         back is 「‹ 所有動作」, so the window never shows two back buttons (spec 4.9, 2026-11-24).
-                         Elsewhere it fades out but keeps its place, so the file row never shifts sideways. -->
-                    <Button Grid.Column="0" Classes="icon subtle" Name="BackToStartButton"
-                            Classes.offstage="{Binding !IsActionCatalog}"
-                            Width="44" Height="44" Margin="-8,0,6,0" VerticalAlignment="Center"
-                            ToolTip.Tip="{l:T ui_files_choose_other_files}"
-                            AutomationProperties.Name="{l:T ui_files_choose_other_files}">
-                        <Button.Transitions>
-                            <Transitions>
-                                <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
-                            </Transitions>
-                        </Button.Transitions>
-                        <Viewbox>
-                            <Canvas Width="24" Height="24">
-                                <Path Data="M15,5 L8,12 L15,19" Fill="Transparent" />
-                            </Canvas>
-                        </Viewbox>
-                    </Button>
-
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                     <!-- File domain icon plate -->
-                    <Border Grid.Column="1" Width="44" Height="44" CornerRadius="10"
+                    <Border Grid.Column="0" Width="44" Height="44" CornerRadius="10"
                             Background="{Binding PrimaryDomainColor}" Margin="0,0,14,0"
                             VerticalAlignment="Center">
                         <Viewbox Classes="ic" Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -238,14 +219,17 @@
                     </Border>
 
                     <!-- File Summary Texts -->
-                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                         <TextBlock Text="{Binding FileSummaryHeader}" FontSize="16" FontWeight="SemiBold" />
                         <TextBlock Text="{Binding FileSummarySubtext}" Classes="secondary" FontSize="13" TextTrimming="CharacterEllipsis" MaxWidth="500" HorizontalAlignment="Left" />
                     </StackPanel>
 
-                    <!-- Action: Manage Files (重新選檔案 moved to the back button on the left) -->
-                    <Button Grid.Column="3" Classes="secondary" Name="ManageFilesButton"
-                            Content="{l:T ui_files_manage_files}" VerticalAlignment="Center"
+                    <!-- Actions: Manage Files and Re-pick -->
+                    <Button Grid.Column="2" Classes="secondary" Name="ManageFilesButton"
+                            Content="{l:T ui_files_manage_files}" Margin="0,0,8,0" VerticalAlignment="Center"
+                            IsEnabled="{Binding !IsExecuting}" />
+                    <Button Grid.Column="3" Classes="subtle" Name="RePickFilesButton"
+                            Content="{l:T ui_files_choose_other_files}" VerticalAlignment="Center"
                             IsEnabled="{Binding !IsExecuting}" />
                 </Grid>
             </Border>
@@ -868,49 +852,186 @@
                                     <TextBlock IsVisible="{Binding Options.IsOffice}" Classes="secondary" FontSize="14"
                                                Text="{l:T ui_action_no_options_for_this_action}" />
 
-                                    <!-- 列印：印表機與份數同一列，其餘並排在下面 -->
-                                    <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.IsPrint}">
-                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="28" IsVisible="{Binding Options.HasPrinters}">
-                                            <StackPanel Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="{l:T ui_print_printer}" />
-                                                <ComboBox ItemsSource="{Binding Options.Printers}" SelectedIndex="{Binding Options.PrinterIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+                                    <!-- PDF 列印 (Left Column Options + Right Column Preview) -->
+                                    <Grid ColumnDefinitions="420,24,*" IsVisible="{Binding Options.IsPrint}">
+                                        <!-- Left Column Options (scrollable) -->
+                                        <ScrollViewer Grid.Column="0" MaxHeight="460" VerticalScrollBarVisibility="Auto">
+                                            <StackPanel Classes="optGap" Spacing="14" Margin="0,0,8,0">
+                                                <StackPanel Spacing="6" IsVisible="{Binding !Options.HasPrinters}">
+                                                    <TextBlock Classes="optLabel" Text="{l:T ui_print_printer}" />
+                                                    <TextBlock Classes="secondary" FontSize="14" Text="{l:T ui_print_no_printers_are_available_on}" />
+                                                </StackPanel>
+
+                                                <StackPanel Spacing="12" IsVisible="{Binding Options.HasPrinters}">
+                                                    <!-- Printer -->
+                                                    <Grid ColumnDefinitions="76,*">
+                                                        <TextBlock Classes="optLabel" Text="{l:T ui_print_printer}" VerticalAlignment="Center" />
+                                                        <ComboBox Grid.Column="1" ItemsSource="{Binding Options.Printers}" SelectedIndex="{Binding Options.PrinterIndex, Mode=TwoWay}"
+                                                                  IsEnabled="{Binding !Options.IsLoadingPrinters}" HorizontalAlignment="Stretch" />
+                                                    </Grid>
+                                                    <!-- Pages & Copies -->
+                                                    <Grid ColumnDefinitions="76,*">
+                                                        <TextBlock Classes="optLabel" Text="{l:T ui_print_pages}" VerticalAlignment="Center" />
+                                                        <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                                            <TextBox Text="{Binding Options.PrintPages}" PlaceholderText="{l:T ui_print_all_pages}" />
+                                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                                <TextBlock Text="{l:T ui_print_copies}" Classes="secondary" FontSize="13" VerticalAlignment="Center" />
+                                                                <NumericUpDown Value="{Binding Options.Copies, Mode=TwoWay}" Minimum="1" Maximum="99" Increment="1" FormatString="0" Width="100" />
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Grid>
+                                                    <!-- Paper -->
+                                                    <Grid ColumnDefinitions="76,*">
+                                                        <TextBlock Classes="optLabel" Text="{l:T ui_print_paper}" VerticalAlignment="Center" />
+                                                        <ComboBox Grid.Column="1" ItemsSource="{Binding Options.PaperSizes}" SelectedIndex="{Binding Options.PaperIndex, Mode=TwoWay}"
+                                                                  IsEnabled="{Binding !Options.IsLoadingPrinters}" HorizontalAlignment="Stretch" />
+                                                    </Grid>
+                                                    <!-- Orientation -->
+                                                    <Grid ColumnDefinitions="76,*">
+                                                        <TextBlock Classes="optLabel" Text="{l:T ui_print_orientation}" VerticalAlignment="Center" />
+                                                        <ListBox Grid.Column="1" Classes="segmented" SelectedIndex="{Binding Options.OrientationIndex, Mode=TwoWay}">
+                                                            <ListBoxItem Content="{l:T ui_print_auto}" />
+                                                            <ListBoxItem Content="{l:T ui_print_portrait}" />
+                                                            <ListBoxItem Content="{l:T ui_print_landscape}" />
+                                                        </ListBox>
+                                                    </Grid>
+                                                    <!-- Duplex -->
+                                                    <Grid ColumnDefinitions="76,*">
+                                                        <TextBlock Classes="optLabel" Text="{l:T ui_print_two_sided}" VerticalAlignment="Center" />
+                                                        <ComboBox Grid.Column="1" SelectedIndex="{Binding Options.DuplexIndex, Mode=TwoWay}" IsEnabled="{Binding Options.CanDuplex}" HorizontalAlignment="Stretch">
+                                                            <ComboBoxItem Content="{l:T ui_print_one_sided}" />
+                                                            <ComboBoxItem Content="{l:T ui_print_two_sided_flip_on_long}" />
+                                                            <ComboBoxItem Content="{l:T ui_print_two_sided_flip_on_short}" />
+                                                        </ComboBox>
+                                                    </Grid>
+                                                    <!-- Pages per sheet -->
+                                                    <Grid ColumnDefinitions="76,*">
+                                                        <TextBlock Classes="optLabel" Text="{l:T ui_print_per_sheet}" VerticalAlignment="Center" />
+                                                        <ListBox Grid.Column="1" Classes="segmented" SelectedIndex="{Binding Options.PagesPerSheetIndex, Mode=TwoWay}">
+                                                            <ListBoxItem Content="{l:T ui_print_one_page}" />
+                                                            <ListBoxItem Content="2" />
+                                                            <ListBoxItem Content="4" />
+                                                            <ListBoxItem Content="6" />
+                                                            <ListBoxItem Content="9" />
+                                                            <ListBoxItem Content="16" />
+                                                        </ListBox>
+                                                    </Grid>
+                                                    <!-- Order (Z / N + Border) -->
+                                                    <Grid ColumnDefinitions="76,*" IsVisible="{Binding Options.IsMultiPagePerSheet}">
+                                                        <TextBlock Classes="optLabel" Text="{l:T ui_print_order}" VerticalAlignment="Center" />
+                                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                                                            <ListBox Classes="segmented" SelectedIndex="{Binding Options.PageOrderIndex, Mode=TwoWay}">
+                                                                <ListBoxItem Content="{l:T ui_print_order_rows}" />
+                                                                <ListBoxItem Content="{l:T ui_print_order_columns}" />
+                                                            </ListBox>
+                                                            <CheckBox Content="{l:T ui_print_page_border}" IsChecked="{Binding Options.PageBorder}" VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                    </Grid>
+                                                    <!-- Size -->
+                                                    <Grid ColumnDefinitions="76,*">
+                                                        <TextBlock Classes="optLabel" Text="{l:T ui_print_size}" VerticalAlignment="Center" />
+                                                        <Panel Grid.Column="1">
+                                                            <StackPanel Spacing="8" VerticalAlignment="Center" IsVisible="{Binding !Options.IsMultiPagePerSheet}">
+                                                                <ListBox Classes="segmented" SelectedIndex="{Binding Options.ScaleModeIndex, Mode=TwoWay}" HorizontalAlignment="Left">
+                                                                    <ListBoxItem Content="{l:T ui_print_size_fit}" />
+                                                                    <ListBoxItem Content="{l:T ui_print_size_actual}" />
+                                                                    <ListBoxItem Content="{l:T ui_print_size_custom}" />
+                                                                </ListBox>
+                                                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding Options.IsCustomScale}">
+                                                                    <NumericUpDown Value="{Binding Options.ScalePercent, Mode=TwoWay}" Minimum="1" Maximum="500" Increment="5" FormatString="0" Width="110" />
+                                                                    <TextBlock Text="%" VerticalAlignment="Center" Classes="secondary" />
+                                                                </StackPanel>
+                                                            </StackPanel>
+                                                            <TextBlock Classes="secondary" FontSize="13" Text="{l:T ui_print_size_fixed_multi}" VerticalAlignment="Center" IsVisible="{Binding Options.IsMultiPagePerSheet}" />
+                                                        </Panel>
+                                                    </Grid>
+                                                    <!-- Color -->
+                                                    <Grid ColumnDefinitions="76,*">
+                                                        <TextBlock Classes="optLabel" Text="{l:T ui_print_color}" VerticalAlignment="Center" />
+                                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                                                            <ListBox Classes="segmented" SelectedIndex="{Binding Options.ColorModeIndex, Mode=TwoWay}">
+                                                                <ListBoxItem Content="{l:T ui_print_color_color}" />
+                                                                <ListBoxItem Content="{l:T ui_print_color_gray}" />
+                                                            </ListBox>
+                                                            <CheckBox Content="{l:T ui_print_darken_light_text}" IsChecked="{Binding Options.DarkenText}" VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                    </Grid>
+                                                    <!-- When copies (Collate) -->
+                                                    <Grid ColumnDefinitions="76,*" IsVisible="{Binding Options.CanCollate}">
+                                                        <TextBlock Classes="optLabel" Text="{l:T ui_print_when_copies}" VerticalAlignment="Center" />
+                                                        <CheckBox Grid.Column="1" Content="{l:T ui_print_collate}" IsChecked="{Binding Options.Collate}" VerticalAlignment="Center" />
+                                                    </Grid>
+                                                </StackPanel>
                                             </StackPanel>
-                                            <StackPanel Grid.Column="1" Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="{l:T ui_print_copies}" />
-                                                <NumericUpDown Value="{Binding Options.Copies, Mode=TwoWay}" Minimum="1" Maximum="99" Increment="1" FormatString="0" Width="140" />
-                                            </StackPanel>
+                                        </ScrollViewer>
+
+                                        <!-- Right Column (Print Preview) -->
+                                        <Grid Grid.Column="2" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10" MinWidth="260">
+                                            <!-- 1. Header -->
+                                            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                                <TextBlock Grid.Column="0" Text="{l:T ui_print_preview_title}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="1" Text="{l:T ui_print_preview_double_click}" Classes="secondary" FontSize="12" VerticalAlignment="Center" />
+                                            </Grid>
+
+                                            <!-- 2. File Switcher (multi-file) -->
+                                            <Border Grid.Row="1" Background="{DynamicResource Clk.Paper}" CornerRadius="8" Padding="12,8"
+                                                    IsVisible="{Binding PrintPreview.HasMultipleFiles}">
+                                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                                    <Viewbox Grid.Column="0" Classes="ic" Width="20" Height="20" VerticalAlignment="Center">
+                                                        <Canvas Width="24" Height="24">
+                                                            <Path Data="M14,2 H6 A2,2 0 0,0 4,4 V20 A2,2 0 0,0 6,22 H18 A2,2 0 0,0 20,20 V8 Z M14,2 V8 H20" Stroke="{DynamicResource Clk.TextSecondary}" />
+                                                        </Canvas>
+                                                    </Viewbox>
+                                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding PrintPreview.CurrentFileName}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding PrintPreview.FileDetailsText}" FontSize="12"
+                                                                   Classes="secondary" IsVisible="{Binding !PrintPreview.IsCurrentFileSkipped}" />
+                                                        <TextBlock Text="{Binding PrintPreview.FileDetailsText}" FontSize="12"
+                                                                   Foreground="{DynamicResource Clk.Warning}" IsVisible="{Binding PrintPreview.IsCurrentFileSkipped}" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding PrintPreview.FileIndicatorText}" Classes="secondary" FontSize="12" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                                        <Button Classes="subtle" Width="28" Height="28" Padding="0"
+                                                                Command="{Binding PrintPreview.PreviousFile}" IsEnabled="{Binding PrintPreview.CanPreviousFile}"
+                                                                ToolTip.Tip="{l:T ui_print_previous_file}">
+                                                            <Viewbox Classes="ic" Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="M15,18 L9,12 L15,6" /></Canvas></Viewbox>
+                                                        </Button>
+                                                        <Button Classes="subtle" Width="28" Height="28" Padding="0"
+                                                                Command="{Binding PrintPreview.NextFile}" IsEnabled="{Binding PrintPreview.CanNextFile}"
+                                                                ToolTip.Tip="{l:T ui_print_next_file}">
+                                                            <Viewbox Classes="ic" Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="M9,6 L15,12 L9,18" /></Canvas></Viewbox>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+
+                                            <!-- 3. Paper View: PrintSheetControl -->
+                                            <Border Grid.Row="2" Background="{DynamicResource Clk.Card}" CornerRadius="8" Padding="12"
+                                                    MinHeight="220" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                                <controls:PrintSheetControl Sheet="{Binding PrintPreview.CurrentSheet}"
+                                                                            HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                                            </Border>
+
+                                            <!-- 4. Paging Footer -->
+                                            <Grid Grid.Row="3" ColumnDefinitions="Auto,Auto,Auto,*,Auto">
+                                                <Button Grid.Column="0" Classes="subtle" Width="28" Height="28" Padding="0"
+                                                        Command="{Binding PrintPreview.PreviousSheet}" IsEnabled="{Binding PrintPreview.CanPreviousSheet}"
+                                                        ToolTip.Tip="{l:T ui_print_previous_sheet}">
+                                                    <Viewbox Classes="ic" Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="M15,18 L9,12 L15,6" /></Canvas></Viewbox>
+                                                </Button>
+                                                <TextBlock Grid.Column="1" Text="{Binding PrintPreview.SheetIndicatorText}" FontSize="13" VerticalAlignment="Center" Margin="8,0" />
+                                                <Button Grid.Column="2" Classes="subtle" Width="28" Height="28" Padding="0"
+                                                        Command="{Binding PrintPreview.NextSheet}" IsEnabled="{Binding PrintPreview.CanNextSheet}"
+                                                        ToolTip.Tip="{l:T ui_print_next_sheet}">
+                                                    <Viewbox Classes="ic" Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="M9,6 L15,12 L9,18" /></Canvas></Viewbox>
+                                                </Button>
+                                                <TextBlock Grid.Column="4" Text="{Binding PrintPreview.SheetDetailsText}" FontSize="12" VerticalAlignment="Center"
+                                                           Classes="secondary" IsVisible="{Binding !PrintPreview.IsSheetOverflow}" />
+                                                <TextBlock Grid.Column="4" Text="{Binding PrintPreview.SheetDetailsText}" FontSize="12" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource Clk.Warning}" IsVisible="{Binding PrintPreview.IsSheetOverflow}" />
+                                            </Grid>
                                         </Grid>
-                                        <StackPanel Spacing="6" IsVisible="{Binding !Options.HasPrinters}">
-                                            <TextBlock Classes="optLabel" Text="{l:T ui_print_printer}" />
-                                            <TextBlock Classes="secondary" FontSize="14" Text="{l:T ui_print_no_printers_are_available_on}" />
-                                        </StackPanel>
-                                        <StackPanel Classes="optGap" Spacing="14" IsVisible="{Binding Options.HasPrinters}">
-                                        <controls:OptionRow MinItemWidth="200">
-                                            <StackPanel Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="{l:T ui_pdf2img_pages}" />
-                                                <TextBox Text="{Binding Options.PrintPages}" PlaceholderText="{l:T ui_pdf2img_e_g_1_3_5}" />
-                                            </StackPanel>
-                                            <StackPanel Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="{l:T ui_markdown_paper}" />
-                                                <ComboBox ItemsSource="{Binding Options.PaperSizes}" SelectedIndex="{Binding Options.PaperIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" />
-                                            </StackPanel>
-                                        </controls:OptionRow>
-                                        <controls:OptionRow MinItemWidth="380">
-                                            <StackPanel Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="{l:T ui_print_two_sided}" />
-                                                <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.DuplexIndex, Mode=TwoWay}"><ListBoxItem Content="{l:T ui_print_one_sided}" /><ListBoxItem Content="{l:T ui_print_two_sided_flip_on_long}" /><ListBoxItem Content="{l:T ui_print_two_sided_flip_on_short}" /></ListBox>
-                                            </StackPanel>
-                                            <StackPanel Spacing="6">
-                                                <TextBlock Classes="optLabel" Text="{l:T ui_print_orientation}" />
-                                                <ListBox Classes="segmented" HorizontalAlignment="Left" SelectedIndex="{Binding Options.OrientationIndex, Mode=TwoWay}"><ListBoxItem Content="{l:T ui_print_auto}" /><ListBoxItem Content="{l:T ui_print_portrait}" /><ListBoxItem Content="{l:T ui_print_landscape}" /></ListBox>
-                                            </StackPanel>
-                                        </controls:OptionRow>
-                                        <controls:OptionRow MinItemWidth="200">
-                                            <CheckBox Content="{l:T ui_print_fit_to_paper}" IsChecked="{Binding Options.FitToPage}" />
-                                            <CheckBox Content="{l:T ui_print_darken_light_text}" IsChecked="{Binding Options.DarkenText}" />
-                                        </controls:OptionRow>
-                                        </StackPanel>
-                                    </StackPanel>
+                                    </Grid>
 
                             </StackPanel>
                         </Border>
@@ -928,6 +1049,12 @@
                                 </Canvas>
                             </Viewbox>
                             <TextBlock Text="{Binding OutputSummaryText}" Classes="secondary" FontSize="14" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <!-- PDF Print Summary & Skipped Files Warning -->
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" IsVisible="{Binding Options.IsPrint}">
+                            <TextBlock Text="{Binding PrintPreview.SummaryText}" Classes="secondary" FontSize="14" />
+                            <TextBlock Text="{Binding PrintPreview.SkippedWarningText}" Foreground="{DynamicResource Clk.Warning}"
+                                       FontSize="12" IsVisible="{Binding PrintPreview.HasSkippedWarning}" />
                         </StackPanel>
                         <Button Grid.Column="1" Classes="primary" Name="StartConversionButton"
                                 Content="{Binding StartButtonText}" MinHeight="44" Padding="32,0"
@@ -1044,7 +1171,7 @@
             </Panel>
         </Border>
         <!-- State D (spec 4.1): files dragged over the window. Covers the whole page; not part of the layout rows. -->
-        <Panel Grid.Row="0" Grid.RowSpan="3" Name="DragOverlay" IsVisible="False" IsHitTestVisible="False">
+        <Panel Grid.Row="0" Grid.RowSpan="3" Name="DragOverlay" IsVisible="False">
             <Border Background="{DynamicResource Clk.BgTranslucent}" CornerRadius="16" />
             <Rectangle Name="DragOverlayFrame" Stroke="{DynamicResource Clk.Accent}" StrokeThickness="2"
                        StrokeDashArray="5,4" RadiusX="16" RadiusY="16" />
@@ -1066,73 +1193,70 @@
         </Panel>
     </Grid>
 
-    <!-- 分割的放大預覽 (spec 4.6, canvas ZoomFull): covers the file row, the title and the bottom bar so the page gets
-         the whole content area; 開始分割 is pressed after 回到所有頁面, so the part count is in the toolbar. A sibling of
-         PageGrid, not inside its rows, so a tall page cannot stretch them. ← → turn pages, Esc closes, Ctrl+wheel zooms
-         (code-behind). The white page is sized from the page itself, so A4 portrait stays portrait. -->
+    <!-- 共用放大預覽 (spec 4.6, 5.3): covers the file row, the title and the bottom bar so the page gets
+         the whole content area; Split and Print share this overlay. ← → turn pages/sheets, Esc closes, Ctrl+wheel zooms. -->
     <Border Name="SplitPreviewOverlay" Margin="0,0,0,24" Padding="12,8,12,12" CornerRadius="16"
-            Background="{DynamicResource Clk.Surface}" BorderThickness="1" BorderBrush="{DynamicResource Clk.CardBorder}">
-        <Border.IsVisible>
-            <MultiBinding Converter="{x:Static BoolConverters.And}">
-                <Binding Path="IsSplitAction" />
-                <Binding Path="Split.IsPreviewOpen" />
-            </MultiBinding>
-        </Border.IsVisible>
+            Background="{DynamicResource Clk.Surface}" BorderThickness="1" BorderBrush="{DynamicResource Clk.CardBorder}"
+            IsVisible="{Binding IsZoomPreviewOpen}">
         <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
             <Grid ColumnDefinitions="Auto,*,Auto,*,Auto,Auto" ColumnSpacing="12">
                 <Button Grid.Column="0" Classes="link back" Content="{l:T ui_preview_back_to_all_pages}" FontSize="15" VerticalAlignment="Center"
-                        Command="{Binding Split.ClosePreview}" ToolTip.Tip="Esc" />
+                        Command="{Binding ActiveZoomPreview.Close}" ToolTip.Tip="Esc" />
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                    <!-- Every toolbar button is 40 high with line icons on the 24 grid (spec 7), not ‹ › − ＋ glyphs, whose
-                         sizes and baselines differ from font to font. -->
+                    <!-- Every toolbar button is 40 high with line icons on the 24 grid (spec 7) -->
                     <Button Classes="secondary" Width="40" Height="40" Padding="0" HorizontalContentAlignment="Center"
-                            Command="{Binding Split.PreviousPage}" ToolTip.Tip="{l:T ui_preview_previous_page}">
+                            Command="{Binding ActiveZoomPreview.Previous}" IsEnabled="{Binding ActiveZoomPreview.CanPrevious}"
+                            ToolTip.Tip="{l:T ui_preview_previous_page}">
                         <Viewbox Classes="ic" Width="16" Height="16"><Canvas Width="24" Height="24"><Path Data="M15,5 L8,12 L15,19" /></Canvas></Viewbox>
                     </Button>
-                    <TextBlock Text="{Binding Split.PreviewTitle}" MinWidth="112" TextAlignment="Center" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding ActiveZoomPreview.Title}" MinWidth="112" TextAlignment="Center" VerticalAlignment="Center" />
                     <Button Classes="secondary" Width="40" Height="40" Padding="0" HorizontalContentAlignment="Center"
-                            Command="{Binding Split.NextPage}" ToolTip.Tip="{l:T ui_preview_next_page}">
+                            Command="{Binding ActiveZoomPreview.Next}" IsEnabled="{Binding ActiveZoomPreview.CanNext}"
+                            ToolTip.Tip="{l:T ui_preview_next_page}">
                         <Viewbox Classes="ic" Width="16" Height="16"><Canvas Width="24" Height="24"><Path Data="M9,5 L16,12 L9,19" /></Canvas></Viewbox>
                     </Button>
                 </StackPanel>
                 <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                     <Button Classes="secondary" Width="40" Height="40" Padding="0" HorizontalContentAlignment="Center"
-                            Command="{Binding Split.ZoomOutPreview}" ToolTip.Tip="{l:T ui_preview_zoom_out_ctrl_scroll}">
+                            Command="{Binding ActiveZoomPreview.ZoomOut}" ToolTip.Tip="{l:T ui_preview_zoom_out_ctrl_scroll}">
                         <Viewbox Classes="ic" Width="16" Height="16"><Canvas Width="24" Height="24"><Path Data="M6,12 H18" /></Canvas></Viewbox>
                     </Button>
-                    <Button Classes="secondary" Content="{Binding Split.PreviewZoomText}" MinWidth="88" Height="40"
+                    <Button Classes="secondary" Content="{Binding ActiveZoomPreview.ZoomText}" MinWidth="88" Height="40"
                             HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                            Command="{Binding Split.TogglePreviewFit}" ToolTip.Tip="{l:T ui_preview_switch_between_whole_page_and}" />
+                            Command="{Binding ActiveZoomPreview.ToggleFit}" ToolTip.Tip="{l:T ui_preview_switch_between_whole_page_and}" />
                     <Button Classes="secondary" Width="40" Height="40" Padding="0" HorizontalContentAlignment="Center"
-                            Command="{Binding Split.ZoomInPreview}" ToolTip.Tip="{l:T ui_preview_zoom_in_ctrl_scroll}">
+                            Command="{Binding ActiveZoomPreview.ZoomIn}" ToolTip.Tip="{l:T ui_preview_zoom_in_ctrl_scroll}">
                         <Viewbox Classes="ic" Width="16" Height="16"><Canvas Width="24" Height="24"><Path Data="M12,6 V18 M6,12 H18" /></Canvas></Viewbox>
                     </Button>
                 </StackPanel>
-                <Panel Grid.Column="5" IsVisible="{Binding Split.PreviewHasGap}" VerticalAlignment="Center">
-                    <Button Classes="secondary" Content="{l:T ui_preview_split_after_this_page}" Height="40" Padding="16,0" VerticalContentAlignment="Center"
-                            IsVisible="{Binding !Split.PreviewIsCut}" Command="{Binding Split.TogglePreviewCut}" />
-                    <Button Classes="primary" Content="{l:T ui_preview_split_after_this_page_2}" Height="40" Padding="16,0" VerticalContentAlignment="Center"
-                            IsVisible="{Binding Split.PreviewIsCut}" Command="{Binding Split.TogglePreviewCut}"
-                            ToolTip.Tip="{l:T ui_preview_click_again_to_remove_the}" />
+                <Panel Grid.Column="5" IsVisible="{Binding ActiveZoomPreview.HasCustomAction}" VerticalAlignment="Center">
+                    <Button Classes="secondary" Content="{Binding ActiveZoomPreview.CustomActionText}" Height="40" Padding="16,0" VerticalContentAlignment="Center"
+                            IsVisible="{Binding !ActiveZoomPreview.IsCustomActionActive}" Command="{Binding ActiveZoomPreview.ExecuteCustomAction}" />
+                    <Button Classes="primary" Content="{Binding ActiveZoomPreview.CustomActionActiveText}" Height="40" Padding="16,0" VerticalContentAlignment="Center"
+                            IsVisible="{Binding ActiveZoomPreview.IsCustomActionActive}" Command="{Binding ActiveZoomPreview.ExecuteCustomAction}"
+                            ToolTip.Tip="{Binding ActiveZoomPreview.CustomActionTooltip}" />
                 </Panel>
             </Grid>
             <Border Grid.Row="1" CornerRadius="12" Background="{DynamicResource Clk.Card}" ClipToBounds="True">
                 <ScrollViewer Name="SplitPreviewScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                     <Border Background="#FFFFFF" Margin="16" HorizontalAlignment="Center" VerticalAlignment="Center"
                             BorderThickness="1" BorderBrush="{DynamicResource Clk.CardBorder}"
-                            Width="{Binding Split.PreviewPageWidth}" Height="{Binding Split.PreviewPageHeight}">
+                            Width="{Binding ActiveZoomPreview.PageWidth}" Height="{Binding ActiveZoomPreview.PageHeight}">
                         <Panel>
-                            <Image Source="{Binding Split.PreviewImage}" Stretch="Fill" IsVisible="{Binding Split.HasPreviewImage}" />
-                            <TextBlock Text="{Binding Split.PreviewTitle}" Foreground="#9AA0A6"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !Split.HasPreviewImage}" />
+                            <Image Source="{Binding ActiveZoomPreview.Image}" Stretch="Fill" IsVisible="{Binding ActiveZoomPreview.HasImage}" />
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" IsVisible="{Binding !ActiveZoomPreview.HasImage}">
+                                <ProgressBar Classes="minimalSpinner" HorizontalAlignment="Center" />
+                                <TextBlock Text="{l:T ui_print_loading_preview}" Foreground="{DynamicResource Clk.TextTertiary}" FontSize="12" HorizontalAlignment="Center" />
+                            </StackPanel>
                         </Panel>
                     </Border>
                 </ScrollViewer>
             </Border>
-            <!-- Which part this page goes to, and how many parts in all (the start button is under the preview). -->
+            <!-- Details / Hints -->
             <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
-                <Border Background="{DynamicResource Clk.ChipOn}" CornerRadius="10" Padding="10,3" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Split.PreviewPartText}" FontSize="13" />
+                <Border Background="{DynamicResource Clk.ChipOn}" CornerRadius="10" Padding="10,3" VerticalAlignment="Center"
+                        IsVisible="{Binding ActiveZoomPreview.HasSubTitle}">
+                    <TextBlock Text="{Binding ActiveZoomPreview.SubTitle}" FontSize="13" />
                 </Border>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
                     <TextBlock Text="{l:T ui_preview_change_page}" Classes="secondary" FontSize="12" />

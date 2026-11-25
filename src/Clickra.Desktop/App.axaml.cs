@@ -15,11 +15,25 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        Clickra.Core.Modules.Pdf.Print.Ports.SystemPrinterDiscoveryService.WarmUp();
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            var vm = new MainWindowViewModel();
+            if (desktop.Args is { Length: > 0 } args)
+            {
+                var files = new System.Collections.Generic.List<string>();
+                foreach (string a in args)
+                {
+                    if (System.IO.File.Exists(a)) files.Add(System.IO.Path.GetFullPath(a));
+                }
+                if (files.Count > 0)
+                {
+                    vm.Convert.AddFiles(files);
+                }
+            }
             desktop.MainWindow = new MainWindow
             {
-                DataContext = new MainWindowViewModel(),
+                DataContext = vm,
             };
         }
 

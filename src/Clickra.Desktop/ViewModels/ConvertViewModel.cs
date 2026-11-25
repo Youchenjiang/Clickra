@@ -225,10 +225,38 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         IsBusy = () => IsExecuting;
         Options.PropertyChanged += (_, e) =>
         {
+            if (IsPrintAction && IsPreviewAffectingProperty(e.PropertyName))
+            {
+                PrintPreview.Update(SelectedFiles.Select(f => f.Path).ToList(), Options);
+            }
             if (e.PropertyName is "" or nameof(ActionOptionsViewModel.IsReady) or nameof(ActionOptionsViewModel.BlockingText))
             {
                 OnPropertyChanged(nameof(CanStart));
                 OnPropertyChanged(nameof(StartButtonText));
+            }
+        };
+        PrintPreview.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is "" or nameof(PrintPreviewViewModel.CanPrint) or nameof(PrintPreviewViewModel.BlockingText))
+            {
+                OnPropertyChanged(nameof(CanStart));
+                OnPropertyChanged(nameof(StartButtonText));
+            }
+        };
+        Split.Zoom.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ZoomPreviewViewModel.IsOpen))
+            {
+                OnPropertyChanged(nameof(IsZoomPreviewOpen));
+                OnPropertyChanged(nameof(ActiveZoomPreview));
+            }
+        };
+        PrintPreview.Zoom.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ZoomPreviewViewModel.IsOpen))
+            {
+                OnPropertyChanged(nameof(IsZoomPreviewOpen));
+                OnPropertyChanged(nameof(ActiveZoomPreview));
             }
         };
         Split.PropertyChanged += (_, e) =>
@@ -257,6 +285,28 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         };
         RefreshRecentHistory();
     }
+
+    private static bool IsPreviewAffectingProperty(string? propertyName) =>
+        propertyName is ""
+            or nameof(ActionOptionsViewModel.IsLoadingPrinters)
+            or nameof(ActionOptionsViewModel.PrintPages)
+            or nameof(ActionOptionsViewModel.Copies)
+            or nameof(ActionOptionsViewModel.PaperIndex)
+            or nameof(ActionOptionsViewModel.OrientationIndex)
+            or nameof(ActionOptionsViewModel.DuplexIndex)
+            or nameof(ActionOptionsViewModel.CanDuplex)
+            or nameof(ActionOptionsViewModel.PagesPerSheetIndex)
+            or nameof(ActionOptionsViewModel.PagesPerSheet)
+            or nameof(ActionOptionsViewModel.PageOrderIndex)
+            or nameof(ActionOptionsViewModel.PageOrder)
+            or nameof(ActionOptionsViewModel.PageBorder)
+            or nameof(ActionOptionsViewModel.ScaleModeIndex)
+            or nameof(ActionOptionsViewModel.ScaleMode)
+            or nameof(ActionOptionsViewModel.ScalePercent)
+            or nameof(ActionOptionsViewModel.ColorModeIndex)
+            or nameof(ActionOptionsViewModel.Grayscale)
+            or nameof(ActionOptionsViewModel.DarkenText)
+            or nameof(ActionOptionsViewModel.Collate);
 
     public ConvertWorkflowState State
     {
@@ -313,6 +363,11 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         {
             return Split.BlockingText.Length > 0 ? Split.BlockingText : Split.StartText;
         }
+        if (IsPrintAction)
+        {
+            if (Options.BlockingText.Length > 0) return Options.BlockingText;
+            if (!PrintPreview.CanPrint && !string.IsNullOrEmpty(PrintPreview.BlockingText)) return PrintPreview.BlockingText;
+        }
         if (Options.BlockingText.Length > 0) return Options.BlockingText;
         return SelectedAction is not null ? Strings.F("ui_start_bar_start_action", ("action", SelectedAction.Name)) : Strings.T("ui_start_bar_start");
     }
@@ -320,8 +375,16 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     /// <summary>The options card of the open action (spec 4.9).</summary>
     public ActionOptionsViewModel Options { get; } = new();
 
+    /// <summary>Print preview layout and sheet planning (spec 4.9, print_preview_plan.md).</summary>
+    public PrintPreviewViewModel PrintPreview { get; } = new();
+    public bool IsPrintAction => string.Equals(SelectedAction?.Command, "print-pdf", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsZoomPreviewOpen => (IsSplitAction && Split.IsPreviewOpen) || (IsPrintAction && PrintPreview.IsPreviewOpen);
+    public ZoomPreviewViewModel? ActiveZoomPreview => IsSplitAction && Split.IsPreviewOpen ? Split.Zoom : IsPrintAction && PrintPreview.IsPreviewOpen ? PrintPreview.Zoom : null;
+
     public bool CanStart => !IsExecuting && SelectedAction is not null && _workspace.CanStart &&
-                            (!IsRenameAction || Rename.CanRename) && (!IsOrderAction || Order.HasOutputName) && (!IsSplitAction || Split.IsReady) && Options.IsReady;
+                            (!IsRenameAction || Rename.CanRename) && (!IsOrderAction || Order.HasOutputName) && (!IsSplitAction || Split.IsReady) && Options.IsReady &&
+                            (!IsPrintAction || PrintPreview.CanPrint);
 
     /// <summary>批次重新命名 has its own workspace instead of an options card (spec 4.6).</summary>
     public RenameWorkspaceViewModel Rename { get; } = new();
@@ -480,6 +543,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         UpdateAvailableActions();
         State = ConvertWorkflowState.ActionCatalog;
         RefreshProtection();
+        Clickra.Core.Modules.Pdf.Print.Ports.SystemPrinterDiscoveryService.WarmUp();
     }
 
     public void RemoveFile(string path)
@@ -517,6 +581,11 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             ? Clickra.Shared.ContextMenuVisibility.ImageFormatCommands.FirstOrDefault(_workspace.IsCommandCompatible) ?? action.Command
             : action.Command;
         if (!_workspace.TrySelectCommand(selectCommand)) return;
+
+        // Transition immediately so user experiences zero perceived navigation latency
+        SelectedAction = action;
+        State = ConvertWorkflowState.ActionPage;
+
         if (string.Equals(action.Command, ConvertWorkspaceController.BatchRenameCommand, StringComparison.OrdinalIgnoreCase))
             Rename.SetFiles(SelectedFiles.Select(f => f.Path));
         Options.Reset(action.Command);
@@ -529,9 +598,9 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             Order.SetFiles(action.Command, SelectedFiles.Select(f => f.Path));
         if (action.Command == "split-pdf")
             Split.SetFiles(SelectedFiles.Select(f => f.Path).ToList());
+        if (action.Command == "print-pdf")
+            PrintPreview.Update(SelectedFiles.Select(f => f.Path).ToList(), Options);
         Options.SetAllowedImageFormats(_workspace.IsCommandCompatible);
-        SelectedAction = action;
-        State = ConvertWorkflowState.ActionPage;
     }
 
     public void BackToCatalog()
@@ -898,6 +967,10 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         OnPropertyChanged(nameof(FileSummarySubtext));
         OnPropertyChanged(nameof(PrimaryDomain));
         OnPropertyChanged(nameof(PrimaryDomainColor));
+        if (IsPrintAction)
+        {
+            PrintPreview.Update(SelectedFiles.Select(f => f.Path).ToList(), Options);
+        }
     }
 
     private void UpdateAvailableActions()

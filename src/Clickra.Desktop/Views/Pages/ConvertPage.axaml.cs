@@ -98,7 +98,7 @@ public partial class ConvertPage : UserControl
         PickFilesButton.Click += async (_, _) => await PickFilesAsync();
         ManageFilesButton.Click += (_, _) => GetViewModel()?.ToggleManageFiles();
         DoneManageFilesButton.Click += (_, _) => GetViewModel()?.ToggleManageFiles();
-        BackToStartButton.Click += (_, _) => GetViewModel()?.ResetToStart();
+        RePickFilesButton.Click += (_, _) => GetViewModel()?.ResetToStart();
         BackToCatalogButton.Click += (_, _) => GetViewModel()?.BackToCatalog();
         StartConversionButton.Click += async (_, _) =>
         {
@@ -294,7 +294,7 @@ public partial class ConvertPage : UserControl
 
         if (to == ConvertWorkflowState.DropZone)
         {
-            // Back to the drop zone (the ‹ on the file row): the same animation played backwards — the box grows downward from the 72 row and
+            // 重新選: the same animation played backwards — the box grows downward from the 72 row and
             // pushes the section below down with it, instead of the section jumping to the bottom first.
             UpdateLayout(); // lay out state A once to learn how tall the drop zone will be
             double target = TopArea.Bounds.Height;
@@ -403,16 +403,17 @@ public partial class ConvertPage : UserControl
 
     private void OnSplitPreviewKeyDown(object? sender, KeyEventArgs e)
     {
-        if (GetViewModel() is not { IsSplitAction: true } vm || !vm.Split.IsPreviewOpen) return;
+        var zoom = GetViewModel()?.ActiveZoomPreview;
+        if (zoom is null || !zoom.IsOpen) return;
         switch (e.Key)
         {
-            case Key.Left: vm.Split.PreviousPage(); e.Handled = true; break;
-            case Key.Right: vm.Split.NextPage(); e.Handled = true; break;
-            case Key.Escape: vm.Split.ClosePreview(); e.Handled = true; break;
+            case Key.Left: zoom.Previous(); e.Handled = true; break;
+            case Key.Right: zoom.Next(); e.Handled = true; break;
+            case Key.Escape: zoom.Close(); e.Handled = true; break;
             case Key.OemPlus or Key.Add when e.KeyModifiers.HasFlag(KeyModifiers.Control):
-                vm.Split.ZoomInPreview(); e.Handled = true; break;
+                zoom.ZoomIn(); e.Handled = true; break;
             case Key.OemMinus or Key.Subtract when e.KeyModifiers.HasFlag(KeyModifiers.Control):
-                vm.Split.ZoomOutPreview(); e.Handled = true; break;
+                zoom.ZoomOut(); e.Handled = true; break;
             default:
                 // Unhandled keys pass through to standard navigation
                 break;
@@ -422,9 +423,10 @@ public partial class ConvertPage : UserControl
     /// <summary>Ctrl+wheel zooms the preview; a plain wheel still scrolls the page.</summary>
     private void OnSplitPreviewWheel(object? sender, PointerWheelEventArgs e)
     {
-        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control) || GetViewModel() is not { } vm || !vm.Split.IsPreviewOpen) return;
-        if (e.Delta.Y > 0) vm.Split.ZoomInPreview();
-        else if (e.Delta.Y < 0) vm.Split.ZoomOutPreview();
+        var zoom = GetViewModel()?.ActiveZoomPreview;
+        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control) || zoom is null || !zoom.IsOpen) return;
+        if (e.Delta.Y > 0) zoom.ZoomIn();
+        else if (e.Delta.Y < 0) zoom.ZoomOut();
         e.Handled = true;
     }
 
@@ -432,33 +434,19 @@ public partial class ConvertPage : UserControl
     /// the screen's scaling.</summary>
     private void UpdateSplitPreviewViewport()
     {
-        if (GetViewModel() is not { } vm) return;
+        var zoom = GetViewModel()?.ActiveZoomPreview;
+        if (zoom is null) return;
         Size size = SplitPreviewScroll.Bounds.Size;
-        vm.Split.SetPreviewViewport(size.Width - 32, size.Height - 32, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1);
+        zoom.SetViewport(size.Width - 32, size.Height - 32, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1);
     }
 
     // ===== State D: files dragged over the window (spec 4.1) =====
 
     private void OnDragEnter(object? sender, DragEventArgs e)
     {
-        if (GetViewModel() is not { IsExecuting: false } vm)
-        {
-            e.DragEffects = DragDropEffects.None;
-            e.Handled = true;
-            return;
-        }
-
+        if (GetViewModel() is not { IsExecuting: false } vm) return;
         List<string> paths = e.DataTransfer.TryGetFiles()?.Select(f => f.Path.LocalPath).ToList() ?? [];
-        if (paths.Count == 0)
-        {
-            e.DragEffects = DragDropEffects.None;
-            e.Handled = true;
-            return;
-        }
-
-        e.DragEffects = DragDropEffects.Copy;
-        e.Handled = true;
-
+        if (paths.Count == 0) return;
         ShowDragOverlay(vm, paths);
         if (!DragOverlay.IsVisible)
         {
@@ -536,7 +524,6 @@ public partial class ConvertPage : UserControl
 
     private void OnDrop(object? sender, DragEventArgs e)
     {
-        e.Handled = true;
         List<string> paths = e.DataTransfer.TryGetFiles()?.Select(f => f.Path.LocalPath).ToList() ?? [];
         if (paths.Count > 0 && !ConvertViewModel.ExpandFolders(paths).Any())
         {
