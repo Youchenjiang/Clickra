@@ -1,6 +1,6 @@
 # Microsoft Store 목록 - 한국어
 
-다음은 Microsoft 파트너 센터 (Partner Center)에 직접 복사하여 붙여넣을 수 있는 전체 정보입니다 (v3.22.5.0 기준).
+다음은 Microsoft 파트너 센터 (Partner Center)에 직접 복사하여 붙여넣을 수 있는 전체 정보입니다 (v3.22.6.0 기준).
 
 ---
 
@@ -15,7 +15,7 @@ Clickra는 Windows 파일 탐색기를 위한 네이티브 우클릭 확장 프�
 소스 코드: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 인쇄 창에서 방향을 '자동'으로 선택해도 가로 페이지가 세로로 인쇄되던 문제를 수정했습니다. '단면'과 글자 진하게 옵션도 항상 화면에서 선택한 대로 인쇄됩니다.
+- 데스크톱 인쇄 미리보기: 실시간 용지 레이아웃, 한 장에 여러 페이지, 배율, 색상 설정을 지원하며 여러 파일을 한 번에 미리보고 총 용지 수를 확인할 수 있습니다.
 
 ## Product Features
 *(최대 20개, 글머리 기호로 표시)*
