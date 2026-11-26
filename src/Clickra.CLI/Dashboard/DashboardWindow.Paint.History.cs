@@ -301,13 +301,13 @@ namespace Clickra.UI
 
             float s = _dpiScale;
             var parkedItems = ParkedItems;
-            DrawParkedQueueHeader(g, contentX, rowW, block.Top, _historyPresentation.ExpiringSoonCount, s);
+            DrawParkedQueueHeader(g, contentX, rowW, block.Top, s);
 
             for (int i = 0; i < parkedItems.Count; i++)
                 DrawParkedQueueRow(g, contentX, rowW, block, parkedItems[i], i, s);
         }
 
-        static void DrawParkedQueueHeader(Graphics g, float contentX, int rowW, int startY, int expiringSoonCount, float s)
+        static void DrawParkedQueueHeader(Graphics g, float contentX, int rowW, int startY, float s)
         {
             if (_tabFont == null) return;
 
