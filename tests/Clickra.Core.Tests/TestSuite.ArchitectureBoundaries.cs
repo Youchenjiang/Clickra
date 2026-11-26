@@ -16,6 +16,7 @@ static partial class TestSuite
     private const string RepositoryRootMissingMessage = "Could not locate the repository root.";
     private const string BatchRenameCommandIdentifier = "BatchRenameCommand";
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
+    private const string ArchitectureDesktopProjectDirectory = "Clickra.Desktop";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
     private const string ArchitectureApplicationDirectory = "Application";
     private const string ArchitectureProcessingDirectory = "Processing";
@@ -243,6 +244,12 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: functional submodules are symmetrical",
             TestFunctionalSubmodulesAreSymmetrical);
+        runner.RunGuard(
+            "Architecture boundaries: PDF conversion planning does not reject encrypted files",
+            TestPdfConversionPlanningDoesNotRejectEncryptedFiles);
+        runner.RunGuard(
+            "Architecture boundaries: password caching is exclusive to ConversionPasswordCache",
+            TestPasswordCachingIsExclusiveToConversionPasswordCache);
     }
 
     private static void TestConversionExecutionFamiliesShareLifecycleResultMapping()
@@ -2941,6 +2948,172 @@ static partial class TestSuite
                 violations.Add($"{domain}/{subName}: functional sub-module must have exactly one conversion UseCase (found {useCases.Count}).");
             }
         }
+    }
+
+    private static void TestPdfConversionPlanningDoesNotRejectEncryptedFiles()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        // 1. Source analysis: verify no PDF use case references ValidateNotEncrypted or checks encryption during planning
+        string pdfModulesDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureModulesDirectory, "Pdf");
+        if (Directory.Exists(pdfModulesDir))
+        {
+            var pdfSourceFiles = Directory.EnumerateFiles(pdfModulesDir, "*.cs", SearchOption.AllDirectories).ToList();
+            foreach (string file in pdfSourceFiles)
+            {
+                string text = File.ReadAllText(file);
+                Assert.False(
+                    text.Contains("ValidateNotEncrypted", StringComparison.Ordinal),
+                    $"{NormalizeRepoPath(root, file)} must not invoke or define ValidateNotEncrypted; planning must never reject encrypted files.");
+            }
+        }
+
+        // 2. Runtime verification: planning PDF operations with an encrypted file must succeed
+        string tempDir = Path.Combine(Path.GetTempPath(), $"clickra_arch_enc_plan_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        string encPdf1 = Path.Combine(tempDir, "protected1.pdf");
+        string encPdf2 = Path.Combine(tempDir, "protected2.pdf");
+        try
+        {
+            using (var doc1 = new PdfSharp.Pdf.PdfDocument())
+            {
+                doc1.AddPage();
+                doc1.SecuritySettings.UserPassword = "test-open-password";
+                doc1.Save(encPdf1);
+            }
+            using (var doc2 = new PdfSharp.Pdf.PdfDocument())
+            {
+                doc2.AddPage();
+                doc2.SecuritySettings.UserPassword = "test-open-password";
+                doc2.Save(encPdf2);
+            }
+
+            var pdfCommands = new[]
+            {
+                "compress-pdf",
+                "translate-pdf",
+                "print-pdf",
+                "merge-pdf",
+                "split-pdf",
+                "pdf2img",
+                "decrypt-pdf"
+            };
+
+            foreach (string cmd in pdfCommands)
+            {
+                var files = cmd == "merge-pdf"
+                    ? new List<string> { encPdf1, encPdf2 }
+                    : new List<string> { encPdf1 };
+
+                ConversionPlan plan = ConversionExecutionService.Plan(
+                    cmd,
+                    files,
+                    TrackTaskLifecycle: false);
+
+                Assert.True(plan is not null, $"Plan for '{cmd}' must not be null.");
+                Assert.True(plan!.Inputs.Count == files.Count, $"Plan for '{cmd}' must preserve all inputs.");
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
+        }
+    }
+
+    private static void TestPasswordCachingIsExclusiveToConversionPasswordCache()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        var targetDirs = new[]
+        {
+            Path.Combine(root, "src", ArchitectureCoreProjectDirectory),
+            Path.Combine(root, "src", ArchitectureDesktopProjectDirectory)
+        };
+
+        var violations = new List<string>();
+
+        foreach (string dir in targetDirs)
+        {
+            if (!Directory.Exists(dir)) continue;
+
+            foreach (string file in Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories))
+            {
+                string fileName = Path.GetFileName(file);
+                if (string.Equals(fileName, "ConversionPasswordCache.cs", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                string source = File.ReadAllText(file);
+                SyntaxTree tree = CSharpSyntaxTree.ParseText(
+                    source,
+                    CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest));
+                SyntaxNode astRoot = tree.GetRoot();
+
+                // Check 1: No fields or properties holding collections of passwords
+                foreach (var field in astRoot.DescendantNodes().OfType<FieldDeclarationSyntax>())
+                {
+                    var containingClass = field.FirstAncestorOrSelf<ClassDeclarationSyntax>();
+                    if (string.Equals(containingClass?.Identifier.Text, "ConversionPasswordCache", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    string typeText = field.Declaration.Type.ToString();
+                    foreach (var variable in field.Declaration.Variables)
+                    {
+                        string name = variable.Identifier.Text;
+                        if (string.Equals(name, "_lastPassword", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(name, "LastPassword", StringComparison.OrdinalIgnoreCase))
+                        {
+                            violations.Add($"{NormalizeRepoPath(root, file)}: forbidden field '{name}' retains last password.");
+                        }
+
+                        // Check if collection field mentions password
+                        bool isCollection = typeText.Contains("List") || typeText.Contains("Set") ||
+                                            typeText.Contains("Dictionary") || typeText.Contains("Collection") ||
+                                            typeText.EndsWith("[]", StringComparison.Ordinal);
+                        if (isCollection && name.Contains("password", StringComparison.OrdinalIgnoreCase))
+                        {
+                            violations.Add($"{NormalizeRepoPath(root, file)}: collection field '{name}' ({typeText}) stores passwords outside ConversionPasswordCache.");
+                        }
+                    }
+                }
+
+                // Check 2: No static fields storing passwords
+                foreach (var field in astRoot.DescendantNodes().OfType<FieldDeclarationSyntax>())
+                {
+                    var containingClass = field.FirstAncestorOrSelf<ClassDeclarationSyntax>();
+                    if (string.Equals(containingClass?.Identifier.Text, "ConversionPasswordCache", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    if (field.Modifiers.Any(SyntaxKind.StaticKeyword))
+                    {
+                        foreach (var variable in field.Declaration.Variables)
+                        {
+                            string name = variable.Identifier.Text;
+                            if (name.Contains("password", StringComparison.OrdinalIgnoreCase) &&
+                                !field.Modifiers.Any(SyntaxKind.ConstKeyword))
+                            {
+                                violations.Add($"{NormalizeRepoPath(root, file)}: static field '{name}' must not cache or store passwords.");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "Password caching must be exclusive to ConversionPasswordCache:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
     }
 
     private static string NormalizeRepoPath(string root, string file) =>
