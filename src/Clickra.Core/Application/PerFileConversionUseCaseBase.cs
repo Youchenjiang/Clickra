@@ -132,7 +132,10 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
                 if (skippedFiles.Count == plan.Inputs.Count)
                 {
                     string lang = ReadLanguage(plan.NormalizedOptions);
-                    throw new InvalidOperationException(Localization.T("core_pdf_all_files_need_password", lang));
+                    string errorKey = skippedFiles.All(s => s.Reason == ConversionSkipReason.NotEncrypted)
+                        ? "pdf_not_encrypted"
+                        : "core_pdf_all_files_need_password";
+                    throw new InvalidOperationException(Localization.T(errorKey, lang));
                 }
             },
             () => completedFiles,
@@ -150,7 +153,12 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
     {
         if (skippedFiles.Count == 0) return null;
         string lang = ReadLanguage(options);
-        return Localization.Format("core_history_reason_skipped_needs_password", lang, ("count", skippedFiles.Count));
+        int needsPasswordCount = skippedFiles.Count(s => s.Reason == ConversionSkipReason.NeedsPassword);
+        if (needsPasswordCount > 0)
+        {
+            return Localization.Format("core_history_reason_skipped_needs_password", lang, ("count", needsPasswordCount));
+        }
+        return Localization.T("pdf_not_encrypted", lang);
     }
 
     protected static void ReportFileProgress(
@@ -163,38 +171,4 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
             (index * 100) + current,
             plan.Inputs.Count * 100,
             message));
-
-    protected static async Task ExecuteWithPasswordRetryAsync(
-        int index,
-        ConversionPlan plan,
-        IConversionInteraction interaction,
-        string? initialPassword,
-        Func<string?, Task> executeAction,
-        Func<Exception, bool> isPasswordError,
-        CancellationToken cancellationToken)
-    {
-        string? password = initialPassword;
-        bool isRetry = false;
-        while (true)
-        {
-            try
-            {
-                await executeAction(password);
-                return;
-            }
-            // skipcq: CS-R1008
-            catch (Exception ex) when (isPasswordError(ex))
-            {
-                string? supplied = await interaction.RequestPasswordAsync(
-                    index,
-                    plan.Inputs[index],
-                    isRetry,
-                    cancellationToken);
-                if (supplied is null)
-                    throw new OperationCanceledException(cancellationToken);
-                password = supplied;
-                isRetry = true;
-            }
-        }
-    }
 }

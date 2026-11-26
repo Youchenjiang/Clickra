@@ -22,16 +22,6 @@ public sealed class DecryptPdfUseCase : PerFileConversionUseCaseBase
     protected override string GetOutputFileName(string input) =>
         Path.GetFileNameWithoutExtension(input) + "_decrypted.pdf";
 
-    protected override ConversionValidationResult ValidateInputs(ConversionRequest request)
-    {
-        if (request.InputFiles.Any(f => System.IO.File.Exists(f) && !PdfDecryptProcessor.IsEncrypted(f)))
-        {
-            string lang = ExecutionLocalizationOptions.ReadLanguage(request.Options);
-            return ConversionValidationResult.Failure(Localization.T("pdf_not_encrypted", lang));
-        }
-
-        return ConversionValidationResult.Success();
-    }
     public override IReadOnlySet<ConversionCapability> Capabilities =>
         new HashSet<ConversionCapability> { ConversionCapability.Password };
 
@@ -60,43 +50,43 @@ public sealed class DecryptPdfUseCase : PerFileConversionUseCaseBase
         object? executionState,
         CancellationToken cancellationToken)
     {
-        // The password typed on the decrypt card is tried first; only a file it does not open asks again. A file
-        // that only restricts printing or copying opens without a password, so the typed one is not used for it.
-        string? initialPassword = plan.NormalizedOptions.TryGetValue(PasswordOptionKey, out object? supplied) &&
-                                  supplied is string text && text.Length > 0 &&
-                                  PdfDecryptProcessor.NeedsOpenPassword(plan.Inputs[index])
-            ? text
-            : null;
+        if (plan.NormalizedOptions.TryGetValue(PasswordOptionKey, out object? supplied) &&
+            supplied is string text && text.Length > 0)
+        {
+            PasswordCache.Add(text);
+        }
 
-        await ExecuteWithPasswordRetryAsync(
+        using var unlock = await PdfUnlockStep.UnlockAsync(
             index,
-            plan,
+            plan.Inputs[index],
             interaction,
-            initialPassword,
-            async password =>
-            {
-                var processor = new PdfDecryptProcessor();
-                var options = new Dictionary<string, object>
-                {
-                    [ExecutionLocalizationOptions.LanguageKey] = plan.NormalizedOptions[ExecutionLocalizationOptions.LanguageKey].ToString() ?? ClickraSettings.DefaultEmpty
-                };
-                if (!string.IsNullOrEmpty(password)) options[PasswordOptionKey] = password;
+            PasswordCache,
+            cancellationToken).ConfigureAwait(false);
 
-                await Task.Run(
-                    () => processor.Process(
-                        new List<string> { plan.Inputs[index] },
-                        plan.Outputs[index],
-                        options,
-                        (current, total, message) =>
-                            ReportFileProgress(plan, index, progress, current, message),
-                        cancellationToken),
-                    cancellationToken);
-            },
-            IsPasswordError,
-            cancellationToken);
+        if (unlock.Status == PdfUnlockStatus.NotEncrypted)
+        {
+            throw new ConversionFileSkippedException(ConversionSkipReason.NotEncrypted);
+        }
+
+        if (unlock.IsSkipped)
+        {
+            throw new ConversionFileSkippedException(ConversionSkipReason.NeedsPassword);
+        }
+
+        string lang = ExecutionLocalizationOptions.ReadLanguage(plan.NormalizedOptions);
+        ReportFileProgress(plan, index, progress, 50, ExecutionLocalizationOptions.Text(lang, "core_decrypt_progress_removing"));
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        string targetOutput = plan.Outputs[index];
+        string? targetDir = Path.GetDirectoryName(targetOutput);
+        if (!string.IsNullOrEmpty(targetDir))
+        {
+            Directory.CreateDirectory(targetDir);
+        }
+
+        System.IO.File.Copy(unlock.EffectivePath, targetOutput, overwrite: true);
+
+        ReportFileProgress(plan, index, progress, 100, ExecutionLocalizationOptions.Text(lang, "core_decrypt_done"));
     }
-
-    private static bool IsPasswordError(Exception ex) =>
-        ex is PdfReaderException &&
-        ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
 }
