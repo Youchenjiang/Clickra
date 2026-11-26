@@ -113,15 +113,33 @@ namespace Clickra.UI
         {
             if (result.Status == ConversionResultStatus.Succeeded)
             {
-                if (successMessage is not null)
-                    progressCallback(files.Count * 100, files.Count * 100, successMessage);
-                string completedMessage = setAllDoneMessage
-                    ? Loc(ProgressAllDoneKey)
-                    : _progressPresentation.State.Message;
+                string completedMessage;
+                if (result.SkippedFiles.Count > 0)
+                {
+                    int succeeded = Math.Max(0, files.Count - result.SkippedFiles.Count);
+                    int needsPassword = result.SkippedFiles.Count(s => s.Reason == ConversionSkipReason.NeedsPassword);
+                    string lang = SettingsPresentationController.Shared.Language;
+                    string skipReason = needsPassword > 0
+                        ? Localization.Format("core_history_reason_skipped_needs_password", lang, ("count", (object)needsPassword))
+                        : Localization.T("pdf_not_encrypted", lang);
+                    completedMessage = succeeded > 0
+                        ? $"{Localization.T("ui_result_done_2", lang)} {succeeded}, {skipReason}"
+                        : skipReason;
+                    progressCallback(files.Count * 100, files.Count * 100, completedMessage);
+                }
+                else
+                {
+                    if (successMessage is not null)
+                        progressCallback(files.Count * 100, files.Count * 100, successMessage);
+                    completedMessage = setAllDoneMessage
+                        ? Loc(ProgressAllDoneKey)
+                        : _progressPresentation.State.Message;
+                }
+
                 _progressPresentation.Succeed(completedMessage);
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
                 ShowToastNotification(command, files.Count);
-                Thread.Sleep(1500);
+                Thread.Sleep(result.SkippedFiles.Count > 0 ? 3000 : 1500);
                 ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
                 return;

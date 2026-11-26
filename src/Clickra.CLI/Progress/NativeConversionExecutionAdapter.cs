@@ -52,7 +52,8 @@ internal sealed class NativeConversionExecutionAdapter
             RunBatchRename(command, files, progressCallback);
             return true;
         }
-        if (ConversionExecutionController.HasCapability(command, ConversionCapability.Password))
+        if (ConversionExecutionController.GetInputRequirement(command) == RequiredInputType.Password &&
+            ConversionExecutionController.HasCapability(command, ConversionCapability.Password))
         {
             RunDecrypt(command, files, progressCallback);
             return true;
@@ -165,7 +166,8 @@ internal sealed class NativeConversionExecutionAdapter
             TrackTaskLifecycle: true,
             planOptions: new ExecutionPlanOptions(_existingTaskId, true, _startIndex));
         var interaction = new DelegateConversionInteraction(
-            (_, inputPath, isRetry, _) => Task.FromResult<string?>(_resolveDecryptPassword(inputPath, isRetry)),
+            null,
+            null,
             promptPages != null
                 ? (_, inputPath, _) => Task.FromResult<string?>(promptPages(inputPath))
                 : (_, _, _) => Task.FromResult<string?>(null),
@@ -339,7 +341,8 @@ internal sealed class NativeConversionExecutionAdapter
             planOptions: new ExecutionPlanOptions(_existingTaskId, true, options.Resume ? _startIndex : 0));
 
         var interaction = new DelegateConversionInteraction(
-            (_, inputPath, isRetry, _) => Task.FromResult<string?>(_resolveDecryptPassword(inputPath, isRetry)),
+            null,
+            null,
             (_, _, _) => Task.FromResult<string?>(null),
             (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
         IProgress<ConversionProgress>? progress = ConversionExecutionController.HasCapability(command, ConversionCapability.ImageToPdf)
@@ -403,7 +406,8 @@ internal sealed class NativeConversionExecutionAdapter
             ResumeStartIndex = _startIndex
         };
         var interaction = new DelegateConversionInteraction(
-            (_, inputPath, isRetry, _) => Task.FromResult<string?>(_resolveDecryptPassword(inputPath, isRetry)),
+            null,
+            null,
             (_, _, _) => Task.FromResult<string?>(null),
             (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
         return (plan, interaction);
