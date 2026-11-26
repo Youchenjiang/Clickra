@@ -331,16 +331,15 @@
                             <Button Grid.Column="2" Classes="secondary" Content="{l:T ui_catalog_suggest_a_feature}" Command="{Binding SuggestFeature}" VerticalAlignment="Center" />
                         </Grid>
                     </Border>
-                    <!-- PDFs with a password or print/copy restrictions (spec 4.1): which actions wait for 解密. -->
-                    <Border Grid.Row="2" Classes="card" Padding="16,10" Margin="6,0,6,10" IsVisible="{Binding HasProtectedPdf}">
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                    <!-- PDFs with a password to open (spec 4.6): notice on row prompt. -->
+                    <Border Grid.Row="2" Classes="card" Padding="16,10" Margin="6,0,6,10" IsVisible="{Binding HasProtectedPdfNotice}">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
                             <Viewbox Classes="ic" Width="18" Height="18" VerticalAlignment="Center">
                                 <Canvas Width="24" Height="24">
                                     <Path Data="M7,11 V7 A5,5 0 0 1 17,7 V11 M5,11 H19 V21 H5 Z" Stroke="{DynamicResource Clk.Warning}" />
                                 </Canvas>
                             </Viewbox>
                             <TextBlock Grid.Column="1" Text="{Binding ProtectedPdfText}" FontSize="14" TextWrapping="Wrap" VerticalAlignment="Center" />
-                            <Button Grid.Column="2" Classes="primary" Content="{l:T ui_notice_decrypt_first}" Command="{Binding DecryptFirst}" VerticalAlignment="Center" />
                         </Grid>
                     </Border>
                     <ScrollViewer Grid.Row="3" Name="CatalogScroll">
@@ -356,8 +355,7 @@
                                 <DataTemplate>
                                     <Button Classes="catalogCard" Margin="6" Tag="{Binding}"
                                             Classes.suggested="{Binding IsSuggested}"
-                                            IsEnabled="{Binding IsAvailable}"
-                                            ToolTip.Tip="{Binding CardTip}" ToolTip.ShowOnDisabled="True"
+                                            ToolTip.Tip="{Binding ToolTip}"
                                             Command="{Binding $parent[UserControl].((vm:ConvertViewModel)DataContext).SelectAction}"
                                             CommandParameter="{Binding}">
                                         <StackPanel Classes="cardStack" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -1136,14 +1134,13 @@
                                             <StackPanel Spacing="6" IsVisible="{Binding NeedsPassword}">
                                                 <TextBlock Text="{Binding PasswordError}" Foreground="{DynamicResource Clk.Danger}" FontSize="13"
                                                            IsVisible="{Binding HasPasswordError}" />
-                                                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                                                <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
                                                     <TextBox Text="{Binding PasswordInput}" PasswordChar="●" PlaceholderText="{l:T ui_password_enter}" />
-                                                    <!-- Core cancels the whole task when no password is given, so this button says 停止 until a real
-                                                         per-file skip lands (docs/specs/pdf_password_unlock_plan.md). -->
-                                                    <Button Grid.Column="1" Classes="secondary" Content="{l:T ui_common_stop}" Command="{Binding SkipPassword}"
-                                                            ToolTip.Tip="{l:T ui_password_stop_without_entering_a_password}" />
-                                                    <Button Grid.Column="2" Classes="primary" Content="{Binding UnlockText}" Command="{Binding SubmitPassword}" />
+                                                    <Button Grid.Column="1" Classes="subtle" Content="{l:T ui_password_stop_all}" Command="{Binding CancelAll}" />
+                                                    <Button Grid.Column="2" Classes="secondary" Content="{l:T ui_password_skip_this_file}" Command="{Binding SkipPassword}" />
+                                                    <Button Grid.Column="3" Classes="primary" Content="{Binding UnlockText}" Command="{Binding SubmitPassword}" />
                                                 </Grid>
+                                                <TextBlock Text="{l:T ui_password_output_no_password}" Classes="secondary" FontSize="12" Margin="0,2,0,0" />
                                             </StackPanel>
                                         </StackPanel>
                                     </Border>
@@ -1166,11 +1163,14 @@
                                         <Grid ColumnDefinitions="Auto,*,Auto">
                                             <!-- Status Icon -->
                                             <Panel Grid.Column="0" Width="20" Height="20" Margin="0,0,12,0" VerticalAlignment="Center">
-                                                <!-- Same status icons as the history rows: gray ✓, red ✕ (spec 7). -->
-                                                <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding Succeeded}">
+                                                <!-- Same status icons as the history rows: gray ✓, lock for skipped, red ✕ for failed (spec 7). -->
+                                                <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding ShowSuccessIcon}">
                                                     <Canvas Width="24" Height="24"><Path Data="M5,12.5 L9.5,17 L19,7.5" Stroke="{DynamicResource Clk.TextTertiary}" /></Canvas>
                                                 </Viewbox>
-                                                <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding !Succeeded}">
+                                                <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding IsSkipped}">
+                                                    <Canvas Width="24" Height="24"><Path Data="M7,11 V8 A5,5 0 0 1 17,8 V11 M5,11 H19 V21 H5 Z" Stroke="{DynamicResource Clk.Warning}" /></Canvas>
+                                                </Viewbox>
+                                                <Viewbox Classes="ic" Width="20" Height="20" IsVisible="{Binding ShowFailedIcon}">
                                                     <Canvas Width="24" Height="24"><Path Data="M6,6 L18,18 M18,6 L6,18" Stroke="{DynamicResource Clk.Danger}" /></Canvas>
                                                 </Viewbox>
                                             </Panel>
@@ -1178,6 +1178,11 @@
                                                 <TextBlock Text="{Binding FileName}" FontSize="14" FontWeight="SemiBold" />
                                                 <TextBlock Text="{Binding DetailText}" Classes="secondary" FontSize="13" />
                                             </StackPanel>
+                                            <Button Grid.Column="2" Classes="secondary" Content="{l:T ui_result_rerun}"
+                                                    Command="{Binding $parent[UserControl].((vm:ConvertViewModel)DataContext).RerunSkipped}"
+                                                    CommandParameter="{Binding}"
+                                                    IsVisible="{Binding IsSkipped}"
+                                                    VerticalAlignment="Center" />
                                         </Grid>
                                     </Border>
                                 </DataTemplate>

@@ -1,4 +1,5 @@
 ﻿using Clickra.Core.Application;
+using Clickra.Core.Modules.Pdf.Decrypt.Application;
 using Clickra.Core.Modules.Pdf.Split.Processing;
 using PdfSharp.Pdf.IO;
 
@@ -36,7 +37,7 @@ public sealed class SplitPdfUseCase : PerFileConversionUseCaseBase
     }
 
     public override IReadOnlySet<ConversionCapability> Capabilities =>
-        new HashSet<ConversionCapability> { ConversionCapability.SplitPages };
+        new HashSet<ConversionCapability> { ConversionCapability.SplitPages, ConversionCapability.Password };
 
     protected override IReadOnlySet<ConversionCapability> GetCapabilities(ConversionRequest request)
     {
@@ -68,39 +69,34 @@ public sealed class SplitPdfUseCase : PerFileConversionUseCaseBase
         if (string.IsNullOrWhiteSpace(targetPages))
             throw new OperationCanceledException(cancellationToken);
 
-        string? initialPassword = plan.NormalizedOptions.TryGetValue("password", out var pwdObj) && pwdObj is string pwdStr
-            ? pwdStr
-            : null;
+        if (plan.NormalizedOptions.TryGetValue("password", out var pwdObj) && pwdObj is string pwdStr && !string.IsNullOrEmpty(pwdStr))
+        {
+            PasswordCache.Add(pwdStr);
+        }
 
-        await ExecuteWithPasswordRetryAsync(
+        using var unlock = await PdfUnlockStep.UnlockAsync(
             index,
-            plan,
+            plan.Inputs[index],
             interaction,
-            initialPassword,
-            async password =>
-            {
-                var processor = new PdfSplitProcessor();
-                var options = new Dictionary<string, object> { { "pages", targetPages } };
-                if (!string.IsNullOrEmpty(password))
-                {
-                    options["password"] = password;
-                }
+            PasswordCache,
+            cancellationToken).ConfigureAwait(false);
 
-                await Task.Run(
-                    () => processor.Process(
-                        new List<string> { plan.Inputs[index] },
-                        plan.Outputs[index],
-                        options,
-                        (current, total, message) =>
-                            ReportFileProgress(plan, index, progress, current, message),
-                        cancellationToken),
-                    cancellationToken);
-            },
-            IsPasswordError,
+        if (unlock.IsSkipped)
+        {
+            throw new ConversionFileSkippedException(ConversionSkipReason.NeedsPassword);
+        }
+
+        var processor = new PdfSplitProcessor();
+        var options = new Dictionary<string, object> { { "pages", targetPages } };
+
+        await Task.Run(
+            () => processor.Process(
+                new List<string> { unlock.EffectivePath },
+                plan.Outputs[index],
+                options,
+                (current, total, message) =>
+                    ReportFileProgress(plan, index, progress, current, message),
+                cancellationToken),
             cancellationToken);
     }
-
-    private static bool IsPasswordError(Exception ex) =>
-        ex is PdfReaderException &&
-        ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
 }

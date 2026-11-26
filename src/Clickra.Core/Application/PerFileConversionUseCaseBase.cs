@@ -77,12 +77,36 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
             TaskLifecycleRepository: request.TaskLifecycleRepository);
     }
 
+    private readonly AsyncLocal<ConversionPasswordCache?> _executionPasswordCache = new();
+
+    protected ConversionPasswordCache PasswordCache =>
+        _executionPasswordCache.Value ?? throw new InvalidOperationException("PasswordCache is only available during ExecuteAsync.");
+
     public override async Task<ConversionResult> ExecuteAsync(
         ConversionPlan plan,
         IConversionInteraction interaction,
         IProgress<ConversionProgress>? progress,
         IConversionExecutionObserver? observer = null,
         CancellationToken cancellationToken = default)
+    {
+        ConversionPasswordCache? previousCache = _executionPasswordCache.Value;
+        _executionPasswordCache.Value = new ConversionPasswordCache();
+        try
+        {
+            return await ExecuteWithPerExecutionCacheAsync(plan, interaction, progress, observer, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _executionPasswordCache.Value = previousCache;
+        }
+    }
+
+    private async Task<ConversionResult> ExecuteWithPerExecutionCacheAsync(
+        ConversionPlan plan,
+        IConversionInteraction interaction,
+        IProgress<ConversionProgress>? progress,
+        IConversionExecutionObserver? observer,
+        CancellationToken cancellationToken)
     {
         object? executionState = CreateExecutionState(plan);
         var (stopwatch, lifecycle) = StartExecution(
@@ -93,27 +117,76 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
             observer);
 
         int completedFiles = GetInitialCompletedFiles(plan);
+        var skippedFiles = new List<SkippedFileInfo>();
+        var successfulOutputs = new List<string>();
+
         return await ConversionLifecycleResultRunner.RunAsync(
             new ConversionLifecycleRunContext(
                 plan, stopwatch, lifecycle, string.Join(";", plan.Outputs), true, ClassifyFailure),
             async currentLifecycle =>
             {
-            for (int i = completedFiles; i < plan.Inputs.Count; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                currentLifecycle?.RecordFileStarting(i);
-                observer?.OnFileStarting(i);
-                await ExecuteFileAsync(
-                    i,
-                    plan,
-                    interaction,
-                    progress,
-                    executionState,
-                    cancellationToken);
-                completedFiles = i + 1;
-            }
+                for (int i = completedFiles; i < plan.Inputs.Count; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    currentLifecycle?.RecordFileStarting(i);
+                    observer?.OnFileStarting(i);
+                    try
+                    {
+                        await ExecuteFileAsync(
+                            i,
+                            plan,
+                            interaction,
+                            progress,
+                            executionState,
+                            cancellationToken);
+                        if (i < plan.Outputs.Count)
+                        {
+                            successfulOutputs.Add(plan.Outputs[i]);
+                        }
+                    }
+                    catch (ConversionFileSkippedException ex)
+                    {
+                        skippedFiles.Add(new SkippedFileInfo(plan.Inputs[i], ex.Reason));
+                    }
+                    completedFiles = i + 1;
+                }
+
+                ThrowIfAllFilesSkipped(skippedFiles, plan.Inputs.Count, plan.NormalizedOptions);
             },
-            () => completedFiles);
+            () => completedFiles,
+            () => skippedFiles,
+            () => successfulOutputs.Count > 0 || skippedFiles.Count == 0 ? successfulOutputs : plan.Outputs,
+            () => FormatSkippedHistoryReason(skippedFiles, plan.NormalizedOptions));
+    }
+
+    private static void ThrowIfAllFilesSkipped(
+        List<SkippedFileInfo> skippedFiles,
+        int totalInputs,
+        IReadOnlyDictionary<string, object>? options)
+    {
+        if (skippedFiles.Count != totalInputs) return;
+        string lang = ReadLanguage(options);
+        string errorKey = skippedFiles.All(s => s.Reason == ConversionSkipReason.NotEncrypted)
+            ? "pdf_not_encrypted"
+            : "core_pdf_all_files_need_password";
+        throw new InvalidOperationException(Localization.T(errorKey, lang));
+    }
+
+    private static string ReadLanguage(IReadOnlyDictionary<string, object>? options) =>
+        options is not null && options.TryGetValue(ConversionRequest.LanguageOptionKey, out object? value)
+            ? Convert.ToString(value) ?? ""
+            : "";
+
+    private static string? FormatSkippedHistoryReason(List<SkippedFileInfo> skippedFiles, IReadOnlyDictionary<string, object>? options)
+    {
+        if (skippedFiles.Count == 0) return null;
+        string lang = ReadLanguage(options);
+        int needsPasswordCount = skippedFiles.Count(s => s.Reason == ConversionSkipReason.NeedsPassword);
+        if (needsPasswordCount > 0)
+        {
+            return Localization.Format("core_history_reason_skipped_needs_password", lang, ("count", needsPasswordCount));
+        }
+        return Localization.T("pdf_not_encrypted", lang);
     }
 
     protected static void ReportFileProgress(
@@ -126,38 +199,4 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
             (index * 100) + current,
             plan.Inputs.Count * 100,
             message));
-
-    protected static async Task ExecuteWithPasswordRetryAsync(
-        int index,
-        ConversionPlan plan,
-        IConversionInteraction interaction,
-        string? initialPassword,
-        Func<string?, Task> executeAction,
-        Func<Exception, bool> isPasswordError,
-        CancellationToken cancellationToken)
-    {
-        string? password = initialPassword;
-        bool isRetry = false;
-        while (true)
-        {
-            try
-            {
-                await executeAction(password);
-                return;
-            }
-            // skipcq: CS-R1008
-            catch (Exception ex) when (isPasswordError(ex))
-            {
-                string? supplied = await interaction.RequestPasswordAsync(
-                    index,
-                    plan.Inputs[index],
-                    isRetry,
-                    cancellationToken);
-                if (supplied is null)
-                    throw new OperationCanceledException(cancellationToken);
-                password = supplied;
-                isRetry = true;
-            }
-        }
-    }
 }

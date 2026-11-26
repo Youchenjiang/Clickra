@@ -82,6 +82,9 @@ public sealed class PdfToImageUseCase : PerFileConversionUseCaseBase
         return normalized;
     }
 
+    public override IReadOnlySet<ConversionCapability> Capabilities =>
+        new HashSet<ConversionCapability> { ConversionCapability.Password };
+
     protected override async Task ExecuteFileAsync(
         int index,
         ConversionPlan plan,
@@ -90,39 +93,34 @@ public sealed class PdfToImageUseCase : PerFileConversionUseCaseBase
         object? executionState,
         CancellationToken cancellationToken)
     {
-        string? initialPassword = plan.NormalizedOptions.TryGetValue(PdfToImageOptions.PasswordOptionKey, out var pwdObj) && pwdObj is string pwdStr
-            ? pwdStr
-            : null;
+        if (plan.NormalizedOptions.TryGetValue(PdfToImageOptions.PasswordOptionKey, out var pwdObj) && pwdObj is string pwdStr && !string.IsNullOrEmpty(pwdStr))
+        {
+            PasswordCache.Add(pwdStr);
+        }
 
-        await ExecuteWithPasswordRetryAsync(
+        using var unlock = await PdfUnlockStep.UnlockAsync(
             index,
-            plan,
+            plan.Inputs[index],
             interaction,
-            initialPassword,
-            async password =>
-            {
-                var processor = new PdfToImageProcessor();
-                var options = new Dictionary<string, object>(plan.NormalizedOptions, StringComparer.Ordinal);
-                if (!string.IsNullOrEmpty(password))
-                {
-                    options[PdfToImageOptions.PasswordOptionKey] = password;
-                }
+            PasswordCache,
+            cancellationToken).ConfigureAwait(false);
 
-                await Task.Run(
-                    () => processor.Process(
-                        new List<string> { plan.Inputs[index] },
-                        plan.Outputs[index],
-                        options,
-                        (current, total, message) =>
-                            ReportFileProgress(plan, index, progress, current, message),
-                        cancellationToken),
-                    cancellationToken);
-            },
-            IsPasswordError,
+        if (unlock.IsSkipped)
+        {
+            throw new ConversionFileSkippedException(ConversionSkipReason.NeedsPassword);
+        }
+
+        var processor = new PdfToImageProcessor();
+        var options = new Dictionary<string, object>(plan.NormalizedOptions, StringComparer.Ordinal);
+
+        await Task.Run(
+            () => processor.Process(
+                new List<string> { unlock.EffectivePath },
+                plan.Outputs[index],
+                options,
+                (current, total, message) =>
+                    ReportFileProgress(plan, index, progress, current, message),
+                cancellationToken),
             cancellationToken);
     }
-
-    private static bool IsPasswordError(Exception ex) =>
-        ex is PdfEncryptedException ||
-        (ex is PdfReaderException readerEx && readerEx.Message.Contains("password", StringComparison.OrdinalIgnoreCase));
 }

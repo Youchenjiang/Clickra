@@ -24,6 +24,7 @@ internal static class StorageRuntime
         SettingsFilePath = Path.Combine(DataDirectory, "settings.conf");
         HistoryFilePath = Path.Combine(DataDirectory, HistoryFileName);
         TasksDirectory = Path.Combine(DataDirectory, "tasks");
+        UnlockTempDirectory = Path.Combine(DataDirectory, "temp", "unlock");
 
         try
         {
@@ -39,6 +40,7 @@ internal static class StorageRuntime
     internal static string SettingsFilePath { get; }
     internal static string HistoryFilePath { get; }
     internal static string TasksDirectory { get; }
+    internal static string UnlockTempDirectory { get; }
 
     internal static void RunWithMutex(Action action)
     {

@@ -17,15 +17,4 @@ public static class PdfEncryptionQuery
     /// <summary>True when the PDF cannot be opened without a password; false for one that only restricts printing
     /// or copying (it is still encrypted, see <see cref="IsEncrypted"/>).</summary>
     public static bool NeedsOpenPassword(string filePath) => PdfDecryptProcessor.NeedsOpenPassword(filePath);
-
-    public static ConversionValidationResult ValidateNotEncrypted(ConversionRequest request, string localizationKey)
-    {
-        if (request.InputFiles.Any(f => System.IO.File.Exists(f) && IsEncrypted(f)))
-        {
-            string lang = ExecutionLocalizationOptions.ReadLanguage(request.Options);
-            return ConversionValidationResult.Failure(Localization.T(localizationKey, lang));
-        }
-
-        return ConversionValidationResult.Success();
-    }
 }

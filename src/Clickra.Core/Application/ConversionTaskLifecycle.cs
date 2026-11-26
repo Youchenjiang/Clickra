@@ -128,8 +128,8 @@ public sealed class ConversionTaskLifecycle
         lifecycle.Delete();
     }
 
-    public void CompleteSuccess(string outputPath, string? endTime = null) =>
-        Complete(isSuccess: true, error: "", outputPath, endTime);
+    public void CompleteSuccess(string outputPath, string? endTime = null, string? reason = null) =>
+        Complete(isSuccess: true, error: reason ?? "", outputPath, endTime);
 
     public void CompleteFailure(string error, string outputPath, string? endTime = null) =>
         Complete(isSuccess: false, error, outputPath, endTime);
@@ -236,13 +236,20 @@ internal static class ConversionLifecycleResultRunner
     public static async Task<ConversionResult> RunAsync(
         ConversionLifecycleRunContext context,
         Func<ConversionTaskLifecycle?, Task> executeAsync,
-        Func<int> completedFiles)
+        Func<int> completedFiles,
+        Func<IReadOnlyList<SkippedFileInfo>>? skippedFiles = null,
+        Func<IReadOnlyList<string>>? effectiveOutputs = null,
+        Func<string?>? completionReason = null)
     {
         var (plan, stopwatch, lifecycle, outputRecord, parkOnSignal, classifyFailure) = context;
         try
         {
             await executeAsync(lifecycle);
-            lifecycle?.CompleteSuccess(outputRecord);
+            string? reason = completionReason?.Invoke();
+            if (string.IsNullOrEmpty(reason))
+                lifecycle?.CompleteSuccess(outputRecord);
+            else
+                lifecycle?.CompleteSuccess(outputRecord, reason: reason);
             stopwatch.Stop();
             return Result(ConversionResultStatus.Succeeded, null);
         }
@@ -274,11 +281,12 @@ internal static class ConversionLifecycleResultRunner
             ConversionFailureKind failureKind = ConversionFailureKind.None) =>
             new(
                 status,
-                plan.Outputs,
+                effectiveOutputs?.Invoke() ?? plan.Outputs,
                 error,
                 stopwatch.Elapsed,
                 completedFiles(),
                 lifecycle?.TaskId ?? "",
-                failureKind);
+                failureKind,
+                skippedFiles?.Invoke());
     }
 }

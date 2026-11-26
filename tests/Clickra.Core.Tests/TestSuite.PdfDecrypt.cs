@@ -331,16 +331,12 @@ static partial class TestSuite
             var compProcessor = new Clickra.Core.Modules.Pdf.Compression.Processing.PdfCompressionProcessor();
             var exComp = Assert.Throws<PdfEncryptedException>(() =>
                 compProcessor.Process(new List<string> { encryptedPath }, outCompress, compOptions));
-            Assert.True(exComp.Message.Contains(Localization.T("pdf_err_encrypted_compress", DecryptTestLanguage)),
-                "Expected localized compression encryption error.");
-            Assert.True(exComp.ResourceKey == "pdf_err_encrypted_compress", "Expected resource key match.");
+            Assert.True(exComp.ResourceKey == "PdfEncrypted", "Expected resource key match.");
 
             var mergeProcessor = new Clickra.Core.Modules.Pdf.Merge.Processing.PdfMergeProcessor();
             var exMerge = Assert.Throws<PdfEncryptedException>(() =>
                 mergeProcessor.Process(new List<string> { encryptedPath }, outMerge, compOptions));
-            Assert.True(exMerge.Message.Contains(Localization.T("pdf_err_encrypted_merge", DecryptTestLanguage)),
-                "Expected localized merge encryption error.");
-            Assert.True(exMerge.ResourceKey == "pdf_err_encrypted_merge", "Expected resource key match.");
+            Assert.True(exMerge.ResourceKey == "PdfEncrypted", "Expected resource key match.");
 
             var transOptions = new Dictionary<string, object>
             {
@@ -350,25 +346,20 @@ static partial class TestSuite
             var transProcessor = new Clickra.Core.Modules.Pdf.Translation.Processing.PdfTranslateProcessor();
             var exTrans = Assert.Throws<PdfEncryptedException>(() =>
                 transProcessor.Process(new List<string> { encryptedPath }, outTranslate, transOptions));
-            Assert.True(exTrans.Message.Contains(Localization.T("pdf_err_encrypted_translate", DecryptTestLanguage)),
-                "Expected localized translation encryption error.");
-            Assert.True(exTrans.ResourceKey == "pdf_err_encrypted_translate", "Expected resource key match.");
+            Assert.True(exTrans.ResourceKey == "PdfEncrypted", "Expected resource key match.");
 
-            // Test Preflight Validate on UseCases
+            // Test Preflight Validate on UseCases - planning phase no longer blocks encrypted files
             var compUseCase = new Clickra.Core.Modules.Pdf.Compression.Application.CompressPdfUseCase();
             var compVal = compUseCase.Validate(new ConversionRequest("compress-pdf", new[] { encryptedPath }, compOptions));
-            Assert.False(compVal.IsValid, "Expected compress preflight to fail on encrypted file.");
-            Assert.True(compVal.Error == Localization.T("pdf_err_encrypted_compress", DecryptTestLanguage), "Expected localized compress preflight error.");
+            Assert.True(compVal.IsValid, "Expected compress preflight to succeed (unlock deferred to execution).");
 
             var mergeUseCase = new Clickra.Core.Modules.Pdf.Merge.Application.MergePdfUseCase();
             var mergeVal = mergeUseCase.Validate(new ConversionRequest("merge-pdf", new[] { encryptedPath, encryptedPath }, compOptions));
-            Assert.False(mergeVal.IsValid, "Expected merge preflight to fail on encrypted file.");
-            Assert.True(mergeVal.Error == Localization.T("pdf_err_encrypted_merge", DecryptTestLanguage), "Expected localized merge preflight error.");
+            Assert.True(mergeVal.IsValid, "Expected merge preflight to succeed (unlock deferred to execution).");
 
             var transUseCase = new Clickra.Core.Modules.Pdf.Translation.Application.TranslatePdfUseCase();
             var transVal = transUseCase.Validate(new ConversionRequest("translate-pdf", new[] { encryptedPath }, transOptions));
-            Assert.False(transVal.IsValid, "Expected translate preflight to fail on encrypted file.");
-            Assert.True(transVal.Error == Localization.T("pdf_err_encrypted_translate", DecryptTestLanguage), "Expected localized translate preflight error.");
+            Assert.True(transVal.IsValid, "Expected translate preflight to succeed (unlock deferred to execution).");
         }
         finally
         {

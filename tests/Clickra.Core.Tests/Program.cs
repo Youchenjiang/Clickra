@@ -60,6 +60,7 @@ TestSuite.RegisterBatchRenameTests(runner);
 TestSuite.RegisterVisualSplitterParityTests(runner);
 TestSuite.RegisterVisualSplitterLayoutTests(runner);
 TestSuite.RegisterPdfDecryptTests(runner);
+TestSuite.RegisterPdfUnlockStepTests(runner);
 TestSuite.RegisterTaskQueueTests(runner);
 TestSuite.RegisterConversionWorkspaceStateTests(runner);
 TestSuite.RegisterUseCaseSettingsInjectionTests(runner);

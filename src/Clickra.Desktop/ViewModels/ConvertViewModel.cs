@@ -41,7 +41,7 @@ public sealed class FileItemViewModel(string path) : ViewModelBase
     private string _passwordInput = "";
     private string _passwordError = "";
     private string _unlockText = Strings.T("ui_password_unlock_and_continue");
-    private System.Threading.Tasks.TaskCompletionSource<string?>? _passwordWait;
+    private System.Threading.Tasks.TaskCompletionSource<PasswordPromptResult>? _passwordWait;
 
     public string StatusText { get => _status; set { _status = value; OnPropertyChanged(); } }
     public bool NeedsPassword { get => _needsPassword; private set { _needsPassword = value; OnPropertyChanged(); } }
@@ -50,11 +50,11 @@ public sealed class FileItemViewModel(string path) : ViewModelBase
     public bool HasPasswordError => _passwordError.Length > 0;
     public string UnlockText { get => _unlockText; private set { _unlockText = value; OnPropertyChanged(); } }
 
-    /// <summary>Shows the password field on this row and waits for 解鎖 or 略過.</summary>
-    public System.Threading.Tasks.Task<string?> AskPasswordAsync(bool wrong, string unlockText)
+    /// <summary>Shows the password field on this row and waits for 解鎖, 略過, or 停止.</summary>
+    public System.Threading.Tasks.Task<PasswordPromptResult> AskPasswordAsync(bool wrong, string unlockText)
     {
-        _passwordWait?.TrySetResult(null);
-        _passwordWait = new System.Threading.Tasks.TaskCompletionSource<string?>();
+        _passwordWait?.TrySetResult(PasswordPromptResult.Skip);
+        _passwordWait = new System.Threading.Tasks.TaskCompletionSource<PasswordPromptResult>();
         UnlockText = unlockText;
         PasswordError = wrong ? Strings.T("ui_password_wrong_password_try_again") : "";
         PasswordInput = "";
@@ -68,14 +68,21 @@ public sealed class FileItemViewModel(string path) : ViewModelBase
         if (_passwordInput.Length == 0) return;
         NeedsPassword = false;
         StatusText = Strings.T("ui_run_processing");
-        _passwordWait?.TrySetResult(_passwordInput);
+        _passwordWait?.TrySetResult(PasswordPromptResult.FromPassword(_passwordInput));
     }
 
     public void SkipPassword()
     {
         NeedsPassword = false;
+        StatusText = Strings.T("ui_result_skipped_needs_password");
+        _passwordWait?.TrySetResult(PasswordPromptResult.Skip);
+    }
+
+    public void CancelAll()
+    {
+        NeedsPassword = false;
         StatusText = Strings.T("ui_run_stopped_2");
-        _passwordWait?.TrySetResult(null);
+        _passwordWait?.TrySetResult(PasswordPromptResult.Cancel);
     }
 
     public string FileSizeText
@@ -111,13 +118,9 @@ public sealed class ActionItemViewModel : ViewModelBase
     /// <summary>Official feature icon from assets/features (Assets/FeatureIcons.axaml).</summary>
     public Avalonia.Media.IImage? Icon => FeatureIcons.Get(Command);
 
-    private bool _needsDecryptFirst;
     private bool _isSuggested;
-    /// <summary>Core refuses PDFs with a password or print/copy restrictions for this action (spec 4.1): the card
-    /// stays in place, disabled, and its tooltip says why.</summary>
-    public bool NeedsDecryptFirst { get => _needsDecryptFirst; set { _needsDecryptFirst = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsAvailable)); OnPropertyChanged(nameof(CardTip)); } }
-    public string CardTip => _needsDecryptFirst ? Strings.F("ui_catalog_decrypt_before", ("action", Name)) : ToolTip;
-    public bool IsAvailable => !_needsDecryptFirst;
+    public string CardTip => ToolTip;
+    public static bool IsAvailable => true;
     /// <summary>解密 when some files are protected: first and outlined.</summary>
     public bool IsSuggested { get => _isSuggested; set { _isSuggested = value; OnPropertyChanged(); } }
 
@@ -146,16 +149,21 @@ public sealed class ExecutionResultItemViewModel : ViewModelBase
     public string FullPath { get; }
     public bool Succeeded { get; set; }
     public bool NeedsPassword { get; set; }
+    public bool IsSkipped { get; set; }
     public string DetailText { get; set; }
     public string PasswordInput { get; set; } = "";
 
-    public ExecutionResultItemViewModel(string path, bool succeeded, string detail = "", bool needsPassword = false)
+    public bool ShowSuccessIcon => Succeeded && !IsSkipped;
+    public bool ShowFailedIcon => !Succeeded && !IsSkipped;
+
+    public ExecutionResultItemViewModel(string path, bool succeeded, string detail = "", bool needsPassword = false, bool isSkipped = false)
     {
         FullPath = path;
         FileName = System.IO.Path.GetFileName(path);
         Succeeded = succeeded;
         DetailText = detail;
         NeedsPassword = needsPassword;
+        IsSkipped = isSkipped;
     }
 }
 
@@ -195,7 +203,6 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     private bool _pauseRequested;
     private bool _fileStepsReported;
     private int _parkedAt;
-    private string? _lastPassword;
 
     public event EventHandler? Changed;
     public event EventHandler? Finished;
@@ -657,13 +664,10 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
 
         _runningTaskId = existingTaskId;
         _runningIndex = resumeStartIndex;
-        var decryptFiles = SelectedAction.Command == DecryptCommand && HasProtectedPdf
-            ? GetProtectedFiles().Select(f => f.Path).ToHashSet(StringComparer.OrdinalIgnoreCase)
-            : null;
-        _runningTotal = decryptFiles?.Count ?? SelectedFiles.Count;
+        var files = (IsOrderAction ? Order.GetOrderedFiles() : SelectedFiles.Select(f => f.Path)).ToArray();
+        _runningTotal = files.Length;
         _pauseRequested = false;
         _fileStepsReported = false;
-        _lastPassword = null;
         State = ConvertWorkflowState.Executing;
         ProgressPercent = 0;
         ProgressMessage = Strings.T("ui_run_preparing");
@@ -671,9 +675,6 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
 
         _conversionCts = new CancellationTokenSource();
         var controller = new ConversionExecutionController();
-        var files = (IsOrderAction ? Order.GetOrderedFiles() : SelectedFiles.Select(f => f.Path))
-            .Where(f => decryptFiles is null || decryptFiles.Contains(f))
-            .ToArray();
         MarkFileSteps(files, resumeStartIndex);
 
         var (command, options, renamed) = ResolveExecutionParameters(SelectedAction.Command);
@@ -687,7 +688,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             var callbacks = CreateExecutionCallbacks(files, resumeStartIndex);
             var result = await Task.Run(() => controller.ExecutePreparedAsync(callbacks, progress, _conversionCts.Token), _conversionCts.Token);
 
-            HandleExecutionResult(result, files, plannedOutputs, renamed, decryptFiles, resumeStartIndex);
+            HandleExecutionResult(result, files, plannedOutputs, renamed, resumeStartIndex);
         }
         catch (OperationCanceledException)
         {
@@ -753,7 +754,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     private ConversionExecutionCallbacks CreateExecutionCallbacks(string[] files, int resumeStartIndex)
     {
         return new ConversionExecutionCallbacks(
-            PasswordPrompt: async (index, file, isWrong, ct) => await PromptPasswordAsync(index, file, isWrong, ct),
+            PasswordResultPrompt: async (index, file, isWrong, ct) => await PromptPasswordResultAsync(index, file, isWrong, ct),
             TaskStarted: taskId => Dispatcher.UIThread.Post(() =>
             {
                 _runningTaskId = taskId;
@@ -776,25 +777,23 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             });
     }
 
-    private async Task<string?> PromptPasswordAsync(int index, string file, bool isWrong, CancellationToken ct)
+    private async Task<PasswordPromptResult> PromptPasswordResultAsync(int index, string file, bool isWrong, CancellationToken ct)
     {
-        if (!isWrong && _lastPassword is { } known) return known;
         string unlock = SelectedAction is null
             ? Strings.T("ui_password_unlock_and_continue")
             : Strings.F("ui_password_unlock_and_action", ("action", SelectedAction.Name));
         using (ct.Register(() => Dispatcher.UIThread.Post(() =>
         {
-            foreach (FileItemViewModel f in SelectedFiles.Where(f => f.NeedsPassword)) f.SkipPassword();
+            foreach (FileItemViewModel f in SelectedFiles.Where(f => f.NeedsPassword)) f.CancelAll();
         })))
         {
-            string? password = await Dispatcher.UIThread.InvokeAsync(() =>
+            PasswordPromptResult promptResult = await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 FileItemViewModel? row = SelectedFiles.FirstOrDefault(f => string.Equals(f.Path, file, StringComparison.OrdinalIgnoreCase))
                                          ?? (index >= 0 && index < SelectedFiles.Count ? SelectedFiles[index] : null);
-                return row is null ? Task.FromResult<string?>(null) : row.AskPasswordAsync(isWrong, unlock);
+                return row is null ? Task.FromResult(PasswordPromptResult.Skip) : row.AskPasswordAsync(isWrong, unlock);
             });
-            if (password is not null) _lastPassword = password;
-            return password;
+            return promptResult;
         }
     }
 
@@ -803,7 +802,6 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         string[] files,
         IReadOnlyList<string> plannedOutputs,
         Dictionary<string, string>? renamed,
-        HashSet<string>? decryptFiles,
         int resumeStartIndex)
     {
         if (result.Status == ConversionExecutionPresentationStatus.Canceled)
@@ -824,11 +822,6 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
 
         State = ConvertWorkflowState.Completed;
         ShowResults(result, files, plannedOutputs, renamed);
-        if (decryptFiles is not null)
-        {
-            foreach (FileItemViewModel f in SelectedFiles.Where(f => !decryptFiles.Contains(f.Path)))
-                ResultItems.Add(new ExecutionResultItemViewModel(f.Path, true, Strings.T("ui_result_no_password_or_restrictions_skipped")));
-        }
     }
 
     /// <summary>Shows each row's step by its place in the run (merge runs in the workspace order, 解密 skips files
@@ -865,23 +858,86 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             return;
         }
 
+        var skippedMap = result.SkippedFiles.ToDictionary(s => s.Path, s => s, StringComparer.OrdinalIgnoreCase);
+        int succeeded = AppendProcessedResults(result, files, plannedOutputs, skippedMap, error);
+        int skipped = AppendSkippedResults(files, skippedMap);
+        int failed = files.Count - succeeded - skipped;
+
+        ResultSummary = FormatResultSummary(files.Count, succeeded, skipped, failed);
+    }
+
+    private int AppendProcessedResults(
+        ConversionExecutionPresentationResult result,
+        IReadOnlyList<string> files,
+        IReadOnlyList<string> plannedOutputs,
+        Dictionary<string, SkippedFileInfo> skippedMap,
+        string error)
+    {
         bool ok = result.Status == ConversionExecutionPresentationStatus.Succeeded;
         bool perFile = plannedOutputs.Count == files.Count;
         int succeeded = 0;
+
         for (int i = 0; i < files.Count; i++)
         {
             string file = files[i];
-            if (ResultItems.Any(r => string.Equals(r.FullPath, file, StringComparison.OrdinalIgnoreCase))) continue;
+            if (skippedMap.ContainsKey(file) || HasResultItem(file)) continue;
+
             bool fileOk = ok || (perFile && File.Exists(plannedOutputs[i]) && result.Outputs.Contains(plannedOutputs[i], StringComparer.OrdinalIgnoreCase));
-            if (fileOk) succeeded++;
-            string fallback = error.Length > 0 ? error : Strings.T("ui_result_not_completed");
-            string detail = fileOk ? Strings.T("ui_result_done") : fallback;
-            ResultItems.Add(new ExecutionResultItemViewModel(file, fileOk, detail));
+            if (fileOk)
+            {
+                succeeded++;
+                bool hadPassword = ProtectionOf(file) == PdfProtection.OpenPassword;
+                string detail = hadPassword ? Strings.T("ui_result_completed_no_password") : Strings.T("ui_result_done");
+                ResultItems.Add(new ExecutionResultItemViewModel(file, true, detail));
+            }
+            else
+            {
+                string fallback = error.Length > 0 ? error : Strings.T("ui_result_not_completed");
+                ResultItems.Add(new ExecutionResultItemViewModel(file, false, fallback));
+            }
         }
-        int failed = files.Count - succeeded;
-        ResultSummary = ok && failed == 0
-            ? Strings.Count("ui_result_done_count", files.Count)
-            : Strings.F("ui_result_done_some_failed", ("done", succeeded), ("failed", failed));
+
+        return succeeded;
+    }
+
+    private int AppendSkippedResults(
+        IReadOnlyList<string> files,
+        Dictionary<string, SkippedFileInfo> skippedMap)
+    {
+        int skipped = 0;
+        for (int i = 0; i < files.Count; i++)
+        {
+            string file = files[i];
+            if (!skippedMap.TryGetValue(file, out SkippedFileInfo skipInfo) || HasResultItem(file)) continue;
+
+            skipped++;
+            string detail = skipInfo.Reason == ConversionSkipReason.NotEncrypted
+                ? Strings.T("pdf_not_encrypted")
+                : Strings.T("ui_result_skipped_needs_password");
+            bool isPasswordSkip = skipInfo.Reason != ConversionSkipReason.NotEncrypted;
+            ResultItems.Add(new ExecutionResultItemViewModel(file, false, detail, needsPassword: isPasswordSkip, isSkipped: true));
+        }
+        return skipped;
+    }
+
+    private bool HasResultItem(string file) =>
+        ResultItems.Any(r => string.Equals(r.FullPath, file, StringComparison.OrdinalIgnoreCase));
+
+    private static string FormatResultSummary(int totalFiles, int succeeded, int skipped, int failed)
+    {
+        if (succeeded == 0 && skipped > 0 && failed == 0)
+        {
+            return Strings.T("core_pdf_all_files_need_password");
+        }
+        if (skipped > 0)
+        {
+            return Strings.F("ui_result_summary_done_and_skipped", ("done", succeeded), ("skipped", skipped));
+        }
+        if (failed > 0)
+        {
+            return Strings.F("ui_result_done_some_failed", ("done", succeeded), ("failed", failed));
+        }
+        return Strings.Count("ui_result_done_count", totalFiles);
     }
 
     private void ShowRenameResults(ConversionExecutionPresentationResult result, Dictionary<string, string> renamed, string error)
@@ -916,6 +972,17 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         SelectAction(action);
         Options.SetImageFormatFromCommand(command); // after SelectAction, which loads the defaults
         return true;
+    }
+
+    public void RerunSkipped(ExecutionResultItemViewModel? item = null)
+    {
+        if (SelectedAction is null) return;
+        List<string> rerunFiles = ResultItems.Where(r => r.IsSkipped).Select(r => r.FullPath).Distinct().ToList();
+        if (rerunFiles.Count == 0 && item is not null) rerunFiles.Add(item.FullPath);
+        if (rerunFiles.Count > 0)
+        {
+            PrepareRerun(SelectedAction.Command, rerunFiles);
+        }
     }
 
     /// <summary>▶ 繼續: runs a parked task again from the first file that was not done.</summary>
@@ -1026,12 +1093,11 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
                 AvailableActions.Insert(0, decrypt);
             }
         }
-        foreach (ActionItemViewModel action in AvailableActions)
-            action.NeedsDecryptFirst = HasProtectedPdf && NeedsUnprotectedInput(action.Command);
 
         OnPropertyChanged(nameof(OnlyRename));
         OnPropertyChanged(nameof(OnlyRenameText));
         OnPropertyChanged(nameof(HasProtectedPdf));
+        OnPropertyChanged(nameof(HasProtectedPdfNotice));
         OnPropertyChanged(nameof(ProtectedPdfText));
     }
 
@@ -1041,11 +1107,6 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     private enum PdfProtection { None, Restricted, OpenPassword }
     private readonly Dictionary<string, PdfProtection> _protection = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _protectionCts;
-
-    /// <summary>Core refuses protected PDFs for these (they need the file's content unlocked first); split and
-    /// PDF → image ask for the password while running, so they stay available.</summary>
-    private static bool NeedsUnprotectedInput(string command) =>
-        command is "merge-pdf" or "compress-pdf" or "translate-pdf" or PrintPdfCommand;
 
     private PdfProtection ProtectionOf(string path) =>
         _protection.TryGetValue(path, out PdfProtection value) ? value : PdfProtection.None;
@@ -1058,25 +1119,22 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     /// <summary>Some files need their open password typed on the decrypt card; restricted ones need none.</summary>
     public bool ProtectedNeedsPassword => SelectedFiles.Any(f => ProtectionOf(f.Path) == PdfProtection.OpenPassword);
 
-    /// <summary>One sentence above the cards: what is protected and what has to wait for 解密.</summary>
+    public bool HasProtectedPdfNotice => ProtectedPdfText.Length > 0;
+
+    /// <summary>One sentence above the cards: what is protected.</summary>
     public string ProtectedPdfText => BuildProtectedPdfText();
 
     private string BuildProtectedPdfText()
     {
-        List<FileItemViewModel> files = GetProtectedFiles();
-        if (files.Count == 0) return "";
-        bool open = files.Any(f => ProtectionOf(f.Path) == PdfProtection.OpenPassword);
-        bool onlyRestricted = !open;
-        if (SelectedFiles.Count == 1)
+        var openFiles = SelectedFiles.Where(f => ProtectionOf(f.Path) == PdfProtection.OpenPassword).ToList();
+        if (openFiles.Count == 0) return "";
+        if (openFiles.Count == 1)
         {
-            return Strings.T(onlyRestricted ? "ui_notice_protected_one_restricted" : "ui_notice_protected_one_password");
+            return Strings.T("ui_notice_protected_one_password");
         }
-        if (files.Count == SelectedFiles.Count)
-            return Strings.F("ui_notice_protected_all", ("count", files.Count));
         return Strings.F("ui_notice_protected_some",
-            ("total", SelectedFiles.Count),
-            ("count", files.Count),
-            ("names", Strings.ShortList(files.Select(f => f.Name).ToList())));
+            ("count", openFiles.Count),
+            ("names", Strings.ShortList(openFiles.Select(f => f.Name).ToList())));
     }
 
     /// <summary>「先解密」 in the note above the cards.</summary>

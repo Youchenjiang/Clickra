@@ -23,7 +23,7 @@ public sealed class PrintPdfUseCase : PerFileConversionUseCaseBase
 
     public override string Command => CommandName;
     public override IReadOnlySet<ConversionCapability> Capabilities =>
-        new HashSet<ConversionCapability> { ConversionCapability.PrintOptions };
+        new HashSet<ConversionCapability> { ConversionCapability.PrintOptions, ConversionCapability.Password };
     protected override string UseCaseName => nameof(PrintPdfUseCase);
     protected override string InputRequirementError => "At least one PDF file is required.";
     protected override string OutputCountError => "PDF print requires one job per input.";
@@ -51,9 +51,6 @@ public sealed class PrintPdfUseCase : PerFileConversionUseCaseBase
 
     protected override string GetOutputFileName(string input) =>
         Path.GetFileNameWithoutExtension(input) + ".printed";
-
-    protected override ConversionValidationResult ValidateInputs(ConversionRequest request) =>
-        PdfEncryptionQuery.ValidateNotEncrypted(request, "pdf_err_encrypted_print");
 
     protected override ConversionValidationResult ValidateOptions(ConversionRequest request)
     {
@@ -120,9 +117,21 @@ public sealed class PrintPdfUseCase : PerFileConversionUseCaseBase
         var printOptions = (PrintPdfOptions?)executionState
             ?? PrintPdfOptions.FromDictionary(plan.NormalizedOptions);
 
+        using var unlock = await PdfUnlockStep.UnlockAsync(
+            index,
+            plan.Inputs[index],
+            interaction,
+            PasswordCache,
+            cancellationToken).ConfigureAwait(false);
+
+        if (unlock.IsSkipped)
+        {
+            throw new ConversionFileSkippedException(ConversionSkipReason.NeedsPassword);
+        }
+
         await Task.Run(
             () => PdfPrintProcessor.Print(
-                plan.Inputs[index],
+                unlock.EffectivePath,
                 printOptions,
                 (current, total, message) =>
                     ReportFileProgress(plan, index, progress, current, message),

@@ -47,8 +47,7 @@ public class PdfMergeProcessor : MultiFileProcessorBase
         }
         catch (PdfReaderException ex) when (ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("encrypted", StringComparison.OrdinalIgnoreCase))
         {
-            string lang = ExecutionLocalizationOptions.ReadLanguage(options);
-            throw new PdfEncryptedException("pdf_err_encrypted_merge", filePath, Localization.T("pdf_err_encrypted_merge", lang), ex);
+            throw new PdfEncryptedException("PdfEncrypted", filePath, innerException: ex);
         }
         using (inDoc)
         for (int j = 0; j < inDoc.PageCount; j++)

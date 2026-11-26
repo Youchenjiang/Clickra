@@ -10,6 +10,21 @@ public abstract class ConversionUseCaseBase : IConversionUseCase
     public virtual IReadOnlySet<ConversionCapability> Capabilities => new HashSet<ConversionCapability>();
     public virtual bool GeneratesHistoryTask => true;
     public virtual bool AcceptsAllFileExtensions => false;
+    public virtual RequiredInputType InputRequirement
+    {
+        get
+        {
+            if (Capabilities.Contains(ConversionCapability.SplitPages))
+                return RequiredInputType.PageRange;
+            if (Capabilities.Contains(ConversionCapability.MarkdownOptions) ||
+                Capabilities.Contains(ConversionCapability.PrintOptions) ||
+                Capabilities.Contains(ConversionCapability.BatchRename))
+            {
+                return RequiredInputType.CustomOptions;
+            }
+            return RequiredInputType.None;
+        }
+    }
 
     protected abstract string UseCaseName { get; }
 

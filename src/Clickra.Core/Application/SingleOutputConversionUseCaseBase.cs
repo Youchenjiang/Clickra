@@ -48,10 +48,18 @@ public abstract class SingleOutputConversionUseCaseBase : ConversionUseCaseBase
     {
     }
 
-    protected abstract Task ExecuteSingleAsync(
+    protected virtual Task ExecuteSingleAsync(
         ConversionPlan plan,
         IProgress<ConversionProgress>? progress,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken) => Task.CompletedTask;
+
+    protected virtual Task ExecuteSingleAsync(
+        ConversionPlan plan,
+        IConversionInteraction interaction,
+        IProgress<ConversionProgress>? progress,
+        List<SkippedFileInfo> skippedFiles,
+        CancellationToken cancellationToken) =>
+        ExecuteSingleAsync(plan, progress, cancellationToken);
 
     public override ConversionPlan Plan(ConversionRequest request)
     {
@@ -93,15 +101,32 @@ public abstract class SingleOutputConversionUseCaseBase : ConversionUseCaseBase
             observer);
 
         int completedFiles = 0;
+        var skippedFiles = new List<SkippedFileInfo>();
+
         return await ConversionLifecycleResultRunner.RunAsync(
             new ConversionLifecycleRunContext(
                 plan, stopwatch, lifecycle, plan.Outputs[0], true),
             async _ =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                await ExecuteSingleAsync(plan, progress, cancellationToken);
+                await ExecuteSingleAsync(plan, interaction, progress, skippedFiles, cancellationToken);
                 completedFiles = plan.Inputs.Count;
             },
-            () => completedFiles);
+            () => completedFiles,
+            () => skippedFiles,
+            effectiveOutputs: () => plan.Outputs,
+            completionReason: () => FormatSkippedHistoryReason(skippedFiles, plan.NormalizedOptions));
+    }
+
+    private static string ReadLanguage(IReadOnlyDictionary<string, object>? options) =>
+        options is not null && options.TryGetValue(ConversionRequest.LanguageOptionKey, out object? value)
+            ? Convert.ToString(value) ?? ""
+            : "";
+
+    private static string? FormatSkippedHistoryReason(List<SkippedFileInfo> skippedFiles, IReadOnlyDictionary<string, object>? options)
+    {
+        if (skippedFiles.Count == 0) return null;
+        string lang = ReadLanguage(options);
+        return Localization.Format("core_history_reason_skipped_needs_password", lang, ("count", skippedFiles.Count));
     }
 }

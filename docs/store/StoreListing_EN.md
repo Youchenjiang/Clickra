@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.22.8.0.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.22.9.0.
 
 ---
 
@@ -15,7 +15,7 @@ Core document operations run completely offline on your local PC to keep your da
 Source Code: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- Desktop Print Preview Workspace: real-time vector sheet layout, N-up tiling, scaling, color modes, multi-file sheet preview, and total paper usage calculation.
+- In-place PDF password unlock: compress, merge, translate, print, split, and image export now support in-place unlock and per-file skipping; unencrypted files are no longer blocked in batch, and context menu actions skip password-protected files quietly.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*

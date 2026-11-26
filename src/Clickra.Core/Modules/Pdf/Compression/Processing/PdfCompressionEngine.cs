@@ -58,7 +58,7 @@ public sealed class NativePdfCompressionEngine : IPdfCompressionEngine
             string language = ExecutionLocalizationOptions.ReadLanguage(options);
 
             onProgress?.Invoke(15, 100, ExecutionLocalizationOptions.Text(language, "core_progress_reading_pdf"));
-            using var source = OpenSourceDocument(inputPath, options);
+            using var source = OpenSourceDocument(inputPath);
             using var output = new PdfDocument();
 
             CopyDocumentInfo(source, output, settings.Level);
@@ -161,7 +161,7 @@ public sealed class NativePdfCompressionEngine : IPdfCompressionEngine
         return $"{valueStr} {units[unitIndex]}";
     }
 
-    private static PdfDocument OpenSourceDocument(string inputPath, Dictionary<string, object>? options)
+    private static PdfDocument OpenSourceDocument(string inputPath)
     {
         try
         {
@@ -169,8 +169,7 @@ public sealed class NativePdfCompressionEngine : IPdfCompressionEngine
         }
         catch (PdfReaderException ex) when (ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("encrypted", StringComparison.OrdinalIgnoreCase))
         {
-            string lang = ExecutionLocalizationOptions.ReadLanguage(options);
-            throw new PdfEncryptedException("pdf_err_encrypted_compress", inputPath, Localization.T("pdf_err_encrypted_compress", lang), ex);
+            throw new PdfEncryptedException("PdfEncrypted", inputPath, innerException: ex);
         }
     }
 }

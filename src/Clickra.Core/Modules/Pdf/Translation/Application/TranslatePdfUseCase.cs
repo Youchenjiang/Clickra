@@ -19,7 +19,7 @@ public sealed class TranslatePdfUseCase : PerFileConversionUseCaseBase
     public override string Command => CommandName;
 
     public override IReadOnlySet<ConversionCapability> Capabilities { get; } =
-        new HashSet<ConversionCapability> { ConversionCapability.Translation };
+        new HashSet<ConversionCapability> { ConversionCapability.Translation, ConversionCapability.Password };
 
     protected override string UseCaseName => nameof(TranslatePdfUseCase);
 
@@ -33,9 +33,6 @@ public sealed class TranslatePdfUseCase : PerFileConversionUseCaseBase
 
     protected override string GetOutputFileName(string input) =>
         Path.GetFileNameWithoutExtension(input) + "_translated.pdf";
-
-    protected override ConversionValidationResult ValidateInputs(ConversionRequest request) =>
-        PdfEncryptionQuery.ValidateNotEncrypted(request, "pdf_err_encrypted_translate");
 
     protected override ConversionValidationResult ValidateOptions(ConversionRequest request)
     {
@@ -105,7 +102,7 @@ public sealed class TranslatePdfUseCase : PerFileConversionUseCaseBase
         return new TranslationExecutionState(targetLanguage, uiLanguage, dataDirectory);
     }
 
-    protected override Task ExecuteFileAsync(
+    protected override async Task ExecuteFileAsync(
         int index,
         ConversionPlan plan,
         IConversionInteraction interaction,
@@ -114,6 +111,19 @@ public sealed class TranslatePdfUseCase : PerFileConversionUseCaseBase
         CancellationToken cancellationToken)
     {
         var state = (TranslationExecutionState)executionState!;
+
+        using var unlock = await PdfUnlockStep.UnlockAsync(
+            index,
+            plan.Inputs[index],
+            interaction,
+            PasswordCache,
+            cancellationToken).ConfigureAwait(false);
+
+        if (unlock.IsSkipped)
+        {
+            throw new ConversionFileSkippedException(ConversionSkipReason.NeedsPassword);
+        }
+
         var processor = new PdfTranslateProcessor();
         var options = new Dictionary<string, object>
         {
@@ -121,9 +131,9 @@ public sealed class TranslatePdfUseCase : PerFileConversionUseCaseBase
             [ExecutionLocalizationOptions.LanguageKey] = state.UiLanguage,
             [ProcessorExecutionOptions.DataDirectoryKey] = state.DataDirectory
         };
-        return Task.Run(
+        await Task.Run(
             () => processor.Process(
-                new List<string> { plan.Inputs[index] },
+                new List<string> { unlock.EffectivePath },
                 plan.Outputs[index],
                 options,
                 (current, _, message) => ReportFileProgress(plan, index, progress, current, message),

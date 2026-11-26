@@ -73,7 +73,7 @@ public static class PdfTranslationPipeline
             CancellationToken operationToken = deadlineCts.Token;
 
             onProgress?.Invoke(10, 100, Localization.T("pdf_progress_analyzing", language));
-            using var pigDoc = OpenPigDocument(inputPath, language);
+            using var pigDoc = OpenPigDocument(inputPath);
             sourcePages = pigDoc.NumberOfPages;
             var pageParagraphs = new List<List<PdfParagraph>>();
 
@@ -265,20 +265,19 @@ public static class PdfTranslationPipeline
     private static bool IsLikelyBarChartAxisLabel(PdfParagraph para) =>
         PdfChartLabelClassifier.IsLikelyBarChartAxisLabel(para);
 
-    private static UglyToad.PdfPig.PdfDocument OpenPigDocument(string inputPath, string language)
+    private static UglyToad.PdfPig.PdfDocument OpenPigDocument(string inputPath)
     {
-        const string encryptedTranslateErrorKey = "pdf_err_encrypted_translate";
         try
         {
             return UglyToad.PdfPig.PdfDocument.Open(inputPath);
         }
         catch (UglyToad.PdfPig.Exceptions.PdfDocumentEncryptedException ex)
         {
-            throw new PdfEncryptedException(encryptedTranslateErrorKey, inputPath, Localization.T(encryptedTranslateErrorKey, language), ex);
+            throw new PdfEncryptedException("PdfEncrypted", inputPath, innerException: ex);
         }
         catch (Exception ex) when (ex is not PdfEncryptedException && (ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("encrypted", StringComparison.OrdinalIgnoreCase)))
         {
-            throw new PdfEncryptedException(encryptedTranslateErrorKey, inputPath, Localization.T(encryptedTranslateErrorKey, language), ex);
+            throw new PdfEncryptedException("PdfEncrypted", inputPath, innerException: ex);
         }
     }
 }
