@@ -3110,8 +3110,9 @@ static partial class TestSuite
         FieldDeclarationSyntax field,
         List<string> violations)
     {
-        if (!field.Modifiers.Any(SyntaxKind.StaticKeyword) ||
-            !field.Modifiers.All(m => !m.IsKind(SyntaxKind.ConstKeyword)))
+        bool isStatic = field.Modifiers.Any(SyntaxKind.StaticKeyword);
+        bool isConst = field.Modifiers.Any(SyntaxKind.ConstKeyword);
+        if (!isStatic || isConst)
         {
             return;
         }
