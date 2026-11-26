@@ -54,12 +54,7 @@ internal static class TaskPruningCoordinator
             return;
         }
 
-        TimeSpan expiryAge = age;
-        int parkedDays = 0;
-        if (parked)
-            (parkedDays, expiryAge) = ParkedTaskCoordinator.GetWindow(task, file, now);
-
-        if (TaskRetentionPolicy.IsExpired(finished, parked, expiryAge, parkedDays, CompletedTaskTtlMinutes))
+        if (finished && age.TotalMinutes > CompletedTaskTtlMinutes)
             File.Delete(file);
     }
 

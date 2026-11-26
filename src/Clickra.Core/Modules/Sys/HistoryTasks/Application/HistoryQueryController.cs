@@ -22,19 +22,10 @@ public sealed record HistoryQueryRecord(
     string OutputPath,
     int CurrentIndex,
     int Pid,
-    int? ParkedRetentionDays,
     string ParkedSince)
 {
     public bool IsSuccess => Status == HistoryQueryStatus.Success;
 }
-
-public readonly record struct ParkedRetentionQueryState(
-    bool IsUnlimited,
-    int RemainingDays,
-    TimeSpan RemainingTime,
-    bool IsExpiringSoon,
-    bool HasExpired,
-    bool IsTaskOverride);
 
 /// <summary>Application query boundary for task/history persistence facts.</summary>
 public static class HistoryQueryController
@@ -47,18 +38,6 @@ public static class HistoryQueryController
 
     public static IReadOnlyList<HistoryQueryRecord> GetCompleted(int limit) =>
         ClickraStorage.GetHistory(limit).Select(Snapshot).ToArray();
-
-    public static ParkedRetentionQueryState GetParkedRetention(string taskId)
-    {
-        ParkedRetentionInfo state = ClickraStorage.GetParkedRetentionInfo(taskId);
-        return new ParkedRetentionQueryState(
-            state.IsUnlimited,
-            state.RemainingDays,
-            state.RemainingTime,
-            state.IsExpiringSoon,
-            state.HasExpired,
-            state.IsTaskOverride);
-    }
 
     public static bool IsUserCanceledReason(string? errorMessage) => ClickraStorage.IsUserCanceledReason(errorMessage);
 
@@ -82,6 +61,5 @@ public static class HistoryQueryController
         entry.OutputPath ?? string.Empty,
         entry.CurrentIndex,
         entry.Pid,
-        entry.ParkedRetentionDays,
         entry.ParkedSince ?? string.Empty);
 }

@@ -39,17 +39,16 @@ public sealed class HistoryItem
     internal HistoryItem(
         HistoryItemKind kind,
         HistoryQueryRecord entry,
-        ParkedRetentionQueryState? retention,
         string language)
     {
         Kind = kind;
         Entry = entry;
-        Retention = retention;
 
         CommandLabelKey = ConvertCommandRegistry.GetLabelKey(entry.Command ?? "");
         IsCanceled = kind == HistoryItemKind.Completed && HistoryQueryController.IsUserCanceledReason(entry.ErrorMessage);
         StatusKey = ResolveStatusKey(kind, entry.Status, IsCanceled);
         Time = entry.Time ?? "";
+        NeedsAttention = false;
         FileCount = entry.FileCount;
         FirstFileName = FirstFileNameOf(entry);
         FileCountText = DescribeFiles(entry.FileCount, FirstFileName, language);
@@ -58,8 +57,6 @@ public sealed class HistoryItem
         Subtitle = kind == HistoryItemKind.Parked
             ? JoinParts(FirstFileName, StoppedOnText, ErrorMessage)
             : FileCountText;
-        RetentionText = retention.HasValue ? DescribeRetention(retention.Value, language) : "";
-        NeedsAttention = retention.HasValue && (retention.Value.IsExpiringSoon || retention.Value.HasExpired);
     }
 
     /// <summary>這個項目是哪一種。</summary>
@@ -94,17 +91,8 @@ public sealed class HistoryItem
     /// <summary>第二行文字：待繼續任務是「檔案 · 第 i/n 檔 · 原因」，其餘是檔案描述。</summary>
     public string Subtitle { get; }
 
-    /// <summary>剩餘保留期限那句話；只有待繼續任務有。</summary>
-    public string RetentionText { get; }
-
     /// <summary>即將過期或已過期：列要變色、要顯示徽章、要計入聚合警示。</summary>
     public bool NeedsAttention { get; }
-
-    /// <summary>這件任務的保留期限是自己調過的（不隨全域政策走）；介面藉此顯示「恢復全域設定」。</summary>
-    public bool HasRetentionOverride => Retention?.IsTaskOverride == true;
-
-    /// <summary>保留狀態；只有待繼續任務有。</summary>
-    public ParkedRetentionQueryState? Retention { get; }
 
     public bool IsSuccess => Kind == HistoryItemKind.Completed && Entry.Status == HistoryQueryStatus.Success;
 
@@ -157,25 +145,6 @@ public sealed class HistoryItem
                 entry.FileCount)
             : "";
 
-    internal static string DescribeRetention(ParkedRetentionQueryState info, string language)
-    {
-        string phrase;
-        if (info.IsUnlimited)
-            phrase = Localization.T("task_parked_ttl_unlimited", language);
-        else if (info.HasExpired)
-            phrase = Localization.T("task_parked_ttl_expired", language);
-        else if (info.IsExpiringSoon)
-            phrase = Localization.T("task_parked_ttl_expiring_soon", language);
-        else if (info.RemainingDays == 1)
-            phrase = string.Format(Localization.T("task_parked_ttl_days_one", language), 1);
-        else
-            phrase = string.Format(Localization.T("task_parked_ttl_days", language), info.RemainingDays);
-
-        return info.IsTaskOverride
-            ? phrase + Localization.T("task_parked_ttl_override", language)
-            : phrase;
-    }
-
     private static string JoinParts(params string[] parts)
         => string.Join(" · ", parts.Where(part => !string.IsNullOrWhiteSpace(part)));
 
@@ -216,14 +185,14 @@ public sealed class HistoryFeed
         var items = new List<HistoryItem>();
 
         foreach (var task in HistoryQueryController.GetActive())
-            items.Add(new HistoryItem(HistoryItemKind.Active, task, null, language));
+            items.Add(new HistoryItem(HistoryItemKind.Active, task, language));
 
         foreach (var task in HistoryQueryController.GetParked())
-            items.Add(new HistoryItem(HistoryItemKind.Parked, task, HistoryQueryController.GetParkedRetention(task.Id), language));
+            items.Add(new HistoryItem(HistoryItemKind.Parked, task, language));
 
         var completed = new List<HistoryItem>();
         foreach (var entry in HistoryQueryController.GetCompleted(0))
-            completed.Add(new HistoryItem(HistoryItemKind.Completed, entry, null, language));
+            completed.Add(new HistoryItem(HistoryItemKind.Completed, entry, language));
 
         completed.Sort((a, b) =>
         {

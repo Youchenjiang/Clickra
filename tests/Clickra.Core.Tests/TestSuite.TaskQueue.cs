@@ -17,7 +17,6 @@ static partial class TestSuite
     private const string ApplicationDirectory = "Application";
     private const string StorageDirectory = "Storage";
     private const string ParkReason = "Waiting for input";
-    private const string SettingParkedRetention = "ParkedTaskRetention";
     private const string TestInDir = @"C:\in";
     private const string TestOutDir = @"C:\out";
     private const string FileA = @"\a.pdf";
@@ -48,8 +47,6 @@ static partial class TestSuite
             TestResumingParkedTaskReusesIdentity);
         runner.Run("Task queue: claimed parked task is returned to parked when execution cannot proceed",
             TestClaimedParkedTaskReturnedToParkedWhenExecutionCannotProceed);
-        runner.Run("Task queue: parked retention days come from the setting (0 = unlimited)",
-            TestParkedRetentionDaysFromSetting);
         runner.Run("Task queue: resume claim refreshes the owning pid",
             TestResumeClaimRefreshesPid);
         runner.Run("Task queue: active tasks whose owner process died are pruned as Canceled",
@@ -58,21 +55,11 @@ static partial class TestSuite
             TestLegacyActiveTmpPreserved);
         runner.Run("Task queue: cancelling a parked task records one canceled line and removes it",
             TestCancellingParkedTaskRecordsCanceledLine);
+        runner.Run("Task queue: parked tasks never expire while completed tasks are pruned after TTL",
+            TestParkedTasksNeverExpireWhileCompletedArePruned);
         runner.Run("Fluent History page exposes resume and cancel for parked conversions",
             TestFluentParkedTaskEntryPoint);
-        runner.Run("Fluent settings page exposes the parked retention control",
-            TestFluentParkedRetentionControl);
-        runner.Run("CLI Dashboard settings page exposes the parked retention control",
-            TestCliDashboardParkedRetentionControl);
-        runner.Run("Parked retention: both settings pages share one range",
-            TestParkedRetentionRangeIsShared);
-        runner.Run("Parked retention: the accessor clamps to the range both settings pages can set",
-            TestParkedRetentionAccessorClampsToSharedRange);
-        runner.Run("Task queue: parked retention calculation handles unlimited, active, expiring-soon and expired states",
-            TestParkedRetentionInfoCalculation);
-        runner.Run("Fluent History page renders expiration days and alerts user when parked tasks expire soon",
-            TestFluentParkedExpirationUiContract);
-        runner.Run("CLI Dashboard History shows every parked task with its own remaining retention",
+        runner.Run("CLI Dashboard History shows every parked task",
             TestCliDashboardParkedTaskVisibility);
         runner.Run("Task queue: resume claim validates status, files, index, and single ownership",
             TestClaimParkedTaskForResume);
@@ -541,275 +528,45 @@ static partial class TestSuite
             "Row status wording must come from the shared item (status_canceled included), so both interfaces use one key.");
     }
 
-    /// <summary>A parked conversion silently disappears once it ages past its retention, so the user
-    /// must be able to see and change that window. The control has to read the value through the same
-    /// accessor the pruner uses, otherwise the number on screen can drift from the actual behaviour.</summary>
-    private static void TestFluentParkedRetentionControl()
+    private static void TestParkedTasksNeverExpireWhileCompletedArePruned()
     {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
-
-        string code = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentMainPageFile));
-        string xaml = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml"));
-
-        Assert.True(xaml.Contains("x:Name=\"ParkedRetentionBox\"", StringComparison.Ordinal) && xaml.Contains("<NumberBox", StringComparison.Ordinal),
-            "The settings page must offer a numeric control for the parked-conversion retention.");
-        Assert.True(code.Contains("ParkedRetentionBox.Value = SettingsPresentationController.Shared.ParkedTaskRetentionDays", StringComparison.Ordinal),
-            "The retention control must show the shared Presentation setting backed by the same policy the task pruner enforces.");
-        Assert.True(code.Contains("ParkedRetentionBox.ValueChanged += OnParkedRetentionChanged", StringComparison.Ordinal),
-            "Editing the retention control must persist the setting.");
-        Assert.True(code.Contains("SettingsPresentationController.Shared.ParkedTaskRetentionDays = days", StringComparison.Ordinal),
-            "Changing the retention control must write parked retention through the shared Presentation settings owner.");
-        Assert.False(code.Contains("const string ParkedRetentionSettingKey", StringComparison.Ordinal),
-            "The key must come from the ClickraSettings registry, not a local constant.");
-
-        foreach (string key in new[] { "setting_parked_ttl_title", "setting_parked_ttl_desc" })
-        {
-            Assert.True(code.Contains(key, StringComparison.Ordinal), $"{key} must be rendered by the retention control.");
-        }
-
-        // Two full-width cards now share the settings grid, so the layout must give a spanning card its
-        // own row; the old fixed i/2 pairing would have drawn it on top of the LibreOffice card.
-        int layoutStart = code.IndexOf("private void ApplySettingsResponsiveLayout", StringComparison.Ordinal);
-        Assert.True(layoutStart >= 0, "ApplySettingsResponsiveLayout must exist.");
-        int layoutEnd = code.IndexOf("\n    private ", layoutStart + 1, StringComparison.Ordinal);
-        string layoutBody = layoutEnd > layoutStart ? code[layoutStart..layoutEnd] : code[layoutStart..];
-        Assert.True(layoutBody.Contains("Grid.GetColumnSpan", StringComparison.Ordinal),
-            "The settings layout must place ColumnSpan=2 cards on their own row.");
-
-        int settingsStart = xaml.IndexOf("x:Name=\"SettingsPanel\"", StringComparison.Ordinal);
-        Assert.True(settingsStart >= 0, "MainPage.xaml must declare SettingsPanel.");
-        int settingsEnd = xaml.IndexOf("x:Name=\"AboutPanel\"", settingsStart, StringComparison.Ordinal);
-        string settingsXaml = settingsEnd > settingsStart ? xaml[settingsStart..settingsEnd] : xaml[settingsStart..];
-        string[] fullWidthCards = settingsXaml.Split('\n')
-            .Where(l => l.Contains("Grid.ColumnSpan=\"2\"", StringComparison.Ordinal) && l.Contains("<Grid ", StringComparison.Ordinal))
-            .ToArray();
-        Assert.True(fullWidthCards.Length == 2,
-            $"Exactly two settings cards span both columns (retention and LibreOffice), found {fullWidthCards.Length}.");
-    }
-
-    /// <summary>The Win32 CLI Dashboard settings page must also expose parked retention
-    /// controls, using the central ClickraSettings.ParkedTaskRetention key and clamping to [0, 365].</summary>
-    private static void TestCliDashboardParkedRetentionControl()
-    {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
-
-        string paintCode = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Paint.Settings.cs"));
-        string dashboardDir = Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory);
-        string clickCode = File.ReadAllText(Path.Combine(dashboardDir, DashboardEventsClickFile))
-                         + File.ReadAllText(Path.Combine(dashboardDir, DashboardEventsSettingsFile));
-
-        // Must render the section title and description using localization keys
-        foreach (string key in new[] { "setting_parked_ttl_title", "setting_parked_ttl_desc" })
-        {
-            Assert.True(paintCode.Contains(key, StringComparison.Ordinal),
-                $"The CLI settings paint file must render {key}.");
-        }
-
-        // Must read current retention through the shared Presentation settings owner.
-        Assert.True(paintCode.Contains("SettingsPresentationController.Shared.ParkedTaskRetentionDays", StringComparison.Ordinal),
-            "CLI dashboard settings must read the retention setting through SettingsPresentationController.");
-
-        // Must offer both stepper hit targets and the five preset IDs through the shared preset loop.
-        Assert.True(paintCode.Contains("AddHitRect(90,", StringComparison.Ordinal) &&
-                    paintCode.Contains("AddHitRect(91,", StringComparison.Ordinal),
-            "CLI settings must register both retention stepper hit targets.");
-        foreach (string preset in new[] { "(0, 92,", "(3, 93,", "(defaultDays, 94,", "(14, 95,", "(30, 96," })
-        {
-            Assert.True(paintCode.Contains(preset, StringComparison.Ordinal),
-                $"CLI settings must declare retention preset {preset}.");
-        }
-        Assert.True(paintCode.Contains("AddHitRect(elemId,", StringComparison.Ordinal),
-            "CLI settings must register each preset element ID with the shared hit-target loop.");
-
-        foreach (int id in Enumerable.Range(90, 7))
-        {
-            Assert.True(clickCode.Contains($"case {id}:", StringComparison.Ordinal),
-                $"CLI settings click handler must route retention element {id}.");
-        }
-        Assert.True(clickCode.Contains("element >= 90 && element <= 96", StringComparison.Ordinal),
-            "IsSettingsElement must route the entire retention control ID range.");
-
-        Assert.True(clickCode.Contains("SettingsPresentationController.Shared.ParkedTaskRetentionDays = clamped", StringComparison.Ordinal),
-            "Click handler must persist retention through the shared Presentation settings owner.");
-
-        // The default preset must come from the registry rather than embedding seven days locally.
-        Assert.True(paintCode.Contains("GetDefaultParkedRetentionDays()", StringComparison.Ordinal) &&
-                    clickCode.Contains("SettingsPresentationController.Shared.DefaultParkedRetentionDays", StringComparison.Ordinal),
-            "CLI retention default must derive from the shared Presentation settings contract.");
-
-        // Must clamp through the centralized range used by both CLI and Fluent.
-        Assert.True(clickCode.Contains("SettingsPresentationController.Shared.MinParkedRetentionDays", StringComparison.Ordinal) &&
-                    clickCode.Contains("SettingsPresentationController.Shared.MaxParkedRetentionDays", StringComparison.Ordinal),
-            "Retention click handler must clamp through the shared Presentation range.");
-
-        // No local hardcoded settings-key literal; localization-key constants are allowed.
-        Assert.False(clickCode.Contains("\"ParkedTaskRetention\"", StringComparison.Ordinal) ||
-                     paintCode.Contains("\"ParkedTaskRetention\"", StringComparison.Ordinal),
-            "ParkedTaskRetention must come from ClickraSettings, not a local string literal.");
-    }
-
-    private static void TestParkedRetentionRangeIsShared()
-    {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
-
-        string fluentCode = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentMainPageFile));
-        string fluentXaml = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml"));
-        string cliClick = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardEventsSettingsFile));
-
-        Assert.True(ClickraSettings.MaxParkedRetentionDays > 0, "The shared retention bound must be positive.");
-        Assert.Equal(ClickraSettings.MaxParkedTaskRetentionDays, ClickraSettings.MaxParkedRetentionDays);
-        foreach ((string name, string source) in new[] { ("Fluent", fluentCode), ("CLI dashboard", cliClick) })
-        {
-            Assert.False(source.Contains("365", StringComparison.Ordinal),
-                $"{name} must not keep a second copy of the retention bound.");
-        }
-
-        Assert.True(fluentCode.Contains("ParkedRetentionBox.Minimum = SettingsPresentationController.Shared.MinParkedRetentionDays", StringComparison.Ordinal),
-            "The Fluent control must set its runtime minimum from the shared bound.");
-        Assert.True(fluentCode.Contains("ParkedRetentionBox.Maximum = SettingsPresentationController.Shared.MaxParkedRetentionDays", StringComparison.Ordinal),
-            "The Fluent control must set its runtime maximum from the shared bound.");
-        Assert.True(fluentXaml.Contains("x:Name=\"ParkedRetentionBox\"", StringComparison.Ordinal) &&
-                    !fluentXaml.Contains("Minimum=\"0\" Maximum=\"365\"", StringComparison.Ordinal),
-            "The Fluent markup must not keep a second copy of the retention bounds.");
-        Assert.True(cliClick.Contains("SettingsPresentationController.Shared.MinParkedRetentionDays", StringComparison.Ordinal) &&
-                    cliClick.Contains("SettingsPresentationController.Shared.MaxParkedRetentionDays", StringComparison.Ordinal),
-            "The CLI retention click handler must use the shared retention bounds.");
-    }
-
-    private static void TestParkedRetentionAccessorClampsToSharedRange()
-    {
-        int max = ClickraSettings.MaxParkedTaskRetentionDays;
-        (string Stored, int Expected)[] cases =
-        {
-            ("0", 0),
-            ("-5", 0),
-            ("7", 7),
-            ($"{max}", max),
-            ($"{max + 1}", max),
-            ("99999", max),
-            ("abc", 7)
-        };
-
+        string parkedId = ClickraStorage.StartTask(CmdSplitPdf, 1, TestInDir + FileA);
+        string completedId = ClickraStorage.StartTask(CmdSplitPdf, 1, TestInDir + FileA);
         try
         {
-            foreach ((string stored, int expected) in cases)
+            ClickraStorage.SetTaskInProgress(parkedId);
+            ClickraStorage.ParkTask(parkedId, "TestParked", 0);
+            ClickraStorage.CompleteTask(completedId, CmdSplitPdf, new CompleteTaskRequest
             {
-                ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention, stored);
-                int days = ClickraStorage.GetParkedRetentionDays();
-                Assert.True(days == expected, $"Stored '{stored}' must read back as {expected} days, got {days}.");
-                Assert.True(days >= 0 && days <= max,
-                    $"Stored '{stored}' produced {days}, which the settings pages cannot show or set.");
-            }
+                StartTime = DateTime.UtcNow.AddMinutes(-30).ToString(StorageRuntime.DateTimeFormat),
+                IsSuccess = true,
+                EndTime = DateTime.UtcNow.AddMinutes(-20).ToString(StorageRuntime.DateTimeFormat),
+                ElapsedMs = 100
+            });
+
+            string parkedPath = TaskRecordStore.PathFor(parkedId);
+            string completedPath = TaskRecordStore.PathFor(completedId);
+
+            Assert.True(File.Exists(parkedPath), "Parked task file must exist.");
+            Assert.True(File.Exists(completedPath), "Completed task file must exist.");
+
+            File.SetLastWriteTimeUtc(parkedPath, DateTime.UtcNow.AddDays(-400));
+            File.SetLastWriteTimeUtc(completedPath, DateTime.UtcNow.AddMinutes(-20));
+
+            TaskPruningCoordinator.Prune();
+
+            Assert.True(File.Exists(parkedPath), "Parked task must never be auto-deleted by time even after 400 days.");
+            HistoryEntry? parkedEntry = TaskRecordStore.Read(parkedId);
+            Assert.True(parkedEntry.HasValue && parkedEntry.Value.Status == ConversionStatus.Parked,
+                "Parked task must still be readable and parked.");
+
+            Assert.False(File.Exists(completedPath), "Completed task file must be pruned after TTL.");
         }
         finally
         {
-            ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention, ClickraSettings.DefaultParkedTaskRetention);
+            ClickraStorage.DeleteTask(parkedId);
+            ClickraStorage.DeleteTask(completedId);
         }
-    }
-    /// <summary>Unit test verifying that parked retention calculations correctly identify
-    /// unlimited retention, remaining days, expiring-soon alerts, and expiration.</summary>
-    private static void TestParkedRetentionInfoCalculation()
-    {
-        // 1. Unlimited retention (0 days)
-        var unlimited = ClickraStorage.CalculateRetentionInfo(0, TimeSpan.FromDays(100));
-        Assert.True(unlimited.IsUnlimited, "Retention <= 0 must be flagged as unlimited.");
-        Assert.False(unlimited.IsExpiringSoon, "Unlimited retention cannot expire soon.");
-        Assert.False(unlimited.HasExpired, "Unlimited retention cannot be expired.");
-
-        // 2. Active retention with multiple days remaining
-        var active = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(2));
-        Assert.False(active.IsUnlimited, "Active 7-day retention is not unlimited.");
-        Assert.Equal(5, active.RemainingDays);
-        Assert.False(active.IsExpiringSoon, "5 days remaining is not expiring soon.");
-        Assert.False(active.HasExpired, "5 days remaining is not expired.");
-
-        // 3. Exactly one day remaining: show the singular day state, not "less than 1 day".
-        var oneDay = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(6));
-        Assert.Equal(1, oneDay.RemainingDays);
-        Assert.False(oneDay.IsExpiringSoon, "Exactly 24 hours left is not less than one day.");
-        Assert.False(oneDay.HasExpired, "Exactly one day remaining is still active.");
-
-        // 4. Expiring soon (strictly less than 24 hours remaining)
-        var expiringSoon = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(6.3));
-        Assert.False(expiringSoon.IsUnlimited, "Active retention is not unlimited.");
-        Assert.Equal(1, expiringSoon.RemainingDays);
-        Assert.True(expiringSoon.IsExpiringSoon, "< 24 hours left must be flagged as expiring soon.");
-        Assert.False(expiringSoon.HasExpired, "Still within retention window.");
-
-        // 5. Exactly at the retention deadline: expiration and pruning share this boundary.
-        var atDeadline = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(7));
-        Assert.Equal(0, atDeadline.RemainingDays);
-        Assert.True(atDeadline.HasExpired, "Age equal to retentionDays must be expired.");
-
-        // 6. Expired (past retention limit)
-        var expired = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(7.2));
-        Assert.False(expired.IsUnlimited, "Active retention is not unlimited.");
-        Assert.Equal(0, expired.RemainingDays);
-        Assert.False(expired.IsExpiringSoon, "Expired tasks are expired, not merely expiring soon.");
-        Assert.True(expired.HasExpired, "Age > retentionDays must be flagged as expired.");
-    }
-
-    /// <summary>Contract test ensuring that the Fluent History page displays remaining expiration
-    /// and uses proper localization keys and visual alerts when tasks are expiring soon.</summary>
-    private static void TestFluentParkedExpirationUiContract()
-    {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
-
-        string fluentCode = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentHistoryPageFile));
-        string cliHistory = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardHistoryPaintFile));
-        string feedCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Modules", "Sys", "HistoryTasks", "Presentation", "HistoryFeed.cs"));
-
-        Assert.True(feedCode.Contains("HistoryQueryController.GetParkedRetention", StringComparison.Ordinal),
-            "The shared feed must compute each parked item's retention once through the Application query boundary, not leave it to the two UIs.");
-        Assert.True(fluentCode.Contains("item.RetentionText", StringComparison.Ordinal),
-            "Fluent History page must render the retention phrase the shared item carries.");
-
-        foreach (string key in new[]
-        {
-            "task_parked_ttl_days",
-            "task_parked_ttl_days_one",
-            "task_parked_ttl_expiring_soon",
-            "task_parked_ttl_unlimited",
-            "task_parked_ttl_expired",
-            "task_parked_expiring_warning",
-            "task_parked_badge_expiring"
-        })
-        {
-            string owner = key is "task_parked_expiring_warning" or "task_parked_badge_expiring"
-                ? fluentCode
-                : feedCode;
-            Assert.True(owner.Contains(key, StringComparison.Ordinal),
-                $"{key} must be referenced by the surface that renders it.");
-        }
-
-        Assert.True(feedCode.Contains("DescribeRetention", StringComparison.Ordinal)
-                    && feedCode.Contains("Localization.T(\"task_parked_ttl_", StringComparison.Ordinal),
-            "The application feed must own parked-task retention wording with explicit localization.");
-        Assert.True(cliHistory.Contains("item.RetentionText", StringComparison.Ordinal),
-            "The CLI History row must render the same phrase through the shared item.");
-
-        foreach ((string name, string source) in new[] { ("Fluent", fluentCode), ("CLI dashboard", cliHistory) })
-        {
-            foreach (string ttlKey in new[]
-            {
-                "task_parked_ttl_days",
-                "task_parked_ttl_days_one",
-                "task_parked_ttl_unlimited",
-                "task_parked_ttl_expired",
-                "task_parked_ttl_expiring_soon"
-            })
-            {
-                Assert.False(source.Contains(ttlKey, StringComparison.Ordinal),
-                    $"{name} must not duplicate shared deadline wording for {ttlKey}.");
-            }
-        }
-
-        Assert.True(fluentCode.Contains("item.NeedsAttention", StringComparison.Ordinal),
-            "MainPage must read the shared item's NeedsAttention flag for its badge and alert colors.");
     }
 
     private static void TestCliDashboardParkedTaskVisibility()
@@ -825,21 +582,15 @@ static partial class TestSuite
             "The dashboard must refresh parked conversions through the shared Presentation history owner.");
         Assert.False(lifecycle.Contains("ClickraStorage.GetParkedTasks()", StringComparison.Ordinal),
             "The dashboard must not enumerate parked conversions itself; HistoryFeed is the one source for both UIs.");
-        Assert.True(paint.Contains("ParkedItems", StringComparison.Ordinal) && paint.Contains("item.RetentionText", StringComparison.Ordinal),
-            "Each parked row must carry its own remaining retention from the shared item.");
+        Assert.True(paint.Contains("ParkedItems", StringComparison.Ordinal),
+            "The parked block must render ParkedItems.");
         Assert.True(paint.Contains("task_parked_title", StringComparison.Ordinal),
             "The parked block needs its localized heading.");
         void AssertPaintContains(string token, string failure) =>
             Assert.True(paint.Contains(token, StringComparison.Ordinal), failure);
 
         AssertPaintContains("task_parked_desc",
-            "The parked block must show its description when no tasks are expiring.");
-        Assert.True(paint.Contains("task_parked_expiring_warning", StringComparison.Ordinal),
-            "Parked rows about to be pruned must raise the aggregate warning.");
-        AssertPaintContains("task_parked_badge_expiring",
-            "Parked tasks that are expiring soon must render the expiring badge.");
-        AssertPaintContains("item.NeedsAttention",
-            "CLI dashboard must highlight rows using the shared item's attention flag.");
+            "The parked block must show its description.");
         AssertPaintContains("item.Subtitle",
             "The parked row must render the shared subtitle instead of composing the file index itself.");
         Assert.False(paint.Contains("task_file_index", StringComparison.Ordinal),
@@ -1008,20 +759,6 @@ static partial class TestSuite
             Assert.Equal(1, returned.CurrentIndex);
         }
         finally { ClickraStorage.DeleteTask(a); }
-    }
-
-    private static void TestParkedRetentionDaysFromSetting()
-    {
-        ClickraStorage.SaveSetting(SettingParkedRetention, "0");
-        Assert.True(ParkedTaskController.GetRetentionDays() == 0, "0 should mean unlimited (no pruning).");
-        ClickraStorage.SaveSetting(SettingParkedRetention, "14");
-        Assert.True(ParkedTaskController.GetRetentionDays() == 14, "Custom days should be honored.");
-        ClickraStorage.SaveSetting(SettingParkedRetention, "999");
-        Assert.True(ParkedTaskController.GetRetentionDays() == ClickraSettings.MaxParkedTaskRetentionDays,
-            "Retention above the supported range should clamp to the shared maximum.");
-        ClickraStorage.SaveSetting(SettingParkedRetention, "abc");
-        Assert.True(ParkedTaskController.GetRetentionDays() == 7, "Invalid value should fall back to 7 days.");
-        ClickraStorage.SaveSetting(SettingParkedRetention, "7");
     }
 
     private static void TestResumeClaimRefreshesPid()

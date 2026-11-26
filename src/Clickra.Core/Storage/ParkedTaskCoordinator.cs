@@ -59,14 +59,6 @@ internal static class ParkedTaskCoordinator
             HistoryEntry? entry = TaskRecordStore.Read(taskId);
             if (entry is null || entry.Value.Status != ConversionStatus.Parked) return null;
 
-            string path = TaskRecordStore.PathFor(taskId);
-            (int retentionDays, TimeSpan age) = GetWindow(entry.Value, path, DateTime.UtcNow);
-            if (retentionDays > 0 && TaskRetentionPolicy.CalculateInfo(retentionDays, age).HasExpired)
-            {
-                if (File.Exists(path)) File.Delete(path);
-                return null;
-            }
-
             var files = (entry.Value.InputPaths ?? string.Empty)
                 .Split(';', StringSplitOptions.RemoveEmptyEntries)
                 .ToList();
@@ -80,105 +72,5 @@ internal static class ParkedTaskCoordinator
             if (!TaskRecordStore.Write(claimed)) return null;
             return new ResumedTaskInfo(taskId, entry.Value.Command, files, startIndex);
         });
-    }
-
-    internal static int GetRetentionDays() =>
-        ClickraSettings.ClampNumericSetting(
-            ClickraSettings.ParkedTaskRetention,
-            SettingsStore.GetInt(ClickraSettings.ParkedTaskRetention));
-
-    internal static int GetEffectiveRetentionDays(HistoryEntry entry) =>
-        entry.ParkedRetentionDays.HasValue
-            ? ClickraSettings.ClampNumericSetting(ClickraSettings.ParkedTaskRetention, entry.ParkedRetentionDays.Value)
-            : GetRetentionDays();
-
-    internal static void SetRetentionOverride(string taskId, int? days)
-    {
-        StorageRuntime.RunWithMutex(() =>
-        {
-            HistoryEntry? entry = TaskRecordStore.Read(taskId);
-            if (!entry.HasValue || entry.Value.Status != ConversionStatus.Parked) return;
-
-            string path = TaskRecordStore.PathFor(taskId);
-            DateTime now = DateTime.UtcNow;
-            TimeSpan age = GetAge(entry.Value, path, now);
-            string since = string.IsNullOrEmpty(entry.Value.ParkedSince)
-                ? (now - age).ToString(StorageRuntime.DateTimeFormat, CultureInfo.InvariantCulture)
-                : entry.Value.ParkedSince;
-            int? clamped = days.HasValue
-                ? ClickraSettings.ClampNumericSetting(ClickraSettings.ParkedTaskRetention, days.Value)
-                : null;
-            TaskFileData data = TaskRecordStore.FromEntry(entry.Value, ConversionStatus.Parked) with
-            {
-                ParkedRetentionDays = clamped,
-                ParkedSince = since
-            };
-            TaskRecordStore.Write(data);
-        });
-    }
-
-    internal static int? AdjustRetention(string taskId, int deltaDays)
-    {
-        if (deltaDays == 0) return null;
-
-        return StorageRuntime.RunWithMutex(() =>
-        {
-            string path = TaskRecordStore.PathFor(taskId);
-            HistoryEntry? maybe = TaskRecordStore.Read(taskId);
-            if (!maybe.HasValue || maybe.Value.Status != ConversionStatus.Parked) return (int?)null;
-
-            HistoryEntry entry = maybe.Value;
-            DateTime now = DateTime.UtcNow;
-            TimeSpan age = GetAge(entry, path, now);
-            int current = GetEffectiveRetentionDays(entry);
-            int? adjusted = TaskRetentionPolicy.CalculateAdjustedDays(current, age, deltaDays);
-            if (!adjusted.HasValue) return null;
-
-            string since = string.IsNullOrEmpty(entry.ParkedSince)
-                ? (now - age).ToString(StorageRuntime.DateTimeFormat, CultureInfo.InvariantCulture)
-                : entry.ParkedSince;
-            TaskFileData data = TaskRecordStore.FromEntry(entry, ConversionStatus.Parked) with
-            {
-                ParkedRetentionDays = adjusted.Value,
-                ParkedSince = since
-            };
-            return TaskRecordStore.Write(data) ? adjusted.Value : null;
-        });
-    }
-
-    internal static (int Days, TimeSpan Age) GetWindow(HistoryEntry entry, string path, DateTime now) =>
-        (GetEffectiveRetentionDays(entry), GetAge(entry, path, now));
-
-    internal static ParkedRetentionInfo GetRetentionInfo(string taskId) =>
-        StorageRuntime.RunWithMutex(() =>
-        {
-            string path = TaskRecordStore.PathFor(taskId);
-            HistoryEntry? entry = TaskRecordStore.Read(taskId);
-            if (!entry.HasValue)
-            {
-                return new ParkedRetentionInfo(
-                    IsUnlimited: false,
-                    RemainingDays: 0,
-                    RemainingTime: TimeSpan.Zero,
-                    IsExpiringSoon: false,
-                    HasExpired: true);
-            }
-
-            (int days, TimeSpan age) = GetWindow(entry.Value, path, DateTime.UtcNow);
-            return TaskRetentionPolicy.CalculateInfo(days, age, entry.Value.ParkedRetentionDays.HasValue);
-        });
-
-    private static TimeSpan GetAge(HistoryEntry entry, string path, DateTime now)
-    {
-        if (DateTime.TryParse(
-                entry.ParkedSince,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal,
-                out DateTime since))
-        {
-            return now - since;
-        }
-
-        return now - File.GetLastWriteTimeUtc(path);
     }
 }

@@ -81,18 +81,8 @@ public sealed partial class MainPage
         ParkedTasksSection.Visibility = _parkedTasks.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
         if (_parkedTasks.Count == 0) return;
 
-        int expiringSoonCount = _historyFeed.ExpiringSoonCount;
-
-        if (expiringSoonCount > 0)
-        {
-            ParkedTasksDesc.Text = string.Format(L("task_parked_expiring_warning"), expiringSoonCount);
-            ParkedTasksDesc.Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 160, 40));
-        }
-        else
-        {
-            ParkedTasksDesc.Text = L("task_parked_desc");
-            ParkedTasksDesc.Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource];
-        }
+        ParkedTasksDesc.Text = L("task_parked_desc");
+        ParkedTasksDesc.Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource];
 
         foreach (var item in _parkedTasks)
         {
@@ -148,39 +138,11 @@ public sealed partial class MainPage
         var task = item.Entry;
         var row = CreateHistoryTaskRowShell(item, out var texts, out var titleRow);
 
-        if (item.NeedsAttention)
-        {
-            row.BorderThickness = new Thickness(1);
-            row.BorderBrush = new SolidColorBrush(Color.FromArgb(180, 255, 140, 0));
-        }
-
-        if (item.NeedsAttention)
-        {
-            var badge = new Border
-            {
-                Background = new SolidColorBrush(Color.FromArgb(40, 255, 140, 0)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(160, 255, 140, 0)),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(6, 1, 6, 1),
-                VerticalAlignment = VerticalAlignment.Center,
-                Child = new TextBlock
-                {
-                    Text = "⚠️ " + L("task_parked_badge_expiring"),
-                    FontSize = 11,
-                    FontWeight = Microsoft.UI.Text.FontWeights.Medium,
-                    Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 160, 40))
-                }
-            };
-            titleRow.Children.Add(badge);
-        }
-
         texts.Children.Add(titleRow);
 
         texts.Children.Add(new TextBlock
         {
-            // Subtitle 與期限都來自共用模型：另一個介面印的就是同一句話。
-            Text = string.Join(" · ", new[] { item.Subtitle, item.RetentionText }.Where(part => !string.IsNullOrWhiteSpace(part))),
+            Text = item.Subtitle,
             FontSize = 12,
             Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource],
             TextTrimming = TextTrimming.CharacterEllipsis
@@ -192,35 +154,6 @@ public sealed partial class MainPage
             Spacing = 8,
             VerticalAlignment = VerticalAlignment.Center
         };
-        // 單一任務的保留期限：不必為了某一件改動整個政策。天數的加減、下限與夾取都在
-        // Core，所以這兩個介面移動的永遠是同一個天數。
-        int step = _historyPresentation.RetentionStepDays;
-        var shortenButton = new Button
-        {
-            Content = string.Format(L("task_parked_shorten_days"), step),
-            Padding = new Thickness(14, 6, 14, 6)
-        };
-        shortenButton.Click += (_, _) => AdjustParkedRetention(item, -step);
-        var extendButton = new Button
-        {
-            Content = string.Format(L("task_parked_extend_days"), step),
-            Padding = new Thickness(14, 6, 14, 6),
-            // 「永久保留」的任務沒有延長可言：它本來就不會過期。
-            IsEnabled = item.Retention?.IsUnlimited != true
-        };
-        extendButton.Click += (_, _) => AdjustParkedRetention(item, +step);
-        actions.Children.Add(shortenButton);
-        actions.Children.Add(extendButton);
-        if (item.HasRetentionOverride)
-        {
-            var resetButton = new Button
-            {
-                Content = L("task_parked_retention_reset"),
-                Padding = new Thickness(14, 6, 14, 6)
-            };
-            resetButton.Click += (_, _) => ResetParkedRetention(item);
-            actions.Children.Add(resetButton);
-        }
 
         var resumeButton = new Button { Content = L("fluent_task_resume"), Padding = new Thickness(14, 6, 14, 6) };
         resumeButton.Click += (_, _) => ResumeParkedTask(task);
@@ -258,24 +191,6 @@ public sealed partial class MainPage
             VerticalAlignment = VerticalAlignment.Center
         });
         return row;
-    }
-
-    /// <summary>Adjusts this one parked conversion's retention. The deadline arithmetic (including the
-    /// floor that keeps a shortened task from being deleted outright) lives in Core, so both interfaces
-    /// move the same number of days; a null result means there was nothing to adjust.</summary>
-    private void AdjustParkedRetention(HistoryItem item, int deltaDays)
-    {
-        if (string.IsNullOrWhiteSpace(item.Entry.Id)) return;
-        if (!_historyPresentation.AdjustRetention(item.Entry.Id, deltaDays)) return;
-        RefreshHistory();
-    }
-
-    /// <summary>Clears this task's own retention so it follows the global policy again.</summary>
-    private void ResetParkedRetention(HistoryItem item)
-    {
-        if (string.IsNullOrWhiteSpace(item.Entry.Id)) return;
-        _historyPresentation.ResetRetention(item.Entry.Id);
-        RefreshHistory();
     }
 
     /// <summary>Resumes a parked conversion through the shared "resume" entry point, so the persisted

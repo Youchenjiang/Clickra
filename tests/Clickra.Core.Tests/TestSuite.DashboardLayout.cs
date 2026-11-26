@@ -479,8 +479,6 @@ static partial class TestSuite
             "A custom output path needs extra room inside the same output card rather than escaping below it.");
         Assert.True(SettingsLayout.EngineLibreOfficeCardHeight > SettingsLayout.EngineCardHeight,
             "LibreOffice management actions need an expanded engine card instead of spilling into the next section.");
-        Assert.True(SettingsLayout.RetentionCardHeight >= 120,
-            "Task retention title, current value, and presets must fit in one bounded card.");
         string dir = DashboardDir();
         string paint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.Settings.cs"));
         string dashboardPaint = File.ReadAllText(Path.Combine(dir, DashboardPaintFileName));
@@ -534,18 +532,11 @@ static partial class TestSuite
             "ClickraSettings.MaxPdfCompressLevel",
             "ClickraSettings.MinPdfCompressLevel");
         Assert.True(paint.Contains("SettingsLayout.ChoiceCardExpandedHeight", StringComparison.Ordinal)
-                    && paint.Contains("SettingsLayout.EngineCardHeight", StringComparison.Ordinal)
-                    && paint.Contains("SettingsLayout.RetentionCardHeight", StringComparison.Ordinal),
-            "Wide Settings groups must keep custom output, Office engine, and task retention inside bounded cards.");
-        Assert.True(paint.Contains("retentionContentX = retentionCard.X + SettingsLayout.CardPadding", StringComparison.Ordinal)
+                    && paint.Contains("SettingsLayout.EngineCardHeight", StringComparison.Ordinal),
+            "Wide Settings groups must keep custom output and Office engine inside bounded cards.");
+        Assert.True(paint.Contains("outputContentX = outputCard.X + SettingsLayout.CardPadding", StringComparison.Ordinal)
                     && paint.Contains("engineContentX = wideSettings", StringComparison.Ordinal),
             "Wide Settings card contents must use the shared card inset instead of falling back to naked page coordinates.");
-        AssertContainsAll(
-            paint,
-            "Retention controls must use the compact preset gap and the distinct separator before the preset group.",
-            "curX += wStep + SettingsLayout.RetentionPresetGap",
-            "curX += wStep + SettingsLayout.RetentionGroupGap",
-            "curX += btnW + SettingsLayout.RetentionPresetGap");
         AssertContainsAll(
             paint,
             "AOT Settings must explicitly skip per-conversion image compression controls.",
@@ -742,8 +733,8 @@ static partial class TestSuite
         }
     }
 
-    /// <summary>待繼續任務列右端的四個動作按鈕（縮短、延長、繼續、取消）：必須落在自己的列裡、彼此不重疊，
-    /// 而且靠右的期限文字還要有位置 —— 否則「還剩幾天」那句話會被按鈕蓋掉。</summary>
+    /// <summary>待繼續任務列右端的動作按鈕（繼續、取消）：必須落在自己的列裡、彼此不重疊，
+    /// 而且文字還要有位置 —— 否則左側文字會被按鈕蓋掉。</summary>
     private static void TestParkedActionButtonGeometry()
     {
         const int contentX = 200;
@@ -751,12 +742,10 @@ static partial class TestSuite
         int rowTop = DashboardLayout.ContentTop;
         int rowHeight = DashboardLayout.RowHeight;
 
-        LayoutRect shorten = DashboardLayout.ParkedRowActionRect(contentX, rowW, rowTop, rowHeight, 0);
-        LayoutRect extend = DashboardLayout.ParkedRowActionRect(contentX, rowW, rowTop, rowHeight, 1);
-        LayoutRect resume = DashboardLayout.ParkedRowActionRect(contentX, rowW, rowTop, rowHeight, 2);
-        LayoutRect cancel = DashboardLayout.ParkedRowActionRect(contentX, rowW, rowTop, rowHeight, 3);
+        LayoutRect resume = DashboardLayout.ParkedRowActionRect(contentX, rowW, rowTop, rowHeight, DashboardLayout.ParkedActionResume);
+        LayoutRect cancel = DashboardLayout.ParkedRowActionRect(contentX, rowW, rowTop, rowHeight, DashboardLayout.ParkedActionCancel);
 
-        foreach ((string name, LayoutRect rect) in new[] { ("shorten", shorten), ("extend", extend), ("resume", resume), ("cancel", cancel) })
+        foreach ((string name, LayoutRect rect) in new[] { ("resume", resume), ("cancel", cancel) })
         {
             Assert.True(rect.X >= contentX && rect.Right <= contentX + rowW,
                 $"The {name} button must stay inside the row.");
@@ -766,20 +755,16 @@ static partial class TestSuite
                 $"The {name} button must fit the row height.");
         }
 
-        Assert.True(shorten.Right + DashboardLayout.ParkedActionButtonGap <= extend.X,
-            "The shorten and extend buttons must not overlap; the gap is part of the table.");
-        Assert.True(extend.Right + DashboardLayout.ParkedActionButtonGap <= resume.X,
-            "The extend and resume buttons must not overlap; the gap is part of the table.");
         Assert.True(resume.Right + DashboardLayout.ParkedActionButtonGap <= cancel.X,
             "The resume and cancel buttons must not overlap; the gap is part of the table.");
         Assert.True(cancel.Right <= contentX + rowW - DashboardLayout.ParkedActionRightMargin,
             "The buttons must keep the row's right margin.");
 
         int ttlRight = DashboardLayout.ParkedRowTtlRight(contentX, rowW);
-        Assert.True(ttlRight + DashboardLayout.ParkedActionTextGap <= shorten.X,
-            "The deadline text must stop before the adjust buttons, with the table's gap in between.");
+        Assert.True(ttlRight + DashboardLayout.ParkedActionTextGap <= resume.X,
+            "The text must stop before the action buttons, with the table's gap in between.");
         Assert.True(ttlRight > contentX + rowW / 2,
-            "The deadline belongs on the right half of the row, next to the buttons that change it.");
+            "The text belongs on the right half of the row, next to the buttons.");
     }
 
     private static string DashboardDir()

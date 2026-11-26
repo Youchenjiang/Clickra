@@ -399,34 +399,28 @@ public static class DashboardLayout
             HistoryClearButtonHeight);
 
     // ── 待繼續任務列的動作按鈕 ────────────────────────────────
-    // 每一列右端包含四個動作按鈕（縮短、延長、繼續、取消）。
-    // 靠右的期限文字與命中判定共用相同的寬度與座標推導，量測與命中永遠對齊。
-    public const int ParkedActionCount = 4;
-    public const int ParkedActionShorten = 0;
-    public const int ParkedActionExtend = 1;
-    public const int ParkedActionResume = 2;
-    public const int ParkedActionCancel = 3;
+    // 每一列右端包含兩個動作按鈕（繼續、取消）。
+    // 靠右的文字與命中判定共用相同的寬度與座標推導，量測與命中永遠對齊。
+    public const int ParkedActionCount = 2;
+    public const int ParkedActionResume = 0;
+    public const int ParkedActionCancel = 1;
 
-    public const int ParkedActionButtonWidth = 36;
     public const int ParkedCommandButtonWidth = 52;
     public const int ParkedActionButtonHeight = 22;
     public const int ParkedActionButtonGap = 6;
     public const int ParkedActionRightMargin = 16;
 
-    /// <summary>期限文字與動作按鈕組之間的間隔。</summary>
+    /// <summary>文字與動作按鈕組之間的間隔。</summary>
     public const int ParkedActionTextGap = 10;
 
     /// <summary>取得指定動作按鈕之寬度。</summary>
-    public static int ParkedActionWidth(int actionIndex) =>
-        actionIndex is ParkedActionResume or ParkedActionCancel
-            ? ParkedCommandButtonWidth
-            : ParkedActionButtonWidth;
+    public static int ParkedActionWidth(int actionIndex) => ParkedCommandButtonWidth;
 
-    /// <summary>所有動作按鈕與間距加總後的總寬度（畫期限文字時要讓開這一段）。</summary>
+    /// <summary>所有動作按鈕與間距加總後的總寬度（畫文字時要讓開這一段）。</summary>
     public static int ParkedActionStripWidth =>
-        ParkedActionButtonWidth * 2 + ParkedCommandButtonWidth * 2 + ParkedActionButtonGap * (ParkedActionCount - 1);
+        ParkedCommandButtonWidth * ParkedActionCount + ParkedActionButtonGap * (ParkedActionCount - 1);
 
-    /// <summary>待繼續任務列右端的動作按鈕矩形；actionIndex 0 = 縮短、1 = 延長、2 = 繼續、3 = 取消，由左而右。</summary>
+    /// <summary>待繼續任務列右端的動作按鈕矩形；actionIndex 0 = 繼續、1 = 取消，由左而右。</summary>
     public static LayoutRect ParkedRowActionRect(int contentX, int rowW, int rowTop, int rowHeight, int actionIndex)
     {
         int startX = contentX + rowW - ParkedActionRightMargin - ParkedActionStripWidth;
@@ -439,7 +433,7 @@ public static class DashboardLayout
         return new LayoutRect(x, top, ParkedActionWidth(actionIndex), ParkedActionButtonHeight);
     }
 
-    /// <summary>這一列靠右的期限文字可以畫到哪裡（動作按鈕組的左緣再讓開一個間隔）。</summary>
+    /// <summary>這一列文字可以畫到哪裡（動作按鈕組的左緣再讓開一個間隔）。</summary>
     public static int ParkedRowTtlRight(int contentX, int rowW) =>
         contentX + rowW - ParkedActionRightMargin - ParkedActionStripWidth - ParkedActionTextGap;
 }

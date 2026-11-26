@@ -37,7 +37,6 @@ public sealed partial class MainPage : Page
     // 一份清單三個切片（Core 的 HistoryFeed，與 Win32 dashboard 共用）：進行中、待繼續、
     // 已完成。這頁只是它的另一個呈現層，所以狀態用字、檔案描述與剩餘期限都讀模型的欄位。
     private bool _settingsReloadHooked;
-    private bool _syncingParkedRetention;
     private readonly DynamicSettingsController _dynamicSettings;
 
     public MainPage()
@@ -45,7 +44,7 @@ public sealed partial class MainPage : Page
         InitializeComponent();
         _dynamicSettings = new DynamicSettingsController(
             SettingsLayout,
-            ParkedRetentionCard,
+            LibreOfficeCard,
             L,
             () => _loadingSettings,
             () => ApplySettingsResponsiveLayout(ActualWidth < 1000));
@@ -608,7 +607,6 @@ public sealed partial class MainPage : Page
         CompressionSlider.ValueChanged += (_, _) => { SaveSettings(); UpdateCompressionLabel(CompressionLabel, CompressionSlider); };
         QuietModeToggle.Toggled += (_, _) => SaveSettings();
         NotificationToggle.Toggled += (_, _) => SaveSettings();
-        ParkedRetentionBox.ValueChanged += OnParkedRetentionChanged;
     }
 
     private void HookExternalSettingsReload()
@@ -653,9 +651,6 @@ public sealed partial class MainPage : Page
             CompressionSlider.Maximum = SettingsPresentationController.Shared.MaxPdfCompressionLevel;
             CompressionSlider.Value = SettingsPresentationController.Shared.PdfCompressionImageLevel;
             UpdateCompressionLabel(CompressionLabel, CompressionSlider);
-            ParkedRetentionBox.Minimum = SettingsPresentationController.Shared.MinParkedRetentionDays;
-            ParkedRetentionBox.Maximum = SettingsPresentationController.Shared.MaxParkedRetentionDays;
-            ParkedRetentionBox.Value = SettingsPresentationController.Shared.ParkedTaskRetentionDays;
 
             _dynamicSettings.Sync();
         }
@@ -779,8 +774,6 @@ public sealed partial class MainPage : Page
         NotificationDesc.Text = L("fluent_notifications_desc");
         PdfCompressionTitle.Text = L("fluent_pdf_compression");
         PdfCompressImageGroupTitle.Text = L("setting_pdf_compress_group_image");
-        ParkedRetentionTitle.Text = L("setting_parked_ttl_title");
-        ParkedRetentionDesc.Text = L("setting_parked_ttl_desc");
         LibreOfficeBrowseButton.Content = L("setting_libreoffice_browse");
         LibreOfficeDownloadButton.Content = L("setting_libreoffice_download");
         LibreOfficeUninstallButton.Content = L("setting_libreoffice_uninstall");
@@ -813,34 +806,6 @@ public sealed partial class MainPage : Page
         SettingsPresentationController.Shared.QuietMode = QuietModeToggle.IsOn;
         SettingsPresentationController.Shared.NotificationsEnabled = NotificationToggle.IsOn;
         RefreshLibreOfficeStatus();
-    }
-
-    /// <summary>Persists how long a parked conversion is kept, in days (0 = unlimited).
-    /// An empty or invalid entry (NumberBox reports NaN) restores the stored value instead of
-    /// silently changing the setting, and the saved value is clamped to the control's range.</summary>
-    private void OnParkedRetentionChanged(NumberBox sender, NumberBoxValueChangedEventArgs args)
-    {
-        if (_loadingSettings || _syncingParkedRetention) return;
-
-        if (double.IsNaN(args.NewValue))
-        {
-            _syncingParkedRetention = true;
-            sender.Value = SettingsPresentationController.Shared.ParkedTaskRetentionDays;
-            _syncingParkedRetention = false;
-            return;
-        }
-
-        int days = Math.Clamp(
-            (int)Math.Round(args.NewValue, MidpointRounding.AwayFromZero),
-            SettingsPresentationController.Shared.MinParkedRetentionDays,
-            SettingsPresentationController.Shared.MaxParkedRetentionDays);
-        SettingsPresentationController.Shared.ParkedTaskRetentionDays = days;
-        if (Math.Abs(sender.Value - days) > 0.0001)
-        {
-            _syncingParkedRetention = true;
-            sender.Value = days;
-            _syncingParkedRetention = false;
-        }
     }
 
     private async Task SaveOutputDirAsync()

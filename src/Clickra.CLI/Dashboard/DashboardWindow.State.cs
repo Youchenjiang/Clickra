@@ -63,11 +63,9 @@ namespace Clickra.UI
         /// <summary>已完成紀錄：歷史列表可展開明細，也是統計卡的來源。</summary>
         static IReadOnlyList<HistoryItem> CompletedItems => _historyPresentation.CompletedItems;
 
-        // 待繼續任務列右端的動作按鈕：每列四個（縮短、延長、繼續、取消）。元素 id 由此推導，
+        // 待繼續任務列右端的動作按鈕：每列兩個（繼續、取消）。元素 id 由此推導，
         // 幾何則來自 Core 的版面表（DashboardLayout.ParkedRowActionRect）。
         const int ParkedActionElementBase = 200;
-        const int ParkedActionShorten = DashboardLayout.ParkedActionShorten;
-        const int ParkedActionExtend = DashboardLayout.ParkedActionExtend;
         const int ParkedActionResume = DashboardLayout.ParkedActionResume;
         const int ParkedActionCancel = DashboardLayout.ParkedActionCancel;
         const int ParkedActionCount = DashboardLayout.ParkedActionCount;

@@ -12,11 +12,8 @@ public interface IHistoryPresentationController
     int FailedCount { get; }
     int ExpiringSoonCount { get; }
     bool IsEmpty { get; }
-    int RetentionStepDays { get; }
     void Refresh(string language, int completedLimit = 50);
     void Reset();
-    bool AdjustRetention(string taskId, int deltaDays);
-    void ResetRetention(string taskId);
     void CancelParked(string taskId);
     void ReturnToParked(string taskId, string reason, int nextIndex);
     void ClearCompleted();

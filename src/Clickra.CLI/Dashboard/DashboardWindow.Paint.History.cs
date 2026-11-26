@@ -301,27 +301,18 @@ namespace Clickra.UI
 
             float s = _dpiScale;
             var parkedItems = ParkedItems;
-            DrawParkedQueueHeader(g, contentX, rowW, block.Top, _historyPresentation.ExpiringSoonCount, s);
+            DrawParkedQueueHeader(g, contentX, rowW, block.Top, s);
 
             for (int i = 0; i < parkedItems.Count; i++)
                 DrawParkedQueueRow(g, contentX, rowW, block, parkedItems[i], i, s);
         }
 
-        static void DrawParkedQueueHeader(Graphics g, float contentX, int rowW, int startY, int expiringSoonCount, float s)
+        static void DrawParkedQueueHeader(Graphics g, float contentX, int rowW, int startY, float s)
         {
             if (_tabFont == null) return;
 
             using var titleBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
             g.DrawString(GetText("task_parked_title"), _tabFont, titleBrush, contentX * s, startY * s);
-            if (expiringSoonCount > 0)
-            {
-                string warning = string.Format(GetText("task_parked_expiring_warning"), expiringSoonCount);
-                using var warningBrush = new SolidBrush(ParkedAlertColor);
-                var warningSize = g.MeasureString(warning, _tabFont);
-                g.DrawString(warning, _tabFont, warningBrush,
-                    (contentX + rowW - warningSize.Width / s) * s, startY * s);
-                return;
-            }
 
             string desc = GetText("task_parked_desc");
             using var descBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
@@ -333,17 +324,15 @@ namespace Clickra.UI
 
         static void DrawParkedQueueRow(Graphics g, float contentX, int rowW, HistoryBlock block, HistoryItem item, int index, float s)
         {
-            var info = item.Retention!.Value;
             int currentY = block.RowTop(index);
             int rowH = block.RowHeight(index);
-            bool needsAttention = item.NeedsAttention;
-            Color rowBg = needsAttention ? Color.FromArgb(48, 40, 30) : Color.FromArgb(34, 34, 40);
+            Color rowBg = Color.FromArgb(34, 34, 40);
 
             using (var path = UIHelper.GetRoundedRectPath(new RectangleF(contentX * s, currentY * s, rowW * s, rowH * s), 6 * s))
             using (var rowBgBrush = new SolidBrush(rowBg))
             {
                 g.FillPath(rowBgBrush, path);
-                using var borderPen = new Pen(ParkedRowBorder(info));
+                using var borderPen = new Pen(Color.FromArgb(70, 70, 100));
                 g.DrawPath(borderPen, path);
             }
 
@@ -357,86 +346,47 @@ namespace Clickra.UI
 
             float tagX = contentX + 12 + timeW + 16;
             float tagW = DrawCommandTag(g, item, tagX, currentY + 11);
-            float nextContentX = DrawParkedAttentionBadge(g, tagX + tagW + 12, currentY, needsAttention, s);
+            float nextContentX = tagX + tagW + 12;
             var rowContext = new ParkedRowRenderContext(g, contentX, rowW, currentY, s);
-            DrawParkedRowText(rowContext, nextContentX, item, info, needsAttention);
-            DrawParkedActionButtons(g, contentX, rowW, currentY, rowH, index, info.IsUnlimited);
+            DrawParkedRowText(rowContext, nextContentX, item);
+            DrawParkedActionButtons(g, contentX, rowW, currentY, rowH, index);
         }
 
-        static float DrawParkedAttentionBadge(Graphics g, float x, int currentY, bool needsAttention, float s)
-        {
-            if (!needsAttention) return x;
-
-            string badgeText = GetText("task_parked_badge_expiring");
-            float badgeTextW = _tagFont != null ? g.MeasureString(badgeText, _tagFont).Width / s : 48f;
-            float badgeW = badgeTextW + 14f;
-            using var badgePath = UIHelper.GetRoundedRectPath(new RectangleF(x * s, (currentY + 11) * s, badgeW * s, 22f * s), 4 * s);
-            using var badgeBgBrush = new SolidBrush(Color.FromArgb(50, 40, 20));
-            using var badgeBorderPen = new Pen(ParkedAlertColor);
-            g.FillPath(badgeBgBrush, badgePath);
-            g.DrawPath(badgeBorderPen, badgePath);
-
-            if (_tagFont != null)
-            {
-                using var badgeTextBrush = new SolidBrush(ParkedAlertColor);
-                g.DrawString(badgeText, _tagFont, badgeTextBrush, (x + 7) * s, (currentY + 14) * s);
-            }
-            return x + badgeW + 12;
-        }
-
-        static void DrawParkedRowText(ParkedRowRenderContext context, float fileX,
-            HistoryItem item, ParkedRetentionQueryState info, bool needsAttention)
+        static void DrawParkedRowText(ParkedRowRenderContext context, float fileX, HistoryItem item)
         {
             Graphics g = context.Graphics;
             float contentX = context.ContentX;
             int rowW = context.RowWidth;
             int currentY = context.CurrentY;
             float s = context.Scale;
-            float ttlRight = DashboardLayout.ParkedRowTtlRight((int)contentX, rowW);
-            string ttlText = item.RetentionText;
-            float ttlW = _tagFont != null ? g.MeasureString(ttlText, _tagFont).Width / s : 60f;
-            if (_tagFont != null && ttlW > ttlRight - contentX - 12)
-            {
-                ttlText = UIHelper.TruncateText(g, ttlText, _tagFont, ttlRight - contentX - 12, s);
-                ttlW = g.MeasureString(ttlText, _tagFont).Width / s;
-            }
-            float ttlX = Math.Max(contentX + 12, ttlRight - ttlW);
+            float maxRight = DashboardLayout.ParkedRowTtlRight((int)contentX, rowW);
 
             if (_bodyFont != null)
             {
                 using var fileBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
                 string displayText = item.Subtitle;
-                float maxW = ttlX - 16 - fileX;
+                float maxW = maxRight - fileX;
                 if (maxW > 20)
                     displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);
                 g.DrawString(displayText, _bodyFont, fileBrush, fileX * s, (currentY + 13) * s);
             }
-
-            if (_tagFont != null)
-            {
-                using var ttlBrush = new SolidBrush(ParkedTtlColor(info, needsAttention));
-                g.DrawString(ttlText, _tagFont, ttlBrush, ttlX * s, (currentY + 13) * s);
-            }
         }
 
-        /// <summary>畫一列的動作按鈕：縮短（−）、延長（＋）、繼續與取消。位置來自版面表，
-        /// hover 與點擊也用它 —— 座標與尺寸永遠是同一個矩形。已經是無限期（永久保留）的任務，
-        /// 「延長」沒有意義，所以畫成停用狀態（按下也確實是 no-op）。</summary>
-        static void DrawParkedActionButtons(Graphics g, float contentX, int rowW, int rowY, int rowH, int rowIndex, bool isUnlimited)
+        /// <summary>畫一列的動作按鈕：繼續與取消。位置來自版面表，
+        /// hover 與點擊也用它 —— 座標與尺寸永遠是同一個矩形。</summary>
+        static void DrawParkedActionButtons(Graphics g, float contentX, int rowW, int rowY, int rowH, int rowIndex)
         {
             float s = _dpiScale;
             for (int action = 0; action < ParkedActionCount; action++)
             {
-                bool isExtend = action == ParkedActionExtend;
                 bool isResume = action == ParkedActionResume;
                 bool isCancel = action == ParkedActionCancel;
-                bool enabled = !(isExtend && isUnlimited);
-                bool isHovered = enabled && _hoveredElement == ParkedActionElement(rowIndex, action);
+                bool isHovered = _hoveredElement == ParkedActionElement(rowIndex, action);
 
                 LayoutRect rect = DashboardLayout.ParkedRowActionRect((int)contentX, rowW, rowY, rowH, action);
                 Color bg = ParkedActionBackground(isHovered, isResume, isCancel);
                 Color border = ParkedActionBorder(isHovered, isResume, isCancel);
-                Color label = enabled ? Color.FromArgb(210, 210, 210) : Color.FromArgb(110, 110, 110);
+                Color label = Color.FromArgb(210, 210, 210);
 
                 using (var path = UIHelper.GetRoundedRectPath(new RectangleF(rect.X * s, rect.Y * s, rect.Width * s, rect.Height * s), 4 * s))
                 using (var bgBrush = new SolidBrush(bg))
@@ -448,13 +398,7 @@ namespace Clickra.UI
 
                 if (_tagFont != null)
                 {
-                    string text = action switch
-                    {
-                        ParkedActionShorten => "-" + _historyPresentation.RetentionStepDays,
-                        ParkedActionExtend  => "+" + _historyPresentation.RetentionStepDays,
-                        ParkedActionResume  => GetText("fluent_task_resume"),
-                        _                   => GetText("dialog_cancel")
-                    };
+                    string text = isResume ? GetText("fluent_task_resume") : GetText("dialog_cancel");
                     var size = g.MeasureString(text, _tagFont);
                     using var labelBrush = new SolidBrush(label);
                     g.DrawString(text, _tagFont, labelBrush,
@@ -462,20 +406,6 @@ namespace Clickra.UI
                         (rect.Y + (rect.Height - size.Height / s) / 2) * s);
                 }
             }
-        }
-
-        static Color ParkedRowBorder(ParkedRetentionQueryState info)
-        {
-            if (info.HasExpired) return Color.FromArgb(200, 60, 60);
-            if (info.IsExpiringSoon) return ParkedAlertColor;
-            return Color.FromArgb(70, 70, 100);
-        }
-
-        static Color ParkedTtlColor(ParkedRetentionQueryState info, bool needsAttention)
-        {
-            if (info.HasExpired) return Color.FromArgb(255, 90, 70);
-            if (needsAttention) return ParkedAlertColor;
-            return Color.FromArgb(150, 150, 160);
         }
 
         static Color ParkedActionBackground(bool isHovered, bool isResume, bool isCancel)

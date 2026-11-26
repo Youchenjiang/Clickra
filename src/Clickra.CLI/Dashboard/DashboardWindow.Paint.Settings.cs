@@ -15,8 +15,6 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
-        private const string ParkedRetentionDaysTextKey = "setting_parked_ttl_days";
-
         // skipcq: CS-R1140
         static void DrawSettingsTab(Graphics g, float logW, float logH, float contentX)
         {
@@ -497,80 +495,6 @@ namespace Clickra.UI
                 pdfCompressionY += SettingsLayout.SliderSectionHeight;
                 y = pdfCompressionY + SettingsLayout.CardGap;
             }
-
-            // Parked Task Retention Section
-            float retentionStartY = y + 2f;
-            int retentionContentX = (int)contentX;
-            if (wideSettings)
-            {
-                LayoutRect retentionCard = SettingsLayout.CardRect(
-                    (int)contentX,
-                    (int)retentionStartY,
-                    (int)(logW - contentX - SettingsLayout.ContentRightMargin),
-                    SettingsLayout.RetentionCardHeight);
-                DrawCard(retentionCard);
-                retentionContentX = retentionCard.X + SettingsLayout.CardPadding;
-                DrawSectionHeaderAt("setting_parked_ttl_title", "setting_parked_ttl_desc",
-                    retentionContentX, retentionCard.Y + 10);
-            }
-            else
-            {
-                DrawSectionHeader("setting_parked_ttl_title", "setting_parked_ttl_desc", retentionStartY);
-            }
-            float retentionDetailY = retentionStartY + (wideSettings ? 56f : 50f);
-
-            int currentDays = SettingsPresentationController.Shared.ParkedTaskRetentionDays;
-            int defaultDays = GetDefaultParkedRetentionDays();
-            string currentDaysText = currentDays switch
-            {
-                0 => GetText("setting_parked_ttl_unlimited"),
-                1 => string.Format(GetText("setting_parked_ttl_day_single"), currentDays),
-                _ => string.Format(GetText(ParkedRetentionDaysTextKey), currentDays)
-            };
-            string currentLabel = string.Format(GetText("setting_parked_ttl_current"), currentDaysText);
-
-            if (_subFont != null)
-            {
-                using var currentBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                g.DrawString(currentLabel, _subFont, currentBrush,
-                    retentionContentX * s, retentionDetailY * s);
-            }
-            retentionDetailY += 28f;
-
-            float curX = retentionContentX;
-            float btnY = retentionDetailY;
-            float wStep = 34f;
-
-            DrawOutputDirButton(g, "-", false, 90, (int)curX, (int)btnY, (int)wStep);
-            AddHitRect(90, curX, btnY, wStep, 30);
-            curX += wStep + SettingsLayout.RetentionPresetGap;
-
-            DrawOutputDirButton(g, "+", false, 91, (int)curX, (int)btnY, (int)wStep);
-            AddHitRect(91, curX, btnY, wStep, 30);
-            curX += wStep + SettingsLayout.RetentionGroupGap;
-
-            (int days, int elemId, string label)[] presets = new[]
-            {
-                (0, 92, GetText("setting_parked_ttl_unlimited")),
-                (3, 93, string.Format(GetText(ParkedRetentionDaysTextKey), 3)),
-                (defaultDays, 94, string.Format(GetText("setting_parked_ttl_default"), defaultDays)),
-                (14, 95, string.Format(GetText(ParkedRetentionDaysTextKey), 14)),
-                (30, 96, string.Format(GetText(ParkedRetentionDaysTextKey), 30))
-            };
-
-            var measureFont = _subFont ?? SystemFonts.DefaultFont;
-            foreach (var (days, elemId, label) in presets)
-            {
-                float btnW = Math.Max(50f, g.MeasureString(label, measureFont).Width / s + 20f);
-                bool isSelected = (currentDays == days);
-                DrawOutputDirButton(g, label, isSelected, elemId, (int)curX, (int)btnY, (int)btnW);
-                AddHitRect(elemId, curX, btnY, btnW, 30);
-                curX += btnW + SettingsLayout.RetentionPresetGap;
-            }
-
-            y = wideSettings
-                ? retentionStartY + SettingsLayout.RetentionCardHeight + SettingsLayout.CardGap
-                : retentionDetailY + 50f;
 
             // Dynamic settings from the shared Presentation settings catalog.
             IReadOnlyList<SettingDescriptor> descriptors = SettingsPresentationController.Shared.Descriptors;

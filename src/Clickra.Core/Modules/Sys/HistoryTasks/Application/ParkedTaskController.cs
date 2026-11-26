@@ -11,19 +11,6 @@ public static class ParkedTaskController
     /// <summary>Data required to resume one parked conversion.</summary>
     public sealed record ResumeInfo(string TaskId, string Command, List<string> Files, int StartIndex);
 
-    public static int RetentionStepDays => ClickraSettings.ParkedRetentionStepDays;
-
-    /// <summary>Returns the effective global parked-task retention in days.</summary>
-    public static int GetRetentionDays() => ClickraStorage.GetParkedRetentionDays();
-
-    /// <summary>Adjusts one parked task's retention override by the requested number of days.</summary>
-    public static int? AdjustRetention(string taskId, int deltaDays) =>
-        ClickraStorage.AdjustParkedRetention(taskId, deltaDays);
-
-    /// <summary>Clears one parked task's retention override so it follows the global policy again.</summary>
-    public static void ResetRetention(string taskId) =>
-        ClickraStorage.SetParkedRetentionOverride(taskId, null);
-
     /// <summary>
     /// Puts a task that was claimed for resume back into 待繼續 when the window cannot run it after all,
     /// so the claim never loses the task.

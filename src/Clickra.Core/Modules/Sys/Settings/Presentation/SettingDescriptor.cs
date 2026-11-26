@@ -89,7 +89,6 @@ namespace Clickra.Core.Modules.Sys.Settings.Presentation;
         public const string GroupPdf = "pdf";
         public const string GroupPdfCompression = "pdf_compression";
         public const string GroupImageCompression = "image_compression";
-        public const string GroupTaskQueue = "task_queue";
 
         /// <summary>設定群組清單，已依推薦順序排序。</summary>
         public static readonly IReadOnlyList<SettingGroupDescriptor> Groups = new SettingGroupDescriptor[]
@@ -100,7 +99,6 @@ namespace Clickra.Core.Modules.Sys.Settings.Presentation;
             new(GroupPdf, "fluent_pdf_target", null, 40),
             new(GroupPdfCompression, "fluent_pdf_compression", "setting_pdf_compress_desc", 50),
             new(GroupImageCompression, "fluent_image_compression", "fluent_images_desc", 60),
-            new(GroupTaskQueue, "setting_parked_ttl_title", "setting_parked_ttl_desc", 70),
         };
 
         /// <summary>
@@ -154,16 +152,6 @@ namespace Clickra.Core.Modules.Sys.Settings.Presentation;
                 "setting_image_max_dimension_title",
                 "setting_image_max_dimension_desc",
                 Order: 20
-            ),
-
-            // Task Queue: 暫存任務保留天數
-            new(
-                SettingsContract.ParkedTaskRetention,
-                GroupTaskQueue,
-                SettingEditorKind.Number,
-                "setting_parked_ttl_title",
-                "setting_parked_ttl_desc",
-                Order: 10
             ),
 
             // General: 輸出路徑模式與介面語言
@@ -288,7 +276,6 @@ namespace Clickra.Core.Modules.Sys.Settings.Presentation;
             SettingsContract.QuietMode,
             SettingsContract.Notifications,
             SettingsContract.PdfCompressionImageLevel,
-            SettingsContract.ParkedTaskRetention,
         };
 
         /// <summary>嘗試依照鍵名取得設定介面描述項。</summary>
