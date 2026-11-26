@@ -127,6 +127,29 @@ public static class PdfUnlockStep
         }
     }
 
+    public static async Task<PdfUnlockResult> UnlockAsync(
+        int fileIndex,
+        string inputPath,
+        IConversionInteraction interaction,
+        ICollection<string>? knownPasswords = null,
+        CancellationToken cancellationToken = default)
+    {
+        var cache = new ConversionPasswordCache();
+        if (knownPasswords != null)
+        {
+            foreach (var p in knownPasswords) cache.Add(p);
+        }
+        var res = await UnlockAsync(fileIndex, inputPath, interaction, cache, cancellationToken).ConfigureAwait(false);
+        if (knownPasswords != null)
+        {
+            foreach (var p in cache.GetSnapshot().Where(p => !knownPasswords.Contains(p)))
+            {
+                knownPasswords.Add(p);
+            }
+        }
+        return res;
+    }
+
     private static bool TryUnlockWithKnownPasswords(
         string inputPath,
         string tempPath,
@@ -184,29 +207,6 @@ public static class PdfUnlockStep
         }
     }
 
-    public static async Task<PdfUnlockResult> UnlockAsync(
-        int fileIndex,
-        string inputPath,
-        IConversionInteraction interaction,
-        ICollection<string>? knownPasswords = null,
-        CancellationToken cancellationToken = default)
-    {
-        var cache = new ConversionPasswordCache();
-        if (knownPasswords != null)
-        {
-            foreach (var p in knownPasswords) cache.Add(p);
-        }
-        var res = await UnlockAsync(fileIndex, inputPath, interaction, cache, cancellationToken).ConfigureAwait(false);
-        if (knownPasswords != null)
-        {
-            foreach (var p in cache.GetSnapshot().Where(p => !knownPasswords.Contains(p)))
-            {
-                knownPasswords.Add(p);
-            }
-        }
-        return res;
-    }
-
     public static void CleanResidualFiles(TimeSpan? olderThan = null)
     {
         try
@@ -243,11 +243,25 @@ public static class PdfUnlockStep
                 : PdfReader.Open(sourcePath, password, PdfDocumentOpenMode.Import);
 
             using var outDoc = new PdfDocument();
+            outDoc.Info.Title = inDoc.Info.Title;
+            outDoc.Info.Author = inDoc.Info.Author;
+            outDoc.Info.Subject = inDoc.Info.Subject;
+            outDoc.Info.Keywords = inDoc.Info.Keywords;
+            outDoc.Info.Creator = inDoc.Info.Creator;
+            outDoc.PageLayout = inDoc.PageLayout;
+            outDoc.PageMode = inDoc.PageMode;
+
             int pageCount = inDoc.PageCount;
             for (int i = 0; i < pageCount; i++)
             {
                 outDoc.AddPage(inDoc.Pages[i]);
             }
+
+            if (pageCount > 0)
+            {
+                CopyOutlines(inDoc, outDoc);
+            }
+
             outDoc.Save(tempPath);
             return true;
         }
@@ -260,6 +274,38 @@ public static class PdfUnlockStep
                 catch { /* Best effort */ }
             }
             return false;
+        }
+    }
+
+    private static void CopyOutlines(PdfDocument source, PdfDocument target)
+    {
+        if (source.Outlines.Count == 0) return;
+        var pageIndexMap = new Dictionary<PdfPage, int>();
+        for (int i = 0; i < source.PageCount; i++)
+        {
+            pageIndexMap[source.Pages[i]] = i;
+        }
+        CopyOutlineCollection(source.Outlines, target.Outlines, target, pageIndexMap);
+    }
+
+    private static void CopyOutlineCollection(
+        PdfOutlineCollection sourceOutlines,
+        PdfOutlineCollection targetOutlines,
+        PdfDocument targetDoc,
+        Dictionary<PdfPage, int> pageIndexMap)
+    {
+        foreach (PdfOutline src in sourceOutlines)
+        {
+            PdfPage destPage = src.DestinationPage is not null &&
+                               pageIndexMap.TryGetValue(src.DestinationPage, out int idx) &&
+                               idx < targetDoc.PageCount
+                ? targetDoc.Pages[idx]
+                : targetDoc.Pages[0];
+            PdfOutline dst = targetOutlines.Add(src.Title ?? string.Empty, destPage, src.Opened);
+            if (src.Outlines.Count > 0)
+            {
+                CopyOutlineCollection(src.Outlines, dst.Outlines, targetDoc, pageIndexMap);
+            }
         }
     }
 }

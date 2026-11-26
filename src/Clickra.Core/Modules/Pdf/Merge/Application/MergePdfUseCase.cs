@@ -21,8 +21,6 @@ public sealed class MergePdfUseCase : SingleOutputConversionUseCaseBase
     public override IReadOnlySet<ConversionCapability> Capabilities =>
         new HashSet<ConversionCapability> { ConversionCapability.Password };
 
-    public ConversionPasswordCache PasswordCache { get; } = new();
-
     protected override string UseCaseName => nameof(MergePdfUseCase);
     protected override string InputRequirementError => "At least two PDF files are required.";
     protected override string PlannedOutputFileName => OutputFileName;
@@ -36,6 +34,7 @@ public sealed class MergePdfUseCase : SingleOutputConversionUseCaseBase
         List<SkippedFileInfo> skippedFiles,
         CancellationToken cancellationToken)
     {
+        var passwordCache = new ConversionPasswordCache();
         var unlockedFiles = new List<PdfUnlockResult>();
         try
         {
@@ -46,7 +45,7 @@ public sealed class MergePdfUseCase : SingleOutputConversionUseCaseBase
                     i,
                     plan.Inputs[i],
                     interaction,
-                    PasswordCache,
+                    passwordCache,
                     cancellationToken).ConfigureAwait(false);
 
                 if (unlock.IsSkipped)

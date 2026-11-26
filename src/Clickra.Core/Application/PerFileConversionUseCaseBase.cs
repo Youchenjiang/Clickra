@@ -77,7 +77,10 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
             TaskLifecycleRepository: request.TaskLifecycleRepository);
     }
 
-    public ConversionPasswordCache PasswordCache { get; } = new();
+    private readonly AsyncLocal<ConversionPasswordCache?> _executionPasswordCache = new();
+
+    protected ConversionPasswordCache PasswordCache =>
+        _executionPasswordCache.Value ?? throw new InvalidOperationException("PasswordCache is only available during ExecuteAsync.");
 
     public override async Task<ConversionResult> ExecuteAsync(
         ConversionPlan plan,
@@ -85,6 +88,25 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
         IProgress<ConversionProgress>? progress,
         IConversionExecutionObserver? observer = null,
         CancellationToken cancellationToken = default)
+    {
+        ConversionPasswordCache? previousCache = _executionPasswordCache.Value;
+        _executionPasswordCache.Value = new ConversionPasswordCache();
+        try
+        {
+            return await ExecuteWithPerExecutionCacheAsync(plan, interaction, progress, observer, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _executionPasswordCache.Value = previousCache;
+        }
+    }
+
+    private async Task<ConversionResult> ExecuteWithPerExecutionCacheAsync(
+        ConversionPlan plan,
+        IConversionInteraction interaction,
+        IProgress<ConversionProgress>? progress,
+        IConversionExecutionObserver? observer,
+        CancellationToken cancellationToken)
     {
         object? executionState = CreateExecutionState(plan);
         var (stopwatch, lifecycle) = StartExecution(
