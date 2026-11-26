@@ -48,6 +48,7 @@ public sealed class HistoryItem
         IsCanceled = kind == HistoryItemKind.Completed && HistoryQueryController.IsUserCanceledReason(entry.ErrorMessage);
         StatusKey = ResolveStatusKey(kind, entry.Status, IsCanceled);
         Time = entry.Time ?? "";
+        NeedsAttention = false;
         FileCount = entry.FileCount;
         FirstFileName = FirstFileNameOf(entry);
         FileCountText = DescribeFiles(entry.FileCount, FirstFileName, language);
@@ -91,7 +92,7 @@ public sealed class HistoryItem
     public string Subtitle { get; }
 
     /// <summary>即將過期或已過期：列要變色、要顯示徽章、要計入聚合警示。</summary>
-    public bool NeedsAttention => false;
+    public bool NeedsAttention { get; }
 
     public bool IsSuccess => Kind == HistoryItemKind.Completed && Entry.Status == HistoryQueryStatus.Success;
 
