@@ -21,8 +21,6 @@ public interface IConversionUseCase
     {
         get
         {
-            if (Capabilities.Contains(ConversionCapability.Password))
-                return RequiredInputType.Password;
             if (Capabilities.Contains(ConversionCapability.SplitPages))
                 return RequiredInputType.PageRange;
             if (Capabilities.Contains(ConversionCapability.MarkdownOptions) ||

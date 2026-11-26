@@ -18,9 +18,6 @@ public sealed class MergePdfUseCase : SingleOutputConversionUseCaseBase
     protected override string OutputCountError => "PDF merge requires exactly one output.";
     protected override string UnsupportedInputError(string path) => $"Unsupported merge input '{path}'.";
 
-    protected override ConversionValidationResult ValidateInputs(ConversionRequest request) =>
-        PdfEncryptionQuery.ValidateNotEncrypted(request, "pdf_err_encrypted_merge");
-
     protected override async Task ExecuteSingleAsync(
         ConversionPlan plan,
         IProgress<ConversionProgress>? progress,

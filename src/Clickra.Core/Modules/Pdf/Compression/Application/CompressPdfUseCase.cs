@@ -14,16 +14,13 @@ public sealed class CompressPdfUseCase : PerFileConversionUseCaseBase
 
     public override string Command => CommandName;
     public override IReadOnlySet<ConversionCapability> Capabilities =>
-        new HashSet<ConversionCapability> { ConversionCapability.Compression };
+        new HashSet<ConversionCapability> { ConversionCapability.Compression, ConversionCapability.Password };
     protected override string UseCaseName => nameof(CompressPdfUseCase);
     protected override string InputRequirementError => "At least one PDF file is required.";
     protected override string OutputCountError => "PDF compression requires one output per input.";
     protected override string UnsupportedInputError(string path) => $"Unsupported compression input '{path}'.";
     protected override string GetOutputFileName(string input) =>
         Path.GetFileNameWithoutExtension(input) + "_compressed.pdf";
-
-    protected override ConversionValidationResult ValidateInputs(ConversionRequest request) =>
-        PdfEncryptionQuery.ValidateNotEncrypted(request, "pdf_err_encrypted_compress");
 
     protected override ConversionValidationResult ValidateOptions(ConversionRequest request)
     {
@@ -72,10 +69,23 @@ public sealed class CompressPdfUseCase : PerFileConversionUseCaseBase
     {
         var options = (IReadOnlyDictionary<string, object>?)executionState
             ?? plan.NormalizedOptions;
+
+        using var unlock = await PdfUnlockStep.UnlockAsync(
+            index,
+            plan.Inputs[index],
+            interaction,
+            PasswordCache,
+            cancellationToken).ConfigureAwait(false);
+
+        if (unlock.IsSkipped)
+        {
+            throw new ConversionFileSkippedException(ConversionSkipReason.NeedsPassword);
+        }
+
         var processor = new PdfCompressionProcessor();
         await Task.Run(
             () => processor.Process(
-                new List<string> { plan.Inputs[index] },
+                new List<string> { unlock.EffectivePath },
                 plan.Outputs[index],
                 new Dictionary<string, object>(options, StringComparer.Ordinal),
                 (current, total, message) =>

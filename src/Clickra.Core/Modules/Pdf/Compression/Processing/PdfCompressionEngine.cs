@@ -169,8 +169,7 @@ public sealed class NativePdfCompressionEngine : IPdfCompressionEngine
         }
         catch (PdfReaderException ex) when (ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("encrypted", StringComparison.OrdinalIgnoreCase))
         {
-            string lang = ExecutionLocalizationOptions.ReadLanguage(options);
-            throw new PdfEncryptedException("pdf_err_encrypted_compress", inputPath, Localization.T("pdf_err_encrypted_compress", lang), ex);
+            throw new PdfEncryptedException("PdfEncrypted", inputPath, innerException: ex);
         }
     }
 }

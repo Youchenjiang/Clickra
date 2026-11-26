@@ -35,6 +35,8 @@ public sealed class DecryptPdfUseCase : PerFileConversionUseCaseBase
     public override IReadOnlySet<ConversionCapability> Capabilities =>
         new HashSet<ConversionCapability> { ConversionCapability.Password };
 
+    public override RequiredInputType InputRequirement => RequiredInputType.Password;
+
     protected override IReadOnlySet<ConversionCapability> GetCapabilities(ConversionRequest request) =>
         Capabilities;
 
