@@ -176,6 +176,7 @@
   "error_pdf_password_quiet": "密碼錯誤或未提供密碼（靜默模式下無法手動輸入密碼）。",
   "pdf_not_encrypted": "沒有密碼或使用限制，已略過",
   "core_pdf_all_files_need_password": "每個檔案都要密碼，沒有處理任何檔案",
+  "core_merge_only_one_file": "只剩 1 個檔案，沒有合併",
   "core_history_reason_skipped_needs_password": "{count} 個略過，需要密碼",
   "dialog_ok": "確定",
   "dialog_cancel": "取消",

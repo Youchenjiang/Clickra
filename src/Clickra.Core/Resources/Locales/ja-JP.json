@@ -176,6 +176,7 @@
   "error_pdf_password_quiet": "パスワードが正しくないか入力されていません（サイレントモードではパスワードを入力できません）。",
   "pdf_not_encrypted": "パスワードや使用制限がないためスキップしました",
   "core_pdf_all_files_need_password": "すべてのファイルにパスワードが必要です。処理されたファイルはありません",
+  "core_merge_only_one_file": "残り 1 件のため結合されませんでした",
   "core_history_reason_skipped_needs_password": "{count} 件スキップ、パスワードが必要",
   "dialog_ok": "確定",
   "dialog_cancel": "キャンセル",

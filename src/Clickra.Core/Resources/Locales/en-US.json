@@ -176,6 +176,7 @@
   "error_pdf_password_quiet": "Incorrect or missing password (cannot prompt for password in quiet mode).",
   "pdf_not_encrypted": "No password or restrictions; skipped",
   "core_pdf_all_files_need_password": "Every file requires a password; no files were processed",
+  "core_merge_only_one_file": "Only 1 file remaining; nothing was merged",
   "core_history_reason_skipped_needs_password": "{count} skipped, requires password",
   "dialog_ok": "OK",
   "dialog_cancel": "Cancel",
