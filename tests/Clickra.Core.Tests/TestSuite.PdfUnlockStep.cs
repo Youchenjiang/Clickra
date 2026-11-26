@@ -279,9 +279,10 @@ static partial class TestSuite
         cache.Add("pass1");
         cache.Add("");
 
-        Assert.Equal(2L, (long)cache.Passwords.Count);
-        Assert.Equal("pass1", cache.Passwords[0]);
-        Assert.Equal("pass2", cache.Passwords[1]);
+        var snapshot = cache.GetSnapshot();
+        Assert.Equal(2L, (long)snapshot.Count);
+        Assert.Equal("pass1", snapshot[0]);
+        Assert.Equal("pass2", snapshot[1]);
     }
 
     private static void TestPasswordPromptResultProperties()

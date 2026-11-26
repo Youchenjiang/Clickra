@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Clickra.Core.Application;
@@ -95,58 +96,25 @@ public static class PdfUnlockStep
         try
         {
             // Case 2: Only usage restrictions (no open password needed)
-            if (!PdfEncryptionQuery.NeedsOpenPassword(inputPath))
+            if (!PdfEncryptionQuery.NeedsOpenPassword(inputPath) &&
+                TryDecryptToTemp(inputPath, password: null, tempPath))
             {
-                if (TryDecryptToTemp(inputPath, password: null, tempPath))
-                {
-                    return PdfUnlockResult.Unlocked(tempPath, hadOpenPassword: false);
-                }
+                return PdfUnlockResult.Unlocked(tempPath, hadOpenPassword: false);
             }
 
             // Case 3: Needs open password
-            // 3.1: Try known passwords in order
-            if (passwordCache != null)
+            if (TryUnlockWithKnownPasswords(inputPath, tempPath, passwordCache, cancellationToken))
             {
-                foreach (string knownPassword in passwordCache.Passwords)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (TryDecryptToTemp(inputPath, knownPassword, tempPath))
-                    {
-                        return PdfUnlockResult.Unlocked(tempPath, hadOpenPassword: true);
-                    }
-                }
+                return PdfUnlockResult.Unlocked(tempPath, hadOpenPassword: true);
             }
 
-            // 3.2 - 3.4: Prompt user
-            bool isRetry = false;
-            while (true)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                PasswordPromptResult promptResult = await interaction.RequestPasswordResultAsync(
-                    fileIndex,
-                    inputPath,
-                    isRetry,
-                    cancellationToken).ConfigureAwait(false);
-
-                if (promptResult.IsCancel)
-                {
-                    throw new OperationCanceledException(cancellationToken);
-                }
-
-                if (promptResult.IsSkip)
-                {
-                    return PdfUnlockResult.Skipped(inputPath, hadOpenPassword: true);
-                }
-
-                string? password = promptResult.Password;
-                if (!string.IsNullOrEmpty(password) && TryDecryptToTemp(inputPath, password, tempPath))
-                {
-                    passwordCache?.Add(password);
-                    return PdfUnlockResult.Unlocked(tempPath, hadOpenPassword: true);
-                }
-
-                isRetry = true;
-            }
+            return await PromptAndUnlockAsync(
+                fileIndex,
+                inputPath,
+                tempPath,
+                interaction,
+                passwordCache,
+                cancellationToken).ConfigureAwait(false);
         }
         catch
         {
@@ -156,6 +124,63 @@ public static class PdfUnlockStep
                 catch { /* Best-effort cleanup on failure */ }
             }
             throw;
+        }
+    }
+
+    private static bool TryUnlockWithKnownPasswords(
+        string inputPath,
+        string tempPath,
+        ConversionPasswordCache? passwordCache,
+        CancellationToken cancellationToken)
+    {
+        if (passwordCache == null) return false;
+        foreach (string knownPassword in passwordCache.GetSnapshot())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (TryDecryptToTemp(inputPath, knownPassword, tempPath))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static async Task<PdfUnlockResult> PromptAndUnlockAsync(
+        int fileIndex,
+        string inputPath,
+        string tempPath,
+        IConversionInteraction interaction,
+        ConversionPasswordCache? passwordCache,
+        CancellationToken cancellationToken)
+    {
+        bool isRetry = false;
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            PasswordPromptResult promptResult = await interaction.RequestPasswordResultAsync(
+                fileIndex,
+                inputPath,
+                isRetry,
+                cancellationToken).ConfigureAwait(false);
+
+            if (promptResult.IsCancel)
+            {
+                throw new OperationCanceledException(cancellationToken);
+            }
+
+            if (promptResult.IsSkip)
+            {
+                return PdfUnlockResult.Skipped(inputPath, hadOpenPassword: true);
+            }
+
+            string? password = promptResult.Password;
+            if (!string.IsNullOrEmpty(password) && TryDecryptToTemp(inputPath, password, tempPath))
+            {
+                passwordCache?.Add(password);
+                return PdfUnlockResult.Unlocked(tempPath, hadOpenPassword: true);
+            }
+
+            isRetry = true;
         }
     }
 
@@ -174,9 +199,9 @@ public static class PdfUnlockStep
         var res = await UnlockAsync(fileIndex, inputPath, interaction, cache, cancellationToken).ConfigureAwait(false);
         if (knownPasswords != null)
         {
-            foreach (var p in cache.Passwords)
+            foreach (var p in cache.GetSnapshot().Where(p => !knownPasswords.Contains(p)))
             {
-                if (!knownPasswords.Contains(p)) knownPasswords.Add(p);
+                knownPasswords.Add(p);
             }
         }
         return res;

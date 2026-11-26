@@ -44,12 +44,9 @@ public sealed class ConversionPasswordCache
     private readonly List<string> _passwords = new();
     private readonly object _lock = new();
 
-    public IReadOnlyList<string> Passwords
+    public IReadOnlyList<string> GetSnapshot()
     {
-        get
-        {
-            lock (_lock) return _passwords.ToArray();
-        }
+        lock (_lock) return _passwords.ToArray();
     }
 
     public void Add(string password)

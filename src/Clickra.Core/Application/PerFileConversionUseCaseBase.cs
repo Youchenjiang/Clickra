@@ -129,19 +129,25 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
                     completedFiles = i + 1;
                 }
 
-                if (skippedFiles.Count == plan.Inputs.Count)
-                {
-                    string lang = ReadLanguage(plan.NormalizedOptions);
-                    string errorKey = skippedFiles.All(s => s.Reason == ConversionSkipReason.NotEncrypted)
-                        ? "pdf_not_encrypted"
-                        : "core_pdf_all_files_need_password";
-                    throw new InvalidOperationException(Localization.T(errorKey, lang));
-                }
+                ThrowIfAllFilesSkipped(skippedFiles, plan.Inputs.Count, plan.NormalizedOptions);
             },
             () => completedFiles,
             () => skippedFiles,
             () => successfulOutputs.Count > 0 || skippedFiles.Count == 0 ? successfulOutputs : plan.Outputs,
             () => FormatSkippedHistoryReason(skippedFiles, plan.NormalizedOptions));
+    }
+
+    private static void ThrowIfAllFilesSkipped(
+        List<SkippedFileInfo> skippedFiles,
+        int totalInputs,
+        IReadOnlyDictionary<string, object>? options)
+    {
+        if (skippedFiles.Count != totalInputs) return;
+        string lang = ReadLanguage(options);
+        string errorKey = skippedFiles.All(s => s.Reason == ConversionSkipReason.NotEncrypted)
+            ? "pdf_not_encrypted"
+            : "core_pdf_all_files_need_password";
+        throw new InvalidOperationException(Localization.T(errorKey, lang));
     }
 
     private static string ReadLanguage(IReadOnlyDictionary<string, object>? options) =>

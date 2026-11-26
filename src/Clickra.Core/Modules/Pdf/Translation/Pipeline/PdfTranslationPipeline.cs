@@ -73,7 +73,7 @@ public static class PdfTranslationPipeline
             CancellationToken operationToken = deadlineCts.Token;
 
             onProgress?.Invoke(10, 100, Localization.T("pdf_progress_analyzing", language));
-            using var pigDoc = OpenPigDocument(inputPath, language);
+            using var pigDoc = OpenPigDocument(inputPath);
             sourcePages = pigDoc.NumberOfPages;
             var pageParagraphs = new List<List<PdfParagraph>>();
 
@@ -265,7 +265,7 @@ public static class PdfTranslationPipeline
     private static bool IsLikelyBarChartAxisLabel(PdfParagraph para) =>
         PdfChartLabelClassifier.IsLikelyBarChartAxisLabel(para);
 
-    private static UglyToad.PdfPig.PdfDocument OpenPigDocument(string inputPath, string language)
+    private static UglyToad.PdfPig.PdfDocument OpenPigDocument(string inputPath)
     {
         try
         {
