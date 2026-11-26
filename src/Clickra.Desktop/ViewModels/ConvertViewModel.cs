@@ -120,7 +120,7 @@ public sealed class ActionItemViewModel : ViewModelBase
 
     private bool _isSuggested;
     public string CardTip => ToolTip;
-    public bool IsAvailable => true;
+    public static bool IsAvailable => true;
     /// <summary>解密 when some files are protected: first and outlined.</summary>
     public bool IsSuggested { get => _isSuggested; set { _isSuggested = value; OnPropertyChanged(); } }
 
@@ -858,17 +858,30 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             return;
         }
 
+        var skippedMap = result.SkippedFiles.ToDictionary(s => s.Path, s => s, StringComparer.OrdinalIgnoreCase);
+        int succeeded = AppendProcessedResults(result, files, plannedOutputs, skippedMap, error);
+        int skipped = AppendSkippedResults(files, skippedMap);
+        int failed = files.Count - succeeded - skipped;
+
+        ResultSummary = FormatResultSummary(files.Count, succeeded, skipped, failed);
+    }
+
+    private int AppendProcessedResults(
+        ConversionExecutionPresentationResult result,
+        IReadOnlyList<string> files,
+        IReadOnlyList<string> plannedOutputs,
+        Dictionary<string, SkippedFileInfo> skippedMap,
+        string error)
+    {
         bool ok = result.Status == ConversionExecutionPresentationStatus.Succeeded;
         bool perFile = plannedOutputs.Count == files.Count;
         int succeeded = 0;
-        int skipped = 0;
-        var skippedMap = result.SkippedFiles.ToDictionary(s => s.Path, s => s, StringComparer.OrdinalIgnoreCase);
 
         for (int i = 0; i < files.Count; i++)
         {
             string file = files[i];
-            if (skippedMap.ContainsKey(file)) continue;
-            if (ResultItems.Any(r => string.Equals(r.FullPath, file, StringComparison.OrdinalIgnoreCase))) continue;
+            if (skippedMap.ContainsKey(file) || HasResultItem(file)) continue;
+
             bool fileOk = ok || (perFile && File.Exists(plannedOutputs[i]) && result.Outputs.Contains(plannedOutputs[i], StringComparer.OrdinalIgnoreCase));
             if (fileOk)
             {
@@ -884,11 +897,19 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             }
         }
 
+        return succeeded;
+    }
+
+    private int AppendSkippedResults(
+        IReadOnlyList<string> files,
+        Dictionary<string, SkippedFileInfo> skippedMap)
+    {
+        int skipped = 0;
         for (int i = 0; i < files.Count; i++)
         {
             string file = files[i];
-            if (!skippedMap.TryGetValue(file, out SkippedFileInfo skipInfo)) continue;
-            if (ResultItems.Any(r => string.Equals(r.FullPath, file, StringComparison.OrdinalIgnoreCase))) continue;
+            if (!skippedMap.TryGetValue(file, out SkippedFileInfo skipInfo) || HasResultItem(file)) continue;
+
             skipped++;
             string detail = skipInfo.Reason == ConversionSkipReason.NotEncrypted
                 ? Strings.T("pdf_not_encrypted")
@@ -896,24 +917,27 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
             bool isPasswordSkip = skipInfo.Reason != ConversionSkipReason.NotEncrypted;
             ResultItems.Add(new ExecutionResultItemViewModel(file, false, detail, needsPassword: isPasswordSkip, isSkipped: true));
         }
+        return skipped;
+    }
 
-        int failed = files.Count - succeeded - skipped;
+    private bool HasResultItem(string file) =>
+        ResultItems.Any(r => string.Equals(r.FullPath, file, StringComparison.OrdinalIgnoreCase));
+
+    private static string FormatResultSummary(int totalFiles, int succeeded, int skipped, int failed)
+    {
         if (succeeded == 0 && skipped > 0 && failed == 0)
         {
-            ResultSummary = Strings.T("core_pdf_all_files_need_password");
+            return Strings.T("core_pdf_all_files_need_password");
         }
-        else if (skipped > 0)
+        if (skipped > 0)
         {
-            ResultSummary = Strings.F("ui_result_summary_done_and_skipped", ("done", succeeded), ("skipped", skipped));
+            return Strings.F("ui_result_summary_done_and_skipped", ("done", succeeded), ("skipped", skipped));
         }
-        else if (failed > 0)
+        if (failed > 0)
         {
-            ResultSummary = Strings.F("ui_result_done_some_failed", ("done", succeeded), ("failed", failed));
+            return Strings.F("ui_result_done_some_failed", ("done", succeeded), ("failed", failed));
         }
-        else
-        {
-            ResultSummary = Strings.Count("ui_result_done_count", files.Count);
-        }
+        return Strings.Count("ui_result_done_count", totalFiles);
     }
 
     private void ShowRenameResults(ConversionExecutionPresentationResult result, Dictionary<string, string> renamed, string error)
