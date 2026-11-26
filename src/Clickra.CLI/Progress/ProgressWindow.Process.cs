@@ -29,8 +29,8 @@ namespace Clickra.UI
         // skipcq: CS-R1140
         private void RunProcessing(IntPtr hwnd)
         {
-            List<string> currentFiles;
-            string cmd;
+            List<string> currentFiles = [];
+            string cmd = string.Empty;
             try
             {
                 lock (_stateLock)
@@ -113,28 +113,12 @@ namespace Clickra.UI
         {
             if (result.Status == ConversionResultStatus.Succeeded)
             {
-                string completedMessage;
-                if (result.SkippedFiles.Count > 0)
-                {
-                    int succeeded = Math.Max(0, files.Count - result.SkippedFiles.Count);
-                    int needsPassword = result.SkippedFiles.Count(s => s.Reason == ConversionSkipReason.NeedsPassword);
-                    string lang = SettingsPresentationController.Shared.Language;
-                    string skipReason = needsPassword > 0
-                        ? Localization.Format("core_history_reason_skipped_needs_password", lang, ("count", (object)needsPassword))
-                        : Localization.T("pdf_not_encrypted", lang);
-                    completedMessage = succeeded > 0
-                        ? $"{Localization.T("ui_result_done_2", lang)} {succeeded}, {skipReason}"
-                        : skipReason;
-                    progressCallback(files.Count * 100, files.Count * 100, completedMessage);
-                }
-                else
-                {
-                    if (successMessage is not null)
-                        progressCallback(files.Count * 100, files.Count * 100, successMessage);
-                    completedMessage = setAllDoneMessage
-                        ? Loc(ProgressAllDoneKey)
-                        : _progressPresentation.State.Message;
-                }
+                string completedMessage = FormatCompletedMessage(
+                    files,
+                    result,
+                    progressCallback,
+                    successMessage,
+                    setAllDoneMessage);
 
                 _progressPresentation.Succeed(completedMessage);
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
@@ -145,6 +129,44 @@ namespace Clickra.UI
                 return;
             }
 
+            HandleNonSucceededResult(result);
+            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
+            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
+            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+        }
+
+        private string FormatCompletedMessage(
+            List<string> files,
+            ConversionResult result,
+            Action<int, int, string> progressCallback,
+            string? successMessage,
+            bool setAllDoneMessage)
+        {
+            if (result.SkippedFiles.Count > 0)
+            {
+                int succeeded = Math.Max(0, files.Count - result.SkippedFiles.Count);
+                int needsPassword = result.SkippedFiles.Count(s => s.Reason == ConversionSkipReason.NeedsPassword);
+                string lang = SettingsPresentationController.Shared.Language;
+                string skipReason = needsPassword > 0
+                    ? Localization.Format("core_history_reason_skipped_needs_password", lang, ("count", (object)needsPassword))
+                    : Localization.T("pdf_not_encrypted", lang);
+                string completedMessage = succeeded > 0
+                    ? $"{Localization.T("ui_result_done_2", lang)} {succeeded}, {skipReason}"
+                    : skipReason;
+                progressCallback(files.Count * 100, files.Count * 100, completedMessage);
+                return completedMessage;
+            }
+
+            if (successMessage is not null)
+                progressCallback(files.Count * 100, files.Count * 100, successMessage);
+
+            return setAllDoneMessage
+                ? Loc(ProgressAllDoneKey)
+                : _progressPresentation.State.Message;
+        }
+
+        private void HandleNonSucceededResult(ConversionResult result)
+        {
             string errorMsg = result.Status == ConversionResultStatus.Canceled
                 ? UserAbortedMessage
                 : result.Error ?? "";
@@ -157,9 +179,6 @@ namespace Clickra.UI
                 _progressPresentation.Fail(errorMsg);
                 _failureToAlert = errorMsg;
             }
-            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
         }
 
         /// <summary>Launches the Native visual splitter and returns the selected page specification.</summary>
@@ -197,7 +216,7 @@ namespace Clickra.UI
             _passwordEvent.WaitOne();
 
             bool cancelled = false;
-            string targetPages;
+            string targetPages = string.Empty;
             lock (_stateLock)
             {
                 cancelled = _passwordCancelled;

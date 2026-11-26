@@ -21,7 +21,6 @@ internal sealed class NativeConversionExecutionAdapter
     private readonly CancellationToken _cancellationToken;
     private readonly Action<string> _taskStarted;
     private readonly Action<int> _recordTaskIndex;
-    private readonly Func<string, bool, string> _resolveDecryptPassword;
     private readonly Func<string, string> _promptSplitPages;
     private readonly Action<ConversionResult, string, string?, bool> _completeResult;
 
@@ -36,7 +35,6 @@ internal sealed class NativeConversionExecutionAdapter
         _cancellationToken = state.CancellationToken;
         _taskStarted = callbacks.TaskStarted;
         _recordTaskIndex = callbacks.RecordTaskIndex;
-        _resolveDecryptPassword = callbacks.ResolveDecryptPassword;
         _promptSplitPages = callbacks.PromptSplitPages;
         _completeResult = callbacks.CompleteResult;
     }
@@ -195,7 +193,7 @@ internal sealed class NativeConversionExecutionAdapter
 
     private void RunBatchRename(string command, List<string> files, Action<int, int, string> progressCallback)
     {
-        ConversionPlan plan;
+        ConversionPlan plan = null!;
         try
         {
             plan = ConversionExecutionService.Plan(
