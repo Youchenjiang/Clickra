@@ -15,6 +15,7 @@ internal static class TaskPruningCoordinator
         try
         {
             TaskRecordStore.EnsureDirectory();
+            PruneResidualUnlockFiles();
             if (!Directory.Exists(StorageRuntime.TasksDirectory)) return;
             DateTime now = DateTime.UtcNow;
             foreach (string file in Directory.GetFiles(StorageRuntime.TasksDirectory, $"{StorageRuntime.TaskFilePrefix}*.tmp"))
@@ -56,6 +57,32 @@ internal static class TaskPruningCoordinator
 
         if (finished && age.TotalMinutes > CompletedTaskTtlMinutes)
             File.Delete(file);
+    }
+
+    private static void PruneResidualUnlockFiles()
+    {
+        try
+        {
+            string unlockDir = StorageRuntime.UnlockTempDirectory;
+            if (!Directory.Exists(unlockDir)) return;
+            DateTime cutoff = DateTime.UtcNow.AddDays(-1);
+            foreach (string file in Directory.GetFiles(unlockDir, "*.pdf"))
+            {
+                try
+                {
+                    if (File.GetLastWriteTimeUtc(file) < cutoff)
+                        File.Delete(file);
+                }
+                catch
+                {
+                    // Best effort
+                }
+            }
+        }
+        catch
+        {
+            // Directory access failures must not block task pruning.
+        }
     }
 
     private static bool IsDeadPid(HistoryEntry entry, bool finished, bool parked) =>
