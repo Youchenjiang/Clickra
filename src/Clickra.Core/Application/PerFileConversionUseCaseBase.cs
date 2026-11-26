@@ -77,6 +77,8 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
             TaskLifecycleRepository: request.TaskLifecycleRepository);
     }
 
+    public ConversionPasswordCache PasswordCache { get; } = new();
+
     public override async Task<ConversionResult> ExecuteAsync(
         ConversionPlan plan,
         IConversionInteraction interaction,
@@ -93,27 +95,62 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
             observer);
 
         int completedFiles = GetInitialCompletedFiles(plan);
+        var skippedFiles = new List<SkippedFileInfo>();
+        var successfulOutputs = new List<string>();
+
         return await ConversionLifecycleResultRunner.RunAsync(
             new ConversionLifecycleRunContext(
                 plan, stopwatch, lifecycle, string.Join(";", plan.Outputs), true, ClassifyFailure),
             async currentLifecycle =>
             {
-            for (int i = completedFiles; i < plan.Inputs.Count; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                currentLifecycle?.RecordFileStarting(i);
-                observer?.OnFileStarting(i);
-                await ExecuteFileAsync(
-                    i,
-                    plan,
-                    interaction,
-                    progress,
-                    executionState,
-                    cancellationToken);
-                completedFiles = i + 1;
-            }
+                for (int i = completedFiles; i < plan.Inputs.Count; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    currentLifecycle?.RecordFileStarting(i);
+                    observer?.OnFileStarting(i);
+                    try
+                    {
+                        await ExecuteFileAsync(
+                            i,
+                            plan,
+                            interaction,
+                            progress,
+                            executionState,
+                            cancellationToken);
+                        if (i < plan.Outputs.Count)
+                        {
+                            successfulOutputs.Add(plan.Outputs[i]);
+                        }
+                    }
+                    catch (ConversionFileSkippedException ex)
+                    {
+                        skippedFiles.Add(new SkippedFileInfo(plan.Inputs[i], ex.Reason));
+                    }
+                    completedFiles = i + 1;
+                }
+
+                if (skippedFiles.Count == plan.Inputs.Count)
+                {
+                    string lang = ReadLanguage(plan.NormalizedOptions);
+                    throw new InvalidOperationException(Localization.T("core_pdf_all_files_need_password", lang));
+                }
             },
-            () => completedFiles);
+            () => completedFiles,
+            () => skippedFiles,
+            () => successfulOutputs.Count > 0 || skippedFiles.Count == 0 ? successfulOutputs : plan.Outputs,
+            () => FormatSkippedHistoryReason(skippedFiles, plan.NormalizedOptions));
+    }
+
+    private static string ReadLanguage(IReadOnlyDictionary<string, object>? options) =>
+        options is not null && options.TryGetValue(ConversionRequest.LanguageOptionKey, out object? value)
+            ? Convert.ToString(value) ?? ""
+            : "";
+
+    private static string? FormatSkippedHistoryReason(List<SkippedFileInfo> skippedFiles, IReadOnlyDictionary<string, object>? options)
+    {
+        if (skippedFiles.Count == 0) return null;
+        string lang = ReadLanguage(options);
+        return Localization.Format("core_history_reason_skipped_needs_password", lang, ("count", skippedFiles.Count));
     }
 
     protected static void ReportFileProgress(

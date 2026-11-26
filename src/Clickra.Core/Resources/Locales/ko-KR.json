@@ -175,6 +175,8 @@
   "pdf_password_retry": "비밀번호가 잘못되었습니다. 다시 입력하십시오:「{0}」",
   "error_pdf_password_quiet": "비밀번호가 잘못되었거나 누락되었습니다 (조용한 모드에서는 비밀번호를 입력할 수 없습니다).",
   "pdf_not_encrypted": "암호나 사용 제한이 없어 건너뛰었습니다",
+  "core_pdf_all_files_need_password": "모든 파일에 암호가 필요하여 처리된 파일이 없습니다",
+  "core_history_reason_skipped_needs_password": "{count}개 건너뜀, 암호 필요",
   "dialog_ok": "확인",
   "dialog_cancel": "취소",
   "cmd_compress_pdf": "PDF 압축",

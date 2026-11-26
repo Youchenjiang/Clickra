@@ -77,7 +77,7 @@ public static class PdfUnlockStep
         int fileIndex,
         string inputPath,
         IConversionInteraction interaction,
-        ICollection<string>? knownPasswords = null,
+        ConversionPasswordCache? passwordCache,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -105,9 +105,9 @@ public static class PdfUnlockStep
 
             // Case 3: Needs open password
             // 3.1: Try known passwords in order
-            if (knownPasswords != null)
+            if (passwordCache != null)
             {
-                foreach (string knownPassword in knownPasswords)
+                foreach (string knownPassword in passwordCache.Passwords)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     if (TryDecryptToTemp(inputPath, knownPassword, tempPath))
@@ -122,23 +122,26 @@ public static class PdfUnlockStep
             while (true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                string? password = await interaction.RequestPasswordAsync(
+                PasswordPromptResult promptResult = await interaction.RequestPasswordResultAsync(
                     fileIndex,
                     inputPath,
                     isRetry,
                     cancellationToken).ConfigureAwait(false);
 
-                if (password is null)
+                if (promptResult.IsCancel)
                 {
                     throw new OperationCanceledException(cancellationToken);
                 }
 
-                if (TryDecryptToTemp(inputPath, password, tempPath))
+                if (promptResult.IsSkip)
                 {
-                    if (knownPasswords != null && !knownPasswords.Contains(password))
-                    {
-                        knownPasswords.Add(password);
-                    }
+                    return PdfUnlockResult.Skipped(inputPath, hadOpenPassword: true);
+                }
+
+                string? password = promptResult.Password;
+                if (!string.IsNullOrEmpty(password) && TryDecryptToTemp(inputPath, password, tempPath))
+                {
+                    passwordCache?.Add(password);
                     return PdfUnlockResult.Unlocked(tempPath, hadOpenPassword: true);
                 }
 
@@ -154,6 +157,29 @@ public static class PdfUnlockStep
             }
             throw;
         }
+    }
+
+    public static async Task<PdfUnlockResult> UnlockAsync(
+        int fileIndex,
+        string inputPath,
+        IConversionInteraction interaction,
+        ICollection<string>? knownPasswords = null,
+        CancellationToken cancellationToken = default)
+    {
+        var cache = new ConversionPasswordCache();
+        if (knownPasswords != null)
+        {
+            foreach (var p in knownPasswords) cache.Add(p);
+        }
+        var res = await UnlockAsync(fileIndex, inputPath, interaction, cache, cancellationToken).ConfigureAwait(false);
+        if (knownPasswords != null)
+        {
+            foreach (var p in cache.Passwords)
+            {
+                if (!knownPasswords.Contains(p)) knownPasswords.Add(p);
+            }
+        }
+        return res;
     }
 
     public static void CleanResidualFiles(TimeSpan? olderThan = null)

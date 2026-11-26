@@ -8,7 +8,11 @@ public sealed record ConversionResult(
     TimeSpan Duration,
     int CompletedFiles,
     string TaskId,
-    ConversionFailureKind FailureKind = ConversionFailureKind.None);
+    ConversionFailureKind FailureKind = ConversionFailureKind.None,
+    IReadOnlyList<SkippedFileInfo>? SkippedFiles = null)
+{
+    public IReadOnlyList<SkippedFileInfo> SkippedFiles { get; init; } = SkippedFiles ?? Array.Empty<SkippedFileInfo>();
+}
 
 public enum ConversionResultStatus
 {

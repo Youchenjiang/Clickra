@@ -175,6 +175,8 @@
   "pdf_password_retry": "密码错误。请重新输入「{0}」的密码：",
   "error_pdf_password_quiet": "密码错误或未提供密码（静默模式下无法手动输入密码）。",
   "pdf_not_encrypted": "没有密码或使用限制，已跳过",
+  "core_pdf_all_files_need_password": "每个文件都需要密码，未处理任何文件",
+  "core_history_reason_skipped_needs_password": "{count} 个跳过，需要密码",
   "dialog_ok": "确定",
   "dialog_cancel": "取消",
   "cmd_compress_pdf": "压缩 PDF",

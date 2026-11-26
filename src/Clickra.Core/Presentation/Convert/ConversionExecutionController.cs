@@ -29,10 +29,15 @@ public sealed record ConversionExecutionPresentationResult(
     ConversionExecutionPresentationStatus Status,
     string? Error,
     string TaskId,
-    IReadOnlyList<string> Outputs);
+    IReadOnlyList<string> Outputs,
+    IReadOnlyList<SkippedFileInfo>? SkippedFiles = null)
+{
+    public IReadOnlyList<SkippedFileInfo> SkippedFiles { get; init; } = SkippedFiles ?? Array.Empty<SkippedFileInfo>();
+}
 
 public sealed record ConversionExecutionCallbacks(
     Func<int, string, bool, CancellationToken, Task<string?>>? PasswordPrompt = null,
+    Func<int, string, bool, CancellationToken, Task<PasswordPromptResult>>? PasswordResultPrompt = null,
     Func<int, string, CancellationToken, Task<string?>>? SplitPrompt = null,
     Func<string, IReadOnlyList<string>, CancellationToken, Task<IReadOnlyDictionary<string, object>?>>? OptionsPrompt = null,
     Action<string>? TaskStarted = null,
@@ -95,7 +100,8 @@ public sealed class ConversionExecutionController
         callbacks ??= new ConversionExecutionCallbacks();
 
         var interaction = new DelegateConversionInteraction(
-            callbacks.PasswordPrompt ?? ((_, _, _, _) => Task.FromResult<string?>(null)),
+            callbacks.PasswordPrompt,
+            callbacks.PasswordResultPrompt,
             callbacks.SplitPrompt ?? ((_, _, _) => Task.FromResult<string?>(null)),
             callbacks.OptionsPrompt ?? ((_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null)));
         var applicationProgress = progress is null
@@ -122,7 +128,8 @@ public sealed class ConversionExecutionController
             },
             result.Error,
             result.TaskId,
-            result.Outputs);
+            result.Outputs,
+            result.SkippedFiles);
     }
 
     private sealed class PresentationExecutionObserver(ConversionExecutionCallbacks callbacks) : IConversionExecutionObserver

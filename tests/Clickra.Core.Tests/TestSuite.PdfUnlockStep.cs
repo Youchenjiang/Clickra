@@ -22,6 +22,11 @@ static partial class TestSuite
         runner.Run("PdfUnlockStep: wrong password prompts with retry flag and remembers password", TestPdfUnlockStepPromptAndRetry);
         runner.Run("PdfUnlockStep: cancel throws OperationCanceledException and leaves no temp file", TestPdfUnlockStepCancel);
         runner.Run("PdfUnlockStep: cleans residual unlock files older than one day", TestPdfUnlockStepResidualPruning);
+        runner.Run("ConversionPasswordCache: deduplicates and preserves insertion order", TestConversionPasswordCacheOrder);
+        runner.Run("PasswordPromptResult: validates status and factory methods", TestPasswordPromptResultProperties);
+        runner.Run("DelegateConversionInteraction: defaults to Skip when prompt is absent", TestDelegateConversionInteractionDefaultsToSkip);
+        runner.Run("PerFileConversionUseCaseBase: supports skip and reports SkippedFiles", TestPerFileConversionUseCaseBaseSkipSupport);
+        runner.Run("PerFileConversionUseCaseBase: fails when all files are skipped", TestPerFileConversionUseCaseBaseAllSkipped);
     }
 
     private static void TestPdfUnlockStepUnencrypted()
@@ -234,5 +239,135 @@ static partial class TestSuite
 
         public Task<IReadOnlyDictionary<string, object>?> RequestMarkdownOptionsAsync(string command, IReadOnlyList<string> inputFiles, CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyDictionary<string, object>?>(null);
+    }
+
+    private static void TestConversionPasswordCacheOrder()
+    {
+        var cache = new ConversionPasswordCache();
+        cache.Add("pass1");
+        cache.Add("pass2");
+        cache.Add("pass1");
+        cache.Add("");
+
+        Assert.Equal(2L, (long)cache.Passwords.Count);
+        Assert.Equal("pass1", cache.Passwords[0]);
+        Assert.Equal("pass2", cache.Passwords[1]);
+    }
+
+    private static void TestPasswordPromptResultProperties()
+    {
+        var pwd = PasswordPromptResult.FromPassword("secret");
+        Assert.True(pwd.IsPassword, "Expected IsPassword");
+        Assert.Equal("secret", pwd.Password ?? "");
+
+        var skip = PasswordPromptResult.Skip;
+        Assert.True(skip.IsSkip, "Expected IsSkip");
+
+        var cancel = PasswordPromptResult.Cancel;
+        Assert.True(cancel.IsCancel, "Expected IsCancel");
+    }
+
+    private static void TestDelegateConversionInteractionDefaultsToSkip()
+    {
+        var interaction = new DelegateConversionInteraction(
+            password: null,
+            splitPages: (_, _, _) => Task.FromResult<string?>(null),
+            markdownOptions: (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+
+        var skip = interaction.RequestPasswordResultAsync(0, "a.pdf", false, CancellationToken.None).GetAwaiter().GetResult();
+        Assert.True(skip.IsSkip, "When no password prompt is configured, RequestPasswordResultAsync must default to Skip.");
+
+        var withPwd = new DelegateConversionInteraction(
+            password: (_, _, _, _) => Task.FromResult<string?>("entered-pwd"),
+            splitPages: (_, _, _) => Task.FromResult<string?>(null),
+            markdownOptions: (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+
+        var pwdRes = withPwd.RequestPasswordResultAsync(0, "a.pdf", false, CancellationToken.None).GetAwaiter().GetResult();
+        Assert.True(pwdRes.IsPassword, "Legacy string password must map to Password result.");
+        Assert.Equal("entered-pwd", pwdRes.Password ?? "");
+
+        var withCancel = new DelegateConversionInteraction(
+            password: (_, _, _, _) => Task.FromResult<string?>(null),
+            splitPages: (_, _, _) => Task.FromResult<string?>(null),
+            markdownOptions: (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+
+        var cancelRes = withCancel.RequestPasswordResultAsync(0, "a.pdf", false, CancellationToken.None).GetAwaiter().GetResult();
+        Assert.True(cancelRes.IsCancel, "Legacy null password must map to Cancel result.");
+    }
+
+    private static void TestPerFileConversionUseCaseBaseSkipSupport()
+    {
+        var useCase = new MockPerFileUseCase(index =>
+        {
+            if (index == 0)
+                throw new ConversionFileSkippedException(ConversionSkipReason.NeedsPassword);
+        });
+
+        var plan = useCase.Plan(new ConversionRequest(
+            "mock_per_file",
+            new[] { "file0.pdf", "file1.pdf" }));
+
+        var interaction = new MockPasswordInteraction();
+        var result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
+
+        Assert.True(result.Status == ConversionResultStatus.Succeeded, "Partial skips must result in Succeeded overall.");
+        Assert.Equal(1L, (long)result.SkippedFiles.Count);
+        Assert.Equal("file0.pdf", result.SkippedFiles[0].Path);
+        Assert.True(result.SkippedFiles[0].Reason == ConversionSkipReason.NeedsPassword, "Expected NeedsPassword reason.");
+        Assert.Equal(1L, (long)result.Outputs.Count);
+        Assert.Equal("file1.pdf.out", result.Outputs[0]);
+    }
+
+    private static void TestPerFileConversionUseCaseBaseAllSkipped()
+    {
+        var useCase = new MockPerFileUseCase(_ =>
+            throw new ConversionFileSkippedException(ConversionSkipReason.NeedsPassword));
+
+        var plan = useCase.Plan(new ConversionRequest(
+            "mock_per_file",
+            new[] { "file0.pdf", "file1.pdf" }));
+
+        var interaction = new MockPasswordInteraction();
+        var result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
+
+        Assert.True(result.Status == ConversionResultStatus.Failed, "All files skipped must result in Failed.");
+        Assert.True(result.Error?.Contains("每個檔案都要密碼", StringComparison.Ordinal) == true,
+            $"Expected all files skipped error message, got: {result.Error}");
+        Assert.Equal(2L, (long)result.SkippedFiles.Count);
+    }
+
+    private sealed class MockPerFileUseCase(Action<int>? onExecuteFile = null) : PerFileConversionUseCaseBase
+    {
+        public override string Command => "mock_per_file";
+        protected override string UseCaseName => "Mock Per File";
+        protected override string InputRequirementError => "Input required";
+        protected override string OutputCountError => "Output count mismatch";
+        protected override string UnsupportedInputError(string path) => "Unsupported input";
+        public override bool AcceptsAllFileExtensions => true;
+
+        protected override string GetOutputFileName(string input) => Path.GetFileName(input) + ".out";
+
+        public override ConversionPlan Plan(ConversionRequest request)
+        {
+            var outputs = request.InputFiles.Select(f => f + ".out").ToArray();
+            return new ConversionPlan(
+                request.Command,
+                request.InputFiles,
+                outputs,
+                Capabilities,
+                request.Options ?? new Dictionary<string, object>());
+        }
+
+        protected override Task ExecuteFileAsync(
+            int index,
+            ConversionPlan plan,
+            IConversionInteraction interaction,
+            IProgress<ConversionProgress>? progress,
+            object? executionState,
+            CancellationToken cancellationToken)
+        {
+            onExecuteFile?.Invoke(index);
+            return Task.CompletedTask;
+        }
     }
 }
