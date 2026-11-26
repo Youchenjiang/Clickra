@@ -3019,7 +3019,8 @@ static partial class TestSuite
         {
             if (Directory.Exists(tempDir))
             {
-                try { Directory.Delete(tempDir, true); } catch { }
+                try { Directory.Delete(tempDir, true); }
+                catch { /* Best-effort temp directory cleanup */ }
             }
         }
     }
@@ -3036,77 +3037,11 @@ static partial class TestSuite
         };
 
         var violations = new List<string>();
-
-        foreach (string dir in targetDirs)
+        foreach (string dir in targetDirs.Where(Directory.Exists))
         {
-            if (!Directory.Exists(dir)) continue;
-
             foreach (string file in Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories))
             {
-                string fileName = Path.GetFileName(file);
-                if (string.Equals(fileName, "ConversionPasswordCache.cs", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                string source = File.ReadAllText(file);
-                SyntaxTree tree = CSharpSyntaxTree.ParseText(
-                    source,
-                    CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest));
-                SyntaxNode astRoot = tree.GetRoot();
-
-                // Check 1: No fields or properties holding collections of passwords
-                foreach (var field in astRoot.DescendantNodes().OfType<FieldDeclarationSyntax>())
-                {
-                    var containingClass = field.FirstAncestorOrSelf<ClassDeclarationSyntax>();
-                    if (string.Equals(containingClass?.Identifier.Text, "ConversionPasswordCache", StringComparison.Ordinal))
-                    {
-                        continue;
-                    }
-
-                    string typeText = field.Declaration.Type.ToString();
-                    foreach (var variable in field.Declaration.Variables)
-                    {
-                        string name = variable.Identifier.Text;
-                        if (string.Equals(name, "_lastPassword", StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(name, "LastPassword", StringComparison.OrdinalIgnoreCase))
-                        {
-                            violations.Add($"{NormalizeRepoPath(root, file)}: forbidden field '{name}' retains last password.");
-                        }
-
-                        // Check if collection field mentions password
-                        bool isCollection = typeText.Contains("List") || typeText.Contains("Set") ||
-                                            typeText.Contains("Dictionary") || typeText.Contains("Collection") ||
-                                            typeText.EndsWith("[]", StringComparison.Ordinal);
-                        if (isCollection && name.Contains("password", StringComparison.OrdinalIgnoreCase))
-                        {
-                            violations.Add($"{NormalizeRepoPath(root, file)}: collection field '{name}' ({typeText}) stores passwords outside ConversionPasswordCache.");
-                        }
-                    }
-                }
-
-                // Check 2: No static fields storing passwords
-                foreach (var field in astRoot.DescendantNodes().OfType<FieldDeclarationSyntax>())
-                {
-                    var containingClass = field.FirstAncestorOrSelf<ClassDeclarationSyntax>();
-                    if (string.Equals(containingClass?.Identifier.Text, "ConversionPasswordCache", StringComparison.Ordinal))
-                    {
-                        continue;
-                    }
-
-                    if (field.Modifiers.Any(SyntaxKind.StaticKeyword))
-                    {
-                        foreach (var variable in field.Declaration.Variables)
-                        {
-                            string name = variable.Identifier.Text;
-                            if (name.Contains("password", StringComparison.OrdinalIgnoreCase) &&
-                                !field.Modifiers.Any(SyntaxKind.ConstKeyword))
-                            {
-                                violations.Add($"{NormalizeRepoPath(root, file)}: static field '{name}' must not cache or store passwords.");
-                            }
-                        }
-                    }
-                }
+                InspectFileForPasswordCaching(root, file, violations);
             }
         }
 
@@ -3114,6 +3049,81 @@ static partial class TestSuite
             violations.Count == 0,
             "Password caching must be exclusive to ConversionPasswordCache:" +
             Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static void InspectFileForPasswordCaching(string root, string file, List<string> violations)
+    {
+        if (string.Equals(Path.GetFileName(file), "ConversionPasswordCache.cs", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        string source = File.ReadAllText(file);
+        SyntaxTree tree = CSharpSyntaxTree.ParseText(
+            source,
+            CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest));
+        SyntaxNode astRoot = tree.GetRoot();
+
+        foreach (var field in astRoot.DescendantNodes().OfType<FieldDeclarationSyntax>())
+        {
+            var containingClass = field.FirstAncestorOrSelf<ClassDeclarationSyntax>();
+            if (string.Equals(containingClass?.Identifier.Text, "ConversionPasswordCache", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            CheckFieldForPasswordCollection(root, file, field, violations);
+            CheckFieldForStaticPassword(root, file, field, violations);
+        }
+    }
+
+    private static void CheckFieldForPasswordCollection(
+        string root,
+        string file,
+        FieldDeclarationSyntax field,
+        List<string> violations)
+    {
+        string typeText = field.Declaration.Type.ToString();
+        bool isCollection = typeText.Contains("List") || typeText.Contains("Set") ||
+                            typeText.Contains("Dictionary") || typeText.Contains("Collection") ||
+                            typeText.EndsWith("[]", StringComparison.Ordinal);
+
+        foreach (var variable in field.Declaration.Variables)
+        {
+            string name = variable.Identifier.Text;
+            if (string.Equals(name, "_lastPassword", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(name, "LastPassword", StringComparison.OrdinalIgnoreCase))
+            {
+                violations.Add($"{NormalizeRepoPath(root, file)}: forbidden field '{name}' retains last password.");
+            }
+
+            if (isCollection && name.Contains("password", StringComparison.OrdinalIgnoreCase))
+            {
+                violations.Add($"{NormalizeRepoPath(root, file)}: collection field '{name}' ({typeText}) stores passwords outside ConversionPasswordCache.");
+            }
+        }
+    }
+
+    private static void CheckFieldForStaticPassword(
+        string root,
+        string file,
+        FieldDeclarationSyntax field,
+        List<string> violations)
+    {
+        if (!field.Modifiers.Any(SyntaxKind.StaticKeyword) ||
+            !field.Modifiers.All(m => !m.IsKind(SyntaxKind.ConstKeyword)))
+        {
+            return;
+        }
+
+        foreach (var variable in field.Declaration.Variables)
+        {
+            string name = variable.Identifier.Text;
+            if (name.Contains("password", StringComparison.OrdinalIgnoreCase))
+            {
+                violations.Add($"{NormalizeRepoPath(root, file)}: static field '{name}' must not cache or store passwords.");
+            }
+        }
     }
 
     private static string NormalizeRepoPath(string root, string file) =>

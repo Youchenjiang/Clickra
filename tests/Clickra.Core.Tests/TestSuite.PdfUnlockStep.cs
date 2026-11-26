@@ -14,6 +14,10 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
+    private const string TestSecretPassword = "secret";
+    private const string MergePrefix1 = "merge1";
+    private const string MergePrefix2 = "merge2";
+
     public static void RegisterPdfUnlockStepTests(TestRunner runner)
     {
         runner.Run("PdfUnlockStep: unencrypted PDF returns original path", TestPdfUnlockStepUnencrypted);
@@ -157,14 +161,12 @@ static partial class TestSuite
 
     private static void TestPdfUnlockStepCancel()
     {
-        string path = CreateTestPdf("cancel", "secret");
+        string path = CreateTestPdf("cancel", TestSecretPassword);
         try
         {
             var interaction = new MockPasswordInteraction((string?)null);
-            Assert.Throws<OperationCanceledException>(() =>
-            {
-                PdfUnlockStep.UnlockAsync(0, path, interaction).GetAwaiter().GetResult();
-            });
+            Assert.Throws<OperationCanceledException>(
+                () => PdfUnlockStep.UnlockAsync(0, path, interaction).GetAwaiter().GetResult());
         }
         finally
         {
@@ -402,375 +404,200 @@ static partial class TestSuite
         }
     }
 
-    private static void TestMergePdfUnlockSuccess()
+    private static void RunWithTempFilesAndOutDir(
+        string outDirPrefix,
+        Func<string[]> createInputs,
+        Action<string[], string> testAction)
     {
-        string f1 = CreateTestPdf("merge1", null);
-        string f2 = CreateTestPdf("merge2", "secret");
-        string f3 = CreateTestPdf("merge3", null);
-        string outDir = Path.Combine(Path.GetTempPath(), $"clickra-merge-test-{Guid.NewGuid():N}");
+        string[] inputs = createInputs();
+        string outDir = Path.Combine(Path.GetTempPath(), $"clickra-{outDirPrefix}-{Guid.NewGuid():N}");
         Directory.CreateDirectory(outDir);
-
         try
         {
-            var useCase = new Clickra.Core.Modules.Pdf.Merge.Application.MergePdfUseCase();
-            var plan = useCase.Plan(new ConversionRequest(
-                Clickra.Core.Modules.Pdf.Merge.Application.MergePdfUseCase.CommandName,
-                new[] { f1, f2, f3 },
-                null,
-                null,
-                outDir,
-                false,
-                false));
-
-            var interaction = new MockPasswordInteraction("secret");
-            var result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
-
-            Assert.True(result.Status == ConversionResultStatus.Succeeded, "Merge must succeed when password is provided.");
-            Assert.True(File.Exists(plan.Outputs[0]), "Merged output must exist.");
-            using var doc = PdfReader.Open(plan.Outputs[0], PdfDocumentOpenMode.Import);
-            Assert.Equal(3L, (long)doc.PageCount);
-            Assert.Equal(0L, (long)result.SkippedFiles.Count);
+            testAction(inputs, outDir);
         }
         finally
         {
-            TryDeleteDecryptFixture(f1);
-            TryDeleteDecryptFixture(f2);
-            TryDeleteDecryptFixture(f3);
+            foreach (string input in inputs)
+            {
+                TryDeleteDecryptFixture(input);
+            }
             if (Directory.Exists(outDir))
             {
-                try { Directory.Delete(outDir, true); } catch { }
+                try { Directory.Delete(outDir, true); }
+                catch { /* Best-effort test output directory cleanup */ }
             }
         }
     }
 
-    private static void TestMergePdfUnlockSkip()
-    {
-        string f1 = CreateTestPdf("merge1", null);
-        string f2 = CreateTestPdf("merge2", "secret");
-        string f3 = CreateTestPdf("merge3", null);
-        string outDir = Path.Combine(Path.GetTempPath(), $"clickra-merge-test-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(outDir);
+    private static ConversionPlan CreateUnlockTestPlan(
+        IConversionUseCase useCase,
+        string command,
+        IReadOnlyList<string> inputs,
+        string outDir,
+        Dictionary<string, object>? options = null) =>
+        useCase.Plan(new ConversionRequest(command, inputs, options, null, outDir, false, false));
 
-        try
-        {
-            var useCase = new Clickra.Core.Modules.Pdf.Merge.Application.MergePdfUseCase();
-            var plan = useCase.Plan(new ConversionRequest(
-                Clickra.Core.Modules.Pdf.Merge.Application.MergePdfUseCase.CommandName,
-                new[] { f1, f2, f3 },
-                null,
-                null,
-                outDir,
-                false,
-                false));
-
-            var interaction = new MockPasswordInteraction(PasswordPromptResult.Skip);
-            var result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
-
-            Assert.True(result.Status == ConversionResultStatus.Succeeded, "Merge must succeed when skipping a file if at least 2 remain.");
-            Assert.True(File.Exists(plan.Outputs[0]), "Merged output must exist.");
-            using var doc = PdfReader.Open(plan.Outputs[0], PdfDocumentOpenMode.Import);
-            Assert.Equal(2L, (long)doc.PageCount);
-            Assert.Equal(1L, (long)result.SkippedFiles.Count);
-            Assert.Equal(f2, result.SkippedFiles[0].Path);
-            Assert.True(result.SkippedFiles[0].Reason == ConversionSkipReason.NeedsPassword, "Expected NeedsPassword");
-        }
-        finally
-        {
-            TryDeleteDecryptFixture(f1);
-            TryDeleteDecryptFixture(f2);
-            TryDeleteDecryptFixture(f3);
-            if (Directory.Exists(outDir))
+    private static void TestMergePdfUnlockSuccess() =>
+        RunWithTempFilesAndOutDir(
+            "merge-test",
+            () => [CreateTestPdf(MergePrefix1, null), CreateTestPdf(MergePrefix2, TestSecretPassword), CreateTestPdf("merge3", null)],
+            (files, outDir) =>
             {
-                try { Directory.Delete(outDir, true); } catch { }
-            }
-        }
-    }
+                var useCase = new Clickra.Core.Modules.Pdf.Merge.Application.MergePdfUseCase();
+                var plan = CreateUnlockTestPlan(useCase, Clickra.Core.Modules.Pdf.Merge.Application.MergePdfUseCase.CommandName, files, outDir);
+                var result = useCase.ExecuteAsync(plan, new MockPasswordInteraction(TestSecretPassword), progress: null).GetAwaiter().GetResult();
 
-    private static void TestMergePdfUnlockCancel()
-    {
-        string f1 = CreateTestPdf("merge1", null);
-        string f2 = CreateTestPdf("merge2", "secret");
-        string f3 = CreateTestPdf("merge3", null);
-        string outDir = Path.Combine(Path.GetTempPath(), $"clickra-merge-test-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(outDir);
+                Assert.True(result.Status == ConversionResultStatus.Succeeded, "Merge must succeed when password is provided.");
+                Assert.True(File.Exists(plan.Outputs[0]), "Merged output must exist.");
+                using var doc = PdfReader.Open(plan.Outputs[0], PdfDocumentOpenMode.Import);
+                Assert.Equal(3L, (long)doc.PageCount);
+                Assert.Equal(0L, (long)result.SkippedFiles.Count);
+            });
 
-        try
-        {
-            var useCase = new Clickra.Core.Modules.Pdf.Merge.Application.MergePdfUseCase();
-            var plan = useCase.Plan(new ConversionRequest(
-                Clickra.Core.Modules.Pdf.Merge.Application.MergePdfUseCase.CommandName,
-                new[] { f1, f2, f3 },
-                null,
-                null,
-                outDir,
-                false,
-                false));
-
-            var interaction = new MockPasswordInteraction(PasswordPromptResult.Cancel);
-            var result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
-
-            Assert.True(result.Status == ConversionResultStatus.Canceled, "Cancel must return Canceled status.");
-            Assert.False(File.Exists(plan.Outputs[0]), "Cancelled merge must produce no output file.");
-        }
-        finally
-        {
-            TryDeleteDecryptFixture(f1);
-            TryDeleteDecryptFixture(f2);
-            TryDeleteDecryptFixture(f3);
-            if (Directory.Exists(outDir))
+    private static void TestMergePdfUnlockSkip() =>
+        RunWithTempFilesAndOutDir(
+            "merge-test",
+            () => [CreateTestPdf(MergePrefix1, null), CreateTestPdf(MergePrefix2, TestSecretPassword), CreateTestPdf("merge3", null)],
+            (files, outDir) =>
             {
-                try { Directory.Delete(outDir, true); } catch { }
-            }
-        }
-    }
+                var useCase = new Clickra.Core.Modules.Pdf.Merge.Application.MergePdfUseCase();
+                var plan = CreateUnlockTestPlan(useCase, Clickra.Core.Modules.Pdf.Merge.Application.MergePdfUseCase.CommandName, files, outDir);
+                var result = useCase.ExecuteAsync(plan, new MockPasswordInteraction(PasswordPromptResult.Skip), progress: null).GetAwaiter().GetResult();
 
-    private static void TestMergePdfUnlockLessThanTwoFilesRemaining()
-    {
-        string f1 = CreateTestPdf("merge1", null);
-        string f2 = CreateTestPdf("merge2", "secret");
-        string outDir = Path.Combine(Path.GetTempPath(), $"clickra-merge-test-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(outDir);
+                Assert.True(result.Status == ConversionResultStatus.Succeeded, "Merge must succeed when skipping a file if at least 2 remain.");
+                Assert.True(File.Exists(plan.Outputs[0]), "Merged output must exist.");
+                using var doc = PdfReader.Open(plan.Outputs[0], PdfDocumentOpenMode.Import);
+                Assert.Equal(2L, (long)doc.PageCount);
+                Assert.Equal(1L, (long)result.SkippedFiles.Count);
+                Assert.Equal(files[1], result.SkippedFiles[0].Path);
+                Assert.True(result.SkippedFiles[0].Reason == ConversionSkipReason.NeedsPassword, "Expected NeedsPassword");
+            });
 
-        try
-        {
-            var useCase = new Clickra.Core.Modules.Pdf.Merge.Application.MergePdfUseCase();
-            var plan = useCase.Plan(new ConversionRequest(
-                Clickra.Core.Modules.Pdf.Merge.Application.MergePdfUseCase.CommandName,
-                new[] { f1, f2 },
-                null,
-                null,
-                outDir,
-                false,
-                false));
-
-            var interaction = new MockPasswordInteraction(PasswordPromptResult.Skip);
-            var result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
-
-            Assert.True(result.Status == ConversionResultStatus.Failed, "Merge with fewer than 2 files must fail.");
-            Assert.True(result.Error?.Contains("只剩 1 個檔案，沒有合併", StringComparison.Ordinal) == true,
-                $"Expected error mentioning only 1 file remaining, got: {result.Error}");
-            Assert.False(File.Exists(plan.Outputs[0]), "Failed merge must produce no output file.");
-        }
-        finally
-        {
-            TryDeleteDecryptFixture(f1);
-            TryDeleteDecryptFixture(f2);
-            if (Directory.Exists(outDir))
+    private static void TestMergePdfUnlockCancel() =>
+        RunWithTempFilesAndOutDir(
+            "merge-test",
+            () => [CreateTestPdf(MergePrefix1, null), CreateTestPdf(MergePrefix2, TestSecretPassword), CreateTestPdf("merge3", null)],
+            (files, outDir) =>
             {
-                try { Directory.Delete(outDir, true); } catch { }
-            }
-        }
-    }
+                var useCase = new Clickra.Core.Modules.Pdf.Merge.Application.MergePdfUseCase();
+                var plan = CreateUnlockTestPlan(useCase, Clickra.Core.Modules.Pdf.Merge.Application.MergePdfUseCase.CommandName, files, outDir);
+                var result = useCase.ExecuteAsync(plan, new MockPasswordInteraction(PasswordPromptResult.Cancel), progress: null).GetAwaiter().GetResult();
 
-    private static void TestSplitPdfUnlockSuccessAndSkip()
-    {
-        string f1 = CreateTestPdf("split1", null);
-        string f2 = CreateTestPdf("split2", "secret");
-        string f3 = CreateTestPdf("split3", null);
-        string outDir = Path.Combine(Path.GetTempPath(), $"clickra-split-test-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(outDir);
+                Assert.True(result.Status == ConversionResultStatus.Canceled, "Cancel must return Canceled status.");
+                Assert.False(File.Exists(plan.Outputs[0]), "Cancelled merge must produce no output file.");
+            });
 
-        try
-        {
-            var useCase = new Clickra.Core.Modules.Pdf.Split.Application.SplitPdfUseCase();
-            var options = new Dictionary<string, object> { ["pages"] = "1" };
-            var plan = useCase.Plan(new ConversionRequest(
-                Clickra.Core.Modules.Pdf.Split.Application.SplitPdfUseCase.CommandName,
-                new[] { f1, f2, f3 },
-                options,
-                null,
-                outDir,
-                false,
-                false));
-
-            var interaction = new MockPasswordInteraction("secret");
-            var result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
-
-            Assert.True(result.Status == ConversionResultStatus.Succeeded, "Split must succeed when password provided.");
-            Assert.Equal(0L, (long)result.SkippedFiles.Count);
-            Assert.Equal(3L, (long)result.Outputs.Count);
-
-            // Now test with skip using a fresh use case instance (empty password cache)
-            var useCaseSkip = new Clickra.Core.Modules.Pdf.Split.Application.SplitPdfUseCase();
-            var interactionSkip = new MockPasswordInteraction(PasswordPromptResult.Skip);
-            var resultSkip = useCaseSkip.ExecuteAsync(plan, interactionSkip, progress: null).GetAwaiter().GetResult();
-            Assert.True(resultSkip.Status == ConversionResultStatus.Succeeded, "Split must succeed with partial skips.");
-            Assert.Equal(1L, (long)resultSkip.SkippedFiles.Count);
-            Assert.Equal(f2, resultSkip.SkippedFiles[0].Path);
-        }
-        finally
-        {
-            TryDeleteDecryptFixture(f1);
-            TryDeleteDecryptFixture(f2);
-            TryDeleteDecryptFixture(f3);
-            if (Directory.Exists(outDir))
+    private static void TestMergePdfUnlockLessThanTwoFilesRemaining() =>
+        RunWithTempFilesAndOutDir(
+            "merge-test",
+            () => [CreateTestPdf(MergePrefix1, null), CreateTestPdf(MergePrefix2, TestSecretPassword)],
+            (files, outDir) =>
             {
-                try { Directory.Delete(outDir, true); } catch { }
-            }
-        }
-    }
+                var useCase = new Clickra.Core.Modules.Pdf.Merge.Application.MergePdfUseCase();
+                var plan = CreateUnlockTestPlan(useCase, Clickra.Core.Modules.Pdf.Merge.Application.MergePdfUseCase.CommandName, files, outDir);
+                var result = useCase.ExecuteAsync(plan, new MockPasswordInteraction(PasswordPromptResult.Skip), progress: null).GetAwaiter().GetResult();
 
-    private static void TestPdfToImageUnlockSuccessAndSkip()
-    {
-        string f1 = CreateTestPdf("p2i1", null);
-        string f2 = CreateTestPdf("p2i2", "secret");
-        string f3 = CreateTestPdf("p2i3", null);
-        string outDir = Path.Combine(Path.GetTempPath(), $"clickra-p2i-test-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(outDir);
+                Assert.True(result.Status == ConversionResultStatus.Failed, "Merge with fewer than 2 files must fail.");
+                Assert.True(result.Error?.Contains("只剩 1 個檔案，沒有合併", StringComparison.Ordinal) == true,
+                    $"Expected error mentioning only 1 file remaining, got: {result.Error}");
+                Assert.False(File.Exists(plan.Outputs[0]), "Failed merge must produce no output file.");
+            });
 
-        try
-        {
-            var useCase = new Clickra.Core.Modules.Pdf.ToImage.Application.PdfToImageUseCase();
-            var plan = useCase.Plan(new ConversionRequest(
-                Clickra.Core.Modules.Pdf.ToImage.Application.PdfToImageUseCase.CommandName,
-                new[] { f1, f2, f3 },
-                null,
-                null,
-                outDir,
-                false,
-                false));
-
-            var interaction = new MockPasswordInteraction("secret");
-            var result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
-
-            Assert.True(result.Status == ConversionResultStatus.Succeeded, "PDF to Image must succeed when password provided.");
-            Assert.Equal(0L, (long)result.SkippedFiles.Count);
-
-            // Test with skip using a fresh use case instance (empty password cache)
-            var useCaseSkip = new Clickra.Core.Modules.Pdf.ToImage.Application.PdfToImageUseCase();
-            var interactionSkip = new MockPasswordInteraction(PasswordPromptResult.Skip);
-            var resultSkip = useCaseSkip.ExecuteAsync(plan, interactionSkip, progress: null).GetAwaiter().GetResult();
-            Assert.True(resultSkip.Status == ConversionResultStatus.Succeeded, "PDF to Image must succeed with partial skips.");
-            Assert.Equal(1L, (long)resultSkip.SkippedFiles.Count);
-            Assert.Equal(f2, resultSkip.SkippedFiles[0].Path);
-        }
-        finally
-        {
-            TryDeleteDecryptFixture(f1);
-            TryDeleteDecryptFixture(f2);
-            TryDeleteDecryptFixture(f3);
-            if (Directory.Exists(outDir))
+    private static void TestSplitPdfUnlockSuccessAndSkip() =>
+        RunWithTempFilesAndOutDir(
+            "split-test",
+            () => [CreateTestPdf("split1", null), CreateTestPdf("split2", TestSecretPassword), CreateTestPdf("split3", null)],
+            (files, outDir) =>
             {
-                try { Directory.Delete(outDir, true); } catch { }
-            }
-        }
-    }
+                var useCase = new Clickra.Core.Modules.Pdf.Split.Application.SplitPdfUseCase();
+                var plan = CreateUnlockTestPlan(
+                    useCase,
+                    Clickra.Core.Modules.Pdf.Split.Application.SplitPdfUseCase.CommandName,
+                    files,
+                    outDir,
+                    new Dictionary<string, object> { ["pages"] = "1" });
+                var result = useCase.ExecuteAsync(plan, new MockPasswordInteraction(TestSecretPassword), progress: null).GetAwaiter().GetResult();
 
-    private static void TestDecryptPdfMixedWithUnencrypted()
-    {
-        string f1 = CreateTestPdf("dec1", null);
-        string f2 = CreateTestPdf("dec2", "secret");
-        string f3 = CreateTestRestrictedPdf("dec3");
-        string outDir = Path.Combine(Path.GetTempPath(), $"clickra-dec-test-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(outDir);
+                Assert.True(result.Status == ConversionResultStatus.Succeeded, "Split must succeed when password provided.");
+                Assert.Equal(0L, (long)result.SkippedFiles.Count);
+                Assert.Equal(3L, (long)result.Outputs.Count);
 
-        try
-        {
-            var useCase = new Clickra.Core.Modules.Pdf.Decrypt.Application.DecryptPdfUseCase();
-            var plan = useCase.Plan(new ConversionRequest(
-                Clickra.Core.Modules.Pdf.Decrypt.Application.DecryptPdfUseCase.CommandName,
-                new[] { f1, f2, f3 },
-                null,
-                null,
-                outDir,
-                false,
-                false));
+                var useCaseSkip = new Clickra.Core.Modules.Pdf.Split.Application.SplitPdfUseCase();
+                var resultSkip = useCaseSkip.ExecuteAsync(plan, new MockPasswordInteraction(PasswordPromptResult.Skip), progress: null).GetAwaiter().GetResult();
+                Assert.True(resultSkip.Status == ConversionResultStatus.Succeeded, "Split must succeed with partial skips.");
+                Assert.Equal(1L, (long)resultSkip.SkippedFiles.Count);
+                Assert.Equal(files[1], resultSkip.SkippedFiles[0].Path);
+            });
 
-            var interaction = new MockPasswordInteraction("secret");
-            var result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
-
-            Assert.True(result.Status == ConversionResultStatus.Succeeded, "Mixed decrypt must succeed.");
-            Assert.Equal(1L, (long)result.SkippedFiles.Count);
-            Assert.Equal(f1, result.SkippedFiles[0].Path);
-            Assert.True(result.SkippedFiles[0].Reason == ConversionSkipReason.NotEncrypted, "f1 must be skipped as NotEncrypted");
-            Assert.True(File.Exists(plan.Outputs[1]), "f2 decrypted output must exist.");
-            Assert.True(File.Exists(plan.Outputs[2]), "f3 decrypted output must exist.");
-        }
-        finally
-        {
-            TryDeleteDecryptFixture(f1);
-            TryDeleteDecryptFixture(f2);
-            TryDeleteDecryptFixture(f3);
-            if (Directory.Exists(outDir))
+    private static void TestPdfToImageUnlockSuccessAndSkip() =>
+        RunWithTempFilesAndOutDir(
+            "p2i-test",
+            () => [CreateTestPdf("p2i1", null), CreateTestPdf("p2i2", TestSecretPassword), CreateTestPdf("p2i3", null)],
+            (files, outDir) =>
             {
-                try { Directory.Delete(outDir, true); } catch { }
-            }
-        }
-    }
+                var useCase = new Clickra.Core.Modules.Pdf.ToImage.Application.PdfToImageUseCase();
+                var plan = CreateUnlockTestPlan(useCase, Clickra.Core.Modules.Pdf.ToImage.Application.PdfToImageUseCase.CommandName, files, outDir);
+                var result = useCase.ExecuteAsync(plan, new MockPasswordInteraction(TestSecretPassword), progress: null).GetAwaiter().GetResult();
 
-    private static void TestDecryptPdfAllUnencrypted()
-    {
-        string f1 = CreateTestPdf("dec_none1", null);
-        string f2 = CreateTestPdf("dec_none2", null);
-        string outDir = Path.Combine(Path.GetTempPath(), $"clickra-dec-none-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(outDir);
+                Assert.True(result.Status == ConversionResultStatus.Succeeded, "PDF to Image must succeed when password provided.");
+                Assert.Equal(0L, (long)result.SkippedFiles.Count);
 
-        try
-        {
-            var useCase = new Clickra.Core.Modules.Pdf.Decrypt.Application.DecryptPdfUseCase();
-            var plan = useCase.Plan(new ConversionRequest(
-                Clickra.Core.Modules.Pdf.Decrypt.Application.DecryptPdfUseCase.CommandName,
-                new[] { f1, f2 },
-                null,
-                null,
-                outDir,
-                false,
-                false));
+                var useCaseSkip = new Clickra.Core.Modules.Pdf.ToImage.Application.PdfToImageUseCase();
+                var resultSkip = useCaseSkip.ExecuteAsync(plan, new MockPasswordInteraction(PasswordPromptResult.Skip), progress: null).GetAwaiter().GetResult();
+                Assert.True(resultSkip.Status == ConversionResultStatus.Succeeded, "PDF to Image must succeed with partial skips.");
+                Assert.Equal(1L, (long)resultSkip.SkippedFiles.Count);
+                Assert.Equal(files[1], resultSkip.SkippedFiles[0].Path);
+            });
 
-            var interaction = new MockPasswordInteraction();
-            var result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
-
-            Assert.True(result.Status == ConversionResultStatus.Failed, "All unencrypted files in decrypt must fail.");
-            Assert.True(result.Error?.Contains(Localization.T("pdf_not_encrypted", "zh-TW"), StringComparison.Ordinal) == true ||
-                        result.Error?.Contains(Localization.T("pdf_not_encrypted", "en-US"), StringComparison.Ordinal) == true,
-                $"Expected pdf_not_encrypted error, got: {result.Error}");
-            Assert.Equal(2L, (long)result.SkippedFiles.Count);
-            Assert.True(result.SkippedFiles.All(s => s.Reason == ConversionSkipReason.NotEncrypted), "All reasons must be NotEncrypted");
-        }
-        finally
-        {
-            TryDeleteDecryptFixture(f1);
-            TryDeleteDecryptFixture(f2);
-            if (Directory.Exists(outDir))
+    private static void TestDecryptPdfMixedWithUnencrypted() =>
+        RunWithTempFilesAndOutDir(
+            "dec-test",
+            () => [CreateTestPdf("dec1", null), CreateTestPdf("dec2", TestSecretPassword), CreateTestRestrictedPdf("dec3")],
+            (files, outDir) =>
             {
-                try { Directory.Delete(outDir, true); } catch { }
-            }
-        }
-    }
+                var useCase = new Clickra.Core.Modules.Pdf.Decrypt.Application.DecryptPdfUseCase();
+                var plan = CreateUnlockTestPlan(useCase, Clickra.Core.Modules.Pdf.Decrypt.Application.DecryptPdfUseCase.CommandName, files, outDir);
+                var result = useCase.ExecuteAsync(plan, new MockPasswordInteraction(TestSecretPassword), progress: null).GetAwaiter().GetResult();
 
-    private static void TestSamePasswordAcrossTwoFilesAskedOnce()
-    {
-        string f1 = CreateTestPdf("same1", "common-secret");
-        string f2 = CreateTestPdf("same2", "common-secret");
-        string outDir = Path.Combine(Path.GetTempPath(), $"clickra-same-pwd-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(outDir);
+                Assert.True(result.Status == ConversionResultStatus.Succeeded, "Mixed decrypt must succeed.");
+                Assert.Equal(1L, (long)result.SkippedFiles.Count);
+                Assert.Equal(files[0], result.SkippedFiles[0].Path);
+                Assert.True(result.SkippedFiles[0].Reason == ConversionSkipReason.NotEncrypted, "f1 must be skipped as NotEncrypted");
+                Assert.True(File.Exists(plan.Outputs[1]), "f2 decrypted output must exist.");
+                Assert.True(File.Exists(plan.Outputs[2]), "f3 decrypted output must exist.");
+            });
 
-        try
-        {
-            var useCase = new Clickra.Core.Modules.Pdf.Compression.Application.CompressPdfUseCase();
-            var plan = useCase.Plan(new ConversionRequest(
-                Clickra.Core.Modules.Pdf.Compression.Application.CompressPdfUseCase.CommandName,
-                new[] { f1, f2 },
-                null,
-                null,
-                outDir,
-                false,
-                false));
-
-            var interaction = new MockPasswordInteraction("common-secret");
-            var result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
-
-            Assert.True(result.Status == ConversionResultStatus.Succeeded, "Compression must succeed.");
-            Assert.Equal(1L, (long)interaction.CallCount);
-        }
-        finally
-        {
-            TryDeleteDecryptFixture(f1);
-            TryDeleteDecryptFixture(f2);
-            if (Directory.Exists(outDir))
+    private static void TestDecryptPdfAllUnencrypted() =>
+        RunWithTempFilesAndOutDir(
+            "dec-none",
+            () => [CreateTestPdf("dec_none1", null), CreateTestPdf("dec_none2", null)],
+            (files, outDir) =>
             {
-                try { Directory.Delete(outDir, true); } catch { }
-            }
-        }
-    }
+                var useCase = new Clickra.Core.Modules.Pdf.Decrypt.Application.DecryptPdfUseCase();
+                var plan = CreateUnlockTestPlan(useCase, Clickra.Core.Modules.Pdf.Decrypt.Application.DecryptPdfUseCase.CommandName, files, outDir);
+                var result = useCase.ExecuteAsync(plan, new MockPasswordInteraction(), progress: null).GetAwaiter().GetResult();
+
+                Assert.True(result.Status == ConversionResultStatus.Failed, "All unencrypted files in decrypt must fail.");
+                Assert.True(result.Error?.Contains(Localization.T("pdf_not_encrypted", "zh-TW"), StringComparison.Ordinal) == true ||
+                            result.Error?.Contains(Localization.T("pdf_not_encrypted", "en-US"), StringComparison.Ordinal) == true,
+                    $"Expected pdf_not_encrypted error, got: {result.Error}");
+                Assert.Equal(2L, (long)result.SkippedFiles.Count);
+                Assert.True(result.SkippedFiles.All(s => s.Reason == ConversionSkipReason.NotEncrypted), "All reasons must be NotEncrypted");
+            });
+
+    private static void TestSamePasswordAcrossTwoFilesAskedOnce() =>
+        RunWithTempFilesAndOutDir(
+            "same-pwd",
+            () => [CreateTestPdf("same1", "common-secret"), CreateTestPdf("same2", "common-secret")],
+            (files, outDir) =>
+            {
+                var useCase = new Clickra.Core.Modules.Pdf.Compression.Application.CompressPdfUseCase();
+                var plan = CreateUnlockTestPlan(useCase, Clickra.Core.Modules.Pdf.Compression.Application.CompressPdfUseCase.CommandName, files, outDir);
+                var interaction = new MockPasswordInteraction("common-secret");
+                var result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
+
+                Assert.True(result.Status == ConversionResultStatus.Succeeded, "Compression must succeed.");
+                Assert.Equal(1L, (long)interaction.CallCount);
+            });
 }
