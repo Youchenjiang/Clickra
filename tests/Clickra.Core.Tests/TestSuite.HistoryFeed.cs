@@ -31,12 +31,8 @@ static partial class TestSuite
 
     public static void RegisterHistoryFeedTests(TestRunner runner)
     {
-        runner.Run("History feed: presentation reuses immutable application query contracts", () =>
-        {
-            Assert.True(typeof(HistoryItem).GetProperty(nameof(HistoryItem.Entry))?.PropertyType
-                == typeof(Clickra.Core.Modules.Sys.HistoryTasks.Application.HistoryQueryRecord),
-                "HistoryItem.Entry must use the application query record without a second snapshot type.");
-        });
+        runner.Run("History feed: presentation reuses immutable application query contracts",
+            TestHistoryFeedReusesQueryContracts);
         runner.Run("History feed: one list carries active, parked and completed items in display order",
             TestHistoryFeedCarriesAllThreeKinds);
         runner.Run("History feed: row status wording comes from the shared item, and canceled is recognized",
@@ -49,6 +45,13 @@ static partial class TestSuite
             TestHistoryFeedIsTheOnlySource);
         runner.Run("History feed: neither History page words status, file counts or deadlines itself",
             TestHistoryFeedOwnsTheWording);
+    }
+
+    private static void TestHistoryFeedReusesQueryContracts()
+    {
+        Assert.True(typeof(HistoryItem).GetProperty(nameof(HistoryItem.Entry))?.PropertyType
+            == typeof(Clickra.Core.Modules.Sys.HistoryTasks.Application.HistoryQueryRecord),
+            "HistoryItem.Entry must use the application query record without a second snapshot type.");
     }
 
     private static void TestHistoryFeedCarriesAllThreeKinds()
