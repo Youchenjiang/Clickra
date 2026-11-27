@@ -1,6 +1,6 @@
 # Microsoft Store リスト - 日本語
 
-以下は、Microsoft パートナー センター (Partner Center) に直接コピー＆ペーストできる完全な情報です（v3.22.10.0 対応）。
+以下は、Microsoft パートナー センター (Partner Center) に直接コピー＆ペーストできる完全な情報です（v3.22.11.0 対応）。
 
 ---
 
@@ -15,7 +15,7 @@ Clickra は、Windows のエクスプローラー向けに設計されたネイ�
 ソースコード：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- デスクトップ UX の改善：設定の「ログを表示」が空フォルダを作成せず `history.log` を選択して開くようになり、結果ページの「再変換」ボタンを概要横の単一ボタンに統合しました。
+- Office エンジンのプロセス間排他制御：PowerPoint と LibreOffice のファイル変換を名前付きミューテックスで順番に実行し、待機ステータス表示とキャンセルに対応しました（Word と Excel は独立プロセスのまま並行実行）。
 
 ## Product Features
 *(最多 20 個，以項目符號顯示)*

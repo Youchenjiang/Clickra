@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.22.10.0.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.22.11.0.
 
 ---
 
@@ -15,7 +15,7 @@ Core document operations run completely offline on your local PC to keep your da
 Source Code: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- Desktop UX & stability fixes: Settings "View logs" now reveals `history.log` without creating empty folders, and the results page consolidates skipped-file reruns into a single button next to the summary.
+- Cross-process Office engine locking: PowerPoint and LibreOffice now serialize per-file conversions via named cross-process mutexes with localized waiting status and cancellation support, while Word and Excel continue running concurrently.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
