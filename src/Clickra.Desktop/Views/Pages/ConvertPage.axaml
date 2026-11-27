@@ -1154,13 +1154,20 @@
 
                 <!-- STATE F: Completed / Results -->
                 <Grid RowDefinitions="Auto,*,Auto" IsVisible="{Binding IsCompleted}">
-                    <TextBlock Grid.Row="0" Text="{Binding ResultSummary}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,16" />
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,0,0,16">
+                        <TextBlock Grid.Column="0" Text="{Binding ResultSummary}" FontSize="18" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" TextWrapping="Wrap" />
+                        <Button Grid.Column="1" Classes="secondary" Content="{l:T ui_result_rerun}"
+                                Command="{Binding RerunSkipped}"
+                                IsVisible="{Binding HasSkippedResults}"
+                                VerticalAlignment="Center" />
+                    </Grid>
                     <ScrollViewer Grid.Row="1">
                         <ItemsControl ItemsSource="{Binding ResultItems}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Classes="card" Margin="0,0,0,8" Padding="14,10">
-                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <Grid ColumnDefinitions="Auto,*">
                                             <!-- Status Icon -->
                                             <Panel Grid.Column="0" Width="20" Height="20" Margin="0,0,12,0" VerticalAlignment="Center">
                                                 <!-- Same status icons as the history rows: gray ✓, lock for skipped, red ✕ for failed (spec 7). -->
@@ -1178,11 +1185,6 @@
                                                 <TextBlock Text="{Binding FileName}" FontSize="14" FontWeight="SemiBold" />
                                                 <TextBlock Text="{Binding DetailText}" Classes="secondary" FontSize="13" />
                                             </StackPanel>
-                                            <Button Grid.Column="2" Classes="secondary" Content="{l:T ui_result_rerun}"
-                                                    Command="{Binding $parent[UserControl].((vm:ConvertViewModel)DataContext).RerunSkipped}"
-                                                    CommandParameter="{Binding}"
-                                                    IsVisible="{Binding IsSkipped}"
-                                                    VerticalAlignment="Center" />
                                         </Grid>
                                     </Border>
                                 </DataTemplate>

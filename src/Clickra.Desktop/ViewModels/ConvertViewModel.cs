@@ -529,6 +529,18 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         set { _resultSummary = value; OnPropertyChanged(); }
     }
 
+    private bool _hasSkippedResults;
+    public bool HasSkippedResults
+    {
+        get => _hasSkippedResults;
+        private set
+        {
+            if (_hasSkippedResults == value) return;
+            _hasSkippedResults = value;
+            OnPropertyChanged();
+        }
+    }
+
 
 
     public string CustomOutputPath
@@ -646,10 +658,12 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         SelectedFiles.Clear();
         AvailableActions.Clear();
         ResultItems.Clear();
+        HasSkippedResults = false;
         SelectedAction = null;
         ProgressPercent = 0;
         ProgressMessage = "";
         ResultSummary = "";
+        HasSkippedResults = false;
         State = ConvertWorkflowState.DropZone;
         RefreshRecentHistory();
     }
@@ -672,6 +686,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         ProgressPercent = 0;
         ProgressMessage = Strings.T("ui_run_preparing");
         ResultItems.Clear();
+        HasSkippedResults = false;
 
         _conversionCts = new CancellationTokenSource();
         var controller = new ConversionExecutionController();
@@ -864,6 +879,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         int failed = files.Count - succeeded - skipped;
 
         ResultSummary = FormatResultSummary(files.Count, succeeded, skipped, failed);
+        HasSkippedResults = skipped > 0;
     }
 
     private int AppendProcessedResults(
@@ -974,11 +990,10 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         return true;
     }
 
-    public void RerunSkipped(ExecutionResultItemViewModel? item = null)
+    public void RerunSkipped()
     {
         if (SelectedAction is null) return;
         List<string> rerunFiles = ResultItems.Where(r => r.IsSkipped).Select(r => r.FullPath).Distinct().ToList();
-        if (rerunFiles.Count == 0 && item is not null) rerunFiles.Add(item.FullPath);
         if (rerunFiles.Count > 0)
         {
             PrepareRerun(SelectedAction.Command, rerunFiles);
