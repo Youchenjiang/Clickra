@@ -15,10 +15,14 @@ public sealed class PrintPdfUseCase : PerFileConversionUseCaseBase
     public const string CommandName = "print-pdf";
 
     private readonly IPrinterDiscoveryService _printerDiscovery;
+    private readonly Action<string, PrintPdfOptions, Action<int, int, string>?, CancellationToken> _printAction;
 
-    public PrintPdfUseCase(IPrinterDiscoveryService? printerDiscovery = null)
+    public PrintPdfUseCase(
+        IPrinterDiscoveryService? printerDiscovery = null,
+        Action<string, PrintPdfOptions, Action<int, int, string>?, CancellationToken>? printAction = null)
     {
         _printerDiscovery = printerDiscovery ?? new SystemPrinterDiscoveryService();
+        _printAction = printAction ?? ((path, opts, prog, ct) => PdfPrintProcessor.Print(path, opts, prog, ct));
     }
 
     public override string Command => CommandName;
@@ -130,7 +134,7 @@ public sealed class PrintPdfUseCase : PerFileConversionUseCaseBase
         }
 
         await Task.Run(
-            () => PdfPrintProcessor.Print(
+            () => _printAction(
                 unlock.EffectivePath,
                 printOptions,
                 (current, total, message) =>
