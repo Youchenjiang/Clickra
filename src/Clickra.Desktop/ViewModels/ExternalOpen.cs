@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 
 namespace Clickra.Desktop.ViewModels;
 
@@ -39,6 +40,27 @@ public static class ExternalOpen
             else if (OperatingSystem.IsLinux())
             {
                 Process.Start(Clickra.Core.SystemPaths.LinuxXdgOpen, $"\"{path}\"")?.Dispose();
+            }
+        }
+        catch
+        {
+            // Best effort
+        }
+    }
+
+    public static void SelectInFolder(string filePath, string fallbackDirectory)
+    {
+        try
+        {
+            if (OperatingSystem.IsWindows() && File.Exists(filePath))
+            {
+                Process.Start(Clickra.Core.SystemPaths.Explorer, $"/select,\"{filePath}\"")?.Dispose();
+                return;
+            }
+
+            if (Directory.Exists(fallbackDirectory))
+            {
+                Path(fallbackDirectory);
             }
         }
         catch

@@ -1,6 +1,6 @@
 # Microsoft Store 목록 - 한국어
 
-다음은 Microsoft 파트너 센터 (Partner Center)에 직접 복사하여 붙여넣을 수 있는 전체 정보입니다 (v3.22.9.0 기준).
+다음은 Microsoft 파트너 센터 (Partner Center)에 직접 복사하여 붙여넣을 수 있는 전체 정보입니다 (v3.22.10.0 기준).
 
 ---
 
@@ -15,7 +15,7 @@ Clickra는 Windows 파일 탐색기를 위한 네이티브 우클릭 확장 프�
 소스 코드: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- PDF 비밀번호 즉시 잠금 해제: 압축, 병합, 번역, 인쇄, 분할, 이미지 변환에서 즉시 잠금 해제 및 파일별 건너뛰기를 지원합니다. 암호화되지 않은 파일도 일괄 거부되지 않으며, 우클릭 실행 시 비밀번호가 필요한 파일을 자동으로 건너뜁니다.
+- 데스크톱 UX 개선: 설정의 "로그 보기"가 빈 폴더를 생성하지 않고 `history.log`를 선택해 열도록 개선했으며, 결과 페이지의 "다시 변환" 버튼을 요약 옆 단일 버튼으로 통합했습니다.
 
 ## Product Features
 *(최대 20개, 글머리 기호로 표시)*

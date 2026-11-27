@@ -43,6 +43,9 @@ static partial class TestSuite
         runner.Run("DecryptPdf: fails when all files are unencrypted", TestDecryptPdfAllUnencrypted);
         runner.Run("PdfUnlockStep: two files with same password ask only once", TestSamePasswordAcrossTwoFilesAskedOnce);
         runner.Run("UseCase: same instance does not leak password cache across batches", TestSameUseCaseInstanceDoesNotShareCacheAcrossExecutions);
+        runner.Run("CompressPdf: unlocks, skips, and cancels in 3-file batch", TestCompressPdfUnlockBatch);
+        runner.Run("TranslatePdf: unlocks, skips, and cancels in 3-file batch", TestTranslatePdfUnlockBatch);
+        runner.Run("PrintPdf: unlocks, skips, and cancels in 3-file batch", TestPrintPdfUnlockBatch);
     }
 
     private static void TestPdfUnlockStepUnencrypted()
@@ -647,5 +650,103 @@ static partial class TestSuite
         {
             TryDeleteDecryptFixture(path);
         }
+    }
+
+    private static void AssertPerFileUnlockBatchBehavior(
+        string prefix,
+        Func<IConversionUseCase> createUseCase,
+        string command,
+        bool checkOutputFilesExist,
+        Action<int>? assertProcessedCount = null) =>
+        RunWithTempFilesAndOutDir(
+            prefix,
+            () => [CreateTestPdf($"{prefix}1", null), CreateTestPdf($"{prefix}2", SampleUnlockValue), CreateTestPdf($"{prefix}3", null)],
+            (files, outDir) =>
+            {
+                var okUseCase = createUseCase();
+                var plan = CreateUnlockTestPlan(okUseCase, command, files, outDir);
+                var okResult = okUseCase.ExecuteAsync(plan, new MockPasswordInteraction(SampleUnlockValue), progress: null).GetAwaiter().GetResult();
+                Assert.True(okResult.Status == ConversionResultStatus.Succeeded, $"{command}: password batch must succeed.");
+                Assert.Equal(0L, (long)okResult.SkippedFiles.Count);
+                if (checkOutputFilesExist)
+                {
+                    Assert.Equal(3L, (long)okResult.Outputs.Count);
+                    Assert.True(okResult.Outputs.All(File.Exists), $"{command}: all 3 outputs must exist.");
+                }
+                assertProcessedCount?.Invoke(3);
+
+                var skipUseCase = createUseCase();
+                var skipResult = skipUseCase.ExecuteAsync(plan, new MockPasswordInteraction(PasswordPromptResult.Skip), progress: null).GetAwaiter().GetResult();
+                Assert.True(skipResult.Status == ConversionResultStatus.Succeeded, $"{command}: skip batch must succeed.");
+                Assert.Equal(1L, (long)skipResult.SkippedFiles.Count);
+                Assert.Equal(files[1], skipResult.SkippedFiles[0].Path);
+                Assert.True(skipResult.SkippedFiles[0].Reason == ConversionSkipReason.NeedsPassword, $"{command}: expected NeedsPassword.");
+                if (checkOutputFilesExist)
+                {
+                    Assert.Equal(2L, (long)skipResult.Outputs.Count);
+                    Assert.True(skipResult.Outputs.All(File.Exists), $"{command}: remaining 2 outputs must exist.");
+                }
+                assertProcessedCount?.Invoke(2);
+
+                var cancelUseCase = createUseCase();
+                var cancelResult = cancelUseCase.ExecuteAsync(plan, new MockPasswordInteraction(PasswordPromptResult.Cancel), progress: null).GetAwaiter().GetResult();
+                Assert.True(cancelResult.Status == ConversionResultStatus.Canceled, $"{command}: cancel batch must return Canceled.");
+            });
+
+    private static void TestCompressPdfUnlockBatch() =>
+        AssertPerFileUnlockBatchBehavior(
+            "cmp-batch",
+            () => new Clickra.Core.Modules.Pdf.Compression.Application.CompressPdfUseCase(),
+            Clickra.Core.Modules.Pdf.Compression.Application.CompressPdfUseCase.CommandName,
+            checkOutputFilesExist: true);
+
+    private static void TestTranslatePdfUnlockBatch()
+    {
+        string? previousEngine = Environment.GetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE");
+        Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", "identity");
+        try
+        {
+            AssertPerFileUnlockBatchBehavior(
+                "trans-batch",
+                () => new Clickra.Core.Modules.Pdf.Translation.Application.TranslatePdfUseCase(),
+                Clickra.Core.Modules.Pdf.Translation.Application.TranslatePdfUseCase.CommandName,
+                checkOutputFilesExist: true);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", previousEngine);
+        }
+    }
+
+    private static void TestPrintPdfUnlockBatch()
+    {
+        int printedCount = 0;
+        var discovery = new MockPrinterDiscoveryForUnlockTest();
+        AssertPerFileUnlockBatchBehavior(
+            "prt-batch",
+            () =>
+            {
+                printedCount = 0;
+                return new Clickra.Core.Modules.Pdf.Print.Application.PrintPdfUseCase(
+                    discovery,
+                    (path, _, _, _) =>
+                    {
+                        using var doc = PdfReader.Open(path, PdfDocumentOpenMode.Import);
+                        Assert.True(doc.PageCount > 0, "Printed PDF must be unlocked and readable.");
+                        printedCount++;
+                    });
+            },
+            Clickra.Core.Modules.Pdf.Print.Application.PrintPdfUseCase.CommandName,
+            checkOutputFilesExist: false,
+            expected => Assert.Equal((long)expected, (long)printedCount));
+    }
+
+    private sealed class MockPrinterDiscoveryForUnlockTest : Clickra.Core.Modules.Pdf.Print.Ports.IPrinterDiscoveryService
+    {
+        public string? GetDefaultPrinter() => "MockPrinter";
+        public bool IsPrinterInstalled(string printerName) => true;
+        public IReadOnlyList<string> GetInstalledPrinters() => ["MockPrinter"];
+        public IReadOnlyList<string> GetSupportedPaperSizes(string? printerName = null) => ["A4"];
+        public bool CanDuplex(string? printerName = null) => false;
     }
 }

@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.22.9.0.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated to v3.22.10.0.
 
 ---
 
@@ -15,7 +15,7 @@ Core document operations run completely offline on your local PC to keep your da
 Source Code: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- In-place PDF password unlock: compress, merge, translate, print, split, and image export now support in-place unlock and per-file skipping; unencrypted files are no longer blocked in batch, and context menu actions skip password-protected files quietly.
+- Desktop UX & stability fixes: Settings "View logs" now reveals `history.log` without creating empty folders, and the results page consolidates skipped-file reruns into a single button next to the summary.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
