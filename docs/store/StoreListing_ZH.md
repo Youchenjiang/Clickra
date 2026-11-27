@@ -1,6 +1,6 @@
 # Microsoft Store 清單 - 中文 (台灣)
 
-以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.22.9.0。
+以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.22.10.0。
 
 ---
 
@@ -15,7 +15,7 @@ Clickra 是一款專為 Windows 檔案總管打造的原生右鍵擴充工具。
 原始碼：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- PDF 密碼當場解鎖：壓縮、合併、翻譯、列印、分割、圖片轉換全面支援在列上當場解鎖與略過；無加密檔案不再整批拒絕，右鍵安靜執行自動略過需要密碼的檔案。
+- 桌面端體驗與穩定性修正：設定頁「檢視記錄」改為直接選取 `history.log` 而不建立空資料夾；結果頁將略過檔案的「再轉一次」整合為摘要旁的單一按鈕。
 
 ## Product Features
 *(最多 20 個，以項目符號顯示)*
