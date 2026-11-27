@@ -151,6 +151,7 @@
   "error_libreoffice_unusable": "LibreOffice를 실행할 수 없습니다. ‘설정’에서 LibreOffice를 다시 다운로드하거나 다른 LibreOffice를 지정하세요.",
   "error_microsoftoffice_not_ready": "사용할 수 있는 Microsoft Office를 찾을 수 없습니다. Office를 설치하거나 ‘설정’에서 LibreOffice로 바꾸세요.",
   "status_office_fallback_to_libreoffice": "{app}에서 ‘{name}’을(를) 처리할 수 없어 LibreOffice로 바꾸는 중…",
+  "status_office_waiting_engine": "{engine} 사용 가능해질 때까지 기다리는 중…",
   "status_libreoffice_exporting": "LibreOffice로 ‘{name}’을(를) PDF로 저장하는 중…",
   "setting_pdf_title": "PDF 일괄 번역",
   "setting_pdf_desc": "번역 대상 언어를 설정합니다",

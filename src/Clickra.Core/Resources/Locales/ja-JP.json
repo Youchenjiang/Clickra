@@ -151,6 +151,7 @@
   "error_libreoffice_unusable": "LibreOffice を起動できません。「設定」で LibreOffice をもう一度ダウンロードするか、別の LibreOffice を指定してください。",
   "error_microsoftoffice_not_ready": "使用できる Microsoft Office が見つかりません。Office をインストールするか、「設定」で LibreOffice に切り替えてください。",
   "status_office_fallback_to_libreoffice": "{app} で「{name}」を処理できないため、LibreOffice に切り替えています…",
+  "status_office_waiting_engine": "{engine} の空きを待っています…",
   "status_libreoffice_exporting": "LibreOffice で「{name}」を PDF として保存しています…",
   "setting_pdf_title": "PDF 一括翻訳",
   "setting_pdf_desc": "翻訳の対象言語を設定します",

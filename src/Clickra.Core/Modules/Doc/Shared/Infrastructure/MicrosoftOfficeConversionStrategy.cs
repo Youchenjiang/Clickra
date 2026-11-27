@@ -29,6 +29,17 @@ internal sealed class MicrosoftOfficeConversionStrategy : IOfficeConversionStrat
             throw new PlatformNotSupportedException("Microsoft Office COM conversion is only supported on Windows.");
         }
 
+        if (string.Equals(request.AppType, "PowerPoint", StringComparison.OrdinalIgnoreCase))
+        {
+            using IDisposable engineLock = OfficeEngineLock.AcquirePowerPoint(
+                request,
+                settings.Language,
+                onProgress,
+                cancellationToken);
+            PowerShellHelper.ExportMicrosoftOfficeToPdf(request, settings.Language, onProgress, cancellationToken);
+            return;
+        }
+
         PowerShellHelper.ExportMicrosoftOfficeToPdf(request, settings.Language, onProgress, cancellationToken);
     }
 }
