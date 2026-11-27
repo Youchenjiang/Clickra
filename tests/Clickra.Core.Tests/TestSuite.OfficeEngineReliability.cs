@@ -298,30 +298,34 @@ static partial class TestSuite
             string testMutex = $"Local\\ClickraTestLock_{Guid.NewGuid():N}";
             var req1 = new OfficeConversionRequest("PowerPoint", "a.pptx", "a.pdf", 0, 2);
             var req2 = new OfficeConversionRequest("PowerPoint", "b.pptx", "b.pdf", 1, 2);
-            var messages = new List<string>();
+            var messages = new System.Collections.Concurrent.ConcurrentQueue<string>();
             using var firstAcquired = new ManualResetEventSlim(false);
             using var allowRelease = new ManualResetEventSlim(false);
             using var secondAcquired = new ManualResetEventSlim(false);
 
             var t1 = Task.Run(() =>
             {
-                using var lease = OfficeEngineLock.AcquireForRequest(testMutex, "PowerPoint", req1, "zh-TW", null, CancellationToken.None);
-                firstAcquired.Set();
-                allowRelease.Wait();
+                using (OfficeEngineLock.AcquireForRequest(testMutex, "PowerPoint", req1, "zh-TW", null, CancellationToken.None))
+                {
+                    firstAcquired.Set();
+                    allowRelease.Wait();
+                }
             });
 
             Assert.True(firstAcquired.Wait(5000), "First caller must acquire lock promptly.");
 
             var t2 = Task.Run(() =>
             {
-                using var lease = OfficeEngineLock.AcquireForRequest(
+                using (OfficeEngineLock.AcquireForRequest(
                     testMutex,
                     "PowerPoint",
                     req2,
                     "zh-TW",
-                    (_, _, msg) => { lock (messages) messages.Add(msg); },
-                    CancellationToken.None);
-                secondAcquired.Set();
+                    (_, _, msg) => messages.Enqueue(msg),
+                    CancellationToken.None))
+                {
+                    secondAcquired.Set();
+                }
             });
 
             // Wait briefly to ensure t2 enters the wait state while t1 holds the lock
@@ -343,9 +347,11 @@ static partial class TestSuite
 
             var t1 = Task.Run(() =>
             {
-                using var lease = OfficeEngineLock.Acquire(testMutex);
-                firstAcquired.Set();
-                allowRelease.Wait();
+                using (OfficeEngineLock.Acquire(testMutex))
+                {
+                    firstAcquired.Set();
+                    allowRelease.Wait();
+                }
             });
 
             Assert.True(firstAcquired.Wait(5000), "First caller must acquire lock.");
@@ -355,7 +361,10 @@ static partial class TestSuite
             {
                 try
                 {
-                    using var lease = OfficeEngineLock.Acquire(testMutex, null, cts.Token);
+                    using (OfficeEngineLock.Acquire(testMutex, null, cts.Token))
+                    {
+                        // Lock should not be acquired after cancellation
+                    }
                 }
                 catch (OperationCanceledException)
                 {
