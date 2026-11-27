@@ -31,12 +31,14 @@ internal sealed class MicrosoftOfficeConversionStrategy : IOfficeConversionStrat
 
         if (string.Equals(request.AppType, "PowerPoint", StringComparison.OrdinalIgnoreCase))
         {
-            using IDisposable engineLock = OfficeEngineLock.AcquirePowerPoint(
+            using (OfficeEngineLock.AcquirePowerPoint(
                 request,
                 settings.Language,
                 onProgress,
-                cancellationToken);
-            PowerShellHelper.ExportMicrosoftOfficeToPdf(request, settings.Language, onProgress, cancellationToken);
+                cancellationToken))
+            {
+                PowerShellHelper.ExportMicrosoftOfficeToPdf(request, settings.Language, onProgress, cancellationToken);
+            }
             return;
         }
 
