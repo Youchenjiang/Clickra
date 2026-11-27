@@ -5,6 +5,7 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Styling;
 using Clickra.Core;
+using Clickra.Core.Modules.Sys.HistoryTasks.Application;
 using Clickra.Core.Modules.Sys.Settings.Application;
 using Clickra.Core.Storage;
 using Clickra.Desktop.L10n;
@@ -439,12 +440,9 @@ public sealed class SettingsViewModel : ViewModelBase
     {
         try
         {
-            string logsDir = Path.Combine(ClickraStorage.GetDataDir(), "logs");
-            if (!Directory.Exists(logsDir))
-            {
-                Directory.CreateDirectory(logsDir);
-            }
-            OpenPath(logsDir);
+            string logPath = HistoryController.GetLogPath();
+            string dataDir = ClickraStorage.GetDataDir();
+            ExternalOpen.SelectInFolder(logPath, dataDir);
         }
         catch
         {
