@@ -26,6 +26,8 @@ static partial class TestSuite
         runner.Run("ClickraLog: per-file failure logs redacted nested exception", TestClickraLogPerFileFailureLogsRedactedNestedException);
         runner.Run("ClickraLog: password-protected PDF does not leak secret to logs or storage", TestClickraLogPasswordProtectedPdfDoesNotLeakSecret);
         runner.Run("ConversionUserErrorMapper: maps raw technical exceptions to user-facing messages", TestConversionUserErrorMapper);
+        runner.Run("TaskPruningCoordinator: timed-out orphan tasks become Abandoned and log WARN", TestTimedOutOrphanTaskLabeledAbandonedAndLogsWarn);
+        runner.Run("ClickraLog: user-stopped task logs stopped by user", TestUserStoppedTaskLogsStoppedByUser);
     }
 
     private static void TestClickraLogRedaction()
@@ -355,5 +357,103 @@ static partial class TestSuite
 
         string preserved = ConversionUserErrorMapper.ToUserMessage(new InvalidOperationException("找不到可用的 Microsoft Office。"), "zh-TW");
         Assert.Equal("找不到可用的 Microsoft Office。", preserved);
+    }
+
+    private static void TestTimedOutOrphanTaskLabeledAbandonedAndLogsWarn()
+    {
+        string uniqueInput = $"orphan-ttl-{Guid.NewGuid():N}.pdf";
+        string taskId = ClickraStorage.StartTask(CompressPdfUseCase.CommandName, 1, uniqueInput);
+        string historyPath = StorageRuntime.HistoryFilePath;
+        byte[]? originalHistory = File.Exists(historyPath) ? File.ReadAllBytes(historyPath) : null;
+
+        try
+        {
+            ClickraStorage.SetTaskInProgress(taskId);
+            string taskPath = TaskRecordStore.PathFor(taskId);
+            Assert.True(File.Exists(taskPath), "In-progress task file must exist.");
+            File.SetLastWriteTimeUtc(taskPath, DateTime.UtcNow.AddHours(-25));
+
+            string logFile = Path.Combine(ClickraLog.LogsDirectory, $"clickra-{DateTimeOffset.Now:yyyy-MM-dd}.log");
+            ClickraLog.Flush();
+            long offset = File.Exists(logFile) ? new FileInfo(logFile).Length : 0;
+
+            TaskPruningCoordinator.Prune();
+            ClickraLog.Flush();
+
+            Assert.False(File.Exists(taskPath), "Timed-out orphan task file must be pruned.");
+            HistoryEntry? recorded = ClickraStorage.GetHistory(50).FirstOrDefault(e => string.Equals(e.InputPaths, uniqueInput, StringComparison.Ordinal));
+            Assert.True(recorded.HasValue && recorded.Value.Command == CompressPdfUseCase.CommandName, "Pruned orphan task must be appended to history.");
+            Assert.Equal(StorageTaskReasons.Abandoned, recorded!.Value.ErrorMessage);
+            Assert.False(StorageTaskReasons.IsUserCanceled(recorded.Value.ErrorMessage), "Timed-out orphan must not be marked user-canceled.");
+
+            string appended = ReadFileTail(logFile, offset);
+            Assert.True(appended.Contains(" WARN ", StringComparison.Ordinal), "Orphan cleanup must write WARN log.");
+            Assert.True(appended.Contains(taskId, StringComparison.Ordinal), "Orphan cleanup WARN log must include task id.");
+        }
+        finally
+        {
+            ClickraStorage.DeleteTask(taskId);
+            if (originalHistory is not null)
+                File.WriteAllBytes(historyPath, originalHistory);
+            else if (File.Exists(historyPath))
+                File.Delete(historyPath);
+        }
+    }
+
+    private static void TestUserStoppedTaskLogsStoppedByUser()
+    {
+        string tempRoot = CreateTempLogDir();
+        string inputFile = Path.Combine(tempRoot, "stop-test.pdf");
+        File.WriteAllText(inputFile, "stub");
+
+        try
+        {
+            string logFile = Path.Combine(ClickraLog.LogsDirectory, $"clickra-{DateTimeOffset.Now:yyyy-MM-dd}.log");
+            ClickraLog.Flush();
+            long offset = File.Exists(logFile) ? new FileInfo(logFile).Length : 0;
+
+            var useCase = new CancelingPerFileUseCase();
+            var plan = new ConversionPlan(
+                useCase.Command,
+                [inputFile],
+                [Path.Combine(tempRoot, "stop-test_out.pdf")],
+                new HashSet<ConversionCapability>(),
+                new Dictionary<string, object>(StringComparer.Ordinal),
+                TrackTaskLifecycle: false);
+
+            ConversionResult result = useCase
+                .ExecuteAsync(plan, new MockPasswordInteraction(string.Empty), progress: null)
+                .GetAwaiter()
+                .GetResult();
+            ClickraLog.Flush();
+
+            Assert.True(result.Status == ConversionResultStatus.Canceled, "Canceled use case must return Canceled.");
+            string appended = ReadFileTail(logFile, offset);
+            Assert.True(appended.Contains("stopped by user", StringComparison.Ordinal), "User-canceled task must log 'stopped by user'.");
+        }
+        finally
+        {
+            DeleteTempLogDir(tempRoot);
+        }
+    }
+
+    private sealed class CancelingPerFileUseCase : PerFileConversionUseCaseBase
+    {
+        public override string Command => CompressPdfUseCase.CommandName;
+        protected override string UseCaseName => nameof(CancelingPerFileUseCase);
+        protected override string InputRequirementError => "input required";
+        protected override string UnsupportedInputError(string path) => path;
+        protected override string OutputCountError => "output mismatch";
+        protected override string GetOutputFileName(string input) =>
+            Path.GetFileNameWithoutExtension(input) + "_out.pdf";
+
+        protected override Task ExecuteFileAsync(
+            int index,
+            ConversionPlan plan,
+            IConversionInteraction interaction,
+            IProgress<ConversionProgress>? progress,
+            object? executionState,
+            CancellationToken cancellationToken) =>
+            throw new OperationCanceledException();
     }
 }
