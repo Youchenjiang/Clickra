@@ -44,9 +44,10 @@
 
 | 順序 | 分支 | 內容 | 版本（預估） | 預計 |
 | :--- | :--- | :--- | :--- | :--- |
-| 1 | `fix/desktop-view-log-and-rerun` | 「查看日誌」選取 `history.log`；結果頁只留一個「再轉一次」；補壓縮、翻譯、列印的解鎖測試 | 3.22.10 | 11-29 |
-| 2 | `fix/office-engine-lock` | PowerPoint 與 LibreOffice 各一個跨行程的具名 mutex，每個檔案轉之前取得、轉完釋放；等待時進度寫「等 PowerPoint 空出來…」；Word、Excel 不鎖（各自開新行程） | 3.22.11 | 11-30 |
+| 1 ✓ | `fix/desktop-view-log-and-rerun`（PR #255，11-28 合併） | 「查看日誌」選取 `history.log`；結果頁只留一個「再轉一次」；補壓縮、翻譯、列印的解鎖測試 | 3.22.10 | 11-29 |
+| 2 ✓ | `fix/office-engine-lock`（PR #256，11-28 合併） | PowerPoint 與 LibreOffice 各一個跨行程的具名 mutex，每個檔案轉之前取得、轉完釋放；等待時進度寫「等 PowerPoint 空出來…」；Word、Excel 不鎖（各自開新行程） | 3.22.11 | 11-30 |
 | 3 | `feat/error-log` | 依 [error_log_plan.md](error_log_plan.md)；「查看日誌」改指向 `logs` | 3.23 | 12-03 |
+| 3b | `fix/powerpoint-user-instance` | 轉檔時不關、不改使用者開著的 PowerPoint；逾時只結束 Clickra 啟動的 Office 行程；逾時留下看不到的簡報時寫一筆日誌（[powerpoint_user_instance_plan.md](powerpoint_user_instance_plan.md)）。排在錯誤日誌之後（使用者 2026-11-28 決定） | 3.23.x | 12-04 |
 | 4 | `feat/context-menu-desktop` | 新介面接手右鍵執行：每個右鍵工作一個行程與精簡視窗、安靜模式（第 3.2 節） | 3.24 | 12-09 |
 | 5 | `release/desktop-default` | 啟動器與右鍵選單一律走新介面；`release.yml`、`build_store.ps1` 把 `Clickra.Desktop` 打包進 MSIX；README、ROADMAP、規格狀態 | 3.25 | 12-12 |
 | 6 | `refactor/remove-legacy-ui` | 移除 `src/Clickra.Fluent` 與選用套件、`Clickra.CLI/Dashboard`、`Clickra.CLI/Progress`，MSIX 不再包含 `Clickra.exe`；只屬於它們的語系鍵（約 334 個）、設定鍵、測試、封裝與 CI 步驟一併移除（依總計畫清單 8 的五道檢查）；CHANGELOG 公告 | 3.26 | 12-15 |
