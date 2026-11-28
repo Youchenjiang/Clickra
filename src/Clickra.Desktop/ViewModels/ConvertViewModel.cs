@@ -529,6 +529,20 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         set { _resultSummary = value; OnPropertyChanged(); }
     }
 
+    private string _resultDetail = "";
+    public string ResultDetail
+    {
+        get => _resultDetail;
+        private set
+        {
+            if (_resultDetail == value) return;
+            _resultDetail = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasResultDetail));
+        }
+    }
+    public bool HasResultDetail => _resultDetail.Length > 0;
+
     private bool _hasSkippedResults;
     public bool HasSkippedResults
     {
@@ -663,6 +677,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         ProgressPercent = 0;
         ProgressMessage = "";
         ResultSummary = "";
+        ResultDetail = "";
         HasSkippedResults = false;
         State = ConvertWorkflowState.DropZone;
         RefreshRecentHistory();
@@ -707,8 +722,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
         }
         catch (OperationCanceledException)
         {
-            State = ConvertWorkflowState.ActionPage;
-            ProgressMessage = Strings.T("ui_run_stopped");
+            ShowStoppedResults(files, _runningIndex, resumeStartIndex);
         }
         catch (Exception ex)
         {
@@ -821,8 +835,7 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
     {
         if (result.Status == ConversionExecutionPresentationStatus.Canceled)
         {
-            State = ConvertWorkflowState.ActionPage;
-            ProgressMessage = Strings.T("ui_run_stopped_2");
+            ShowStoppedResults(files, _runningIndex, resumeStartIndex);
             return;
         }
         if (result.Status == ConversionExecutionPresentationStatus.Parked)
@@ -837,6 +850,19 @@ public sealed class ConvertViewModel : HistoryRowHostBase, IConversionSession
 
         State = ConvertWorkflowState.Completed;
         ShowResults(result, files, plannedOutputs, renamed);
+    }
+
+    private void ShowStoppedResults(string[] files, int doneCount, int resumeStartIndex)
+    {
+        int done = Math.Clamp(doneCount, 0, files.Length);
+        int left = Math.Max(0, files.Length - done);
+        State = ConvertWorkflowState.Completed;
+        ResultSummary = Strings.T(done > 0 ? "ui_run_stopped_2" : "ui_run_stopped");
+        ResultDetail = done > 0
+            ? Strings.F("ui_run_stopped_summary", ("done", done), ("left", left))
+            : Strings.F("ui_run_stopped_summary_none", ("left", left));
+        foreach (string file in files.Take(done).Skip(resumeStartIndex))
+            ResultItems.Add(new ExecutionResultItemViewModel(file, true, Strings.T("ui_result_done")));
     }
 
     /// <summary>Shows each row's step by its place in the run (merge runs in the workspace order, 解密 skips files

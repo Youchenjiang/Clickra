@@ -1155,8 +1155,12 @@
                 <!-- STATE F: Completed / Results -->
                 <Grid RowDefinitions="Auto,*,Auto" IsVisible="{Binding IsCompleted}">
                     <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,0,0,16">
-                        <TextBlock Grid.Column="0" Text="{Binding ResultSummary}" FontSize="18" FontWeight="SemiBold"
-                                   VerticalAlignment="Center" TextWrapping="Wrap" />
+                        <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding ResultSummary}" FontSize="18" FontWeight="SemiBold"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding ResultDetail}" Classes="secondary" FontSize="13"
+                                       IsVisible="{Binding HasResultDetail}" TextWrapping="Wrap" />
+                        </StackPanel>
                         <Button Grid.Column="1" Classes="secondary" Content="{l:T ui_result_rerun}"
                                 Command="{Binding RerunSkipped}"
                                 IsVisible="{Binding HasSkippedResults}"
