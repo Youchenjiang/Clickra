@@ -2,8 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using Clickra.Core.Application;
 using Clickra.Core.Diagnostics;
+using Clickra.Core.Modules.Pdf.Compression.Application;
+using Clickra.Core.Storage;
 
 namespace Clickra.Core.Tests;
 
@@ -19,6 +23,8 @@ static partial class TestSuite
         runner.Run("ClickraLog: cleans logs older than 14 days while keeping recent and non-log files", TestClickraLogRetentionCleanup);
         runner.Run("ClickraLog: concurrent writes produce 1000 complete non-interleaved entries", TestClickraLogConcurrency);
         runner.Run("ClickraLog: write failure does not throw", TestClickraLogWriteFailureSafe);
+        runner.Run("ClickraLog: per-file failure logs redacted nested exception", TestClickraLogPerFileFailureLogsRedactedNestedException);
+        runner.Run("ClickraLog: password-protected PDF does not leak secret to logs or storage", TestClickraLogPasswordProtectedPdfDoesNotLeakSecret);
     }
 
     private static void TestClickraLogRedaction()
@@ -202,5 +208,133 @@ static partial class TestSuite
             try { Directory.Delete(dir, true); }
             catch { /* Best-effort test log directory cleanup */ }
         }
+    }
+
+    private static void TestClickraLogPerFileFailureLogsRedactedNestedException()
+    {
+        string tempRoot = CreateTempLogDir();
+        string inputDir = Path.Combine(tempRoot, "secret-input-dir");
+        string outputDir = Path.Combine(tempRoot, "secret-output-dir");
+        Directory.CreateDirectory(inputDir);
+        Directory.CreateDirectory(outputDir);
+        string inputFile = Path.Combine(inputDir, "SecretFailureInput.pdf");
+        File.WriteAllText(inputFile, "stub");
+
+        try
+        {
+            string logFile = Path.Combine(ClickraLog.LogsDirectory, $"clickra-{DateTimeOffset.Now:yyyy-MM-dd}.log");
+            ClickraLog.Flush();
+            long offset = File.Exists(logFile) ? new FileInfo(logFile).Length : 0;
+
+            var useCase = new FailingNestedPerFileUseCase();
+            var plan = new ConversionPlan(
+                useCase.Command,
+                [inputFile],
+                [Path.Combine(outputDir, "SecretFailureInput_out.pdf")],
+                new HashSet<ConversionCapability>(),
+                new Dictionary<string, object>(StringComparer.Ordinal),
+                TrackTaskLifecycle: false);
+
+            ConversionResult result = useCase
+                .ExecuteAsync(plan, new MockPasswordInteraction(string.Empty), progress: null)
+                .GetAwaiter()
+                .GetResult();
+            ClickraLog.Flush();
+
+            Assert.True(result.Status == ConversionResultStatus.Failed, "UseCase must report Failed.");
+            Assert.True(File.Exists(logFile), "Expected today's ClickraLog file to exist.");
+            string appended = ReadFileTail(logFile, offset);
+
+            Assert.True(appended.Contains(" ERROR ", StringComparison.Ordinal), "Log must contain ERROR entry.");
+            Assert.True(appended.Contains(useCase.Command, StringComparison.Ordinal), "Log must contain command.");
+            Assert.True(appended.Contains("1/1", StringComparison.Ordinal), "Log must contain file index 1/1.");
+            Assert.True(appended.Contains("SecretFailureInput.pdf", StringComparison.Ordinal), "Log must retain filename.");
+            Assert.True(appended.Contains("inner cause", StringComparison.Ordinal), "Log must contain inner exception.");
+            Assert.True(appended.Contains("root cause", StringComparison.Ordinal), "Log must contain nested root exception.");
+            Assert.False(appended.Contains(inputDir, StringComparison.OrdinalIgnoreCase), "Input directory path must be redacted.");
+            Assert.False(appended.Contains(outputDir, StringComparison.OrdinalIgnoreCase), "Output directory path must be redacted.");
+        }
+        finally
+        {
+            DeleteTempLogDir(tempRoot);
+        }
+    }
+
+    private static void TestClickraLogPasswordProtectedPdfDoesNotLeakSecret() =>
+        RunWithTempFilesAndOutDir(
+            "log-pwd-redact",
+            () => [CreateTestPdf("pwd-log", SampleUnlockValue)],
+            (files, outDir) =>
+            {
+                ClickraLog.Flush();
+                var useCase = new CompressPdfUseCase();
+                ConversionPlan plan = CreateUnlockTestPlan(useCase, CompressPdfUseCase.CommandName, files, outDir);
+                ConversionResult result = useCase
+                    .ExecuteAsync(plan, new MockPasswordInteraction(SampleUnlockValue), progress: null)
+                    .GetAwaiter()
+                    .GetResult();
+                ClickraLog.Flush();
+
+                Assert.True(result.Status == ConversionResultStatus.Succeeded, "Password-protected compression must succeed.");
+
+                if (Directory.Exists(ClickraLog.LogsDirectory))
+                {
+                    foreach (string logFile in Directory.EnumerateFiles(ClickraLog.LogsDirectory, "*.log"))
+                    {
+                        string content = ReadFileTail(logFile, 0);
+                        Assert.False(
+                            content.Contains(SampleUnlockValue, StringComparison.Ordinal),
+                            $"Secret leaked into log file: {Path.GetFileName(logFile)}");
+                    }
+                }
+
+                if (File.Exists(StorageRuntime.HistoryFilePath))
+                {
+                    string history = ReadFileTail(StorageRuntime.HistoryFilePath, 0);
+                    Assert.False(
+                        history.Contains(SampleUnlockValue, StringComparison.Ordinal),
+                        "Secret leaked into history store.");
+                }
+
+                if (Directory.Exists(StorageRuntime.TasksDirectory))
+                {
+                    foreach (string taskFile in Directory.EnumerateFiles(StorageRuntime.TasksDirectory, "*", SearchOption.AllDirectories))
+                    {
+                        string taskContent = ReadFileTail(taskFile, 0);
+                        Assert.False(
+                            taskContent.Contains(SampleUnlockValue, StringComparison.Ordinal),
+                            $"Secret leaked into task store: {Path.GetFileName(taskFile)}");
+                    }
+                }
+            });
+
+    private static string ReadFileTail(string path, long offset)
+    {
+        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        fs.Seek(Math.Min(offset, fs.Length), SeekOrigin.Begin);
+        using var reader = new StreamReader(fs);
+        return reader.ReadToEnd();
+    }
+
+    private sealed class FailingNestedPerFileUseCase : PerFileConversionUseCaseBase
+    {
+        public override string Command => CompressPdfUseCase.CommandName;
+        protected override string UseCaseName => nameof(FailingNestedPerFileUseCase);
+        protected override string InputRequirementError => "input required";
+        protected override string UnsupportedInputError(string path) => path;
+        protected override string OutputCountError => "output mismatch";
+        protected override string GetOutputFileName(string input) =>
+            Path.GetFileNameWithoutExtension(input) + "_out.pdf";
+
+        protected override Task ExecuteFileAsync(
+            int index,
+            ConversionPlan plan,
+            IConversionInteraction interaction,
+            IProgress<ConversionProgress>? progress,
+            object? executionState,
+            CancellationToken cancellationToken) =>
+            throw new InvalidOperationException(
+                "outer failure",
+                new IOException("inner cause", new UnauthorizedAccessException("root cause")));
     }
 }
