@@ -25,6 +25,7 @@ static partial class TestSuite
         runner.Run("ClickraLog: write failure does not throw", TestClickraLogWriteFailureSafe);
         runner.Run("ClickraLog: per-file failure logs redacted nested exception", TestClickraLogPerFileFailureLogsRedactedNestedException);
         runner.Run("ClickraLog: password-protected PDF does not leak secret to logs or storage", TestClickraLogPasswordProtectedPdfDoesNotLeakSecret);
+        runner.Run("ConversionUserErrorMapper: maps raw technical exceptions to user-facing messages", TestConversionUserErrorMapper);
     }
 
     private static void TestClickraLogRedaction()
@@ -336,5 +337,23 @@ static partial class TestSuite
             throw new InvalidOperationException(
                 "outer failure",
                 new IOException("inner cause", new UnauthorizedAccessException("root cause")));
+    }
+
+    private static void TestConversionUserErrorMapper()
+    {
+        string pdfCorrupted = ConversionUserErrorMapper.ToUserFacingMessage(
+            "Unexpected token 'f' in PDF stream. The file may be corrupted. If you think this is a bug in PDFsharp...",
+            "zh-TW");
+        Assert.False(pdfCorrupted.Contains("PDFsharp", StringComparison.Ordinal), "Must hide PDFsharp jargon.");
+        Assert.True(pdfCorrupted.Contains("損毀", StringComparison.Ordinal), "Must explain corrupted PDF in zh-TW.");
+
+        string notFound = ConversionUserErrorMapper.ToUserMessage(new FileNotFoundException("missing"), "zh-TW");
+        Assert.True(notFound.Contains("找不到", StringComparison.Ordinal), "Must explain missing file in zh-TW.");
+
+        string accessDenied = ConversionUserErrorMapper.ToUserMessage(new UnauthorizedAccessException("denied"), "zh-TW");
+        Assert.True(accessDenied.Contains("權限", StringComparison.Ordinal), "Must explain access denied in zh-TW.");
+
+        string preserved = ConversionUserErrorMapper.ToUserMessage(new InvalidOperationException("找不到可用的 Microsoft Office。"), "zh-TW");
+        Assert.Equal("找不到可用的 Microsoft Office。", preserved);
     }
 }
