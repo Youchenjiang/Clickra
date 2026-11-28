@@ -281,7 +281,7 @@ internal static class ConversionLifecycleResultRunner
         {
             lifecycle?.CompleteFailure("Canceled", outputRecord);
             stopwatch.Stop();
-            ClickraLog.Info(plan.Command, "stopped");
+            ClickraLog.Info(plan.Command, "stopped by user");
             return Result(ConversionResultStatus.Canceled, null);
         }
         catch (Exception ex)

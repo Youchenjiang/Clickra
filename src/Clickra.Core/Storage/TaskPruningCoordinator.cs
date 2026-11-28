@@ -50,8 +50,10 @@ internal static class TaskPruningCoordinator
 
         if (IsOrphaned(task, finished, parked, age))
         {
-            string reason = IsDeadPid(task, finished, parked) ? StorageTaskReasons.Abandoned : StorageTaskReasons.Canceled;
-            HistoryStore.AppendCanceled(task, reason, now);
+            HistoryStore.AppendCanceled(task, StorageTaskReasons.Abandoned, now);
+            Diagnostics.ClickraLog.Warn(
+                string.IsNullOrWhiteSpace(task.Command) ? "Cleanup" : task.Command,
+                $"abandoned orphan task={taskId} pid={task.Pid} ageMinutes={(int)age.TotalMinutes}");
             File.Delete(file);
             return;
         }
