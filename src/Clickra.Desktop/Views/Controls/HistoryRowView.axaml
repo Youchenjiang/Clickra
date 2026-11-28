@@ -133,7 +133,7 @@
             </Border>
 
             <!-- Details, opened by clicking the row. -->
-            <Grid IsVisible="{Binding IsExpanded}" Margin="72,0,16,16" ColumnDefinitions="48,*" RowDefinitions="Auto,Auto,Auto"
+            <Grid IsVisible="{Binding IsExpanded}" Margin="72,0,16,16" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto"
                   ColumnSpacing="14" RowSpacing="6">
                 <TextBlock Grid.Row="0" Classes="detailLabel" Text="{l:T ui_history_row_original_files}" />
                 <TextBlock Grid.Row="0" Grid.Column="1" Classes="detailValue" Text="{Binding InputText}" />
@@ -141,6 +141,9 @@
                 <TextBlock Grid.Row="1" Grid.Column="1" Classes="detailValue" Text="{Binding OutputText}" IsVisible="{Binding HasOutput}" />
                 <TextBlock Grid.Row="2" Classes="detailLabel" Text="{l:T ui_history_row_time}" />
                 <TextBlock Grid.Row="2" Grid.Column="1" Classes="detailValue" Text="{Binding TimeDetail}" />
+                <TextBlock Grid.Row="3" Classes="detailLabel" Text="{l:T ui_history_row_reason}" IsVisible="{Binding HasErrorDetail}" />
+                <TextBlock Grid.Row="3" Grid.Column="1" Classes="detailValue" Text="{Binding ErrorDetail}"
+                           Foreground="{DynamicResource Clk.Danger}" IsVisible="{Binding HasErrorDetail}" />
             </Grid>
         </StackPanel>
     </Border>
