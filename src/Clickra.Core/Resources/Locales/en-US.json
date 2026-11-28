@@ -436,6 +436,7 @@
   "diag_email_subject": "Clickra Diagnostics Report",
   "diag_email_thanks": "Thank you for submitting a Clickra diagnostics report!",
   "diag_email_attachment_hint": "Please drag and drop the selected \"history.log\" file into this email as an attachment.",
+  "diag_email_log_attachment_hint": "Please drag and drop the selected log file into this email. The log only records file names and error causes, not file contents or passwords.",
   "diag_email_system_info": "[System Information]",
   "diag_email_os": "Operating System: Windows",
   "diag_email_version": "Clickra Version: {0}",

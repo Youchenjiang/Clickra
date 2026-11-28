@@ -436,6 +436,7 @@
   "diag_email_subject": "Clickra 診斷回報",
   "diag_email_thanks": "感謝您提交 Clickra 診斷回報！",
   "diag_email_attachment_hint": "請直接將已為您選取好的「history.log」拖曳到此郵件中作為附件。",
+  "diag_email_log_attachment_hint": "請把已經幫你選好的日誌檔拖到這封信裡。日誌只記錄檔名和錯誤原因，不含檔案內容與密碼。",
   "diag_email_system_info": "[系統資訊]",
   "diag_email_os": "作業系統: Windows",
   "diag_email_version": "Clickra 版本: {0}",
