@@ -1,4 +1,5 @@
 using Clickra.Core.Application;
+using Clickra.Core.Diagnostics;
 using Clickra.Core.Modules.Sys.Settings.Application;
 using Clickra.Core.Modules.Sys.Settings.Presentation;
 using System;
@@ -24,6 +25,21 @@ internal static partial class ClickraStartup
     /// <summary>Runs the CLI pipeline, delegating command execution to
     /// <see cref="ClickraCli"/> and launching the dashboard when no command is given.</summary>
     public static void Run(string[] args)
+    {
+        ClickraLog.Source = "cli";
+        ClickraLog.Info("Startup", $"args={args.Length}");
+        try
+        {
+            RunCore(args);
+        }
+        finally
+        {
+            ClickraLog.Info("Exit", $"exitCode={Environment.ExitCode}");
+            ClickraLog.Flush();
+        }
+    }
+
+    private static void RunCore(string[] args)
     {
         ClickraCli.AttachParentConsoleForCli(args);
         InitializeProcessEnvironment();
@@ -122,11 +138,11 @@ internal static partial class ClickraStartup
     private static void InitializeProcessEnvironment()
     {
         try { PdfSharp.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver(); }
-        catch (Exception ex) { Debug.WriteLine($"Font resolver init failed: {ex.Message}"); }
+        catch (Exception ex) { ClickraLog.Warn("Startup", "Font resolver init failed", ex); }
         if (OperatingSystem.IsWindows())
         {
             try { SetProcessDpiAwarenessContext((IntPtr)(-4)); }
-            catch (Exception ex) { Debug.WriteLine($"DPI awareness init failed: {ex.Message}"); }
+            catch (Exception ex) { ClickraLog.Warn("Startup", "DPI awareness init failed", ex); }
         }
     }
 
@@ -140,7 +156,7 @@ internal static partial class ClickraStartup
             {
                 ConversionTaskLifecycle.RecordDispatchFailure(command, ex.Message, startTimeStr);
             }
-            catch (Exception recordEx) { Debug.WriteLine($"Failed to record the failed job: {recordEx.Message}"); }
+            catch (Exception recordEx) { ClickraLog.Warn("Dispatch", "Failed to record the failed job", recordEx); }
         }
         Console.WriteLine($"Error: {ex.Message}");
         Console.WriteLine(ex.StackTrace);
