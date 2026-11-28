@@ -5,7 +5,7 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Styling;
 using Clickra.Core;
-using Clickra.Core.Modules.Sys.HistoryTasks.Application;
+using Clickra.Core.Diagnostics;
 using Clickra.Core.Modules.Sys.Settings.Application;
 using Clickra.Core.Storage;
 using Clickra.Desktop.L10n;
@@ -440,9 +440,11 @@ public sealed class SettingsViewModel : ViewModelBase
     {
         try
         {
-            string logPath = HistoryController.GetLogPath();
-            string dataDir = ClickraStorage.GetDataDir();
-            ExternalOpen.SelectInFolder(logPath, dataDir);
+            string? logPath = ClickraLog.GetPreferredLogFilePath();
+            string fallbackDir = Directory.Exists(ClickraLog.LogsDirectory)
+                ? ClickraLog.LogsDirectory
+                : ClickraStorage.GetDataDir();
+            ExternalOpen.SelectInFolder(logPath ?? string.Empty, fallbackDir);
         }
         catch
         {
@@ -454,8 +456,9 @@ public sealed class SettingsViewModel : ViewModelBase
     {
         try
         {
+            OpenLogsFolder();
             string timeText = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
-            var (subjectText, bodyText) = Localization.BuildDiagnosticsEmail(ExternalOpen.AppVersion, timeText);
+            var (subjectText, bodyText) = Localization.BuildDiagnosticsEmail(ExternalOpen.AppVersion, timeText, useErrorLog: true);
             ExternalOpen.Mail(subjectText, bodyText);
         }
         catch
