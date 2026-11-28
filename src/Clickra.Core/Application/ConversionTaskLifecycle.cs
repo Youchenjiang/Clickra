@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using Clickra.Core.Diagnostics;
 using Clickra.Core.Modules.Sys.HistoryTasks.Application;
 using Clickra.Core.Storage;
 
@@ -182,7 +184,7 @@ public sealed class ConversionTaskLifecycle
         catch (Exception ex)
         {
             LastPersistenceError = ex;
-            Console.Error.WriteLine($"[ConversionTaskLifecycle] Task persistence failed: {ex.Message}");
+            ClickraLog.Warn("TaskStorage", "Task persistence failed", ex);
         }
     }
 
@@ -239,9 +241,20 @@ internal static class ConversionLifecycleResultRunner
         Func<int> completedFiles,
         Func<IReadOnlyList<SkippedFileInfo>>? skippedFiles = null,
         Func<IReadOnlyList<string>>? effectiveOutputs = null,
-        Func<string?>? completionReason = null)
+        Func<string?>? completionReason = null,
+        ConversionPasswordCache? passwordCache = null)
     {
         var (plan, stopwatch, lifecycle, outputRecord, parkOnSignal, classifyFailure) = context;
+        string taskId = lifecycle?.TaskId is { Length: > 0 } id ? id : plan.ExistingTaskId ?? "none";
+        using IDisposable logScope = ClickraLog.BeginTask(
+            plan.Command,
+            taskId,
+            plan.Inputs.Concat(plan.Outputs),
+            passwordCache);
+
+        string optionsSummary = ClickraLog.FormatOptionsSummary(plan.NormalizedOptions);
+        ClickraLog.Info(plan.Command, $"started files={plan.Inputs.Count}" + (optionsSummary.Length > 0 ? $" options=[{optionsSummary}]" : string.Empty));
+
         try
         {
             await executeAsync(lifecycle);
@@ -251,27 +264,35 @@ internal static class ConversionLifecycleResultRunner
             else
                 lifecycle?.CompleteSuccess(outputRecord, reason: reason);
             stopwatch.Stop();
+            IReadOnlyList<SkippedFileInfo>? skippedList = skippedFiles?.Invoke();
+            int skippedCount = skippedList?.Count ?? 0;
+            int doneCount = Math.Max(0, completedFiles() - skippedCount);
+            ClickraLog.Info(plan.Command, $"completed succeeded={doneCount} skipped={skippedCount} elapsedMs={stopwatch.ElapsedMilliseconds}");
             return Result(ConversionResultStatus.Succeeded, null);
         }
         catch (ConversionParkedException ex) when (parkOnSignal)
         {
             lifecycle?.Park(ex.Message, ex.NextFileIndex);
             stopwatch.Stop();
+            ClickraLog.Info(plan.Command, $"parked nextIndex={ex.NextFileIndex}");
             return Result(ConversionResultStatus.Parked, ex.Message);
         }
         catch (OperationCanceledException)
         {
             lifecycle?.CompleteFailure("Canceled", outputRecord);
             stopwatch.Stop();
+            ClickraLog.Info(plan.Command, "stopped by user");
             return Result(ConversionResultStatus.Canceled, null);
         }
         catch (Exception ex)
         {
-            lifecycle?.CompleteFailure(ex.Message, outputRecord);
+            ClickraLog.Error(plan.Command, ex.Message, ex);
+            string userMessage = ConversionUserErrorMapper.ToUserMessage(ex);
+            lifecycle?.CompleteFailure(userMessage, outputRecord);
             stopwatch.Stop();
             return Result(
                 ConversionResultStatus.Failed,
-                ex.Message,
+                userMessage,
                 classifyFailure?.Invoke(ex) ?? ConversionFailureKind.None);
         }
 

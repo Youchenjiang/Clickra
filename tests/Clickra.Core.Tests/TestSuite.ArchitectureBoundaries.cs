@@ -128,6 +128,12 @@ static partial class TestSuite
             "Architecture boundaries: presentation does not depend on raw ClickraStorage",
             TestPresentationDoesNotDependOnRawStorage);
         runner.RunGuard(
+            "Architecture boundaries: production code routes errors through ClickraLog instead of Console.Error or raw .log writes",
+            TestNoConsoleErrorOrRawLogWritesInSrc);
+        runner.RunGuard(
+            "Architecture boundaries: module use cases do not call ClickraLog.Error directly",
+            TestUseCasesDoNotCallClickraLogErrorDirectly);
+        runner.RunGuard(
             "Architecture boundaries: presentation does not depend on raw PdfPageThumbnailRenderer",
             TestPresentationDoesNotDependOnRawPdfPageThumbnailRenderer);
         runner.RunGuard(
@@ -3136,4 +3142,53 @@ static partial class TestSuite
             entries
                 .OrderBy(entry => entry.Key, StringComparer.Ordinal)
                 .Select(entry => $"{entry.Key}={entry.Value}"));
+
+    private static void TestNoConsoleErrorOrRawLogWritesInSrc()
+    {
+        string root = FindRepoRoot() ?? throw new InvalidOperationException("Repository root not found.");
+        string srcDir = Path.Combine(root, "src");
+        var violations = new List<string>();
+
+        foreach (string file in Directory.EnumerateFiles(srcDir, "*.cs", SearchOption.AllDirectories))
+        {
+            string rel = NormalizeRepoPath(root, file);
+            string text = File.ReadAllText(file);
+            if (text.Contains("Console.Error.Write", StringComparison.Ordinal))
+            {
+                violations.Add($"{rel}: Console.Error.Write");
+            }
+
+            if (!rel.EndsWith("/HistoryStore.cs", StringComparison.Ordinal)
+                && text.Contains("File.AppendAllText", StringComparison.Ordinal)
+                && text.Contains(".log", StringComparison.OrdinalIgnoreCase))
+            {
+                violations.Add($"{rel}: File.AppendAllText with .log");
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "Production code must route errors through ClickraLog: " + string.Join("; ", violations));
+    }
+
+    private static void TestUseCasesDoNotCallClickraLogErrorDirectly()
+    {
+        string root = FindRepoRoot() ?? throw new InvalidOperationException("Repository root not found.");
+        string modulesDir = Path.Combine(root, "src", "Clickra.Core", "Modules");
+        var violations = new List<string>();
+
+        foreach (string file in Directory.EnumerateFiles(modulesDir, "*UseCase*.cs", SearchOption.AllDirectories))
+        {
+            string text = File.ReadAllText(file);
+            if (text.Contains("ClickraLog.Error", StringComparison.Ordinal))
+            {
+                violations.Add(NormalizeRepoPath(root, file));
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "Module use cases must let ConversionLifecycleResultRunner log errors instead of calling ClickraLog.Error directly: "
+            + string.Join(", ", violations));
+    }
 }

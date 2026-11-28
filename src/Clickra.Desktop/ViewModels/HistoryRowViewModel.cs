@@ -76,7 +76,7 @@ public sealed class HistoryRowViewModel : ViewModelBase
             HistoryRowKind.Active => "",
             _ => EffectiveTime?.ToString("HH:mm", CultureInfo.InvariantCulture) ?? item.Time,
         };
-        Reason = DetermineReason(Kind, State, item);
+        Reason = DetermineReason(Kind, item);
         if (Kind == HistoryRowKind.Active && item.FileCount > 0)
             _progressPercent = Math.Clamp(item.Entry.CurrentIndex * 100.0 / item.FileCount, 0, 100);
     }
@@ -92,14 +92,10 @@ public sealed class HistoryRowViewModel : ViewModelBase
         return baseName;
     }
 
-    private static string DetermineReason(HistoryRowKind kind, HistoryRowState state, HistoryItem item) => kind switch
+    private static string DetermineReason(HistoryRowKind kind, HistoryItem item) => kind switch
     {
         HistoryRowKind.Parked => FirstLine(item.ErrorMessage),
         HistoryRowKind.Active => item.FileCount > 1 ? Strings.F("ui_history_row_n_of_total", ("current", Math.Min(item.Entry.CurrentIndex + 1, item.FileCount)), ("total", item.FileCount)) : "",
-        _ when state == HistoryRowState.Canceled => Strings.T("ui_history_row_stopped"),
-        _ when state == HistoryRowState.Failed => string.Equals(item.Entry.ErrorMessage, "Abandoned", StringComparison.OrdinalIgnoreCase)
-            ? Strings.T("ui_history_row_interrupted_before_finishing")
-            : FirstLine(item.ErrorMessage),
         _ => "",
     };
 
@@ -142,6 +138,12 @@ public sealed class HistoryRowViewModel : ViewModelBase
     }
     public bool HasReason => _reason.Length > 0;
     public bool ReasonIsError => State == HistoryRowState.Failed;
+    public string ErrorDetail => State == HistoryRowState.Failed
+        ? string.Equals(Item.Entry.ErrorMessage, "Abandoned", StringComparison.OrdinalIgnoreCase)
+            ? Strings.T("ui_history_row_interrupted_before_finishing")
+            : Clickra.Core.Application.ConversionUserErrorMapper.ToUserFacingMessage(Item.ErrorMessage, Strings.Language)
+        : "";
+    public bool HasErrorDetail => ErrorDetail.Length > 0;
 
     public IReadOnlyList<string> InputPaths { get; }
     public string InputText => InputPaths.Count == 0 ? "" : string.Join(Environment.NewLine, InputPaths);

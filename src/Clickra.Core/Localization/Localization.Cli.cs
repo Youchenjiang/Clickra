@@ -7,13 +7,14 @@ public static partial class Localization
     /// <summary>
     /// 組裝本地化的診斷回報郵件主旨與內文範本。
     /// </summary>
-    public static (string Subject, string Body) BuildDiagnosticsEmail(string version, string time, string? langCode = null)
+    public static (string Subject, string Body) BuildDiagnosticsEmail(string version, string time, string? langCode = null, bool useErrorLog = false)
     {
         string lang = langCode ?? SettingsController.Language;
         string subject = T("diag_email_subject", lang);
+        string hintKey = useErrorLog ? "diag_email_log_attachment_hint" : "diag_email_attachment_hint";
         string body =
             T("diag_email_thanks", lang) + "\r\n\r\n" +
-            T("diag_email_attachment_hint", lang) + "\r\n\r\n" +
+            T(hintKey, lang) + "\r\n\r\n" +
             T("diag_email_system_info", lang) + "\r\n" +
             T("diag_email_os", lang) + "\r\n" +
             string.Format(T("diag_email_version", lang), version) + "\r\n" +

@@ -94,7 +94,7 @@ public abstract class ConversionUseCaseBase : IConversionUseCase
             else
             {
                 string reason = lifecycle.LastPersistenceError?.Message ?? "task identifier was not assigned";
-                Console.Error.WriteLine($"[ConversionUseCaseBase] Best-effort task start failed for '{Command}': {reason}.");
+                Diagnostics.ClickraLog.Warn("TaskStart", $"Best-effort task start failed for '{Command}': {reason}.");
             }
         }
         return (stopwatch, lifecycle);

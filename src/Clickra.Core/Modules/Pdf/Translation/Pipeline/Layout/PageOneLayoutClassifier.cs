@@ -81,7 +81,6 @@ public static class PageOneLayoutClassifier
         if (!TryGetAuthorBand(pageList, pageHeight, out double titleBottom, out double abstractTop, out var titlePara) ||
             titlePara == null)
         {
-            Console.Error.WriteLine($"[AUTHOR] p1 TryGetAuthorBand FAILED titleBottom={titleBottom} abstractTop={abstractTop} titlePara={titlePara != null}");
             return;
         }
 

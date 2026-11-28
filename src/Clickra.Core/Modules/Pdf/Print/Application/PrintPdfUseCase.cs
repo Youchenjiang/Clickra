@@ -61,6 +61,7 @@ public sealed class PrintPdfUseCase : PerFileConversionUseCaseBase
         var options = PrintPdfOptions.FromDictionary(request.Options);
         if (!string.IsNullOrWhiteSpace(options.PrinterName) && !_printerDiscovery.IsPrinterInstalled(options.PrinterName))
         {
+            Diagnostics.ClickraLog.Warn("Print", $"Printer '{options.PrinterName}' is not installed.");
             return ConversionValidationResult.Failure($"Printer '{options.PrinterName}' is not installed.");
         }
 

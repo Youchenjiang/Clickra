@@ -126,7 +126,7 @@ internal static class PdfParagraphTranslationStage
                 }
                 catch (Exception ex)
                 {
-                    LogTranslationError(inputPath, p, $"Translation recovery exhausted. Error: {ex.Message}", dataDirectory, logLock);
+                    Diagnostics.ClickraLog.Error("Translate", $"page {p + 1} failed", ex);
                     report.Failures.Add($"page {p + 1}: {ex.Message}");
                     if (TranslationProviderLimits.IsLimit(ex))
                         throw PdfTranslationBatchRunner.ProviderLimitedError(p, language, ex);
@@ -138,21 +138,6 @@ internal static class PdfParagraphTranslationStage
         }
 
         return report;
-    }
-
-    private static void LogTranslationError(string inputPath, int pageIndex, string message, string dataDirectory, object logLock)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(dataDirectory)) return;
-            string logPath = Path.Combine(dataDirectory, "translate_errors.log");
-            string logLine = $"[{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss}] [File: {Path.GetFileName(inputPath)}] [Page {pageIndex + 1}] {message}{Environment.NewLine}";
-            lock (logLock)
-            {
-                System.IO.File.AppendAllText(logPath, logLine);
-            }
-        }
-        catch { }
     }
 }
 

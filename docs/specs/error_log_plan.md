@@ -1,6 +1,6 @@
 # 錯誤日誌：出問題時留下查得到原因的紀錄
 
-> 狀態：計畫（2026-11-27 起草）
+> 狀態：已實作（v3.23.0.0，2026-11-28）
 > 對應：[v4_cross_platform_master_plan.md](v4_cross_platform_master_plan.md)〈4.0 上線前清單〉；[v4_desktop_ui_layout.md](v4_desktop_ui_layout.md) 設定頁「關於」的「查看日誌」與「寄送問題回報」。
 > 範圍：Core 新增一個寫日誌的元件，4.0 桌面端、右鍵執行（CLI）共用。舊介面（Fluent、經典儀表板）不改畫面，只跟著 Core 寫進同一個日誌。
 

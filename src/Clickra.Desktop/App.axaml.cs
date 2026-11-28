@@ -15,6 +15,8 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        Avalonia.Threading.Dispatcher.UIThread.UnhandledException += (_, e) =>
+            Clickra.Core.Diagnostics.ClickraLog.Error("UIThreadException", "Avalonia UIThread unhandled exception", e.Exception);
         Clickra.Core.Modules.Pdf.Print.Ports.SystemPrinterDiscoveryService.WarmUp();
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

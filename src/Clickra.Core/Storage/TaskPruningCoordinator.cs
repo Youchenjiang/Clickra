@@ -16,14 +16,15 @@ internal static class TaskPruningCoordinator
         {
             TaskRecordStore.EnsureDirectory();
             PruneResidualUnlockFiles();
+            Diagnostics.ClickraLog.CleanExpiredLogs();
             if (!Directory.Exists(StorageRuntime.TasksDirectory)) return;
             DateTime now = DateTime.UtcNow;
             foreach (string file in Directory.GetFiles(StorageRuntime.TasksDirectory, $"{StorageRuntime.TaskFilePrefix}*.tmp"))
             {
                 try { PruneSingleTaskFile(file, now); }
-                catch
+                catch (Exception ex)
                 {
-                    // A locked or malformed task must not prevent pruning the remaining files.
+                    Diagnostics.ClickraLog.Warn("Cleanup", $"Failed to prune task file {Path.GetFileName(file)}", ex);
                 }
             }
         }
@@ -49,8 +50,10 @@ internal static class TaskPruningCoordinator
 
         if (IsOrphaned(task, finished, parked, age))
         {
-            string reason = IsDeadPid(task, finished, parked) ? StorageTaskReasons.Abandoned : StorageTaskReasons.Canceled;
-            HistoryStore.AppendCanceled(task, reason, now);
+            HistoryStore.AppendCanceled(task, StorageTaskReasons.Abandoned, now);
+            Diagnostics.ClickraLog.Warn(
+                string.IsNullOrWhiteSpace(task.Command) ? "Cleanup" : task.Command,
+                $"abandoned orphan task={taskId} pid={task.Pid} ageMinutes={(int)age.TotalMinutes}");
             File.Delete(file);
             return;
         }
