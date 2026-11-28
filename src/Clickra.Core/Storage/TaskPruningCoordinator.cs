@@ -16,6 +16,7 @@ internal static class TaskPruningCoordinator
         {
             TaskRecordStore.EnsureDirectory();
             PruneResidualUnlockFiles();
+            Diagnostics.ClickraLog.CleanExpiredLogs();
             if (!Directory.Exists(StorageRuntime.TasksDirectory)) return;
             DateTime now = DateTime.UtcNow;
             foreach (string file in Directory.GetFiles(StorageRuntime.TasksDirectory, $"{StorageRuntime.TaskFilePrefix}*.tmp"))
