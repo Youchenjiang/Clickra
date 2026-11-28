@@ -25,6 +25,13 @@ internal sealed class LibreOfficeConversionStrategy : IOfficeConversionStrategy
         Action<int, int, string>? onProgress,
         CancellationToken cancellationToken)
     {
-        LibreOfficeHelper.ExportToPdf(request, settings, onProgress, cancellationToken);
+        using (OfficeEngineLock.AcquireLibreOffice(
+            request,
+            settings.Language,
+            onProgress,
+            cancellationToken))
+        {
+            LibreOfficeHelper.ExportToPdf(request, settings, onProgress, cancellationToken);
+        }
     }
 }

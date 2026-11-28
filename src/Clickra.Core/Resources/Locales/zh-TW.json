@@ -151,6 +151,7 @@
   "error_libreoffice_unusable": "LibreOffice 無法啟動。請到「設定」重新下載 LibreOffice，或指定另一個 LibreOffice。",
   "error_microsoftoffice_not_ready": "找不到可用的 Microsoft Office。請安裝 Office，或到「設定」改用 LibreOffice。",
   "status_office_fallback_to_libreoffice": "{app} 無法處理「{name}」，改用 LibreOffice…",
+  "status_office_waiting_engine": "等 {engine} 空出來…",
   "status_libreoffice_exporting": "正在用 LibreOffice 把「{name}」存成 PDF…",
   "setting_pdf_title": "PDF 一鍵翻譯",
   "setting_pdf_desc": "設定 PDF 翻譯目標語言",

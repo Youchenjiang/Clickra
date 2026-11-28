@@ -292,6 +292,96 @@ static partial class TestSuite
             }
             Assert.True(caughtFallbackBypass, "When custom LibreOffice strategy cannot convert appType, Microsoft failure must bubble up.");
         });
+
+        runner.Run("Office engine lock serializes concurrent callers and emits waiting message", () =>
+        {
+            string testMutex = $"Local\\ClickraTestLock_{Guid.NewGuid():N}";
+            var req1 = new OfficeConversionRequest("PowerPoint", "a.pptx", "a.pdf", 0, 2);
+            var req2 = new OfficeConversionRequest("PowerPoint", "b.pptx", "b.pdf", 1, 2);
+            var messages = new System.Collections.Concurrent.ConcurrentQueue<string>();
+            using var firstAcquired = new ManualResetEventSlim(false);
+            using var allowRelease = new ManualResetEventSlim(false);
+            using var secondAcquired = new ManualResetEventSlim(false);
+
+            var t1 = Task.Run(() =>
+            {
+                using (OfficeEngineLock.AcquireForRequest(testMutex, "PowerPoint", req1, "zh-TW", null, CancellationToken.None))
+                {
+                    firstAcquired.Set();
+                    allowRelease.Wait();
+                }
+            });
+
+            Assert.True(firstAcquired.Wait(5000), "First caller must acquire lock promptly.");
+
+            var t2 = Task.Run(() =>
+            {
+                using (OfficeEngineLock.AcquireForRequest(
+                    testMutex,
+                    "PowerPoint",
+                    req2,
+                    "zh-TW",
+                    (_, _, msg) => messages.Enqueue(msg),
+                    CancellationToken.None))
+                {
+                    secondAcquired.Set();
+                }
+            });
+
+            // Wait briefly to ensure t2 enters the wait state while t1 holds the lock
+            Assert.False(secondAcquired.Wait(150), "Second caller must block while first caller holds lock.");
+            allowRelease.Set();
+
+            Task.WaitAll(t1, t2);
+            Assert.True(secondAcquired.IsSet, "Second caller must acquire lock after release.");
+            Assert.True(messages.Any(m => m.Contains("等 PowerPoint 空出來", StringComparison.Ordinal)),
+                $"Expected waiting message, got: [{string.Join(", ", messages)}]");
+        });
+
+        runner.Run("Office engine lock honors cancellation while waiting", () =>
+        {
+            string testMutex = $"Local\\ClickraTestLockCancel_{Guid.NewGuid():N}";
+            using var firstAcquired = new ManualResetEventSlim(false);
+            using var allowRelease = new ManualResetEventSlim(false);
+            using var cts = new CancellationTokenSource();
+
+            var t1 = Task.Run(() =>
+            {
+                using (OfficeEngineLock.Acquire(testMutex))
+                {
+                    firstAcquired.Set();
+                    allowRelease.Wait();
+                }
+            });
+
+            Assert.True(firstAcquired.Wait(5000), "First caller must acquire lock.");
+
+            bool canceled = false;
+            var t2 = Task.Run(() =>
+            {
+                try
+                {
+                    using (OfficeEngineLock.Acquire(testMutex, null, cts.Token))
+                    {
+                        // Lock should not be acquired after cancellation
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    canceled = true;
+                }
+            });
+
+            Thread.Sleep(80);
+            cts.Cancel();
+            t2.Wait(5000);
+            allowRelease.Set();
+            t1.Wait(5000);
+
+            Assert.True(canceled, "Waiting caller must throw OperationCanceledException when canceled.");
+            Assert.True(!string.Equals(OfficeEngineLock.PowerPointMutexName, OfficeEngineLock.LibreOfficeMutexName, StringComparison.Ordinal),
+                "PowerPoint and LibreOffice must use distinct named mutexes.");
+        });
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S1172", Justification = "Test fake implementation of IOfficeConversionStrategy interface.")]

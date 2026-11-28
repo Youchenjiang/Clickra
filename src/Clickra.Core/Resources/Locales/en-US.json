@@ -151,6 +151,7 @@
   "error_libreoffice_unusable": "LibreOffice won’t start. Download it again in Settings, or choose a different LibreOffice.",
   "error_microsoftoffice_not_ready": "No working Microsoft Office was found. Install Office, or switch to LibreOffice in Settings.",
   "status_office_fallback_to_libreoffice": "{app} couldn’t process “{name}”; trying LibreOffice…",
+  "status_office_waiting_engine": "Waiting for {engine} to become available…",
   "status_libreoffice_exporting": "Saving “{name}” as PDF with LibreOffice…",
   "setting_pdf_title": "PDF One-Click Translation",
   "setting_pdf_desc": "Configure target language for translation",

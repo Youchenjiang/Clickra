@@ -1,6 +1,6 @@
 # Microsoft Store 清单 - 中文 (简体)
 
-以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.22.10.0。
+以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.22.11.0。
 
 ---
 
@@ -15,7 +15,7 @@ Clickra 是一款专为 Windows 资源管理器打造的原生右键扩展工具
 源代码：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 桌面端体验与稳定性修复：设置页“查看日志”改为直接选中 `history.log` 而不创建空文件夹；结果页将跳过文件的“再转一次”整合为摘要旁的单一按钮。
+- Office 引擎跨进程互斥锁定：PowerPoint 与 LibreOffice 改以具名跨进程锁顺序处理每个文件并在等待时提示进度（支持取消），Word 与 Excel 保持独立进程并行。
 
 ## Product Features
 *(最多 20 个，以项目符号显示)*
