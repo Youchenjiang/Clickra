@@ -91,6 +91,11 @@ internal sealed class OfficeConversionStrategyResolver
             ExceptionDispatchInfo.Capture(originalException).Throw();
         }
 
+        Diagnostics.ClickraLog.Warn(
+            "OfficeFallback",
+            $"{request.AppType} failed for \"{Path.GetFileName(request.FullPath)}\"; falling back to LibreOffice",
+            originalException);
+
         cancellationToken.ThrowIfCancellationRequested();
         onProgress?.Invoke(
             request.FileIndex * 100,

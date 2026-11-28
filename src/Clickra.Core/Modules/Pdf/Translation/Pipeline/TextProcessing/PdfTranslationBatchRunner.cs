@@ -76,9 +76,10 @@ namespace Clickra.Core.Modules.Pdf.Translation.Pipeline.TextProcessing;
                 if (TryRecoverFromLimit(translator, chunk, targetLang, context, ex, cancellationToken, out var recovered) && recovered != null)
                     return recovered;
 
-                Console.Error.WriteLine(
-                    $"[Translate] page {context.Batch.PageIndex + 1}, batch {context.ChunkIndex + 1} failed; " +
-                    $"splitting for recovery: {ex.Message}");
+                Diagnostics.ClickraLog.Warn(
+                    "Translate",
+                    $"page {context.Batch.PageIndex + 1}, batch {context.ChunkIndex + 1} failed; splitting for recovery",
+                    ex);
             }
 
             if (chunk.Count > 1)
@@ -140,9 +141,10 @@ namespace Clickra.Core.Modules.Pdf.Translation.Pipeline.TextProcessing;
 
             TimeSpan wait = TranslationProviderLimits.SuggestedWait(failure);
             int waitSeconds = (int)Math.Max(1, Math.Ceiling(wait.TotalSeconds));
-            Console.Error.WriteLine(
-                $"[Translate] page {context.Batch.PageIndex + 1}, batch {context.ChunkIndex + 1} hit a provider limit; " +
-                $"retrying once in {waitSeconds}s: {failure.Message}");
+            Diagnostics.ClickraLog.Warn(
+                "Translate",
+                $"page {context.Batch.PageIndex + 1}, batch {context.ChunkIndex + 1} hit a provider limit; retrying once in {waitSeconds}s",
+                failure);
 
             WaitOutLimitWithProgress(wait, waitSeconds, context, cancellationToken);
 
