@@ -22,9 +22,9 @@ internal static class TaskPruningCoordinator
             foreach (string file in Directory.GetFiles(StorageRuntime.TasksDirectory, $"{StorageRuntime.TaskFilePrefix}*.tmp"))
             {
                 try { PruneSingleTaskFile(file, now); }
-                catch
+                catch (Exception ex)
                 {
-                    // A locked or malformed task must not prevent pruning the remaining files.
+                    Diagnostics.ClickraLog.Warn("Cleanup", $"Failed to prune task file {Path.GetFileName(file)}", ex);
                 }
             }
         }

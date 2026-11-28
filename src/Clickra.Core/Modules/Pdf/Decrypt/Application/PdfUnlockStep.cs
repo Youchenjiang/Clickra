@@ -222,9 +222,9 @@ public static class PdfUnlockStep
                     if (File.GetLastWriteTimeUtc(file) < cutoff)
                         File.Delete(file);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Best effort
+                    Diagnostics.ClickraLog.Warn("Cleanup", $"Failed to delete residual unlock file {Path.GetFileName(file)}", ex);
                 }
             }
         }

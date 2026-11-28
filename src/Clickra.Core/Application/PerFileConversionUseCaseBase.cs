@@ -128,6 +128,7 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
                 for (int i = completedFiles; i < plan.Inputs.Count; i++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    Diagnostics.ClickraLog.SetTaskFile(i, plan.Inputs.Count, plan.Inputs[i]);
                     currentLifecycle?.RecordFileStarting(i);
                     observer?.OnFileStarting(i);
                     try
@@ -146,6 +147,7 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
                     }
                     catch (ConversionFileSkippedException ex)
                     {
+                        Diagnostics.ClickraLog.Info(plan.Command, $"skipped reason={ex.Reason}");
                         skippedFiles.Add(new SkippedFileInfo(plan.Inputs[i], ex.Reason));
                     }
                     completedFiles = i + 1;
@@ -156,7 +158,8 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
             () => completedFiles,
             () => skippedFiles,
             () => successfulOutputs.Count > 0 || skippedFiles.Count == 0 ? successfulOutputs : plan.Outputs,
-            () => FormatSkippedHistoryReason(skippedFiles, plan.NormalizedOptions));
+            () => FormatSkippedHistoryReason(skippedFiles, plan.NormalizedOptions),
+            passwordCache: _executionPasswordCache.Value);
     }
 
     private static void ThrowIfAllFilesSkipped(
