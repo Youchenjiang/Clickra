@@ -287,11 +287,12 @@ internal static class ConversionLifecycleResultRunner
         catch (Exception ex)
         {
             ClickraLog.Error(plan.Command, ex.Message, ex);
-            lifecycle?.CompleteFailure(ex.Message, outputRecord);
+            string userMessage = ConversionUserErrorMapper.ToUserMessage(ex);
+            lifecycle?.CompleteFailure(userMessage, outputRecord);
             stopwatch.Stop();
             return Result(
                 ConversionResultStatus.Failed,
-                ex.Message,
+                userMessage,
                 classifyFailure?.Invoke(ex) ?? ConversionFailureKind.None);
         }
 
